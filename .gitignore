@@ -29,6 +29,7 @@
 !/config/dsh.example.patch.yml
 /docs/*
 !/docs/getting-started.md
+!/docs/post-change-baseline-compare.md
 !/docs/tool-schemas.json
 node_modules/
 dist/
