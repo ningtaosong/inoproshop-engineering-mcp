@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "check:instructions": "node scripts/check-instructions-size.mjs",
     "start": "node dist/server.js",
     "test": "npm run build && node --test --test-concurrency=1 tests/*.test.mjs",
     "test:ide": "npm run build && node scripts/validate-ide.mjs",

@@ -18,3 +18,6 @@
           INOPRO_RESPONSE_WAIT_MS: '15000'
         toolCallTimeoutMs: 60000
         failOnStartupError: false
+        # DSH MCP Client limit (UTF-8 bytes, including its server attribution).
+        # Verified with DSH / dsh-mcp-client 0.2.0-rc.2; do not truncate instructions.
+        maxInstructionBytes: 65536

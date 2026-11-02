@@ -34,7 +34,7 @@ npm run build
 
 保留单活动工程、串行队列、精确Application/对象定位、检查点、版本冲突校验、去重、写后读回和unknown冻结。源工程与工作副本分别保存，同名对象不静默覆盖。只读IDE可能写.opt等附属文件，工程哈希不变不代表目录所有文件不变。
 
-本功能分支将[修改前工作副本基线与交付后比较](docs/post-change-baseline-compare.md)接入支持的Application日常修改：先采可信基线，再按原闭环修改/编译/保存重开，最后以同一副本的最终快照比较；默认不拿原交付源代替本轮基线。保持0.7.0和十八工具，仅调整Agent指令与说明，本轮整合的DSH桌面验收待完成，尚未合并main。
+[修改前工作副本基线与交付后比较](docs/post-change-baseline-compare.md)已接入支持的Application日常修改：先采可信基线，再按原闭环修改/编译/保存重开，最后以同一副本的最终快照比较；默认不拿原交付源代替本轮基线。2026-11-02真实DSH修改闭环及比较已复核通过，保持0.7.0和十八工具，无新增工程执行代码。DSH 0.2.0-rc.2客户端需使用模板的 `maxInstructionBytes: 65536`；可用 `npm run check:instructions` 静态核对UTF-8大小，详见[接入上限说明](docs/getting-started.md#指令大小与连接失败)。
 
 ## 验证状态与限制
 
