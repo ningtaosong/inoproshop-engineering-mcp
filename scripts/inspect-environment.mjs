@@ -1,0 +1,12 @@
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {readFile,writeFile,mkdir,readdir} from 'node:fs/promises';
+import path from 'node:path';
+import {configuration,ROOT} from '../dist/adapter.js';
+const config=configuration();
+const command="[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); $registryRoots=@('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); $apps=Get-ItemProperty $registryRoots -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'InoProShop|DeepSeek Harness' } | Select-Object DisplayName,DisplayVersion,InstallLocation; $exe=Get-Item -LiteralPath 'D:\\InProShop\\CODESYS\\Common\\InoProShop.exe'; @{applications=@($apps);ideFileVersion=$exe.VersionInfo.FileVersion;nodeVersion='"+process.version+"'} | ConvertTo-Json -Depth 5";
+const {stdout}=await promisify(execFile)('powershell.exe',['-NoProfile','-Command',command],{windowsHide:true,encoding:'utf8'});
+const report={executedAt:new Date().toISOString(),timezone:'Asia/Shanghai',sources:['Windows uninstall registry','executable VersionInfo','installed Profiles directory','read-only script probe'],...JSON.parse(stdout),profiles:await readdir('D:/InProShop/CODESYS/Profiles').then(x=>x.filter(f=>f.endsWith('.profile'))),script:JSON.parse(await readFile(path.join(ROOT,'docs/evidence/ide-probe.json'),'utf8')),service:{dataDir:config.dataDir,mode:config.noUI?'batch-noUI':'batch-managed-UI'}};
+await mkdir(path.join(ROOT,'docs/evidence'),{recursive:true});
+await writeFile(path.join(ROOT,'docs/evidence/environment.json'),JSON.stringify(report,null,2));
+console.log('环境证据已写入 docs/evidence/environment.json');

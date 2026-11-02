@@ -1,0 +1,20 @@
+# Tested DSH 0.2.0-rc.2 schema. Adjust all paths to the target machine.
+# Append to the existing top-level patch array, without replacing other entries.
+- insert:
+    - id: mcp-inoproshop
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: inoproshop
+        transport: stdio
+        command: 'C:\Program Files\nodejs\node.exe'
+        args: ['D:\InoPro\dist\server.js']
+        cwd: 'D:\InoPro'
+        env:
+          INOPRO_DATA_DIR: 'D:\InoPro\.local\service'
+          INOPRO_EXE: 'D:\InProShop\CODESYS\Common\InoProShop.exe'
+          INOPRO_PROFILE: 'InoProShop(V1.9.1.6)'
+          INOPRO_NO_UI: 'false'
+          INOPRO_TIMEOUT_MS: '120000'
+          INOPRO_RESPONSE_WAIT_MS: '15000'
+        toolCallTimeoutMs: 60000
+        failOnStartupError: false
