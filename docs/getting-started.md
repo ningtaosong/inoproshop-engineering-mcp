@@ -4,7 +4,7 @@
 
 ## 获取与构建
 
-仓库目前为私有，需具有访问权限。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，可直接克隆。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
 git clone https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
