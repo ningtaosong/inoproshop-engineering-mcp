@@ -22,6 +22,7 @@
 !/scripts/create-test-project.mjs
 !/scripts/inspect-environment.mjs
 !/scripts/export-contracts.mjs
+!/scripts/check-instructions-size.mjs
 /scripts/probes/*
 !/scripts/probes/dsh-prompt-attestation.cjs
 !/scripts/probes/dsh-search-config-attestation.cjs
@@ -29,6 +30,7 @@
 !/config/dsh.example.patch.yml
 /docs/*
 !/docs/getting-started.md
+!/docs/post-change-baseline-compare.md
 !/docs/tool-schemas.json
 node_modules/
 dist/
