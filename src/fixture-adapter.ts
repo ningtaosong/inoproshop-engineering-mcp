@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { type Adapter, type BridgeRequest } from './adapter.js';
-import { reply, DomainError, functionBlockName, declarationMatches, type Reply } from './contracts.js';
+import { reply, DomainError, pouDeclarationMatches, declarationMatches, type Reply } from './contracts.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
 
 export class FixtureAdapter implements Adapter {
@@ -74,10 +74,10 @@ export class FixtureAdapter implements Adapter {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','未找到精确对象');
       result=reply('succeeded','测试对象已读取',{...object,contentHash:codeHash(object.declaration,object.implementation),testMode:true});
     } else if(req.command==='create'||req.command==='create_declaration') {
-      const kind=req.command==='create'?'function_block':a.objectType;
+      const kind=req.command==='create'?a.pouType:a.objectType,isPou=req.command==='create';
       const parent=p.applications.find((x:any)=>x.applicationId===a.applicationId);
       if(!parent || a.parentId!==a.applicationId) result={...reply('conflict','测试父节点不匹配'),error:{code:'PARENT_MISMATCH',message:'父节点不在选定 Application'}};
-      else if(kind==='function_block'?(a.pouType!=='function_block'||functionBlockName(a.declaration)?.toLowerCase()!==a.name.toLowerCase()):!declarationMatches(kind,a.name,a.declaration)) result={...reply('failed','测试声明首部不一致'),error:{code:'INVALID_DECLARATION',message:'声明首部不一致'}};
+      else if(isPou?!pouDeclarationMatches(kind,a.name,a.declaration,a.returnType):!declarationMatches(kind,a.name,a.declaration)) result={...reply('failed','测试声明首部不一致'),error:{code:'INVALID_DECLARATION',message:'声明首部不一致'}};
       else if(snapshot()!==a.expectedSnapshot) result={...reply('conflict','测试快照已改变',{snapshot:snapshot()}),error:{code:'SNAPSHOT_CONFLICT',message:'创建前快照冲突'}};
       else {
         const collisions=p.objects.filter((o:any)=>(o.applicationId===a.applicationId||o.applicationId===null)&&o.path.at(-1).toLowerCase()===a.name.toLowerCase());
@@ -86,8 +86,9 @@ export class FixtureAdapter implements Adapter {
           const beforeSnapshot=snapshot(); const checkpoint=path.join(dir,'checkpoint.project');
           await fs.copyFile(req.projectPath,checkpoint);
           await atomicJson(path.join(dir,'before.json'),{expectedAbsent:true,parentId:a.parentId,name:a.name,snapshot:beforeSnapshot});
-          const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',function_block:'6f9dac99-8de1-4efc-8465-68ac443b7d08'};
-          const created={objectId:randomUUID(),applicationId:a.applicationId,path:[...parent.path,a.name],language:'ST',objectType:kind,hasImplementation:kind==='function_block',nativeTypeId:native[kind],declaration:normalize(a.declaration),implementation:''};
+          const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
+          const created={objectId:randomUUID(),applicationId:a.applicationId,path:[...parent.path,a.name],language:'ST',objectType:isPou?(kind==='function_block'?kind:'st_pou'):kind,hasImplementation:isPou,nativeTypeId:native[kind] || '6f9dac99-8de1-4efc-8465-68ac443b7d08',
+            ...(isPou?{pouType:kind,pouTypeSource:'native-pou-type-id-and-declaration-header',...(a.returnType?{returnType:a.returnType}:{})}:{}),declaration:normalize(a.declaration),implementation:''};
           p.objects.push(created);
           await atomicJson(path.join(dir,'created.json'),{objectId:created.objectId,parentId:a.parentId,name:a.name});
           if(p.failCreateImplementation) {

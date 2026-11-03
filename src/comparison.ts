@@ -71,7 +71,9 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
     const isObject=kind==='object',bg=groups(isObject?b.objects:b.tasks,b.identity.applicationPath,isObject),tg=groups(isObject?t.objects:t.tasks,t.identity.applicationPath,isObject);
     for(const key of [...new Set([...bg.keys(),...tg.keys()])].sort(cmp)){
       const left=bg.get(key)||[],right=tg.get(key)||[],before=left[0],after=right[0],row=before||after;
-      const item:any={kind,relativePath:JSON.parse(key)[0],objectType:isObject?row.objectType:'task',beforeIdentity:left.map((o:any)=>({objectId:o.objectId||o.taskId,path:o.path})),afterIdentity:right.map((o:any)=>({objectId:o.objectId||o.taskId,path:o.path})),category:'unchanged',changes:[],reasons:[]};
+      const item:any={kind,relativePath:JSON.parse(key)[0],objectType:isObject?row.objectType:'task',
+        ...(isObject&&row.pouType?{pouType:row.pouType,pouTypeSource:row.pouTypeSource,...(row.returnType!==undefined?{returnType:row.returnType}:{})}:{}),
+        beforeIdentity:left.map((o:any)=>({objectId:o.objectId||o.taskId,path:o.path})),afterIdentity:right.map((o:any)=>({objectId:o.objectId||o.taskId,path:o.path})),category:'unchanged',changes:[],reasons:[]};
       const complete=isObject?b.scope.coverageComplete&&t.scope.coverageComplete:b.taskCoverage.complete&&t.taskCoverage.complete;
       if(left.length>1||right.length>1){item.category='incomparable';item.reasons.push('Ambiguous Application-relative path and object type; no name/GUID/rename guessing');}
       else if(!before||!after){

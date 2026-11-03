@@ -34,11 +34,14 @@ class Node:
     def get_name(self): return self.name
     def get_children(self, recursive): return self.children
 
-    def create_pou(self, name, kind, language):
+    def create_pou(self, name, kind, language, return_type=None):
         self.project.control['factory_calls'] += 1
         if self.project.control.get('return_existing'):
             return self.children[0]
-        node = Node(self.project, name, declaration='FUNCTION_BLOCK '+name, implementation='')
+        header={'FB':'FUNCTION_BLOCK','PRG':'PROGRAM','FUN':'FUNCTION'}[kind]+' '+name
+        if kind=='FUN':header+=' : '+return_type
+        node = Node(self.project, name, declaration=header, implementation='')
+        if self.project.control.get('wrong_return_type') and kind=='FUN':node.textual_declaration.text='FUNCTION '+name+' : INT'
         self.children.append(node)
         if self.project.control.get('factory_throw_after_create'):
             raise RuntimeError('factory failed before returning GUID')
@@ -112,14 +115,14 @@ class BridgeCreation(unittest.TestCase):
         self.app = self.project.children[0]
         self.published = []
         self.env.update(projects=self.manager, publish=lambda p,v:self.published.append((p,v)),
-                        scriptengine=SimpleNamespace(PouType=SimpleNamespace(FunctionBlock='FB'), ImplementationLanguages=SimpleNamespace(st='ST')))
+                        scriptengine=SimpleNamespace(PouType=SimpleNamespace(FunctionBlock='FB',Program='PRG',Function='FUN'), ImplementationLanguages=SimpleNamespace(st='ST')))
         self.before = self.env['snapshot'](self.project)
         self.before_ids = {x.guid for x,n,a in self.env['walk'](self.project)}
         self.args = dict(applicationId=self.app.guid, parentId=self.app.guid, name='FB_Test', pouType='function_block',
                          expectedSnapshot=self.before, declaration='FUNCTION_BLOCK FB_Test\nVAR\nEND_VAR\n', implementation='// content\n')
         self.req = dict(projectPath='test.project', checkpointPath='checkpoint.project', resultPath='operation/result.json')
 
-    def create(self): return self.env['create_function_block'](self.project, self.req, self.args)
+    def create(self): return self.env['create_pou'](self.project, self.req, self.args)
 
     def test_real_function_saves_reopens_and_verifies_new_guid(self):
         result, reopened = self.create()
@@ -166,6 +169,31 @@ class BridgeCreation(unittest.TestCase):
         self.assertEqual(result['status'], 'failed')
         self.assertEqual(self.manager.control['removed'], [])
         self.assertEqual(self.env['snapshot'](reopened), self.before)
+
+    def test_program_and_dint_function_native_factories_persist_exact_text(self):
+        for kind,name,header in [('program','PRG_Test','PROGRAM PRG_Test'),('function','F_Test','FUNCTION F_Test : DINT')]:
+            with self.subTest(kind=kind):
+                self.setUp()
+                self.args.update(pouType=kind,name=name,declaration=header+'\nVAR\nEND_VAR\n')
+                if kind=='function':self.args['returnType']='DINT'
+                result,reopened=self.create()
+                self.assertEqual(result['status'],'succeeded')
+                self.assertEqual(result['data']['objectType'],'st_pou')
+                self.assertEqual(result['data']['pouType'],kind)
+                self.assertEqual(result['data']['declaration'],self.args['declaration'])
+                self.assertEqual(result['data']['returnType'] if kind=='function' else None,self.args.get('returnType'))
+                self.assertEqual(self.env['read_object'](*self.env['locate'](reopened,self.app.guid,result['data']['objectId']))['implementation'],self.args['implementation'])
+
+    def test_function_return_type_mismatch_is_not_silently_replaced(self):
+        self.args.update(pouType='function',name='F_Test',returnType='DINT',declaration='FUNCTION F_Test : INT')
+        self.assertEqual(self.create()[0]['error']['code'],'INVALID_POU_DECLARATION')
+        self.assertEqual(self.manager.control['factory_calls'],0)
+        self.args['declaration']='FUNCTION F_Test : DINT'
+        self.manager.control['wrong_return_type']=True
+        result,reopened=self.create()
+        self.assertEqual(result['status'],'failed')
+        self.assertIn('before write',result['data']['primaryException']['message'])
+        self.assertEqual(self.env['snapshot'](reopened),self.before)
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)

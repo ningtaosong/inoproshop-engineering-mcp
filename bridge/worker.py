@@ -99,9 +99,11 @@ def editable(project,item,aid):
 def read_object(item, names, app_id):
     d = normalize(text(item.textual_declaration.text))
     i = normalize(text(item.textual_implementation.text)) if getattr(item,"has_textual_implementation",False) else ""
-    return {"objectId": text(item.guid).lower(), "applicationId": app_id, "path": names,
+    result = {"objectId": text(item.guid).lower(), "applicationId": app_id, "path": names,
             "language": "ST", "objectType":object_kind(item),"hasImplementation":bool(getattr(item,"has_textual_implementation",False)),
             "nativeTypeId":text(item.type).lower(),"declaration": d, "implementation": i, "contentHash": content_hash(d, i)}
+    result.update(pou_fields(item))
+    return result
 
 def snapshot(project):
     # 所有可读取文本对象，含其他 Application、GVL/DUT；文件哈希额外绑定非文本配置。
@@ -408,6 +410,32 @@ def function_block_name(declaration):
     match = re.match(r"\s*FUNCTION_BLOCK\s+([A-Za-z_][A-Za-z0-9_]*)\b", source, re.I)
     return match.group(1) if match else None
 
+def pou_header(declaration):
+    source = re.sub(r"\(\*.*?\*\)", " ", declaration, flags=re.S)
+    source = re.sub(r"//[^\r\n]*", " ", source)
+    match = re.match(r"\s*(FUNCTION_BLOCK|PROGRAM|FUNCTION)\s+([A-Za-z_][A-Za-z0-9_]*)\b",source,re.I)
+    if not match:return None
+    result={"pouType":match.group(1).lower(),"name":match.group(2)}
+    if result["pouType"]=="function":
+        returns=re.match(r"\s*:\s*([^\r\n]+)",source[match.end():])
+        if not returns:return None
+        result["returnType"]=returns.group(1).strip()
+    return result
+
+def pou_matches(kind, name, declaration, return_type=None):
+    h=pou_header(declaration)
+    return bool(h and h["pouType"]==kind and h["name"].lower()==name.lower() and
+        ((return_type=="DINT" and h.get("returnType","").upper()=="DINT") if kind=="function" else return_type is None))
+
+def pou_fields(item):
+    # This OEM has no verified pou_type/return_type getter. Native POU identity plus
+    # the actual declaration header is the explicit basis, never a guessed name.
+    h=pou_header(text(item.textual_declaration.text)) if st_object(item) else None
+    if not h:return {}
+    result={"pouType":h["pouType"],"pouTypeSource":"native-pou-type-id-and-declaration-header"}
+    if "returnType" in h:result["returnType"]=h["returnType"]
+    return result
+
 def creation_collisions(project, app_id, name):
     # Application 内所有对象及工程池中的文本定义均参与保守冲突检查；其他 Application 独立。
     return [{"objectId":text(item.guid).lower(),"applicationId":aid,"path":names}
@@ -475,8 +503,8 @@ def lifecycle_reject(state, response):
     state["rejection"]=response
     raise ValueError(response["summary"])
 
-def create_function_block(project, req, args, lifecycle=None):
-    return create_text_object(project,req,args,"function_block",lifecycle)
+def create_pou(project, req, args, lifecycle=None):
+    return create_text_object(project,req,args,args["pouType"],lifecycle)
 
 def create_declaration(project, req, args, lifecycle=None):
     return create_text_object(project,req,args,args["objectType"],lifecycle)
@@ -488,9 +516,10 @@ def create_text_object(project, req, args, kind, lifecycle=None):
     parent = application(project, app_id, "application")
     if parent_id != app_id or text(parent.guid).lower() != parent_id:
         return failure("conflict","PARENT_MISMATCH",u"只允许在选定 Application GUID 根节点创建"), project
-    valid = (args.get("pouType")=="function_block" and (function_block_name(args["declaration"]) or "").lower()==args["name"].lower()) if kind=="function_block" else declaration_matches(kind,args["name"],args["declaration"])
+    is_pou=kind in ("function_block","program","function")
+    valid = pou_matches(kind,args["name"],args["declaration"],args.get("returnType")) if is_pou else declaration_matches(kind,args["name"],args["declaration"])
     if not valid or not re.match(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$",args["name"]):
-        return failure("failed","INVALID_POU_DECLARATION" if kind=="function_block" else "INVALID_DECLARATION",u"声明类型或名称不符合指定创建类型"), project
+        return failure("failed","INVALID_POU_DECLARATION" if is_pou else "INVALID_DECLARATION",u"声明类型、名称或函数返回类型不符合指定创建类型"), project
     before_snapshot = snapshot(project)
     if before_snapshot != args["expectedSnapshot"]:
         return failure("conflict","SNAPSHOT_CONFLICT",u"创建前工程文本快照已改变，未创建",{"snapshot":before_snapshot}), project
@@ -503,7 +532,10 @@ def create_text_object(project, req, args, kind, lifecycle=None):
             "expectedAbsent":True,"snapshot":before_snapshot,"objectIds":sorted(before_ids)})
     created_id = None
     try:
-        if kind=="function_block":created = parent.create_pou(args["name"],scriptengine.PouType.FunctionBlock,scriptengine.ImplementationLanguages.st)
+        if is_pou:
+            native_kind={"function_block":scriptengine.PouType.FunctionBlock,"program":scriptengine.PouType.Program,"function":scriptengine.PouType.Function}[kind]
+            if kind=="function":created=parent.create_pou(args["name"],native_kind,scriptengine.ImplementationLanguages.st,args["returnType"])
+            else:created=parent.create_pou(args["name"],native_kind,scriptengine.ImplementationLanguages.st)
         elif kind=="gvl":created = parent.create_gvl(args["name"])
         else:created = parent.create_dut(args["name"],scriptengine.DutType.Structure,"")
         created_id = text(created.guid).lower()
@@ -512,24 +544,27 @@ def create_text_object(project, req, args, kind, lifecycle=None):
             raise ValueError("Factory returned an existing GUID; refusing to write or remove it")
         if not any(text(x.guid).lower()==created_id for x in parent.get_children(False)) or text(created.get_name())!=args["name"]:
             raise ValueError("Factory result is not the exact requested direct child")
-        if object_kind(created)!=kind:raise ValueError("Factory returned a different native object kind")
+        expected_kind="st_pou" if kind in ("program","function") else kind
+        if object_kind(created)!=expected_kind:raise ValueError("Factory returned a different native object kind")
+        if is_pou and not pou_matches(kind,args["name"],text(created.textual_declaration.text),args.get("returnType")):
+            raise ValueError("Factory POU header/return type differs before write")
         created.textual_declaration.replace(normalize(args["declaration"]))
-        if kind=="function_block":created.textual_implementation.replace(normalize(args["implementation"]))
+        if is_pou:created.textual_implementation.replace(normalize(args["implementation"]))
         observed = read_object(*locate(project,app_id,created_id))
-        if observed["objectType"]!=kind or observed["contentHash"] != content_hash(args["declaration"],args.get("implementation","")):
+        if observed["objectType"]!=expected_kind or observed["contentHash"] != content_hash(args["declaration"],args.get("implementation","")):
             raise ValueError("Created ST readback differs from request")
         project = lifecycle_save_reopen(lifecycle)
         parent = application(project,app_id,"application")
         item,names,aid = locate(project,app_id,created_id)
         reopened = read_object(item,names,aid)
-        if reopened["objectType"]!=kind or reopened["contentHash"]!=observed["contentHash"] or text(item.get_name())!=args["name"] or not any(text(x.guid).lower()==created_id for x in parent.get_children(False)):
+        if reopened["objectType"]!=expected_kind or reopened["contentHash"]!=observed["contentHash"] or text(item.get_name())!=args["name"] or not any(text(x.guid).lower()==created_id for x in parent.get_children(False)):
             raise ValueError("Created GUID/parent/name/content differs after reopen")
-        if kind=="function_block" and (function_block_name(reopened["declaration"]) or "").lower()!=args["name"].lower():
-            raise ValueError("Reopened FUNCTION_BLOCK header differs from name")
+        if is_pou and not pou_matches(kind,args["name"],reopened["declaration"],args.get("returnType")):
+            raise ValueError("Reopened POU header/return type differs from request")
         return success(u"ST 对象已创建，工作副本保存重开并按新 GUID、类型与全文读回一致",dict(reopened,
             name=args["name"],parentId=parent_id,created=True,beforeSnapshot=before_snapshot,
             snapshot=snapshot(project),checkpoint=req["checkpointPath"],persistedToWorkingCopy=True,reopened=True,
-            creationMethod={"function_block":"create_pou / PouType.FunctionBlock / ImplementationLanguages.st","gvl":"create_gvl","structure":"create_dut / DutType.Structure"}[kind])), project
+            creationMethod={"function_block":"create_pou / PouType.FunctionBlock / ImplementationLanguages.st","program":"create_pou / PouType.Program / ImplementationLanguages.st","function":"create_pou / PouType.Function / ImplementationLanguages.st / explicit DINT","gvl":"create_gvl","structure":"create_dut / DutType.Structure"}[kind])), project
     except Exception as error:
         partial = None
         recovery = {"status":"unknown"}
@@ -604,15 +639,15 @@ def dispatch(req):
                 objects = []
                 for item, names, aid in walk(project):
                     if aid == app_id and editable(project,item,aid):
-                        objects.append({"objectId": text(item.guid).lower(), "path": names, "applicationId": aid, "language": "ST",
-                            "objectType":object_kind(item),"hasImplementation":bool(getattr(item,"has_textual_implementation",False)),"nativeTypeId":text(item.type).lower()})
+                        objects.append(dict({"objectId": text(item.guid).lower(), "path": names, "applicationId": aid, "language": "ST",
+                            "objectType":object_kind(item),"hasImplementation":bool(getattr(item,"has_textual_implementation",False)),"nativeTypeId":text(item.type).lower()},**pou_fields(item)))
                 offset, limit = args["offset"], args["limit"]
                 response = success(u"已读取 ST 对象列表", {"objects": objects[offset:offset+limit], "total": len(objects),
                     "complete": offset+limit >= len(objects), "nextOffset": offset+limit if offset+limit < len(objects) else None})
             elif command == "read":
                 response = success(u"已读取精确 ST 对象", read_object(*locate(project, app_id, args["objectId"])))
             elif command == "create":
-                response, project = create_function_block(project,req,args,lifecycle)
+                response, project = create_pou(project,req,args,lifecycle)
             elif command == "create_declaration":
                 response, project = create_declaration(project,req,args,lifecycle)
             elif command == "change":

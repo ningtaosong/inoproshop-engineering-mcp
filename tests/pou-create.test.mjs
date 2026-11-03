@@ -47,7 +47,7 @@ test('POU 创建拒绝过期快照、错误父 GUID/首部与超出本轮范围�
   const stale=await c.done(await c.call('pou_create',args));assert.equal(stale.error.code,'SNAPSHOT_CONFLICT');
   const parent=await c.done(await c.call('pou_create',{...args,requestId:'parent',parentId:app2}));assert.equal(parent.error.code,'PARENT_MISMATCH');
   const header=await c.done(await c.call('pou_create',{...args,requestId:'header',declaration:'PROGRAM FB_DelayAlarm'}));assert.equal(header.error.code,'INVALID_POU_DECLARATION');
-  for(const extra of [{name:'../escape'},{pouType:'program'},{pouType:'function'},{applicationId:null},{targetKind:'pool'},{language:'LD'}])assert.equal(schemas.pou_create.safeParse({...args,...extra}).success,false);
+  for(const extra of [{name:'../escape'},{pouType:'method'},{pouType:'function'},{returnType:'DINT'},{applicationId:null},{targetKind:'pool'},{language:'LD'}])assert.equal(schemas.pou_create.safeParse({...args,...extra}).success,false);
   assert.equal(JSON.parse(await readFile(opened.data.session.workingPath,'utf8')).objects.length,p.objects.length);
 });
 

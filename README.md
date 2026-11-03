@@ -2,7 +2,7 @@
 
 通过 DeepSeek Harness（DSH）调用本地 InoProShop，完成受管理的离线工程读取、有限修改、编译、保存重开和版本对比。
 
-**当前基线：0.7.0 离线试用版，十八项 MCP 工具，契约1.0.0。** 实测环境为 Windows、InoProShop 1.9.1.6 和 DSH 0.2.0-rc.2。源码仓库现已公开，可直接克隆；当前仍是离线试用版，不是正式v1.0。
+**当前基线：0.8.0 候选版，十八项 MCP 工具，契约1.0.0。** 实测环境为 Windows、InoProShop 1.9.1.6 和 DSH 0.2.0-rc.2。源码仓库现已公开，可直接克隆；当前仍是离线试用版，不是正式v1.0。
 
 ## 开始使用
 
@@ -30,13 +30,15 @@ npm run build
 | 离线工程闭环 | project_build、project_save |
 | 可信工程快照对比 | project_compare |
 
-源码范围为既有支持的ST POU声明/实现、Application根GVL声明和结构体DUT声明。创建只支持根节点功能块、GVL与结构体。对比覆盖这些源码及task_inspect实际可读字段和调用顺序，不包含设备参数、I/O映射及其他非ST内容。
+源码范围为既有支持的ST POU声明/实现、Application根GVL声明和结构体DUT声明。pou_create在根节点支持FUNCTION_BLOCK、PROGRAM、显式DINT返回值的FUNCTION；原功能块参数兼容，GVL与结构体仍由declaration_create创建。PROGRAM不自动加入任务，需按授权接入现有程序并编译。[参数与边界](docs/getting-started.md#创建-st-pou)。对比覆盖这些源码及task_inspect实际可读字段和调用顺序，不包含设备参数、I/O映射及其他非ST内容。
 
 保留单活动工程、串行队列、精确Application/对象定位、检查点、版本冲突校验、去重、写后读回和unknown冻结。源工程与工作副本分别保存，同名对象不静默覆盖。只读IDE可能写.opt等附属文件，工程哈希不变不代表目录所有文件不变。
 
-[修改前工作副本基线与交付后比较](docs/post-change-baseline-compare.md)已接入支持的Application日常修改：先采可信基线，再按原闭环修改/编译/保存重开，最后以同一副本的最终快照比较；默认不拿原交付源代替本轮基线。2026-11-02真实DSH修改闭环及比较已复核通过，保持0.7.0和十八工具，无新增工程执行代码。DSH 0.2.0-rc.2客户端需使用模板的 `maxInstructionBytes: 65536`；可用 `npm run check:instructions` 静态核对UTF-8大小，详见[接入上限说明](docs/getting-started.md#指令大小与连接失败)。
+[修改前工作副本基线与交付后比较](docs/post-change-baseline-compare.md)已接入支持的Application日常修改：先采可信基线，再按原闭环修改/编译/保存重开，最后以同一副本的最终快照比较；默认不拿原交付源代替本轮基线。2026-11-02真实DSH修改闭环及比较已复核通过，当轮保持0.7.0和十八工具，无新增工程执行代码。DSH 0.2.0-rc.2客户端需使用模板的 `maxInstructionBytes: 65536`；可用 `npm run check:instructions` 静态核对UTF-8大小，详见[接入上限说明](docs/getting-started.md#指令大小与连接失败)。
 
 ## 验证状态与限制
+
+0.8.0本轮构建、类型检查及129/129自动化回归通过（包括对象替身，不能代替IDE）。独立AM610样例的真实MCP创建/接入闭环通过：27项成功工程操作，原生DINT函数和PROGRAM逐项保存重开读回，PLC_PRG直接调用程序、程序再调用函数；两次编译均0错误、1条CmpLog警告。最终比较仅两个新增对象与PLC_PRG接入改动，其余三个支持对象和可读任务一致。桌面新Schema/创建流程仍待用户手动验收，本分支尚未合并main。设备/I/O和运行未验，历史质量结论保持。
 
 0.7.0既有完整自动化回归126/126通过，真实MCP和DSH桌面只读对比流程已通过；实际确认第二路初始化设定5→8秒，其余三个支持ST对象及可读任务配置一致。桌面原答复有一处实现区语义勘误，工具结果正确；不宣称所有回答均正确。
 
