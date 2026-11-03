@@ -425,7 +425,7 @@ def pou_header(declaration):
 def pou_matches(kind, name, declaration, return_type=None):
     h=pou_header(declaration)
     return bool(h and h["pouType"]==kind and h["name"].lower()==name.lower() and
-        ((return_type=="DINT" and h.get("returnType","").upper()=="DINT") if kind=="function" else return_type is None))
+        ((return_type in ("DINT","BOOL","INT","REAL","TIME") and h.get("returnType","").upper()==return_type) if kind=="function" else return_type is None))
 
 def pou_fields(item):
     # This OEM has no verified pou_type/return_type getter. Native POU identity plus
@@ -546,8 +546,13 @@ def create_text_object(project, req, args, kind, lifecycle=None):
             raise ValueError("Factory result is not the exact requested direct child")
         expected_kind="st_pou" if kind in ("program","function") else kind
         if object_kind(created)!=expected_kind:raise ValueError("Factory returned a different native object kind")
-        if is_pou and not pou_matches(kind,args["name"],text(created.textual_declaration.text),args.get("returnType")):
-            raise ValueError("Factory POU header/return type differs before write")
+        if is_pou:
+            factory_declaration=text(created.textual_declaration.text)
+            publish(os.path.join(directory,"factory.json"),{
+                "arguments":[args["name"],text(native_kind),text(scriptengine.ImplementationLanguages.st)]+([args["returnType"]] if kind=="function" else []),
+                "objectId":created_id,"parentId":parent_id,"nativeDeclaration":factory_declaration})
+            if not pou_matches(kind,args["name"],factory_declaration,args.get("returnType")):
+                raise ValueError("Factory POU header/return type differs before write")
         created.textual_declaration.replace(normalize(args["declaration"]))
         if is_pou:created.textual_implementation.replace(normalize(args["implementation"]))
         observed = read_object(*locate(project,app_id,created_id))
@@ -564,7 +569,7 @@ def create_text_object(project, req, args, kind, lifecycle=None):
         return success(u"ST 对象已创建，工作副本保存重开并按新 GUID、类型与全文读回一致",dict(reopened,
             name=args["name"],parentId=parent_id,created=True,beforeSnapshot=before_snapshot,
             snapshot=snapshot(project),checkpoint=req["checkpointPath"],persistedToWorkingCopy=True,reopened=True,
-            creationMethod={"function_block":"create_pou / PouType.FunctionBlock / ImplementationLanguages.st","program":"create_pou / PouType.Program / ImplementationLanguages.st","function":"create_pou / PouType.Function / ImplementationLanguages.st / explicit DINT","gvl":"create_gvl","structure":"create_dut / DutType.Structure"}[kind])), project
+            creationMethod={"function_block":"create_pou / PouType.FunctionBlock / ImplementationLanguages.st","program":"create_pou / PouType.Program / ImplementationLanguages.st","function":"create_pou / PouType.Function / ImplementationLanguages.st / explicit "+text(args.get("returnType","")),"gvl":"create_gvl","structure":"create_dut / DutType.Structure"}[kind])), project
     except Exception as error:
         partial = None
         recovery = {"status":"unknown"}

@@ -384,7 +384,7 @@ export class EngineeringService {
       if(s.targetKind==='pool' || a.parentId!==s.applicationId)
         throw new DomainError('conflict','PARENT_MISMATCH','仅允许在选定 Application GUID 根节点创建 ST POU');
       if(!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(a.name) || !pouDeclarationMatches(a.pouType,a.name,a.declaration,a.returnType))
-        throw new DomainError('failed','INVALID_POU_DECLARATION','ST POU 声明类型/名称必须匹配；FUNCTION 必须显式声明与参数一致的 DINT 返回类型');
+        throw new DomainError('failed','INVALID_POU_DECLARATION','ST POU 声明类型/名称必须匹配；FUNCTION 必须显式声明与参数一致的 DINT/BOOL/INT/REAL/TIME 返回类型');
     }
     const commands:Record<string,string>={object_list:'list',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save'};
     const command=commands[op.tool];

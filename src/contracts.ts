@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.8.0';
+export const VERSION = '0.9.0';
+// Creation whitelist only. Read metadata below deliberately retains string return types.
+export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
 export type State = z.infer<typeof stateSchema>;
 const id = z.string().min(1).max(160);
@@ -39,10 +41,10 @@ export const schemas = {
   pou_create: z.object({ ...request, projectId:uuid, targetKind:z.literal('application').default('application'),
     applicationId:uuid, parentId:uuid, expectedSnapshot:hash,
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/), pouType:z.enum(['function_block','program','function']),
-    returnType:z.literal('DINT').optional(),
+    returnType:z.enum(FUNCTION_RETURN_TYPES).optional(),
     declaration:z.string().min(1).max(500000), implementation:z.string().max(500000) }).strict()
-    .refine(a=>a.pouType==='function'?a.returnType==='DINT':a.returnType===undefined,
-      'FUNCTION 必须显式 returnType=DINT；其他 POU 不接收 returnType'),
+    .refine(a=>a.pouType==='function'?a.returnType!==undefined:a.returnType===undefined,
+      'FUNCTION 必须显式指定 DINT/BOOL/INT/REAL/TIME；其他 POU 不接收 returnType'),
   declaration_create: z.object({ ...request, projectId:uuid, targetKind:z.literal('application').default('application'),
     applicationId:uuid, parentId:uuid, expectedSnapshot:hash,
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/), objectType:z.enum(['gvl','structure']),
@@ -167,7 +169,7 @@ export function pouHeader(declaration:string):{pouType:string;name:string;return
 export function pouDeclarationMatches(kind:string,name:string,declaration:string,returnType?:string):boolean {
   const h=pouHeader(declaration);
   return !!h && h.pouType===kind && h.name.toLowerCase()===name.toLowerCase() &&
-    (kind==='function'?returnType==='DINT'&&h.returnType?.toUpperCase()==='DINT':returnType===undefined);
+    (kind==='function'?(FUNCTION_RETURN_TYPES as readonly string[]).includes(returnType ?? '')&&h.returnType?.toUpperCase()===returnType:returnType===undefined);
 }
 // Narrow declaration kind guard, not an ST parser. Real syntax is checked by the IDE compiler.
 export function declarationMatches(kind:string,name:string,declaration:string):boolean {

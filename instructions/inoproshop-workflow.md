@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.8.0 候选版的十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.9.0 候选版的十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -172,7 +172,7 @@
    pou_create：仅精确 Application 根，parentId=applicationId；pouType=function_block、program 或 function。
    expectedSnapshot 用最近工程操作返回的文本 snapshot（打开、创建、修改或编译），不是 project_compare 的 snapshot.version；创建后下次使用新返回值。
    name 为合法标识符，完整 declaration 首部必须分别为同名 FUNCTION_BLOCK、PROGRAM、FUNCTION。
-   FUNCTION 首版仅支持显式 returnType=DINT，首部须同名 FUNCTION name : DINT（类型后换行）；不传、其他返回类型或首部不符时停止，不替换类型。其他两类不得传 returnType；三类均提供完整声明与实现。
+   FUNCTION 创建必须显式 returnType=DINT/BOOL/INT/REAL/TIME 之一，首部须同名 FUNCTION name : 对应类型（类型后换行）；参数仍用大写枚举，声明名称/类型沿用不区分大小写核对。不传、未列类型或首部不符时停止，不替换或退化为DINT。此白名单只限创建，读取/检索/比较既有其他返回类型保留原文。其他两类不得传 returnType；三类均提供完整声明与实现。
    创建后按新 GUID、原生 POU 身份、类型首部、函数返回声明及全文核对；本次未取得可用的独立类型/返回值 getter，pouTypeSource 明示此依据，不假称独立属性读回。PROGRAM/FUNCTION 保留 objectType=st_pou，pouType 细分；FB 仍为 function_block。
    PROGRAM 不自动加入任务。要求接入时，在授权已有程序中使用可编译的程序调用，再由程序调用函数，不能把闲置对象或未编译当成接入通过，不修改任务配置。创建返回检查点、内容及保存重开证据；仍须最终编译/保存重开/必要复编/全文读回和本轮前后比较，不代替运行验证。
    GVL/结构体按上面的声明类流程使用 declaration_create；读取无实现标记后只提交声明，不能虚构实现区。

@@ -4,10 +4,10 @@
 
 ## 获取与构建
 
-仓库已公开，从main获取0.8.0离线试用候选版，无需切换功能分支。开发端和本机DSH桌面创建闭环已分别复核通过；设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main保留已验0.8.0；本轮0.9.0候选在codex/function-return-types分支，新增返回类型的DSH桌面待验。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch codex/function-return-types https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
 npm ci
 npm run build
@@ -21,7 +21,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。当前应为0.8.0和十八项工具，客户端实际收到的pou_create需包含program/function以及FUNCTION显式returnType=DINT的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。本机2026-11-03的真实客户端登记、实际模型可见Schema及用户手动工程任务已核对，不代表其他客户端自动完成加载。
+5. 新对话先让Agent查询环境、会话和工具集合。试用本功能分支时应为0.9.0和十八项工具，客户端实际收到的pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.8.0的本机客户端及手动工程任务已有证据；0.9.0新增类型的独立初始化不能替代本轮DSH桌面接收及使用验收。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
@@ -67,12 +67,16 @@ pou_create仍是一项工具，限定精确Application直接根节点，三类�
 | --- | --- | --- |
 | function_block | FUNCTION_BLOCK 同名对象；不传returnType | 保留原调用兼容性 |
 | program | PROGRAM 同名对象；不传returnType | 声明和实现；不会自动加入周期任务 |
-| function | FUNCTION 同名对象 : DINT，类型后换行；必须显式returnType=DINT | 首版仅DINT，缺失、INT/BOOL/结构体等其他类型均拒绝，不自动改类型 |
+| function | FUNCTION 同名对象 : 对应类型，类型后换行；必须显式returnType | 只允许DINT、BOOL、INT、REAL、TIME；缺失或未列类型拒绝，不自动选择或退化为DINT |
+
+创建参数returnType沿用大写枚举，声明名称及返回类型按既有规则不区分大小写核对。STRING、数组、结构体、指针、引用、自定义别名和其他数值类型不在创建范围；此限制不收窄已有对象的读取、检索和比较，不改写其返回声明。
 
 object_list/object_read保留原objectType分类：功能块为function_block，PROGRAM/FUNCTION为st_pou，由可选pouType细分。returnType来自实际声明首部；本机原生对象没有已核实的独立pou_type/return_type getter，pouTypeSource明确采用原生POU类型身份和声明首部，不伪装独立属性采集。完整原文、版本、创建工厂枚举和真实编译用于核对。
 
 例如：在独立正常样例中创建DINT函数F_AddOne、创建程序PRG_Demo调用该函数，再在已有PLC_PRG中按授权添加PRG_Demo()调用；先读实际代码和任务、核对重名并固定范围，首写前捕获工作副本基线。接入后真实编译、保存重开、必要复编、全文读回，捕获同一副本最终快照并比较。不能把两个闲置对象创建成功说成接入通过，也不修改任务来绕过调用。
 
 同名对象不覆盖或静默改名，过期版本先停止；创建/读回失败如实区分failed和unknown，unknown查询原操作，不重放、删锁或换目录。仅沿用已实现的已知新GUID局部失败处理，不承诺通用自动回滚。设备、任务和I/O写入、文件夹、方法/属性/接口及其他语言不扩展。离线编译不证明函数输出、程序调用次数或报警计时在运行中正确。
+
+本轮0.9.0在InoProShop 1.9.1.6的独立受管理AM610副本中，已实际创建BOOL/INT/REAL/TIME四个函数，由新PROGRAM调用并从PLC_PRG接入；统一编译、保存关闭重开、保存版复编、最终全文与基线比较通过。两次均0错误、1条CmpLog警告；DINT和旧两类调用的兼容性由本轮回归及原已验结果支持。当前尚未取得DSH新增四类型的实际接收及桌面对话，不以独立初始化或替身测试代替。没有独立返回类型getter证据，核对依据为实际原生工厂参数、对象身份、声明首部和全文；不声称已观测运行返回值。
 
 新增Schema和指令需要DSH在确认空闲、无未发送输入及当前执行操作后正常重载一次；历史已受控隔离unknown不等于仍在执行。无法确认则保持待办。开发端验证与桌面对话分开记录，不自动发送任务。

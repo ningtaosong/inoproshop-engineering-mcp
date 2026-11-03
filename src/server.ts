@@ -27,7 +27,7 @@ const descriptions:Record<string,string>={
   project_compare:'只读工程版本对比。mode=capture 在一次受管理 IDE 读取中采集精确 Application 的支持源码与任务；origin=working-copy（默认）或 registered-source（登记源原文件，不是复用修改副本）。mode=compare 引用 baselineOperationId/targetOperationId 两个本工具成功采集记录，不接收自填源码；目标属于当前工程/应用，基线可属另一登记工程。按应用相对路径+类型匹配，不猜重命名。分页使用返回 nextOffset+expectedVersion；长变更预览可用 detail 按 itemIndex/changeIndex/side/offset 分段读取，不重启 IDE。不比较设备/I/O、其他对象或运行行为。',
   project_structure:'只读活动登记工程的原生对象树（含非 ST、未知类型），返回父子关系/实际 GUID/路径、覆盖缺口与截断。页面受条数及体积双重限制，按实际 nextOffset + expectedVersion 读取原清单，不重复启动 IDE。',
   device_inspect:'从结构定位用户指定 deviceId，默认只查目标设备，不扩展子设备。读取描述/离线参数，不代表固件或完整配置。页面受体积限制，长值以 valuePreview 返回（value=null，非原值缺失）；按实际 nextOffset + expectedVersion 翻页。按需带 expectedVersion 和 valueRead:{parameterIndex,offset,limit} 分段读取原值（UTF-16偏移，使用 valueDetail.nextOffset）；外层 offset=0，原 maxParameters 不变，全程复用原清单、不启动 IDE。',
-  pou_create:'在精确 Application 根节点创建 ST FUNCTION_BLOCK、PROGRAM 或 FUNCTION；pouType 显式选择，FUNCTION 必须传 returnType=DINT 且同名声明首部为 DINT，其他类型不接收 returnType。支持声明/实现，检查快照/同名冲突和检查点，保存重开核对原生身份、类型首部及全文。PROGRAM 不自动加入任务；不覆盖对象。',
+  pou_create:'在精确 Application 根节点创建 ST FUNCTION_BLOCK、PROGRAM 或 FUNCTION；pouType 显式选择，FUNCTION 必须显式传 returnType=DINT/BOOL/INT/REAL/TIME 之一，且同名声明首部返回类型匹配；PROGRAM/FUNCTION_BLOCK 不接收 returnType。不扩展其他创建返回类型，也不限制读取既有其他类型。支持声明/实现，检查快照/同名冲突和检查点，保存重开核对原生身份、类型首部及全文。PROGRAM 不自动加入任务；不覆盖对象。',
   declaration_create:'仅在精确 Application 根节点创建 GVL 或结构体 DUT。objectType=gvl|structure，只提交声明；快照、同名、检查点、新 GUID/真实类型及保存重开全文核对。',
   code_apply_change:'校验旧哈希、检查点、类型和全文。POU 提供声明/实现；GVL/结构体只写声明，implementation 省略或空串，可用 objectType 限定目标。保存重开核对。',
   project_build:'按 targetKind 编译精确 Application 或无设备工程对象池；pool 的 applicationId 必须为 null。返回本次快照和诊断完整性。',

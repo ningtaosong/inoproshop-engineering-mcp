@@ -36,6 +36,7 @@ class Node:
 
     def create_pou(self, name, kind, language, return_type=None):
         self.project.control['factory_calls'] += 1
+        self.project.control.setdefault('factory_arguments', []).append([name,kind,language]+([return_type] if kind=='FUN' else []))
         if self.project.control.get('return_existing'):
             return self.children[0]
         header={'FB':'FUNCTION_BLOCK','PRG':'PROGRAM','FUN':'FUNCTION'}[kind]+' '+name
@@ -132,7 +133,7 @@ class BridgeCreation(unittest.TestCase):
         self.assertEqual(result['data']['implementation'], self.args['implementation'])
         self.assertTrue(result['data']['reopened'])
         self.assertEqual(self.manager.control['factory_calls'], 1)
-        self.assertEqual(len(self.published), 2)
+        self.assertEqual([os.path.basename(p) for p,v in self.published], ['before.json','created.json','factory.json'])
 
     def test_stale_snapshot_and_case_insensitive_collision_do_not_call_factory(self):
         self.args['expectedSnapshot'] = '0'*64
@@ -170,12 +171,13 @@ class BridgeCreation(unittest.TestCase):
         self.assertEqual(self.manager.control['removed'], [])
         self.assertEqual(self.env['snapshot'](reopened), self.before)
 
-    def test_program_and_dint_function_native_factories_persist_exact_text(self):
-        for kind,name,header in [('program','PRG_Test','PROGRAM PRG_Test'),('function','F_Test','FUNCTION F_Test : DINT')]:
+    def test_program_and_five_function_types_native_factories_persist_exact_text(self):
+        cases=[('program','PRG_Test','PROGRAM PRG_Test',None)]+[('function','F_'+t,'FUNCTION F_'+t+' : '+t,t) for t in ['DINT','BOOL','INT','REAL','TIME']]
+        for kind,name,header,returns in cases:
             with self.subTest(kind=kind):
                 self.setUp()
                 self.args.update(pouType=kind,name=name,declaration=header+'\nVAR\nEND_VAR\n')
-                if kind=='function':self.args['returnType']='DINT'
+                if kind=='function':self.args['returnType']=returns
                 result,reopened=self.create()
                 self.assertEqual(result['status'],'succeeded')
                 self.assertEqual(result['data']['objectType'],'st_pou')
@@ -183,12 +185,25 @@ class BridgeCreation(unittest.TestCase):
                 self.assertEqual(result['data']['declaration'],self.args['declaration'])
                 self.assertEqual(result['data']['returnType'] if kind=='function' else None,self.args.get('returnType'))
                 self.assertEqual(self.env['read_object'](*self.env['locate'](reopened,self.app.guid,result['data']['objectId']))['implementation'],self.args['implementation'])
+                expected=[name,'FUN' if kind=='function' else 'PRG','ST']+([returns] if returns else [])
+                self.assertEqual(self.manager.control['factory_arguments'],[expected])
+                factory=next(v for p,v in self.published if p.endswith('factory.json'))
+                self.assertEqual(factory['arguments'],expected)
+                self.assertEqual(factory['nativeDeclaration'],header)
+                self.assertIn('explicit '+returns,result['data']['creationMethod']) if returns else None
+
+    def test_rejected_return_arguments_never_call_native_factory(self):
+        for returns in [None,'STRING','LREAL','ARRAY[0..1] OF INT','Alias','POINTER TO INT','bool']:
+            with self.subTest(returns=returns):
+                self.setUp();self.args.update(pouType='function',name='F_Test',returnType=returns,declaration='FUNCTION F_Test : '+str(returns))
+                self.assertEqual(self.create()[0]['error']['code'],'INVALID_POU_DECLARATION')
+                self.assertEqual(self.manager.control['factory_calls'],0)
 
     def test_function_return_type_mismatch_is_not_silently_replaced(self):
-        self.args.update(pouType='function',name='F_Test',returnType='DINT',declaration='FUNCTION F_Test : INT')
+        self.args.update(pouType='function',name='F_Test',returnType='TIME',declaration='FUNCTION F_Test : INT')
         self.assertEqual(self.create()[0]['error']['code'],'INVALID_POU_DECLARATION')
         self.assertEqual(self.manager.control['factory_calls'],0)
-        self.args['declaration']='FUNCTION F_Test : DINT'
+        self.args['declaration']='FUNCTION F_Test : TIME'
         self.manager.control['wrong_return_type']=True
         result,reopened=self.create()
         self.assertEqual(result['status'],'failed')
