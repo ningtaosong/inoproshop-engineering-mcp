@@ -251,7 +251,7 @@ export class EngineeringService {
       const isHash=(v:unknown)=>typeof v==='string' && /^[a-f0-9]{64}$/.test(v);
       const invalid=()=> { throw new DomainError('unknown','RESULT_CONTRACT_MISMATCH','桥接结果缺少完整证据或与指定对象不匹配'); };
       const declared=(v:any)=> {
-        const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
+        const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',enum:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
         const appPath=session?.applications?.find(x=>x.applicationId===args.applicationId)?.path;
         return !!v && v.hasImplementation===false && native[v.objectType]===v.nativeTypeId && v.implementation==='' &&
           args.targetKind!=='pool' && !!appPath && canonical(v.path?.slice(0,-1))===canonical(appPath) &&
@@ -278,12 +278,13 @@ export class EngineeringService {
       if(command==='list' && (!Array.isArray(d!.objects) || typeof d!.complete!=='boolean' || typeof d!.total!=='number')) invalid();
       if(command==='read'||command==='change') {
         if(d!.objectId!==args.objectId || d!.applicationId!==args.applicationId || typeof d!.declaration!=='string' || typeof d!.implementation!=='string' || codeHash(d!.declaration as string,d!.implementation as string)!==d!.contentHash) invalid();
-        if((d!.hasImplementation===false || ['gvl','structure'].includes(d!.objectType as string)) && !declared(d))invalid();
+        if((d!.hasImplementation===false || ['gvl','structure','enum'].includes(d!.objectType as string)) && !declared(d))invalid();
         if(command==='change' && ((args.objectType && d!.objectType!==args.objectType) || (args.implementation===undefined && !declared(d)) ||
           d!.contentHash!==codeHash(args.declaration,args.implementation ?? '') || !isHash(d!.snapshot) || !isHash(d!.diskHash) || d!.persistedToWorkingCopy!==true || d!.reopened!==true)) invalid();
       }
       if(command==='create_declaration') {
         const expectedPath=[...(session?.applications?.find(x=>x.applicationId===args.applicationId)?.path || []),args.name];
+        if(args.objectType==='enum' && d!.creationMethod!=="create_dut / DutType.Enumeration / baseType='' ref: factory.json")invalid();
         if(!declared(d) || d!.objectType!==args.objectType || d!.applicationId!==args.applicationId || d!.parentId!==args.applicationId || d!.parentId!==args.parentId || d!.name!==args.name ||
           d!.created!==true || typeof d!.objectId!=='string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(d!.objectId) || d!.objectId===args.parentId ||
           canonical(d!.path)!==canonical(expectedPath) || d!.contentHash!==codeHash(args.declaration,'') || codeHash(d!.declaration as string,'')!==d!.contentHash ||
@@ -377,8 +378,8 @@ export class EngineeringService {
     }
     if(op.tool==='declaration_create') {
       if(s.targetKind==='pool' || a.parentId!==s.applicationId)throw new DomainError('conflict','PARENT_MISMATCH','仅允许选定 Application 根节点');
-      if(!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(a.name) || !declarationMatches(a.objectType,a.name,a.declaration))
-        throw new DomainError('failed','INVALID_DECLARATION','仅支持完整 VAR_GLOBAL 或同名 TYPE / STRUCT 声明');
+      if(!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(a.name) || !declarationMatches(a.objectType,a.name,a.declaration,true))
+        throw new DomainError('failed','INVALID_DECLARATION','仅支持完整 GVL、同名 STRUCT 或普通枚举；枚举成员显式十进制整数-32768..32767、名称和值不重复，无属性/显式基类型/表达式');
     }
     if(op.tool==='pou_create') {
       if(s.targetKind==='pool' || a.parentId!==s.applicationId)

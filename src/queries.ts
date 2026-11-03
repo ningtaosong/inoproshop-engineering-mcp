@@ -1,7 +1,7 @@
 // Engineering query computation from one native read. Raw input remains in the original IPC evidence.
 // This is not a presentation filter, persistent index, call graph or semantic reference analyzer.
 import {canonical,digest,codeHash} from './storage.js';
-import {reply,type Reply} from './contracts.js';
+import {reply,declarationMatches,type Reply} from './contracts.js';
 import {libraryInventoryResult} from './libraries.js';
 import {isStringBoundary,stringEnd} from './native-output.js';
 const areas=['name','declaration','implementation'];
@@ -22,10 +22,11 @@ export function searchResult(raw:Reply,a:any):Reply {
   if(!base.scope || base.scope.readObjects!==objects.length || base.scope.eligibleObjects<objects.length ||
     base.scope.treeComplete!==(base.scope.enumerationFailures.length===0) || base.scope.coverageComplete!==(base.scope.treeComplete&&base.scope.readFailures.length===0))throw Error('Search coverage evidence inconsistent');
   for(const o of objects){
-    const prefix=base.scope.applicationPath,decl=['gvl','structure'].includes(o.objectType);
+    const prefix=base.scope.applicationPath,decl=['gvl','structure','enum'].includes(o.objectType);
     if(o.applicationId!==a.applicationId || canonical(o.path.slice(0,prefix.length))!==canonical(prefix) ||
-      !['st_pou','function_block','gvl','structure'].includes(o.objectType) || o.hasImplementation===decl ||
+      !['st_pou','function_block','gvl','structure','enum'].includes(o.objectType) || o.hasImplementation===decl ||
       decl&&(o.path.length!==prefix.length+1||o.implementation!==''||a.targetKind==='pool'))throw Error('Search corpus identity/type/scope mismatch');
+    if(decl && !declarationMatches(o.objectType,o.path.at(-1),o.declaration))throw Error('Declaration corpus kind/header mismatch');
     if(codeHash(o.declaration,o.implementation)!==o.contentHash)throw Error('Search corpus content hash mismatch');
   }
   const selected=areas.filter(x=>(a.areas || areas).includes(x));

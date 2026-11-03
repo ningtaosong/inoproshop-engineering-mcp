@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.10.0",
+  "serverVersion": "0.11.0",
   "contractVersion": "1.0.0",
   "toolCount": 19,
   "tools": [
@@ -820,7 +820,8 @@
                         "st_pou",
                         "function_block",
                         "gvl",
-                        "structure"
+                        "structure",
+                        "enum"
                       ]
                     },
                     "hasImplementation": {
@@ -1016,7 +1017,8 @@
                   "st_pou",
                   "function_block",
                   "gvl",
-                  "structure"
+                  "structure",
+                  "enum"
                 ]
               },
               "hasImplementation": {
@@ -1449,7 +1451,8 @@
                         "st_pou",
                         "function_block",
                         "gvl",
-                        "structure"
+                        "structure",
+                        "enum"
                       ]
                     },
                     "contentHash": {
@@ -3506,6 +3509,7 @@
                         "function_block",
                         "gvl",
                         "structure",
+                        "enum",
                         "task"
                       ]
                     },
@@ -5362,7 +5366,8 @@
                   "st_pou",
                   "function_block",
                   "gvl",
-                  "structure"
+                  "structure",
+                  "enum"
                 ]
               },
               "hasImplementation": {
@@ -5521,7 +5526,8 @@
             "type": "string",
             "enum": [
               "gvl",
-              "structure"
+              "structure",
+              "enum"
             ]
           },
           "declaration": {
@@ -5606,7 +5612,8 @@
                   "st_pou",
                   "function_block",
                   "gvl",
-                  "structure"
+                  "structure",
+                  "enum"
                 ]
               },
               "hasImplementation": {
@@ -5779,7 +5786,8 @@
             "type": "string",
             "enum": [
               "gvl",
-              "structure"
+              "structure",
+              "enum"
             ]
           }
         },
@@ -5857,7 +5865,8 @@
                   "st_pou",
                   "function_block",
                   "gvl",
-                  "structure"
+                  "structure",
+                  "enum"
                 ]
               },
               "hasImplementation": {

@@ -14,7 +14,8 @@ export class FixtureAdapter implements Adapter {
     if(!p?.testFixture) throw new DomainError('failed','FIXTURE_ONLY','测试模式只接受显式 testFixture JSON');
     if(p.delayMs) await new Promise(r=>setTimeout(r,p.delayMs));
     const a=req.args;
-    const supported=(o:any)=>!o.objectType || ['st_pou','function_block'].includes(o.objectType) || (['gvl','structure'].includes(o.objectType) && o.path.length===(p.applications.find((x:any)=>x.applicationId===o.applicationId)?.path.length ?? -2)+1);
+    const supported=(o:any)=>!o.objectType || ['st_pou','function_block'].includes(o.objectType) || (['gvl','structure','enum'].includes(o.objectType) &&
+      (o.objectType!=='enum'||declarationMatches('enum',o.path.at(-1),o.declaration)) && o.path.length===(p.applications.find((x:any)=>x.applicationId===o.applicationId)?.path.length ?? -2)+1);
     const objects=p.objects.filter((o:any)=>o.applicationId===a.applicationId && supported(o));
     const snapshot=()=>digest(canonical(p.objects.map((o:any)=>({...o,declaration:normalize(o.declaration),implementation:normalize(o.implementation)}))));
     let result!:Reply;
@@ -68,8 +69,8 @@ export class FixtureAdapter implements Adapter {
       const enumerationFailures=p.treeReadError?[{path:appPath,stage:'enumeration',reason:p.treeReadError}]:[];
       let sourceInventory:any,taskInventory:any;
       if(req.command!=='tasks') {
-        const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
-        const corpus=objects.filter((o:any)=>!o.queryReadError).map((o:any)=>({...o,language:'ST',objectType:o.objectType || (/^FUNCTION_BLOCK\b/.test(o.declaration)?'function_block':'st_pou'),nativeTypeId:native[o.objectType] || '6f9dac99-8de1-4efc-8465-68ac443b7d08',hasImplementation:!['gvl','structure'].includes(o.objectType),declaration:normalize(o.declaration),implementation:normalize(o.implementation),contentHash:codeHash(o.declaration,o.implementation)}));
+        const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',enum:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
+        const corpus=objects.filter((o:any)=>!o.queryReadError).map((o:any)=>({...o,language:'ST',objectType:o.objectType || (/^FUNCTION_BLOCK\b/.test(o.declaration)?'function_block':'st_pou'),nativeTypeId:native[o.objectType] || '6f9dac99-8de1-4efc-8465-68ac443b7d08',hasImplementation:!['gvl','structure','enum'].includes(o.objectType),declaration:normalize(o.declaration),implementation:normalize(o.implementation),contentHash:codeHash(o.declaration,o.implementation)}));
         result=reply('succeeded','测试一次读取搜索范围',{projectId:a.projectId,applicationId:a.applicationId,targetKind:a.targetKind,projectPath:req.projectPath,corpus,
           scope:{description:'fixture supported ST only; not real IDE',applicationPath:appPath,treeComplete:!p.treeReadError,eligibleObjects:objects.length,readObjects:corpus.length,coverageComplete:!failures.length&&!enumerationFailures.length,
             skippedObjects:p.objects.filter((o:any)=>o.applicationId===a.applicationId&&!supported(o)).map((o:any)=>({objectId:o.objectId,path:o.path,stage:'unsupported-type',reason:'Fixture unsupported kind/location'})),readFailures:failures,enumerationFailures},testMode:true});
@@ -95,7 +96,7 @@ export class FixtureAdapter implements Adapter {
       const kind=req.command==='create'?a.pouType:a.objectType,isPou=req.command==='create';
       const parent=p.applications.find((x:any)=>x.applicationId===a.applicationId);
       if(!parent || a.parentId!==a.applicationId) result={...reply('conflict','测试父节点不匹配'),error:{code:'PARENT_MISMATCH',message:'父节点不在选定 Application'}};
-      else if(isPou?!pouDeclarationMatches(kind,a.name,a.declaration,a.returnType):!declarationMatches(kind,a.name,a.declaration)) result={...reply('failed','测试声明首部不一致'),error:{code:'INVALID_DECLARATION',message:'声明首部不一致'}};
+      else if(isPou?!pouDeclarationMatches(kind,a.name,a.declaration,a.returnType):!declarationMatches(kind,a.name,a.declaration,true)) result={...reply('failed','测试声明首部不一致'),error:{code:'INVALID_DECLARATION',message:'声明首部不一致'}};
       else if(snapshot()!==a.expectedSnapshot) result={...reply('conflict','测试快照已改变',{snapshot:snapshot()}),error:{code:'SNAPSHOT_CONFLICT',message:'创建前快照冲突'}};
       else {
         const collisions=p.objects.filter((o:any)=>(o.applicationId===a.applicationId||o.applicationId===null)&&o.path.at(-1).toLowerCase()===a.name.toLowerCase());
@@ -104,7 +105,7 @@ export class FixtureAdapter implements Adapter {
           const beforeSnapshot=snapshot(); const checkpoint=path.join(dir,'checkpoint.project');
           await fs.copyFile(req.projectPath,checkpoint);
           await atomicJson(path.join(dir,'before.json'),{expectedAbsent:true,parentId:a.parentId,name:a.name,snapshot:beforeSnapshot});
-          const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
+          const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',enum:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
           const created={objectId:randomUUID(),applicationId:a.applicationId,path:[...parent.path,a.name],language:'ST',objectType:isPou?(kind==='function_block'?kind:'st_pou'):kind,hasImplementation:isPou,nativeTypeId:native[kind] || '6f9dac99-8de1-4efc-8465-68ac443b7d08',
             ...(isPou?{pouType:kind,pouTypeSource:'native-pou-type-id-and-declaration-header',...(a.returnType?{returnType:a.returnType}:{})}:{}),declaration:normalize(a.declaration),implementation:''};
           p.objects.push(created);
@@ -118,15 +119,15 @@ export class FixtureAdapter implements Adapter {
             created.implementation=normalize(a.implementation ?? ''); await atomicJson(req.projectPath,p);
             const persisted=await readJson(req.projectPath);const observed=persisted.objects.find((o:any)=>o.objectId===created.objectId);
             result=reply('succeeded','测试功能块已创建并重新读取',{...observed,name:a.name,parentId:a.parentId,created:true,beforeSnapshot,snapshot:snapshot(),checkpoint,
-              contentHash:codeHash(observed.declaration,observed.implementation),persistedToWorkingCopy:true,reopened:true,testMode:true});
+              contentHash:codeHash(observed.declaration,observed.implementation),persistedToWorkingCopy:true,reopened:true,...(kind==='enum'?{creationMethod:"create_dut / DutType.Enumeration / baseType='' ref: factory.json"}:{}),testMode:true});
           }
         }
       }
     } else if(req.command==='change') {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','对象不在选定 Application');
       const old={...object};
-      const decl=['gvl','structure'].includes(object.objectType);
-      if((a.objectType && a.objectType!==object.objectType) || (decl && (a.implementation ?? '')!=='') || (decl && !declarationMatches(object.objectType,object.path.at(-1),a.declaration)) || (!decl && a.implementation===undefined))
+      const decl=['gvl','structure','enum'].includes(object.objectType);
+      if((a.objectType && a.objectType!==object.objectType) || (decl && (a.implementation ?? '')!=='') || (decl && !declarationMatches(object.objectType,object.path.at(-1),a.declaration,true)) || (!decl && a.implementation===undefined))
         result={...reply('unsupported','测试对象类型不匹配'),error:{code:'OBJECT_TYPE_MISMATCH',message:'未写入'}};
       else if(codeHash(old.declaration,old.implementation)!==a.expectedHash) result=reply('conflict','旧哈希不一致',{actualHash:codeHash(old.declaration,old.implementation)});
       else {

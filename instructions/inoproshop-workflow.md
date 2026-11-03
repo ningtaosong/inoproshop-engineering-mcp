@@ -98,15 +98,17 @@
 - 两项工具沿用串行、隔离与生命周期保护，不隐式激活、保存、编译或修改。工程文件意外变化时保留 unknown；.opt 等附属变化另列，不能说所有文件未变。
   已完整提交的工程隔离仍保留原 unknown，只有服务确认无关联且可用的工程可以继续；全局冻结或活动任务不因这些只读工具而绕过。
 
-## GVL 与结构体 DUT
+## GVL、结构体与普通枚举 DUT
 
-- object_list 返回真实 objectType、nativeTypeId 和 hasImplementation。仅新增支持精确 Application 直接根节点的 gvl / structure；
-  不能把任意有声明的对象当成可编辑 ST。枚举、联合体、别名 DUT、方法、属性、文件夹、库和设备/任务编辑不在范围内。
-- object_read 对 GVL/结构体返回完整声明和空串 implementation，并明确没有实现区；空串参与原有内容哈希，不是可写的空实现区。
-  修改时用 code_apply_change，携带当前 expectedHash、完整 declaration 和 objectType=gvl|structure；implementation 省略或空串，禁止写入实现代码。
-  原 ST POU 仍须提交完整声明及实现，旧调用不变。DUT 只能保持同名 TYPE / STRUCT，不转换成其他类型。
-- 创建使用 declaration_create，objectType=gvl|structure、parentId=applicationId、当前 expectedSnapshot、名称和完整声明。
+- object_list 返回真实 objectType、nativeTypeId 和 hasImplementation。仅支持精确 Application 直接根节点的 gvl / structure / enum；
+  DUT原生身份相同，按实际STRUCT或枚举声明区分，不能把枚举说成structure，不能把任意有声明的对象当成可编辑ST。联合体、别名/子范围/数组DUT、枚举继承、方法、属性、文件夹、库和设备/任务编辑不在范围内。
+- object_read 对这些声明对象返回完整声明和空串 implementation，并明确没有实现区；空串参与原有内容哈希，不是可写的空实现区。
+  修改时用 code_apply_change，携带当前 expectedHash、完整 declaration 和 objectType=gvl|structure|enum；implementation 省略或空串，禁止写入实现代码。
+  原 ST POU 仍须提交完整声明及实现，旧调用不变。DUT只能保持同名及原类型，不把结构体转换为枚举。
+- 创建使用 declaration_create，objectType=gvl|structure|enum、parentId=applicationId、当前 expectedSnapshot、名称和完整声明。
   GVL 是完整 VAR_GLOBAL 声明，可带 qualified_only；结构体为同名 TYPE / STRUCT / END_STRUCT / END_TYPE。
+  枚举格式为 TYPE 同名类型 : (Idle := 0, Running := 1, Fault := 2); END_TYPE；成员名及整数值各不重复（名称不区分大小写），每项显式有符号十进制整数-32768..32767，不支持表达式、属性或显式基类型。工厂实际为create_dut(name,DutType.Enumeration,"")，选择IDE默认基型，已实测有符号16位边界行为；未取得独立枚举/成员/基类型getter，不冒称独立属性采集或DINT。
+  核对原生工厂记录、新GUID/父路径、类型首部、成员及全文；生成程序时变量使用实际枚举类型、初始化与CASE使用限定成员名，并按授权接入已有程序。PROGRAM不会自动加入任务，不能把未引用枚举或闲置程序的编译当接入通过。源码初始化与CASE编译不等于状态切换或运行观测。
   类型边界检查不是完整 ST 解析器，实际语法和类型引用必须真实编译。创建顺序先类型、后引用该类型的 GVL，再接入调用者。
 - 同名包括大小写差异以及可见的非编辑对象，不能覆盖、静默改名或换名重试；快照冲突先重新核对，结果未知仍冻结。
   创建及修改沿用检查点、新 GUID/原 GUID、直接父节点、真实类型、写后全文读回和保存重开，再按真实返回身份读取、编译和最终全文核对。
@@ -180,7 +182,7 @@
    FUNCTION 创建必须显式 returnType=DINT/BOOL/INT/REAL/TIME 之一，首部须同名 FUNCTION name : 对应类型（类型后换行）；参数仍用大写枚举，声明名称/类型沿用不区分大小写核对。不传、未列类型或首部不符时停止，不替换或退化为DINT。此白名单只限创建，读取/检索/比较既有其他返回类型保留原文。其他两类不得传 returnType；三类均提供完整声明与实现。
    创建后按新 GUID、原生 POU 身份、类型首部、函数返回声明及全文核对；本次未取得可用的独立类型/返回值 getter，pouTypeSource 明示此依据，不假称独立属性读回。PROGRAM/FUNCTION 保留 objectType=st_pou，pouType 细分；FB 仍为 function_block。
    PROGRAM 不自动加入任务。要求接入时，在授权已有程序中使用可编译的程序调用，再由程序调用函数，不能把闲置对象或未编译当成接入通过，不修改任务配置。创建返回检查点、内容及保存重开证据；仍须最终编译/保存重开/必要复编/全文读回和本轮前后比较，不代替运行验证。
-   GVL/结构体按上面的声明类流程使用 declaration_create；读取无实现标记后只提交声明，不能虚构实现区。
+   GVL/结构体/普通枚举按上面的声明类流程使用 declaration_create；读取无实现标记后只提交声明，不能虚构实现区。枚举创建与接入同样要求首写前基线、编译/保存重开/必要复编、最终全文和本轮比较，不改变历史快照按Application相对路径+类型匹配规则。
    OBJECT_EXISTS 不允许覆盖、改名已有对象或偷偷换名绕过用户意图；SNAPSHOT_CONFLICT 先重新核对工程。
    每个业务动作使用全新的 requestId。相同动作丢失响应时查询或复用原 requestId，不分配新编号重试。
    本版是批处理模式：创建和修改会保存到受管理工作副本并重开读回；project_save 仍是最终交付确认。

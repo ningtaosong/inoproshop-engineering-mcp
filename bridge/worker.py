@@ -72,13 +72,25 @@ def st_object(item):
     return bool(text(item.type).lower()=="6f9dac99-8de1-4efc-8465-68ac443b7d08" and
                 getattr(item, "has_textual_declaration", False) and getattr(item, "has_textual_implementation", False))
 
-def declaration_matches(kind, name, declaration):
+def declaration_matches(kind, name, declaration, writing=False):
     source = re.sub(r"'(?:\$[\s\S]|''|[^'])*'", "'literal'", declaration)
     source = re.sub(r"\(\*.*?\*\)", " ", source, flags=re.S)
     source = re.sub(r"//[^\r\n]*", " ", source)
+    if kind=="enum" and writing and re.search(r"[{}]",source):return False
     source = re.sub(r"\{[^{}]*\}", " ", source).strip()
     if kind=="gvl":
         return bool(re.match(r"^VAR_GLOBAL\b[\s\S]*\bEND_VAR\s*$",source,re.I) and not re.search(r"\b(TYPE|END_TYPE|STRUCT|END_STRUCT|UNION|END_UNION|PROGRAM|FUNCTION_BLOCK|FUNCTION)\b",source,re.I))
+    if kind=="enum":
+        match=re.match(r"^TYPE\s+([A-Za-z_][A-Za-z0-9_]{0,62})\s*:\s*\(([\s\S]*)\)\s*;\s*END_TYPE\s*$",source,re.I)
+        if not match or match.group(1).lower()!=name.lower():return False
+        names,values=set(),set()
+        for part in match.group(2).split(','):
+            member=re.match(r"^\s*([A-Za-z_][A-Za-z0-9_]{0,62})\s*:=\s*([+-]?[0-9]+)\s*$",part)
+            if not member:return False
+            value=int(member.group(2));key=member.group(1).lower()
+            if not -32768<=value<=32767 or key in names or value in values:return False
+            names.add(key);values.add(value)
+        return bool(names)
     match = re.match(r"^TYPE\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*STRUCT\b[\s\S]*\bEND_STRUCT\s*END_TYPE\s*$",source,re.I)
     return bool(kind=="structure" and match and match.group(1).lower()==name.lower() and not re.search(r"\b(UNION|END_UNION|EXTENDS|VAR_GLOBAL)\b",source,re.I) and len(re.findall(r"\bSTRUCT\b",source,re.I))==1)
 
@@ -87,11 +99,12 @@ def object_kind(item):
     if not getattr(item,"has_textual_declaration",False) or getattr(item,"has_textual_implementation",False):return None
     native = text(item.type).lower()
     kind = {"ffbfa93a-b94d-45fc-a329-229860183b1d":"gvl","2db5746d-d284-4425-9f7f-2663a34b0ebc":"structure"}.get(native)
+    if kind=="structure" and declaration_matches("enum",text(item.get_name()),text(item.textual_declaration.text)):return "enum"
     return kind if kind and declaration_matches(kind,text(item.get_name()),text(item.textual_declaration.text)) else None
 
 def editable(project,item,aid):
     kind = object_kind(item)
-    if kind in ("gvl","structure"):
+    if kind in ("gvl","structure","enum"):
         # 本轮声明类对象仅精确 Application 直接根节点，不包括池/文件夹。
         return aid is not None and any(text(x.guid).lower()==text(item.guid).lower() for x in application(project,aid).get_children(False))
     return kind is not None
@@ -133,7 +146,7 @@ def locate(project, app_id, object_id):
     matches = [(item, names, aid) for item, names, aid in walk(project)
                if aid == app_id and text(item.guid).lower() == object_id and editable(project,item,aid)]
     if len(matches) != 1:
-        raise ValueError("Supported ST POU / root GVL / structure DUT GUID not found in selected Application")
+        raise ValueError("Supported ST POU / root GVL / structure or enum DUT GUID not found in selected Application")
     return matches[0]
 
 def metadata(project):
@@ -243,18 +256,18 @@ def search_inventory(project,args):
             native = text(item.type).lower()
             row["nativeTypeId"]=native
             if native not in ("6f9dac99-8de1-4efc-8465-68ac443b7d08","ffbfa93a-b94d-45fc-a329-229860183b1d","2db5746d-d284-4425-9f7f-2663a34b0ebc"):
-                skipped.append(dict(row,stage="unsupported-type",reason="Not a supported POU/GVL/structure native type"));continue
+                skipped.append(dict(row,stage="unsupported-type",reason="Not a supported POU/GVL/structure/enum native type"));continue
             if native!="6f9dac99-8de1-4efc-8465-68ac443b7d08" and (aid is None or row["objectId"] not in direct):
                 skipped.append(dict(row,stage="unsupported-location",reason="Declaration object is not an exact Application root child"));continue
             eligible += 1
             if object_kind(item) is None:
-                eligible -= 1;skipped.append(dict(row,stage="unsupported-form",reason="No supported textual POU or structure/GVL declaration form"));continue
+                eligible -= 1;skipped.append(dict(row,stage="unsupported-form",reason="No supported textual POU or structure/enum/GVL declaration form"));continue
             corpus.append(read_object(item,names,aid))
         except Exception as error:failed.append(dict(row,stage="object-read",reason=text(error)))
     corpus.sort(key=lambda x:x["objectId"])
     for values in (skipped,failed):values.sort(key=lambda x:x["objectId"])
     return {"projectId":args["projectId"],"applicationId":args["applicationId"],"targetKind":args.get("targetKind","application"),"projectPath":text(project.path),"corpus":corpus,
-      "scope":{"description":"Only currently supported readable ST POU and exact Application-root GVL/structure; not all engineering objects or semantic references",
+      "scope":{"description":"Only currently supported readable ST POU and exact Application-root GVL/structure/enum; not all engineering objects or semantic references",
       "applicationPath":prefix,"treeComplete":not errors,"eligibleObjects":eligible,"readObjects":len(corpus),"coverageComplete":not errors and not failed,
       "skippedObjects":skipped,"readFailures":failed,"enumerationFailures":errors}}
 
@@ -574,7 +587,7 @@ def create_text_object(project, req, args, kind, lifecycle=None):
     if parent_id != app_id or text(parent.guid).lower() != parent_id:
         return failure("conflict","PARENT_MISMATCH",u"只允许在选定 Application GUID 根节点创建"), project
     is_pou=kind in ("function_block","program","function")
-    valid = pou_matches(kind,args["name"],args["declaration"],args.get("returnType")) if is_pou else declaration_matches(kind,args["name"],args["declaration"])
+    valid = pou_matches(kind,args["name"],args["declaration"],args.get("returnType")) if is_pou else declaration_matches(kind,args["name"],args["declaration"],True)
     if not valid or not re.match(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$",args["name"]):
         return failure("failed","INVALID_POU_DECLARATION" if is_pou else "INVALID_DECLARATION",u"声明类型、名称或函数返回类型不符合指定创建类型"), project
     before_snapshot = snapshot(project)
@@ -594,7 +607,9 @@ def create_text_object(project, req, args, kind, lifecycle=None):
             if kind=="function":created=parent.create_pou(args["name"],native_kind,scriptengine.ImplementationLanguages.st,args["returnType"])
             else:created=parent.create_pou(args["name"],native_kind,scriptengine.ImplementationLanguages.st)
         elif kind=="gvl":created = parent.create_gvl(args["name"])
-        else:created = parent.create_dut(args["name"],scriptengine.DutType.Structure,"")
+        else:
+            native_kind=scriptengine.DutType.Enumeration if kind=="enum" else scriptengine.DutType.Structure
+            created = parent.create_dut(args["name"],native_kind,"")
         created_id = text(created.guid).lower()
         publish(os.path.join(directory,"created.json"),{"objectId":created_id,"parentId":parent_id,"name":args["name"]})
         if created_id in before_ids:
@@ -603,6 +618,9 @@ def create_text_object(project, req, args, kind, lifecycle=None):
             raise ValueError("Factory result is not the exact requested direct child")
         expected_kind="st_pou" if kind in ("program","function") else kind
         if object_kind(created)!=expected_kind:raise ValueError("Factory returned a different native object kind")
+        if kind=="enum":
+            publish(os.path.join(directory,"factory.json"),{"arguments":[args["name"],text(native_kind),""],
+                "objectId":created_id,"parentId":parent_id,"nativeTypeId":text(created.type).lower(),"nativeDeclaration":text(created.textual_declaration.text)})
         if is_pou:
             factory_declaration=text(created.textual_declaration.text)
             publish(os.path.join(directory,"factory.json"),{
@@ -626,7 +644,7 @@ def create_text_object(project, req, args, kind, lifecycle=None):
         return success(u"ST 对象已创建，工作副本保存重开并按新 GUID、类型与全文读回一致",dict(reopened,
             name=args["name"],parentId=parent_id,created=True,beforeSnapshot=before_snapshot,
             snapshot=snapshot(project),checkpoint=req["checkpointPath"],persistedToWorkingCopy=True,reopened=True,
-            creationMethod={"function_block":"create_pou / PouType.FunctionBlock / ImplementationLanguages.st","program":"create_pou / PouType.Program / ImplementationLanguages.st","function":"create_pou / PouType.Function / ImplementationLanguages.st / explicit "+text(args.get("returnType","")),"gvl":"create_gvl","structure":"create_dut / DutType.Structure"}[kind])), project
+            creationMethod={"function_block":"create_pou / PouType.FunctionBlock / ImplementationLanguages.st","program":"create_pou / PouType.Program / ImplementationLanguages.st","function":"create_pou / PouType.Function / ImplementationLanguages.st / explicit "+text(args.get("returnType","")),"gvl":"create_gvl","structure":"create_dut / DutType.Structure","enum":"create_dut / DutType.Enumeration / baseType='' ref: factory.json"}[kind])), project
     except Exception as error:
         partial = None
         recovery = {"status":"unknown"}
@@ -718,8 +736,8 @@ def dispatch(req):
                 item, names, aid = locate(project, app_id, args["objectId"])
                 before = read_object(item, names, aid)
                 kind = before["objectType"]
-                invalid_type = (args.get("objectType") is not None and args["objectType"]!=kind) or (kind in ("gvl","structure") and
-                    (args.get("implementation","")!="" or not declaration_matches(kind,text(item.get_name()),args["declaration"]))) or (before["hasImplementation"] and "implementation" not in args)
+                invalid_type = (args.get("objectType") is not None and args["objectType"]!=kind) or (kind in ("gvl","structure","enum") and
+                    (args.get("implementation","")!="" or not declaration_matches(kind,text(item.get_name()),args["declaration"],True))) or (before["hasImplementation"] and "implementation" not in args)
                 if invalid_type:
                     response = failure("unsupported","OBJECT_TYPE_MISMATCH",u"指定对象类型或声明形态不匹配；声明类无实现，POU 必须提供实现，未写入")
                 elif before["contentHash"] != args["expectedHash"]:
