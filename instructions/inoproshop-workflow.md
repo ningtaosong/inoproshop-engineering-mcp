@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.9.0 候选版的十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.10.0 候选版的十九项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -56,6 +56,11 @@
   配置与语句执行时点按开头“解释语义”处理；只陈述实际返回的字段及调用项，不推断在线状态。
 - 两项工具只读，不编译、保存、修改或隐式切换。正式读取前、关闭后、进程退出后核对文件；意外变化时结果不可信并冻结，不自动保存或恢复。
   查询与其他工程操作共用身份校验、队列、原请求和未知状态机制。新工具需要载入时，在 DSH 空闲且没有未决操作后正常重载；仍有任务执行时不得强制结束。
+
+## 库依赖只读查询
+
+用户查询工程库时，用 library_inspect 的精确工程/Application 身份读取；按实际返回的各管理器 GUID 和所属路径分别说明，不默认合并为完整依赖树。只枚举直接 references，不代表递归传递依赖或本机已安装库。保留原生 name/namespace；占位符的 placeholder_name、default_resolution（默认声明/约束字符串）、effective_resolution（当前解析字符串）和 resolution_info（原生来源说明）分别解释，不从显示串拆造独立版本/厂商字段。已安装、已引用、已解析是不同事实；effective-resolution-reported 只表示 getter 提供字符串，不是独立的库加载/缺失证明；空值或异常仍未知，结合 unavailableFields 与 unavailableMetadata 说明缺口。
+按 actual nextOffset + expectedVersion、原 Application/maxReferences 取完页面；带 expectedVersion 的续页和 fieldRead 复用原清单，不重新启动 IDE。fieldPreviews 标记仅预览，不能当作完整值或读取失败；需要原文时用 fieldRead 的 referenceIndex/field/UTF-16 offset，按 fieldDetail.nextOffset 分段，并核对长度与摘要。枚举完成、字段是否读到、采集截断、输出分页及客户端裁剪分别判断。只陈述实际覆盖；无 CmpLog 直接引用不能排除间接依赖，也不能证明历史编译警告已消除。若引用已有诊断，注明其来源和适用版本；不为只读查询编译/保存、建立修改基线或主动解析/修复/安装/下载。库不在 project_compare 覆盖范围内；unknown、冲突与冻结按原停止规则处理。最终用普通语言简述实得结果和限制，不贴内部状态字段或长串，工作副本链接及单独完整路径仍须来自真实返回。
 
 ## 离线工程差异对比（只读）
 
@@ -195,7 +200,7 @@
 
 ## 受限 ST 编译修复
 
-用户请求根据编译诊断修复时，沿用当前十八项工具和原受限流程，不建立额外 Agent、终端修复循环或在线控制流程。
+用户请求根据编译诊断修复时，沿用当前十九项工具和原受限流程，不建立额外 Agent、终端修复循环或在线控制流程。
 
 1. 先固定本次写入白名单：projectId、targetKind、applicationId、完整路径和允许修改的 objectId。
    分页读取完整 ST 列表；读取白名单对象及必要的只读接口上下文，保存其他 ST 对象的完整内容和 contentHash 作为对照。

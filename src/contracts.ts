@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.9.0';
+export const VERSION = '0.10.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -23,6 +23,11 @@ export const schemas = {
     areas:z.array(z.enum(['name','declaration','implementation'])).min(1).max(3).default(['name','declaration','implementation']),
     offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(100).default(50),
     maxResults:z.number().int().min(1).max(1000).default(200),expectedVersion:hash.optional()}).strict(),
+  library_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(200).default(50),
+    maxReferences:z.number().int().min(1).max(10000).default(2000),expectedVersion:hash.optional(),
+    fieldRead:z.object({referenceIndex:z.number().int().min(0).max(9999),field:z.enum(['id','name','namespace','placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid']),
+      offset:z.number().int().min(0).default(0),limit:z.number().int().min(2).max(2048).default(1024)}).strict().optional()}).strict(),
   task_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid}).strict(),
   project_compare:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     requestId:id.optional(),mode:z.enum(['capture','compare']),origin:z.enum(['working-copy','registered-source']).default('working-copy'),
@@ -114,6 +119,17 @@ export const deviceDataSchema=z.object({...nativeQueryFields,device:nativeNodeSc
     sha256:hash,hasMore:z.boolean(),nextOffset:z.number().int().nullable(),positionConvention:z.literal('UTF-16 offsets; end exclusive; whole code points')}).optional(),
   parameterReadFailures:z.array(nativeIssue),scope:z.object({description:z.string(),maxParameters:z.number().int(),capturedParameters:z.number().int(),truncated:z.boolean(),treeScope:treeScopeSchema,parameterCoverageComplete:z.boolean()}),
   completeDeviceConfiguration:z.literal(false),runtimeObserved:z.literal(false),valueLimitations:z.string()}).passthrough();
+// Library metadata is native raw getter output; version/vendor are not parsed out of display strings.
+export const libraryDataSchema=z.object({...nativeQueryFields,applicationId:uuid,targetKind:z.literal('application'),applicationPath:z.array(z.string()),
+  managers:z.array(z.object({managerId:uuid,path:z.array(z.string()),nativeTypeId:uuid,enumerationComplete:z.boolean(),capturedReferences:z.number().int(),unavailableFields:z.array(fieldIssue)})),
+  references:z.array(z.object({index:z.number().int(),parentIndex:z.null(),managerId:uuid,managerPath:z.array(z.string()),order:z.number().int(),path:z.array(z.string()),
+    rawFields:z.record(z.string(),z.union([z.string(),z.boolean(),z.null()])),unavailableFields:z.array(fieldIssue),
+    resolutionStatus:z.enum(['effective-resolution-reported','unknown']),resolutionBasis:z.string(),installedStatus:z.literal('not-queried'),
+    fieldPreviews:z.record(z.string(),z.object({text:z.string(),utf16Length:z.number().int(),sha256:hash,complete:z.literal(false)})).optional()})),
+  scope:z.object({description:z.string(),maxReferences:z.number().int(),capturedReferences:z.number().int(),enumerationComplete:z.boolean(),fieldReadComplete:z.boolean(),truncated:z.boolean(),enumerationFailures:z.array(failureRow)}),
+  unavailableMetadata:z.array(z.string()),limitations:z.array(z.string()),
+  fieldDetail:z.object({referenceIndex:z.number().int(),field:z.string(),offset:z.number().int(),endOffset:z.number().int(),text:z.string(),totalLength:z.number().int(),sha256:hash,hasMore:z.boolean(),nextOffset:z.number().int().nullable(),positionConvention:z.string()}).optional()
+}).passthrough();
 export const comparisonSnapshotSchema=z.object({projectId:uuid,applicationId:uuid,applicationPath:z.array(z.string()),origin:z.enum(['working-copy','registered-source']),
   projectPath:z.string(),diskHash:hash,version:hash,evidence:z.object({kind:z.literal('managed-native-capture'),operationId:uuid}),
   coverage:z.object({supportedObjects:z.number().int(),objectEnumerationComplete:z.boolean(),objectCoverageComplete:z.boolean(),objectReadFailures:z.number().int(),
@@ -136,6 +152,7 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   object_read:z.object(objectFields).passthrough(),
   project_search:searchDataSchema.partial().passthrough(),
   task_inspect:taskDataSchema.partial().passthrough(),
+  library_inspect:libraryDataSchema.partial().passthrough(),
   project_compare:comparisonDataSchema.partial().passthrough(),
   project_structure:structureDataSchema.partial().passthrough(),
   device_inspect:deviceDataSchema.partial().passthrough(),

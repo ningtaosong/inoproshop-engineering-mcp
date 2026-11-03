@@ -32,6 +32,7 @@
 !/docs/getting-started.md
 !/docs/post-change-baseline-compare.md
 !/docs/tool-schemas.json
+!/docs/library-inspect.md
 node_modules/
 dist/
 .local/

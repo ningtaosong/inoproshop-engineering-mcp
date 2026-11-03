@@ -23,6 +23,7 @@ const descriptions:Record<string,string>={
   object_list:'分页列出精确应用的 ST POU 及根节点 GVL/结构体 DUT；POU 的 pouType 区分功能块/程序/函数，保留真实 GUID、完整路径和有无实现。',
   object_read:'精确读取支持的 ST 对象及内容哈希；GVL/结构体只有声明，implementation 为空串且 hasImplementation=false。',
   project_search:'只读字面量搜索选定工程/应用中支持的对象名称、声明和实现。明确大小写、范围/失败/跳过、位置/上下文、截断和分页；续页带 expectedVersion。文本命中仅候选引用，不是语义分析。',
+  library_inspect:'只读精确 Application 的各原生库管理器直接引用。保留名称/命名空间、占位符默认与当前解析原文、解析来源及读取缺口；不把已安装/已引用/已解析混为一谈，不递归、不主动解析/修复/下载。独立版本/厂商或加载状态不可取得时明确说明，不从显示串猜字段。按实际 nextOffset + expectedVersion 和原 maxReferences 翻页；长字符串仅预览，带 expectedVersion + fieldRead:{referenceIndex,field,offset,limit} 分段读原清单（外层 offset=0，不启动 IDE）。CmpLog直接未出现不证明间接依赖不存在或历史警告已解决。',
   task_inspect:'只读精确 Application 的真实任务身份、类型、优先级、周期/单位、看门狗与顺序调用；不可读字段单列，仅唯一核实的 PROGRAM 关联 GUID。配置不代表运行观测。',
   project_compare:'只读工程版本对比。mode=capture 在一次受管理 IDE 读取中采集精确 Application 的支持源码与任务；origin=working-copy（默认）或 registered-source（登记源原文件，不是复用修改副本）。mode=compare 引用 baselineOperationId/targetOperationId 两个本工具成功采集记录，不接收自填源码；目标属于当前工程/应用，基线可属另一登记工程。按应用相对路径+类型匹配，不猜重命名。分页使用返回 nextOffset+expectedVersion；长变更预览可用 detail 按 itemIndex/changeIndex/side/offset 分段读取，不重启 IDE。不比较设备/I/O、其他对象或运行行为。',
   project_structure:'只读活动登记工程的原生对象树（含非 ST、未知类型），返回父子关系/实际 GUID/路径、覆盖缺口与截断。页面受条数及体积双重限制，按实际 nextOffset + expectedVersion 读取原清单，不重复启动 IDE。',
@@ -36,7 +37,7 @@ const descriptions:Record<string,string>={
 };
 for(const [name,inputSchema] of Object.entries(schemas)) {
   server.registerTool(name,{description:descriptions[name],inputSchema,outputSchema:outputSchemas[name],
-    annotations:{readOnlyHint:['environment_inspect','session_status','project_list','object_list','object_read','project_search','task_inspect','project_compare','project_structure','device_inspect'].includes(name),destructiveHint:false,idempotentHint:true,openWorldHint:false}},async(args:any)=> {
+    annotations:{readOnlyHint:['environment_inspect','session_status','project_list','object_list','object_read','project_search','task_inspect','library_inspect','project_compare','project_structure','device_inspect'].includes(name),destructiveHint:false,idempotentHint:true,openWorldHint:false}},async(args:any)=> {
       let result;
       try { result=await service.call(name,args); }
       catch(e:any) { result={...reply(e instanceof DomainError?e.status:'failed',e.message),error:{code:e.code || 'TOOL_ERROR',message:e.message}}; }

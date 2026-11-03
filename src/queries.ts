@@ -2,6 +2,7 @@
 // This is not a presentation filter, persistent index, call graph or semantic reference analyzer.
 import {canonical,digest,codeHash} from './storage.js';
 import {reply,type Reply} from './contracts.js';
+import {libraryInventoryResult} from './libraries.js';
 import {isStringBoundary,stringEnd} from './native-output.js';
 const areas=['name','declaration','implementation'];
 function cmp(a:string,b:string){return a<b?-1:a>b?1:0;}
@@ -87,6 +88,7 @@ export function taskResult(raw:Reply,a:any):Reply {
 // Retaining observed GUIDs avoids inventing persistent identities for generated metadata wrappers.
 export function nativeInventoryResult(raw:Reply,a:any,tool:string,origin={kind:'ide',inventoryOperationId:raw.operationId!}):Reply {
   if(raw.status!=='succeeded')return raw;
+  if(tool==='library_inspect')return libraryInventoryResult(raw,a,origin);
   const {lifecycle,readOnlyEvidence,workerDiskHash,postExitDiskHashObserved,...inventory}=raw.data as any;
   const field=tool==='project_structure'?'nodes':'parameters',rows=inventory[field];
   if(!Array.isArray(rows))throw Error('Native inventory missing');
