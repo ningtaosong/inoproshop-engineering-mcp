@@ -4,12 +4,11 @@
 
 ## 获取与构建
 
-仓库已公开，可直接克隆。0.8.0当前在功能分支codex/pou-create-program-function，main仍保留已验0.7.0；开发端和本机DSH桌面创建闭环已分别复核通过，分支尚未合并。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，从main获取0.8.0离线试用候选版，无需切换功能分支。开发端和本机DSH桌面创建闭环已分别复核通过；设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
-git switch codex/pou-create-program-function
 npm ci
 npm run build
 ```
