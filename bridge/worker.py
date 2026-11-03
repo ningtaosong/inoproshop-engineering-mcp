@@ -175,6 +175,63 @@ def query_rows(project, args):
     except Exception as error:errors.append({"path":prefix,"stage":"enumeration","reason":text(error)})
     return app,prefix,rows,errors
 
+def library_inventory(project,args):
+    # Verified on 1.9.1.6: IScriptLibManObject.references enumerates direct
+    # IScriptLibraryReference entries. get_libraries() only returns strings.
+    app,prefix,rows,errors = query_rows(project,args)
+    managers,entries = [],[]
+    candidates=[]
+    for item,names,aid in rows:
+        try:
+            if text(item.type).lower()=="adb5cb65-8e1d-4a00-b70a-375ea27582f3":
+                candidates.append((item,names,aid))
+        except Exception as e:errors.append({"path":names,"stage":"manager-identification","reason":text(e)})
+    candidates.sort(key=lambda row:(row[1],text(row[0].guid)))
+    truncated=False
+    for item,names,aid in candidates:
+        manager={"managerId":text(item.guid).lower(),"path":names,"nativeTypeId":text(item.type).lower(),
+          "enumerationComplete":False,"capturedReferences":0,"unavailableFields":[]}
+        managers.append(manager)
+        try:
+            if item.is_libman is not True:raise ValueError("Native manager marker not confirmed")
+            for order,ref in enumerate(item.references):
+                if len(entries)>=args["maxReferences"]:
+                    truncated=True;break
+                fields={};issues=[]
+                def field(key,boolean=False):
+                    try:
+                        value=getattr(ref,key)
+                        if value is not None and boolean and not isinstance(value,bool):raise ValueError("Expected native Boolean")
+                        fields[key]=None if value is None else bool(value) if boolean else text(value)
+                    except Exception as e:
+                        fields[key]=None;issues.append({"field":key,"reason":text(e)})
+                for key in ("id","name","namespace"):field(key)
+                for key in ("is_placeholder","is_managed","system_library","optional","qualified_only"):field(key,True)
+                if fields["is_placeholder"] is True:
+                    for key in ("placeholder_name","default_resolution","effective_resolution","resolution_info","resolver_guid"):field(key)
+                    field("is_redirected",True)
+                entries.append({"index":len(entries),"parentIndex":None,"managerId":manager["managerId"],"managerPath":names,
+                  "order":order,"path":names+["references",text(order)],"rawFields":fields,"unavailableFields":issues,
+                  "resolutionStatus":"effective-resolution-reported" if fields.get("effective_resolution") else "unknown",
+                  "resolutionBasis":"Native effective_resolution string only; not an independent loaded/missing flag",
+                  "installedStatus":"not-queried"})
+                manager["capturedReferences"]+=1
+            else:manager["enumerationComplete"]=True
+        except Exception as e:manager["unavailableFields"].append({"field":"references","reason":text(e)})
+    enumeration_complete=not errors and not truncated and all(m["enumerationComplete"] for m in managers)
+    return {"projectId":args["projectId"],"applicationId":args["applicationId"],"targetKind":"application",
+      "projectPath":text(project.path),"applicationPath":prefix,"managers":managers,"references":entries,
+      "scope":{"description":"Direct references of each native library manager in the exact Application; no recursive dependencies or installed repository query",
+        "maxReferences":args["maxReferences"],"capturedReferences":len(entries),"enumerationComplete":enumeration_complete,
+        "fieldReadComplete":not any(m["unavailableFields"] for m in managers) and not any(r["unavailableFields"] for r in entries),
+        "truncated":truncated,"enumerationFailures":errors},
+      "unavailableMetadata":["Independent declared version/constraint and vendor getters not verified: retain native name/default_resolution strings without parsing",
+        "Independent resolved version/library-loaded-or-missing flag not verified: retain effective_resolution and resolution_info strings",
+        "Non-placeholder references have no verified placeholder resolution getters; status remains unknown"],
+      "limitations":["Not a complete transitive dependency tree","Installed, referenced and resolved are different facts",
+        "No active resolve/repair/install/download/build/save call","Absence of CmpLog from direct references does not rule out indirect dependencies or resolve a historical compiler warning"]}
+
+
 def search_inventory(project,args):
     app,prefix,rows,errors = query_rows(project,args)
     corpus,skipped,failed = [],[],[]
@@ -608,9 +665,9 @@ def dispatch(req):
     lifecycle = lifecycle_state(project_path=req["projectPath"])
     response = None
     command, args = req["command"], req["args"]
-    read_only = command in ("search","tasks","structure","device","compare_capture")
+    read_only = command in ("search","tasks","structure","device","libraries","compare_capture")
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "structure", "device", "compare_capture", "create", "create_declaration", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         if read_only:
@@ -640,6 +697,8 @@ def dispatch(req):
                 response = success(u"已在一次 IDE 读取中取得搜索范围与完整原文",search_inventory(project,args))
             elif command == "tasks":
                 response = success(u"已只读取得真实任务字段与程序候选",task_inventory(project,args))
+            elif command == "libraries":
+                response = success(u"已只读取得精确 Application 的库直接引用与原生解析信息",library_inventory(project,args))
             elif command == "list":
                 objects = []
                 for item, names, aid in walk(project):

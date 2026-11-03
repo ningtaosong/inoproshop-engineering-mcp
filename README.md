@@ -4,6 +4,8 @@
 
 **main 当前提供0.9.0 候选版，十八项 MCP 工具，契约1.0.0。** 实测环境为 Windows、InoProShop 1.9.1.6 和 DSH 0.2.0-rc.2。源码仓库现已公开，可直接克隆；可按[入门文档](docs/getting-started.md)直接从main获取0.9.0；当前仍是限定范围的离线试用版，不是正式v1.0。
 
+当前功能分支 `codex/library-inspect` 提供 **0.10.0 候选、十九项工具**，新增精确 Application 的 `library_inspect`，main 仍为已验的0.9.0。本候选未合并，DSH新增工具接收及桌面对话待验。[库查询契约与边界](docs/library-inspect.md)。
+
 ## 开始使用
 
 - [安装、构建、DSH接入和首次只读任务](docs/getting-started.md)
@@ -25,7 +27,7 @@ npm run build
 | 环境、状态和操作证据 | environment_inspect、session_status、operation_status |
 | 工程副本、登记和切换 | project_open_copy、project_list、project_activate |
 | 源码定位与读取 | object_list、object_read、project_search |
-| 原生结构、设备与任务只读 | project_structure、device_inspect、task_inspect |
+| 原生结构、设备与任务只读 | project_structure、device_inspect、task_inspect、library_inspect |
 | 限定创建和修改 | pou_create、declaration_create、code_apply_change |
 | 离线工程闭环 | project_build、project_save |
 | 可信工程快照对比 | project_compare |
@@ -37,6 +39,8 @@ npm run build
 [修改前工作副本基线与交付后比较](docs/post-change-baseline-compare.md)已接入支持的Application日常修改：先采可信基线，再按原闭环修改/编译/保存重开，最后以同一副本的最终快照比较；默认不拿原交付源代替本轮基线。2026-11-02真实DSH修改闭环及比较已复核通过，当轮保持0.7.0和十八工具，无新增工程执行代码。DSH 0.2.0-rc.2客户端需使用模板的 `maxInstructionBytes: 65536`；可用 `npm run check:instructions` 静态核对UTF-8大小，详见[接入上限说明](docs/getting-started.md#指令大小与连接失败)。
 
 ## 验证状态与限制
+
+本轮0.10.0候选：构建/类型检查、最终141/141自动化回归、一次独立AM610真实MCP只读场景及独立原生核对通过。9项工程操作成功，结构67节点按实际字节分页；库管理器1个、18条直接引用（样例全为占位符）分四页完整取得，续页/字段详情不新启IDE，默认约束和当前解析原文分别保留。工程打开前/关闭后/退出后哈希一致，附属.opt/projectbackup新增另列，未修改/编译/保存。普通直接库、缺失库、多管理器和故障等边界由替身覆盖，不能称为同类真实IDE场景均已验。独立版本/厂商getter、库加载/缺失标志未取得，保留原生规格字符串及未知范围。首败、脚本分页假设错误和已有切换用例一次未确认原因的准备失败均保留；不把最终回归通过宣称为这些历史原因已解决。DSH十九工具接收/桌面只读任务仍待验，未重载当前DSH。以下0.9.0等为历史证据，不叠加测试数量。
 
 0.9.0开发端构建、类型检查、130/130完整自动化回归及一次独立AM610真实MCP闭环通过。四种新增返回类型均实际传给原生工厂，创建读回后由新PROGRAM调用，并从PLC_PRG接入；共36项成功工程操作，两次编译各0错误、1条CmpLog警告，保存关闭重开、保存版复编、最终九对象全文和完整比较通过。仅新增四个FUNCTION和一个PROGRAM、PLC_PRG追加一行调用，原其他三个支持对象及可读任务配置一致；设备/I/O、实际返回值和运行行为未验证。原DINT及PROGRAM/FUNCTION_BLOCK经回归保持兼容；创建白名单不限制读取既有其他返回类型，未列类型不自动转为DINT。独立初始化与本轮真实DSH客户端接收分别核对。2026-11-03用户手动发起的0.9.0桌面任务已事后只读复核通过：32项成功工程操作、四个新增类型FUNCTION及一个PROGRAM实际创建接入，首次写入前基线、两次真实编译、保存关闭重开、保存版复编、最终九对象全文及两页完整比较均有原始证据。实际收到五类型枚举及显式参数规则；比较仅新增5、修改PLC_PRG 1，另3原源码与1可读任务未变。另有3次辅助PowerShell等待调用退出失败，保留原记录、不计为工程操作失败，原因未确认。原链接目标一致但点击未验；本轮只读归档没有重载DSH或重放工程。已验0.9.0由main提供；合并收尾仅做文档、版本及文件树核对，复用上述130/130回归、开发端36项及桌面32项证据，没有重跑测试或工程操作，不代表运行验证或历史回答质量全部通过。以下0.8.0为历史验收。
 

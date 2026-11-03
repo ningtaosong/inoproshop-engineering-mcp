@@ -15,13 +15,15 @@ npm run build
 
 InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这些软件。`npm test` 运行自动化测试；其中原生API替身不代表真实IDE或PLC验收。`test:ide` 等维护脚本可能打开并修改独立测试工程，不属于安装步骤，不对业务工程随意运行。
 
+试用本轮库查询候选须在保留已有改动的前提下检出 `codex/library-inspect`，再安装/构建；该分支为0.10.0、十九工具，尚未合入main。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
+
 ## 接入 DSH
 
 1. 备份DSH配置。实测桌面配置入口为 `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml`，以所用DSH版本为准。
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。获取当前版本后应为0.9.0和十八项工具，客户端实际收到的pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.9.0本机客户端接收及手动工程任务已有直接证据；其他部署仍需核对实际加载，独立初始化不能替代客户端接收及使用验收。
+5. 新对话先让Agent查询环境、会话和工具集合。从main获取本基线时应为0.9.0和十八项工具；本轮库查询候选分支应为0.10.0和十九项工具，并实际收到library_inspect的Application/分页/fieldRead Schema。既有pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.9.0本机客户端接收及手动工程任务已有直接证据；其他部署仍需核对实际加载，独立初始化不能替代客户端接收及使用验收。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
@@ -80,3 +82,9 @@ object_list/object_read保留原objectType分类：功能块为function_block，
 本轮0.9.0在InoProShop 1.9.1.6的独立受管理AM610副本中，已实际创建BOOL/INT/REAL/TIME四个函数，由新PROGRAM调用并从PLC_PRG接入；统一编译、保存关闭重开、保存版复编、最终全文与基线比较通过。两次均0错误、1条CmpLog警告；DINT和旧两类调用的兼容性由本轮回归及原已验结果支持。已取得DSH实际五类型Schema/工具说明及手动工程任务的原记录：32项工程操作成功、最终九对象及两页比较完整，未以独立初始化或替身测试代替。三次辅助PowerShell等待调用失败另存，非工程操作失败；设备/I/O、实际返回值/运行和链接点击仍未验证。没有独立返回类型getter证据，核对依据为实际原生工厂参数、对象身份、声明首部和全文；不声称已观测运行返回值。
 
 新增Schema和指令需要DSH在确认空闲、无未发送输入及当前执行操作后正常重载一次；历史已受控隔离unknown不等于仍在执行。无法确认则保持待办。开发端验证与桌面对话分开记录，不自动发送任务。
+
+## 库依赖只读查询
+
+例如：“沿用正常AM610工作副本，只读查看选定Application各库管理器的直接引用、版本/约束原文、占位符及当前解析信息，说明能否判断CmpLog相关依赖；不修改、不编译、不保存。给工作副本链接和独立完整路径。”Agent自行查工程/Application身份并使用library_inspect，无需用户填GUID。使用已有正常样例时沿用其登记，不操作隔离工程。
+
+返回清单区分原生名称/命名空间、占位符声明、当前解析字符串和来源；本机已安装不等于工程已引用，提供解析字符串不等于独立证实库已加载。无法读取的独立版本/厂商或缺失状态如实说明，默认与当前字符串原样保留，不猜字段。不递归传递依赖；没有CmpLog直接引用不足以消除历史警告。只读不追加修改基线/编译/保存；库不自动进入project_compare。长字段会明确预览，按原版本分页或按需读详情，不静默裁剪原始证据。[完整参数和边界](library-inspect.md)。

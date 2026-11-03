@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { type Config, type Adapter, ROOT } from './adapter.js';
 import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
-import { CONTRACT, VERSION, DomainError, reply, replySchema, pouDeclarationMatches, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema, type Reply } from './contracts.js';
+import { CONTRACT, VERSION, DomainError, reply, replySchema, pouDeclarationMatches, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema, type Reply } from './contracts.js';
 import {searchResult,taskResult,nativeInventoryResult} from './queries.js';
 import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
@@ -240,11 +240,11 @@ export class EngineeringService {
   private prepareResult(op:Operation,result:Reply):Reply {
     if(op.tool==='project_compare')return captureReply(result,op.args,op.project!);
     return op.tool==='project_search'?searchResult(result,op.args):op.tool==='task_inspect'?taskResult(result,op.args):
-      ['project_structure','device_inspect'].includes(op.tool)?nativeInventoryResult(result,op.args,op.tool):result;
+      ['project_structure','device_inspect','library_inspect'].includes(op.tool)?nativeInventoryResult(result,op.args,op.tool):result;
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.args;
-    const command=({project_search:'search',task_inspect:'tasks',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',task_inspect:'tasks',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -262,15 +262,15 @@ export class EngineeringService {
         if(args.mode!=='capture'||!session||d!.mode!=='capture'||(d!.snapshot as any)?.evidence?.operationId!==op.operationId)invalid();
         return;
       }
-      if(['search','tasks','structure','device'].includes(command)) {
+      if(['search','tasks','structure','device','libraries'].includes(command)) {
         const wide=command==='structure'||command==='device';
-        const schema=command==='search'?searchDataSchema:command==='tasks'?taskDataSchema:command==='structure'?structureDataSchema:deviceDataSchema;
+        const schema=command==='search'?searchDataSchema:command==='tasks'?taskDataSchema:command==='structure'?structureDataSchema:command==='libraries'?libraryDataSchema:deviceDataSchema;
         if(!schema.safeParse(d).success || d!.projectId!==args.projectId || (!wide&&(d!.applicationId!==args.applicationId || d!.targetKind!==(args.targetKind || 'application'))) ||
           !session || pathKey(d!.projectPath as string)!==pathKey(session.workingPath))invalid();
         const e=d!.readOnlyEvidence as any;
         if(e?.unchanged!==true || e.beforeDiskHash!==session!.diskHash || e.afterCloseDiskHash!==e.beforeDiskHash || e.postExitDiskHash!==e.beforeDiskHash || d!.diskHash!==e.beforeDiskHash)invalid();
         if(command==='search'&&(d!.query!==args.query || d!.caseSensitive!==args.caseSensitive || (args.expectedVersion&&d!.version!==args.expectedVersion)))invalid();
-        if(wide && (args.expectedVersion&&d!.version!==args.expectedVersion || command==='device'&&(d!.device as any)?.objectId!==args.deviceId ||
+        if((wide||command==='libraries') && (args.expectedVersion&&d!.version!==args.expectedVersion || command==='device'&&(d!.device as any)?.objectId!==args.deviceId ||
           (d!.readOrigin as any)?.kind==='recorded-inventory'&&((d!.pageFileEvidence as any)?.beforeDiskHash!==e.beforeDiskHash||(d!.pageFileEvidence as any)?.afterDiskHash!==e.beforeDiskHash)))invalid();
       }
       if(command==='inspect' && (!Array.isArray(d!.applications) || !isHash(d!.snapshot) || !isHash(d!.diskHash) ||
@@ -366,14 +366,14 @@ export class EngineeringService {
       if(currentHash!==expected)throw new DomainError('conflict','COMPARE_DISK_CHANGED','采集前文件与登记版本不一致；未启动 IDE 或保存');
       return this.bridge(op,'compare_capture',{...s,workingPath:projectPath,diskHash:expected},{...a,readDiskHash:currentHash});
     }
-    if(['project_search','task_inspect','project_structure','device_inspect'].includes(op.tool)) {
+    if(['project_search','task_inspect','project_structure','device_inspect','library_inspect'].includes(op.tool)) {
       if(op.tool==='project_search' && (a.offset>0&&!a.expectedVersion || new Set(a.areas).size!==a.areas.length))
         throw new DomainError('failed','SEARCH_PAGE_VERSION_REQUIRED','续页必须携带首个结果版本，搜索区域不能重复');
       const currentHash=digest(await fs.readFile(s.workingPath));
       if(currentHash!==s.diskHash)throw new DomainError('conflict','READ_DISK_CHANGED','正式读取前工作副本与登记版本不一致；未启动 IDE 或保存');
-      if(a.valueRead&&a.offset!==0)throw new DomainError('conflict','VALUE_PAGE_OFFSET','读取参数值时外层 offset 必须为 0，文本偏移使用 valueRead.offset');
-      if(nativeQuery&&(a.offset>0||a.expectedVersion||a.valueRead))return this.nativePage(op,s,currentHash);
-      return this.bridge(op,({project_search:'search',task_inspect:'tasks',project_structure:'structure',device_inspect:'device'} as Record<string,string>)[op.tool],s,{...a,readDiskHash:currentHash});
+      if((a.valueRead||a.fieldRead)&&a.offset!==0)throw new DomainError('conflict','VALUE_PAGE_OFFSET','读取参数值时外层 offset 必须为 0，文本偏移使用 valueRead.offset');
+      if((nativeQuery||op.tool==='library_inspect')&&(a.offset>0||a.expectedVersion||a.valueRead||a.fieldRead))return this.nativePage(op,s,currentHash);
+      return this.bridge(op,({project_search:'search',task_inspect:'tasks',library_inspect:'libraries',project_structure:'structure',device_inspect:'device'} as Record<string,string>)[op.tool],s,{...a,readDiskHash:currentHash});
     }
     if(op.tool==='declaration_create') {
       if(s.targetKind==='pool' || a.parentId!==s.applicationId)throw new DomainError('conflict','PARENT_MISMATCH','仅允许选定 Application 根节点');
@@ -396,9 +396,9 @@ export class EngineeringService {
   private async nativePage(op:Operation,s:Session,currentHash:string):Promise<Reply> {
     const a=op.args;
     if(!a.expectedVersion)throw new DomainError('conflict','NATIVE_PAGE_VERSION_REQUIRED','续页必须使用原清单版本，未启动 IDE');
-    const source=(await this.store.operations()).find(o=>o.status==='succeeded'&&o.tool===op.tool&&o.args.projectId===a.projectId&&o.args.deviceId===a.deviceId&&
-      o.args.offset===0&&!o.args.valueRead&&(o.response?.data?.readOrigin as any)?.kind==='ide'&&o.response?.data?.version===a.expectedVersion);
-    if(!source || source.response!.data!.diskHash!==currentHash || source.args.maxNodes!==a.maxNodes || source.args.maxParameters!==a.maxParameters)
+    const source=(await this.store.operations()).find(o=>o.status==='succeeded'&&o.tool===op.tool&&o.args.projectId===a.projectId&&o.args.deviceId===a.deviceId&&o.args.applicationId===a.applicationId&&o.args.targetKind===a.targetKind&&
+      o.args.offset===0&&!o.args.valueRead&&!o.args.fieldRead&&(o.response?.data?.readOrigin as any)?.kind==='ide'&&o.response?.data?.version===a.expectedVersion);
+    if(!source || source.response!.data!.diskHash!==currentHash || source.args.maxNodes!==a.maxNodes || source.args.maxParameters!==a.maxParameters || source.args.maxReferences!==a.maxReferences)
       throw new DomainError('conflict','NATIVE_VERSION_CHANGED','未找到同一工程/设备/范围/磁盘版本的原清单，请从第一页重新查询');
     if(!source.project||pathKey(source.project.workingPath)!==pathKey(s.workingPath)||!source.bridge)
       throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原清单归属或证据目录无法确认，保持冻结');

@@ -20,6 +20,24 @@ export class FixtureAdapter implements Adapter {
     let result!:Reply;
     const object=objects.find((o:any)=>o.objectId===a.objectId);
     if(req.command==='inspect') result=reply('succeeded','测试工程副本已打开',{applications:p.applications,poolBuildAvailable:p.applications.length===0&&p.objects.length>0,projectPath:req.projectPath,snapshot:snapshot(),testMode:true});
+    else if(req.command==='libraries') {
+      const managers=(p.libraryManagers || []).filter((m:any)=>m.applicationId===a.applicationId).map(({applicationId,references,...m}:any)=>({...m,enumerationComplete:true,capturedReferences:0}));
+      const references:any[]=[];let truncated=false;
+      for(const m of managers){const original=p.libraryManagers.find((x:any)=>x.managerId===m.managerId&&x.applicationId===a.applicationId);
+        for(const r of original.references){if(references.length>=a.maxReferences){truncated=true;m.enumerationComplete=false;break;}references.push({...r,index:references.length});m.capturedReferences++;}
+        if(original.enumerationError){m.enumerationComplete=false;m.unavailableFields.push({field:'references',reason:original.enumerationError});}
+      }
+      const failures=p.treeReadError?[{path:[],stage:'enumeration',reason:p.treeReadError}]:[];
+      result=reply('succeeded','库引用替身，非真实 IDE',{projectId:a.projectId,applicationId:a.applicationId,targetKind:'application',projectPath:req.projectPath,
+        applicationPath:p.applications.find((x:any)=>x.applicationId===a.applicationId).path,managers,references,
+        scope:{description:'Fixture direct references; not installed repository or transitive dependencies',maxReferences:a.maxReferences,capturedReferences:references.length,truncated,
+          enumerationComplete:!failures.length&&!truncated&&managers.every((m:any)=>m.enumerationComplete),fieldReadComplete:!managers.some((m:any)=>m.unavailableFields.length)&&!references.some(r=>r.unavailableFields.length),enumerationFailures:failures},
+        unavailableMetadata:['Independent version/vendor getters not verified'],limitations:['No recursive dependencies; installed state not queried']});
+      if(p.readMutatesFile)await fs.appendFile(req.projectPath,' ');
+      const after=digest(await fs.readFile(req.projectPath));
+      result.data!.readOnlyEvidence={beforeDiskHash:a.readDiskHash,afterCloseDiskHash:after,postExitDiskHash:after,unchanged:after===a.readDiskHash};
+      if(after!==a.readDiskHash)result={...reply('unknown','测试只读工程文件变化',{priorResult:result}),error:{code:'READ_ONLY_FILE_CHANGED',message:'File changed'}};
+    }
     else if(req.command==='structure'||req.command==='device') {
       const all=p.nativeNodes || [],cap=req.command==='structure'?a.maxNodes:20000,nodes=all.slice(0,cap);
       const treeScope={description:'fixture native tree, not real IDE',maxNodes:cap,capturedNodes:nodes.length,treeComplete:!p.treeReadError&&nodes.length===all.length,
@@ -139,7 +157,7 @@ export class FixtureAdapter implements Adapter {
     result.operationId=req.operationId;
     if(result.data) result.data.diskHash=digest(await fs.readFile(req.projectPath));
     await atomicJson(path.join(dir,'result.json'),result);
-    if(['structure','device','compare_capture'].includes(req.command))await atomicJson(path.join(dir,'observed-after-exit.json'),result);
+    if(['structure','device','libraries','compare_capture'].includes(req.command))await atomicJson(path.join(dir,'observed-after-exit.json'),result);
     return result;
   }
 }

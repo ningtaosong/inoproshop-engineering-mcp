@@ -1,0 +1,96 @@
+{
+  "serverVersion": "0.9.0",
+  "contractVersion": "1.0.0",
+  "tools": [
+    {
+      "name": "environment_inspect",
+      "inputHash": "25c7d85c859a6f78f6f4e83edf2d3073645b7c71d2832348387882a6833b1834",
+      "outputHash": "909f5aa07386346bf7b7cd809a8128c95c9a6f0ad8e553d4a2725e8f031d79c7"
+    },
+    {
+      "name": "session_status",
+      "inputHash": "25c7d85c859a6f78f6f4e83edf2d3073645b7c71d2832348387882a6833b1834",
+      "outputHash": "f01234996852dd126ef47e73c587b1aa336ff47e26a3aece1a67b24e3cf0a8bc"
+    },
+    {
+      "name": "project_list",
+      "inputHash": "25c7d85c859a6f78f6f4e83edf2d3073645b7c71d2832348387882a6833b1834",
+      "outputHash": "9fc220dcd76c25b5dc3f0e317d24ff8f934ebda29a2e0dccfcd80c4ae7fce048"
+    },
+    {
+      "name": "project_open_copy",
+      "inputHash": "1619b1846f77e98786d6fa1473a69191b7e6f689547392eb7f6102f09513c68d",
+      "outputHash": "4cd579d0c6671b05d9ba82bb19cc051fdc890d099f16baa54ab5dbccedf5f1ff"
+    },
+    {
+      "name": "project_activate",
+      "inputHash": "2e02ea81623db59be87f5b103a6983b9f71f4b7602439eca301ff3ac8f3130cd",
+      "outputHash": "51935564fab6e31f3d5f8d60fd82fef9d8956e4b7a7d95b0dc0f3cba35fbca21"
+    },
+    {
+      "name": "object_list",
+      "inputHash": "8133248cbd26d890352b3ba5fa967ce4b43d388e8fa74559801dd4948dbb2436",
+      "outputHash": "d00c5b40c7076e834ce9502afbf090021fb2874387addcac3da441c1d5240b4e"
+    },
+    {
+      "name": "object_read",
+      "inputHash": "8a54bde1bd83b205d2d9862b834fde9ed116eb9e832baf2410569b7f63c97cf8",
+      "outputHash": "bfd91b7b72debcee8f3b6261a0c0e4996622837ec1a0753aed5f17ce8bcc0de0"
+    },
+    {
+      "name": "project_search",
+      "inputHash": "ee1b473f413ff8f3287965d9044f5464b9d692b0a4472a906b82075eb1f24b64",
+      "outputHash": "0519f4bac9a744087978d384d50e85783f9e152f9753188877d77f17b6d9a21f"
+    },
+    {
+      "name": "task_inspect",
+      "inputHash": "814a8b812b991518f1aaef5762b760d224663ad896b91cf1b5e21fa56a8849cc",
+      "outputHash": "b3b1acf1b6cd5bdc7bf295b04b7f34baa299b1b18e954a99a017569da504d00c"
+    },
+    {
+      "name": "project_compare",
+      "inputHash": "6f5b93cd1f018e2f135ddb77fb5e6b930dc289b5b9cb8ccc366918ff6e4c9b6e",
+      "outputHash": "75220d59e7087c41c63178c2b388783f6f5f6f3f19d364c4159cd106f10884c3"
+    },
+    {
+      "name": "project_structure",
+      "inputHash": "604227a9449ec64df43985b9d50d712d78afdb3125056e898a5d68007899bff4",
+      "outputHash": "321d2f8137b4e4d29a87b4cce57d8037bc9fa241d81a8858fb0eebd3226d5f9d"
+    },
+    {
+      "name": "device_inspect",
+      "inputHash": "3447aea246124fc89aaf358d5b8507aa1b60b801d489c68c607f4d34811b9975",
+      "outputHash": "6c150af86510e3ddaa9b3ec6466063be95f118c27214f741963026935d98f13a"
+    },
+    {
+      "name": "pou_create",
+      "inputHash": "1ca2ba7fec2e3f136969482803aad9ec9a4cc56870951ce8bfa1784ef51180e3",
+      "outputHash": "3230a8e6039b817cb07b71291b88fa2b5c6268df3039f1868a2686ada6e3098d"
+    },
+    {
+      "name": "declaration_create",
+      "inputHash": "f6a4e3617c987cc8b6707b8371abdd8606b955ac0cafd21560f385133bf0ce2f",
+      "outputHash": "3230a8e6039b817cb07b71291b88fa2b5c6268df3039f1868a2686ada6e3098d"
+    },
+    {
+      "name": "code_apply_change",
+      "inputHash": "9aff476d10b0bf0573e91dd214fc6fc8cf7f831b0be1da0e68af013d1151eecd",
+      "outputHash": "8ca3cb39b1c4fe24682db4b7c09a92c900dc583ca60bdded5dc408d84e68db10"
+    },
+    {
+      "name": "project_build",
+      "inputHash": "384be7421058789d1f25af3eea3b526c59b6777647f8fcb0e7b279102f425419",
+      "outputHash": "c8734dc99f7c7089507105035f1833a79f4c62990a1219410789c436f11d2291"
+    },
+    {
+      "name": "project_save",
+      "inputHash": "fe99e2c516b6e34e6b1dfeb228a964df926ec18df8fbfe0ba1abd3ecadccee26",
+      "outputHash": "e56df83e170a17e77d614a42622b44581d9dc4a2cbe024526ebdba9569af31de"
+    },
+    {
+      "name": "operation_status",
+      "inputHash": "b81155cbbcf9fc9617c144115660a9bbeae27ef70fc2326ab5a73801fe7150e2",
+      "outputHash": "4b124d5735caff6d71f9cb1d07b1dd61322c89717ce3075615aecd86162eea4b"
+    }
+  ]
+}

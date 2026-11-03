@@ -19,6 +19,13 @@ function preview(row:any) {
   return {...row,value:null,valuePreview:{text:row.value.slice(0,stringEnd(row.value,0,VALUE_PREVIEW_UNITS)),
     utf16Length:row.value.length,sha256:digest(row.value),complete:false}};
 }
+function libraryPreview(row:any) {
+  const rawFields={...row.rawFields},fieldPreviews={...row.fieldPreviews};
+  for(const [key,value] of Object.entries(rawFields))if(typeof value==='string'&&value.length>VALUE_PREVIEW_UNITS){
+    rawFields[key]=null;fieldPreviews[key]={text:value.slice(0,stringEnd(value,0,VALUE_PREVIEW_UNITS)),utf16Length:value.length,sha256:digest(value),complete:false};
+  }
+  return {...row,rawFields,...(Object.keys(fieldPreviews).length?{fieldPreviews}:{})};
+}
 function tooLarge(source:Reply,index?:number):Reply {
   const d=source.data as any;
   return {...reply('unsupported','原始只读证据已保留，但本项元数据超过返回上限；未将未返回内容视为已读取',{
@@ -32,30 +39,31 @@ function tooLarge(source:Reply,index?:number):Reply {
 export function boundNativeReply(source:Reply):Reply {
   const d=source.data as any;
   if(source.status!=='succeeded'||!d?.version||!d.page||!d.scope||!d.readOrigin)return source;
-  const field=Array.isArray(d.parameters)?'parameters':Array.isArray(d.nodes)?'nodes':null;
+  const field=Array.isArray(d.parameters)?'parameters':Array.isArray(d.nodes)?'nodes':Array.isArray(d.references)?'references':null;
   if(!field)return source;
   if(d.delivery?.bounded===true&&jsonBytes(source)<=NATIVE_REPLY_BYTES)return source;
-  const rows=field==='parameters'?d.parameters.map(preview):d.nodes;
-  const make=(chosen:any[],valueDetail=d.valueDetail):Reply=>{
+  const rows=field==='parameters'?d.parameters.map(preview):field==='references'?d.references.map(libraryPreview):d.nodes;
+  const detailKey=field==='references'?'fieldDetail':'valueDetail';
+  const make=(chosen:any[],valueDetail=d[detailKey]):Reply=>{
     const end=d.page.offset+chosen.length,hasMore=end<d.page.retained;
     return {...source,data:{...d,[field]:chosen,
       page:{...d.page,returned:chosen.length,hasMore,nextOffset:hasMore?end:null},
-      ...(valueDetail?{valueDetail}:{}),
+      ...(valueDetail?{[detailKey]:valueDetail}:{}),
       delivery:{bounded:true,maxReplyBytes:NATIVE_REPLY_BYTES,pageReduced:chosen.length<rows.length||d.delivery?.pageReduced===true,
-        valuePreviewCount:chosen.filter(x=>x.valuePreview).length,
+        valuePreviewCount:chosen.reduce((n,x)=>n+(x.valuePreview?1:0)+Object.keys(x.fieldPreviews || {}).length,0),
         mode:valueDetail?'value-detail':'page',
-        guidance:'页大小可能因体积缩小；按实际 nextOffset 续页。value=null 且带 valuePreview 表示仅预览，按 expectedVersion + valueRead 读取原值；采集截断、字段不可读与输出分页分别判断。'}}};
+        guidance:field==='references'?'页大小可能缩小，按实际 nextOffset 续页；rawFields=null 且 fieldPreviews 对应项表示仅预览，用 expectedVersion + fieldRead 按原清单读原文。枚举完成、字段缺口与分页分别判断。':'页大小可能因体积缩小；按实际 nextOffset 续页。value=null 且带 valuePreview 表示仅预览，按 expectedVersion + valueRead 读取原值；采集截断、字段不可读与输出分页分别判断。'}}};
   };
-  if(d.valueDetail) {
+  if(d[detailKey]) {
     // Value-detail chunks can contain heavily escaped characters. Shrink the text
     // without splitting a surrogate pair; nextOffset reports the actual boundary.
-    const v=d.valueDetail;
+    const v=d[detailKey];
     let low=0,high=v.text.length,best:Reply|undefined;
     while(low<=high){const middle=Math.floor((low+high)/2),end=stringEnd(v.text,0,middle),next=v.offset+end;
       const candidate=make(rows,{...v,text:v.text.slice(0,end),endOffset:next,nextOffset:next<v.totalLength?next:null,hasMore:next<v.totalLength});
       if(jsonBytes(candidate)<=PAGE_BYTES){best=candidate;low=middle+1;}else high=middle-1;
     }
-    if(!best || (v.text.length>0&&(best.data as any).valueDetail.text.length===0))return tooLarge(source,rows[0]?.index);
+    if(!best || (v.text.length>0&&(best.data as any)[detailKey].text.length===0))return tooLarge(source,rows[0]?.index);
     return best;
   }
   let chosen:any[]=[],result=make(chosen);
