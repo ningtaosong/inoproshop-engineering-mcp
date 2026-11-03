@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.7.0 候选版的十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.8.0 候选版的十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -168,10 +168,13 @@
    调用 object_read 读取真实声明、实现和 contentHash，保留未涉及的代码、注释和调用。
    支持的 Application 写入任务先按“离线工程差异对比”节建立本次修改前基线，成功核对后才能进入第3步。
 3. 根据需求生成完整声明与实现，调用 code_apply_change，并携带读取到的 expectedHash。
-   需要新建 ST 功能块时，先确认完整对象列表中没有可见同名对象，再以当前 project_open_copy 或 project_build
-   返回的 snapshot 调用 pou_create：targetKind=application、parentId=applicationId、pouType=function_block。
-   name 必须是合法标识符，declaration 必须以同名 FUNCTION_BLOCK 声明开始；目前仅支持 Application 根节点。
-   创建返回新的真实 objectId、完整路径、检查点、contentHash 和保存重开证据；随后按该 GUID 读取并接入已有程序。
+   新建 ST POU 先核对完整命名范围无同名对象，在首次写入前建立上述工作副本基线，再携带当前 snapshot 调用
+   pou_create：仅精确 Application 根，parentId=applicationId；pouType=function_block、program 或 function。
+   expectedSnapshot 用最近工程操作返回的文本 snapshot（打开、创建、修改或编译），不是 project_compare 的 snapshot.version；创建后下次使用新返回值。
+   name 为合法标识符，完整 declaration 首部必须分别为同名 FUNCTION_BLOCK、PROGRAM、FUNCTION。
+   FUNCTION 首版仅支持显式 returnType=DINT，首部须同名 FUNCTION name : DINT（类型后换行）；不传、其他返回类型或首部不符时停止，不替换类型。其他两类不得传 returnType；三类均提供完整声明与实现。
+   创建后按新 GUID、原生 POU 身份、类型首部、函数返回声明及全文核对；本次未取得可用的独立类型/返回值 getter，pouTypeSource 明示此依据，不假称独立属性读回。PROGRAM/FUNCTION 保留 objectType=st_pou，pouType 细分；FB 仍为 function_block。
+   PROGRAM 不自动加入任务。要求接入时，在授权已有程序中使用可编译的程序调用，再由程序调用函数，不能把闲置对象或未编译当成接入通过，不修改任务配置。创建返回检查点、内容及保存重开证据；仍须最终编译/保存重开/必要复编/全文读回和本轮前后比较，不代替运行验证。
    GVL/结构体按上面的声明类流程使用 declaration_create；读取无实现标记后只提交声明，不能虚构实现区。
    OBJECT_EXISTS 不允许覆盖、改名已有对象或偷偷换名绕过用户意图；SNAPSHOT_CONFLICT 先重新核对工程。
    每个业务动作使用全新的 requestId。相同动作丢失响应时查询或复用原 requestId，不分配新编号重试。

@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.7.0",
+  "serverVersion": "0.8.0",
   "contractVersion": "1.0.0",
   "toolCount": 18,
   "tools": [
@@ -840,6 +840,21 @@
                     "contentHash": {
                       "type": "string",
                       "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "pouType": {
+                      "type": "string",
+                      "enum": [
+                        "function_block",
+                        "program",
+                        "function"
+                      ]
+                    },
+                    "returnType": {
+                      "type": "string"
+                    },
+                    "pouTypeSource": {
+                      "type": "string",
+                      "const": "native-pou-type-id-and-declaration-header"
                     }
                   },
                   "additionalProperties": false
@@ -1021,6 +1036,21 @@
               "contentHash": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "pouType": {
+                "type": "string",
+                "enum": [
+                  "function_block",
+                  "program",
+                  "function"
+                ]
+              },
+              "returnType": {
+                "type": "string"
+              },
+              "pouTypeSource": {
+                "type": "string",
+                "const": "native-pou-type-id-and-declaration-header"
               }
             },
             "additionalProperties": {}
@@ -1425,6 +1455,21 @@
                     "contentHash": {
                       "type": "string",
                       "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "pouType": {
+                      "type": "string",
+                      "enum": [
+                        "function_block",
+                        "program",
+                        "function"
+                      ]
+                    },
+                    "returnType": {
+                      "type": "string"
+                    },
+                    "pouTypeSource": {
+                      "type": "string",
+                      "const": "native-pou-type-id-and-declaration-header"
                     },
                     "region": {
                       "type": "string",
@@ -2768,6 +2813,21 @@
                         "structure",
                         "task"
                       ]
+                    },
+                    "pouType": {
+                      "type": "string",
+                      "enum": [
+                        "function_block",
+                        "program",
+                        "function"
+                      ]
+                    },
+                    "returnType": {
+                      "type": "string"
+                    },
+                    "pouTypeSource": {
+                      "type": "string",
+                      "const": "native-pou-type-id-and-declaration-header"
                     },
                     "beforeIdentity": {
                       "type": "array",
@@ -4504,7 +4564,15 @@
           },
           "pouType": {
             "type": "string",
-            "const": "function_block"
+            "enum": [
+              "function_block",
+              "program",
+              "function"
+            ]
+          },
+          "returnType": {
+            "type": "string",
+            "const": "DINT"
           },
           "declaration": {
             "type": "string",
@@ -4589,7 +4657,12 @@
               },
               "objectType": {
                 "type": "string",
-                "const": "function_block"
+                "enum": [
+                  "st_pou",
+                  "function_block",
+                  "gvl",
+                  "structure"
+                ]
               },
               "hasImplementation": {
                 "type": "boolean"
@@ -4608,6 +4681,21 @@
               "contentHash": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "pouType": {
+                "type": "string",
+                "enum": [
+                  "function_block",
+                  "program",
+                  "function"
+                ]
+              },
+              "returnType": {
+                "type": "string"
+              },
+              "pouTypeSource": {
+                "type": "string",
+                "const": "native-pou-type-id-and-declaration-header"
               },
               "snapshot": {
                 "type": "string",
@@ -4837,6 +4925,21 @@
               "contentHash": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "pouType": {
+                "type": "string",
+                "enum": [
+                  "function_block",
+                  "program",
+                  "function"
+                ]
+              },
+              "returnType": {
+                "type": "string"
+              },
+              "pouTypeSource": {
+                "type": "string",
+                "const": "native-pou-type-id-and-declaration-header"
               },
               "snapshot": {
                 "type": "string",
@@ -5073,6 +5176,21 @@
               "contentHash": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "pouType": {
+                "type": "string",
+                "enum": [
+                  "function_block",
+                  "program",
+                  "function"
+                ]
+              },
+              "returnType": {
+                "type": "string"
+              },
+              "pouTypeSource": {
+                "type": "string",
+                "const": "native-pou-type-id-and-declaration-header"
               },
               "snapshot": {
                 "type": "string",

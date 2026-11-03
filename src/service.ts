@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { type Config, type Adapter, ROOT } from './adapter.js';
 import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
-import { CONTRACT, VERSION, DomainError, reply, replySchema, functionBlockName, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema, type Reply } from './contracts.js';
+import { CONTRACT, VERSION, DomainError, reply, replySchema, pouDeclarationMatches, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema, type Reply } from './contracts.js';
 import {searchResult,taskResult,nativeInventoryResult} from './queries.js';
 import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
@@ -293,10 +293,13 @@ export class EngineeringService {
       if(command==='create') {
         const expectedPath=[...(session?.applications?.find(x=>x.applicationId===args.applicationId)?.path || []),args.name];
         if(d!.applicationId!==args.applicationId || d!.parentId!==args.parentId || d!.parentId!==args.applicationId || d!.name!==args.name ||
-          d!.objectType!=='function_block' || d!.language!=='ST' || d!.created!==true || typeof d!.objectId!=='string' ||
+          d!.objectType!==(args.pouType==='function_block'?'function_block':'st_pou') || d!.language!=='ST' ||
+          (d!.hasImplementation!==true&&(args.pouType!=='function_block'||d!.hasImplementation!==undefined)) || d!.created!==true || typeof d!.objectId!=='string' ||
           !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(d!.objectId) || d!.objectId===args.parentId ||
           canonical(d!.path)!==canonical(expectedPath) || typeof d!.declaration!=='string' || typeof d!.implementation!=='string' ||
-          functionBlockName(d!.declaration as string)?.toLowerCase()!==args.name.toLowerCase() ||
+          !pouDeclarationMatches(args.pouType,args.name,d!.declaration as string,args.returnType) ||
+          (d!.pouType!==undefined?d!.pouType!==args.pouType:args.pouType!=='function_block') ||
+          (args.pouType==='function'?d!.returnType?.toString().toUpperCase()!==args.returnType:d!.returnType!==undefined) ||
           codeHash(d!.declaration as string,d!.implementation as string)!==d!.contentHash || d!.contentHash!==codeHash(args.declaration,args.implementation) ||
           d!.beforeSnapshot!==args.expectedSnapshot || !isHash(d!.snapshot) || d!.snapshot===d!.beforeSnapshot || !isHash(d!.diskHash) ||
           d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project') || d!.persistedToWorkingCopy!==true || d!.reopened!==true) invalid();
@@ -379,9 +382,9 @@ export class EngineeringService {
     }
     if(op.tool==='pou_create') {
       if(s.targetKind==='pool' || a.parentId!==s.applicationId)
-        throw new DomainError('conflict','PARENT_MISMATCH','本轮仅允许在选定 Application GUID 根节点创建功能块');
-      if(a.pouType!=='function_block' || !/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(a.name) || functionBlockName(a.declaration)?.toLowerCase()!==a.name.toLowerCase())
-        throw new DomainError('failed','INVALID_POU_DECLARATION','仅支持 ST FUNCTION_BLOCK，声明首部名称必须与 name 一致');
+        throw new DomainError('conflict','PARENT_MISMATCH','仅允许在选定 Application GUID 根节点创建 ST POU');
+      if(!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(a.name) || !pouDeclarationMatches(a.pouType,a.name,a.declaration,a.returnType))
+        throw new DomainError('failed','INVALID_POU_DECLARATION','ST POU 声明类型/名称必须匹配；FUNCTION 必须显式声明与参数一致的 DINT 返回类型');
     }
     const commands:Record<string,string>={object_list:'list',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save'};
     const command=commands[op.tool];

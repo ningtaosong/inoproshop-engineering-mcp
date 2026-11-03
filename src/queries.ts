@@ -48,6 +48,7 @@ export function searchResult(raw:Reply,a:any):Reply {
       if(from>0&&/[\uDC00-\uDFFF]/.test(source[from]))from--;if(to<source.length&&/[\uDC00-\uDFFF]/.test(source[to]))to++;
       const p=position(source,start),e=position(source,end);
       retained.push({objectId:o.objectId,path:o.path,objectType:o.objectType,contentHash:o.contentHash,region,
+        ...(o.pouType?{pouType:o.pouType,pouTypeSource:o.pouTypeSource,...(o.returnType!==undefined?{returnType:o.returnType}:{})}:{}),
         position:region==='name'?null:{startOffset:start,endOffset:end,...p,endLine:e.line,endColumn:e.column},...(region==='name'?{nameOffset:start}:{}),
         matchedText:source.slice(start,end),context:{text:source.slice(from,to),startOffset:from,endOffset:to},candidateReference:region!=='name'});
     }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.7.0';
+export const VERSION = '0.8.0';
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
 export type State = z.infer<typeof stateSchema>;
 const id = z.string().min(1).max(160);
@@ -38,8 +38,11 @@ export const schemas = {
       limit:z.number().int().min(2).max(2048).default(1024)}).strict().optional()}).strict(),
   pou_create: z.object({ ...request, projectId:uuid, targetKind:z.literal('application').default('application'),
     applicationId:uuid, parentId:uuid, expectedSnapshot:hash,
-    name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/), pouType:z.literal('function_block'),
-    declaration:z.string().min(1).max(500000), implementation:z.string().max(500000) }).strict(),
+    name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/), pouType:z.enum(['function_block','program','function']),
+    returnType:z.literal('DINT').optional(),
+    declaration:z.string().min(1).max(500000), implementation:z.string().max(500000) }).strict()
+    .refine(a=>a.pouType==='function'?a.returnType==='DINT':a.returnType===undefined,
+      'FUNCTION 必须显式 returnType=DINT；其他 POU 不接收 returnType'),
   declaration_create: z.object({ ...request, projectId:uuid, targetKind:z.literal('application').default('application'),
     applicationId:uuid, parentId:uuid, expectedSnapshot:hash,
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/), objectType:z.enum(['gvl','structure']),
@@ -63,7 +66,8 @@ export const replySchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
   error: z.object({code:z.string(),message:z.string()}).optional()
 }).strict();
-const objectFields={objectId:uuid.optional(),applicationId:uuid.nullable().optional(),path:z.array(z.string()).optional(),language:z.literal('ST').optional(),objectType:z.enum(['st_pou','function_block','gvl','structure']).optional(),hasImplementation:z.boolean().optional(),nativeTypeId:uuid.optional(),declaration:z.string().optional(),implementation:z.string().optional(),contentHash:hash.optional()};
+const pouFields={pouType:z.enum(['function_block','program','function']).optional(),returnType:z.string().optional(),pouTypeSource:z.literal('native-pou-type-id-and-declaration-header').optional()};
+const objectFields={objectId:uuid.optional(),applicationId:uuid.nullable().optional(),path:z.array(z.string()).optional(),language:z.literal('ST').optional(),objectType:z.enum(['st_pou','function_block','gvl','structure']).optional(),hasImplementation:z.boolean().optional(),nativeTypeId:uuid.optional(),declaration:z.string().optional(),implementation:z.string().optional(),contentHash:hash.optional(),...pouFields};
 const snapshotFields={snapshot:hash.optional(),diskHash:hash.optional()};
 const failureRow=z.object({objectId:uuid.optional(),nativeTypeId:uuid.optional(),path:z.array(z.string()),stage:z.string(),reason:z.string()});
 export const readEvidenceSchema=z.object({beforeDiskHash:hash,afterCloseDiskHash:hash,postExitDiskHash:hash.optional(),unchanged:z.boolean()});
@@ -71,7 +75,7 @@ export const searchDataSchema=z.object({projectId:uuid,applicationId:uuid.nullab
   version:hash,query:z.string(),caseSensitive:z.boolean(),areas:z.array(z.enum(['name','declaration','implementation'])),
   scope:z.object({description:z.string(),applicationPath:z.array(z.string()),treeComplete:z.boolean(),eligibleObjects:z.number().int(),readObjects:z.number().int(),
     coverageComplete:z.boolean(),skippedObjects:z.array(failureRow),readFailures:z.array(failureRow),enumerationFailures:z.array(failureRow)}),
-  matches:z.array(z.object({objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure']),contentHash:hash,
+  matches:z.array(z.object({objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure']),contentHash:hash,...pouFields,
     region:z.enum(['name','declaration','implementation']),position:z.object({startOffset:z.number().int(),endOffset:z.number().int(),line:z.number().int(),column:z.number().int(),endLine:z.number().int(),endColumn:z.number().int()}).nullable(),
     nameOffset:z.number().int().optional(),matchedText:z.string(),context:z.object({text:z.string(),startOffset:z.number().int(),endOffset:z.number().int()}),candidateReference:z.boolean()})),
   page:z.object({offset:z.number().int(),limit:z.number().int(),returned:z.number().int(),hasMore:z.boolean(),nextOffset:z.number().int().nullable(),retainedMatches:z.number().int(),maxResults:z.number().int(),truncated:z.boolean(),totalMatches:z.number().int().nullable(),matchedAtLeast:z.number().int()}),
@@ -115,7 +119,7 @@ export const comparisonSnapshotSchema=z.object({projectId:uuid,applicationId:uui
 const comparisonCounts=z.object({added:z.number().int(),deleted:z.number().int(),modified:z.number().int(),unchanged:z.number().int(),incomparable:z.number().int()});
 export const comparisonDataSchema=z.object({mode:z.enum(['capture','compare']),snapshot:comparisonSnapshotSchema.optional(),version:hash.optional(),baseline:comparisonSnapshotSchema.optional(),target:comparisonSnapshotSchema.optional(),
   counts:z.object({object:comparisonCounts,task:comparisonCounts}).optional(),coverageComplete:z.boolean().optional(),
-  items:z.array(z.object({index:z.number().int(),kind:z.enum(['object','task']),relativePath:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','task']),
+  items:z.array(z.object({index:z.number().int(),kind:z.enum(['object','task']),relativePath:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','task']),...pouFields,
     beforeIdentity:z.array(z.object({objectId:uuid,path:z.array(z.string())})),afterIdentity:z.array(z.object({objectId:uuid,path:z.array(z.string())})),category:z.enum(['added','deleted','modified','unchanged','incomparable']),
     changes:z.array(z.record(z.string(),z.unknown())),reasons:z.array(z.string())}).passthrough()).optional(),
   page:z.object({offset:z.number().int(),limit:z.number().int(),returned:z.number().int(),total:z.number().int(),hasMore:z.boolean(),nextOffset:z.number().int().nullable(),pageReduced:z.boolean()}).optional(),
@@ -136,7 +140,7 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   declaration_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),parentId:uuid.optional(),
     created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),
     recovery:z.object({status:stateSchema}).passthrough().optional()}).passthrough(),
-  pou_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),parentId:uuid.optional(),objectType:z.literal('function_block').optional(),
+  pou_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),parentId:uuid.optional(),
     created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),
     recovery:z.object({status:stateSchema}).passthrough().optional()}).passthrough(),
   code_apply_change:z.object({...objectFields,...snapshotFields,checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),recovery:z.object({status:stateSchema}).passthrough().optional()}).passthrough(),
@@ -149,6 +153,21 @@ export const outputSchemas=Object.fromEntries(Object.entries(payloads).map(([nam
 export function functionBlockName(declaration:string):string|undefined {
   const source=declaration.replace(/\(\*[\s\S]*?\*\)/g,' ').replace(/\/\/[^\r\n]*/g,' ');
   return /^\s*FUNCTION_BLOCK\s+([A-Za-z_][A-Za-z0-9_]*)\b/i.exec(source)?.[1];
+}
+// Header identity only; it is not a complete ST parser. Return type is read from the native declaration.
+export function pouHeader(declaration:string):{pouType:string;name:string;returnType?:string}|undefined {
+  const source=declaration.replace(/\(\*[\s\S]*?\*\)/g,' ').replace(/\/\/[^\r\n]*/g,' ');
+  const m=/^\s*(FUNCTION_BLOCK|PROGRAM|FUNCTION)\s+([A-Za-z_][A-Za-z0-9_]*)\b/i.exec(source);
+  if(!m)return;
+  const pouType=m[1].toLowerCase();
+  if(pouType!=='function')return {pouType,name:m[2]};
+  const result=/^\s*:\s*([^\r\n]+)/.exec(source.slice(m[0].length));
+  return result?{pouType,name:m[2],returnType:result[1].trim()}:undefined;
+}
+export function pouDeclarationMatches(kind:string,name:string,declaration:string,returnType?:string):boolean {
+  const h=pouHeader(declaration);
+  return !!h && h.pouType===kind && h.name.toLowerCase()===name.toLowerCase() &&
+    (kind==='function'?returnType==='DINT'&&h.returnType?.toUpperCase()==='DINT':returnType===undefined);
 }
 // Narrow declaration kind guard, not an ST parser. Real syntax is checked by the IDE compiler.
 export function declarationMatches(kind:string,name:string,declaration:string):boolean {

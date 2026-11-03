@@ -84,12 +84,16 @@ class Lifecycle(unittest.TestCase):
         f.project.save=save;f.project.close=close;f.manager.open=opened
         return f,calls
     def test_creation_reopen_failure_never_rolls_back_persisted_object_or_recloses(self):
-        for kind in ['function_block','gvl','structure']:
+        for kind in ['function_block','program','function','gvl','structure']:
             with self.subTest(kind=kind):
                 f,calls=self.creation_fixture();state=f.env['lifecycle_state'](f.project,f.req['projectPath'])
                 f.env['scriptengine'].DutType=SimpleNamespace(Structure='Structure')
                 args=dict(f.args)
-                if kind!='function_block':
+                if kind in ['program','function']:
+                    name='PRG_Test' if kind=='program' else 'F_Test'
+                    args.update(name=name,pouType=kind,declaration=('PROGRAM '+name) if kind=='program' else ('FUNCTION '+name+' : DINT'))
+                    if kind=='function':args['returnType']='DINT'
+                elif kind!='function_block':
                     name='GVL_Test' if kind=='gvl' else 'ST_Test'
                     args.update(name=name,objectType=kind,declaration='VAR_GLOBAL\n X:INT;\nEND_VAR' if kind=='gvl' else 'TYPE ST_Test : STRUCT X:INT; END_STRUCT END_TYPE')
                     args.pop('pouType');args.pop('implementation')
