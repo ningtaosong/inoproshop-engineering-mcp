@@ -91,8 +91,8 @@ class Lifecycle(unittest.TestCase):
                 args=dict(f.args)
                 if kind in ['program','function']:
                     name='PRG_Test' if kind=='program' else 'F_Test'
-                    args.update(name=name,pouType=kind,declaration=('PROGRAM '+name) if kind=='program' else ('FUNCTION '+name+' : DINT'))
-                    if kind=='function':args['returnType']='DINT'
+                    args.update(name=name,pouType=kind,declaration=('PROGRAM '+name) if kind=='program' else ('FUNCTION '+name+' : TIME'))
+                    if kind=='function':args['returnType']='TIME'
                 elif kind!='function_block':
                     name='GVL_Test' if kind=='gvl' else 'ST_Test'
                     args.update(name=name,objectType=kind,declaration='VAR_GLOBAL\n X:INT;\nEND_VAR' if kind=='gvl' else 'TYPE ST_Test : STRUCT X:INT; END_STRUCT END_TYPE')

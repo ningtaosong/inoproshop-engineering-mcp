@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.8.0",
+  "serverVersion": "0.9.0",
   "contractVersion": "1.0.0",
   "toolCount": 18,
   "tools": [
@@ -4572,7 +4572,13 @@
           },
           "returnType": {
             "type": "string",
-            "const": "DINT"
+            "enum": [
+              "DINT",
+              "BOOL",
+              "INT",
+              "REAL",
+              "TIME"
+            ]
           },
           "declaration": {
             "type": "string",
