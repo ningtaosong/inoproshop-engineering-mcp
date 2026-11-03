@@ -4,7 +4,7 @@
 
 ## 获取与构建
 
-仓库已公开，main保留已验0.8.0；本轮0.9.0候选在codex/function-return-types分支，新增返回类型的DSH桌面待验。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main保留已验0.8.0；本轮0.9.0候选在codex/function-return-types分支，新增返回类型的本机DSH手动离线闭环已复核通过，仍未合并main。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
 git clone --branch codex/function-return-types https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
@@ -69,7 +69,7 @@ pou_create仍是一项工具，限定精确Application直接根节点，三类�
 | program | PROGRAM 同名对象；不传returnType | 声明和实现；不会自动加入周期任务 |
 | function | FUNCTION 同名对象 : 对应类型，类型后换行；必须显式returnType | 只允许DINT、BOOL、INT、REAL、TIME；缺失或未列类型拒绝，不自动选择或退化为DINT |
 
-创建参数returnType沿用大写枚举，声明名称及返回类型按既有规则不区分大小写核对。STRING、数组、结构体、指针、引用、自定义别名和其他数值类型不在创建范围；此限制不收窄已有对象的读取、检索和比较，不改写其返回声明。
+创建参数returnType沿用大写枚举，声明名称及返回类型按既有规则不区分大小写核对。客户端JSON Schema中的returnType为可选枚举；FUNCTION必填及其他两类禁用由工具说明和服务端条件校验约束，不能仅从required数组推断FUNCTION可以省略。STRING、数组、结构体、指针、引用、自定义别名和其他数值类型不在创建范围；此限制不收窄已有对象的读取、检索和比较，不改写其返回声明。
 
 object_list/object_read保留原objectType分类：功能块为function_block，PROGRAM/FUNCTION为st_pou，由可选pouType细分。returnType来自实际声明首部；本机原生对象没有已核实的独立pou_type/return_type getter，pouTypeSource明确采用原生POU类型身份和声明首部，不伪装独立属性采集。完整原文、版本、创建工厂枚举和真实编译用于核对。
 
@@ -77,6 +77,6 @@ object_list/object_read保留原objectType分类：功能块为function_block，
 
 同名对象不覆盖或静默改名，过期版本先停止；创建/读回失败如实区分failed和unknown，unknown查询原操作，不重放、删锁或换目录。仅沿用已实现的已知新GUID局部失败处理，不承诺通用自动回滚。设备、任务和I/O写入、文件夹、方法/属性/接口及其他语言不扩展。离线编译不证明函数输出、程序调用次数或报警计时在运行中正确。
 
-本轮0.9.0在InoProShop 1.9.1.6的独立受管理AM610副本中，已实际创建BOOL/INT/REAL/TIME四个函数，由新PROGRAM调用并从PLC_PRG接入；统一编译、保存关闭重开、保存版复编、最终全文与基线比较通过。两次均0错误、1条CmpLog警告；DINT和旧两类调用的兼容性由本轮回归及原已验结果支持。当前尚未取得DSH新增四类型的实际接收及桌面对话，不以独立初始化或替身测试代替。没有独立返回类型getter证据，核对依据为实际原生工厂参数、对象身份、声明首部和全文；不声称已观测运行返回值。
+本轮0.9.0在InoProShop 1.9.1.6的独立受管理AM610副本中，已实际创建BOOL/INT/REAL/TIME四个函数，由新PROGRAM调用并从PLC_PRG接入；统一编译、保存关闭重开、保存版复编、最终全文与基线比较通过。两次均0错误、1条CmpLog警告；DINT和旧两类调用的兼容性由本轮回归及原已验结果支持。已取得DSH实际五类型Schema/工具说明及手动工程任务的原记录：32项工程操作成功、最终九对象及两页比较完整，未以独立初始化或替身测试代替。三次辅助PowerShell等待调用失败另存，非工程操作失败；设备/I/O、实际返回值/运行和链接点击仍未验证。没有独立返回类型getter证据，核对依据为实际原生工厂参数、对象身份、声明首部和全文；不声称已观测运行返回值。
 
 新增Schema和指令需要DSH在确认空闲、无未发送输入及当前执行操作后正常重载一次；历史已受控隔离unknown不等于仍在执行。无法确认则保持待办。开发端验证与桌面对话分开记录，不自动发送任务。
