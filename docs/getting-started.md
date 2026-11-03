@@ -4,10 +4,10 @@
 
 ## 获取与构建
 
-仓库已公开，main保留已验0.8.0；本轮0.9.0候选在codex/function-return-types分支，新增返回类型的本机DSH手动离线闭环已复核通过，仍未合并main。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main当前提供0.9.0候选版和十八项工具；新增返回类型的本机DSH手动离线闭环已复核通过。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone --branch codex/function-return-types https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
 npm ci
 npm run build
@@ -21,7 +21,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。试用本功能分支时应为0.9.0和十八项工具，客户端实际收到的pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.8.0的本机客户端及手动工程任务已有证据；0.9.0新增类型的独立初始化不能替代本轮DSH桌面接收及使用验收。
+5. 新对话先让Agent查询环境、会话和工具集合。获取当前版本后应为0.9.0和十八项工具，客户端实际收到的pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.9.0本机客户端接收及手动工程任务已有直接证据；其他部署仍需核对实际加载，独立初始化不能替代客户端接收及使用验收。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
