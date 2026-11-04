@@ -34,6 +34,7 @@
 !/docs/tool-schemas.json
 !/docs/library-inspect.md
 !/docs/enum-dut.md
+!/docs/array-dut.md
 node_modules/
 dist/
 .local/

@@ -80,11 +80,11 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
         // An older reader may have explicitly skipped a DUT now recognised as enum.
         // Keep the path+type match key unchanged; skipped text is not absence evidence.
         const missing=before?t:b;
-        const skippedEnum=isObject&&row.objectType==='enum'&&missing.scope.skippedObjects.some((o:any)=>
+        const skippedEnum=isObject&&['enum','array'].includes(row.objectType)&&missing.scope.skippedObjects.some((o:any)=>
           o.nativeTypeId==='2db5746d-d284-4425-9f7f-2663a34b0ebc'&&canonical(relative(o.path,missing.identity.applicationPath))===canonical(JSON.parse(key)[0]));
         item.category=complete&&!skippedEnum?before?'deleted':'added':'incomparable';
         if(skippedEnum){
-          item.coverageGap={path:JSON.parse(key)[0],stage:'enum-coverage',side:before?'target':'baseline',reason:'Known same-path DUT was skipped; enum addition/deletion cannot be established'};
+          item.coverageGap={path:JSON.parse(key)[0],stage:row.objectType+'-coverage',side:before?'target':'baseline',reason:'Known same-path DUT was skipped; '+row.objectType+' addition/deletion cannot be established'};
           item.reasons.push(item.coverageGap.reason);
         }
         else if(!complete)item.reasons.push('Incomplete coverage: absence cannot establish addition/deletion');
@@ -125,7 +125,7 @@ function preview(value:any):any {
 export function compareReply(b:Snapshot,t:Snapshot,a:any):Reply {
   const items=comparisonItems(b,t),enumGaps=items.filter(i=>i.coverageGap).map(i=>i.coverageGap);
   // Only changed enum-coverage conclusions invalidate an older comparison page token.
-  const version=digest(canonical(enumGaps.length?[b.version,t.version,'enum-coverage-v1']:[b.version,t.version]));
+  const version=digest(canonical(enumGaps.length?[b.version,t.version,enumGaps.some(g=>g.stage==='array-coverage')?'array-coverage-v1':'enum-coverage-v1']:[b.version,t.version]));
   if(a.expectedVersion&&a.expectedVersion!==version)throw new DomainError('conflict','COMPARE_VERSION_CHANGED','对比版本已变化，未混合页面');
   if((a.offset>0||a.detail)&&!a.expectedVersion)throw new DomainError('conflict','COMPARE_VERSION_REQUIRED','续页/详情必须携带本次对比版本');
   const counts=Object.fromEntries(['object','task'].map(kind=>[kind,Object.fromEntries(categories.map(c=>[c,items.filter(i=>i.kind===kind&&i.category===c).length]))]));

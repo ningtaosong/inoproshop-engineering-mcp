@@ -52,7 +52,11 @@ class Node:
         return self.create_declaration(name,'gvl','ffbfa93a-b94d-45fc-a329-229860183b1d','VAR_GLOBAL\nEND_VAR')
 
     def create_dut(self, name, kind, base):
-        assert kind in ('Structure','Enumeration') and base==''
+        assert kind in ('Structure','Enumeration','Alias')
+        if kind=='Alias':
+            self.project.control.setdefault('dut_factory_arguments',[]).append([name,kind,base])
+            return self.create_declaration(name,'array','2db5746d-d284-4425-9f7f-2663a34b0ebc','TYPE '+name+' : '+base+'; END_TYPE\n')
+        assert base==''
         if kind=='Enumeration':
             self.project.control.setdefault('dut_factory_arguments',[]).append([name,kind,base])
             return self.create_declaration(name,'enum','2db5746d-d284-4425-9f7f-2663a34b0ebc',"{attribute 'qualified_only'}\n{attribute 'strict'}\nTYPE "+name+' :\n(\n enum_member := 0\n);\nEND_TYPE')
