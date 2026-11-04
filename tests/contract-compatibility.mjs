@@ -1,6 +1,15 @@
-// The only permitted old-schema difference is this release's additive enum object kind.
+// Each release's additive object-kind extension is removed only for historical checks.
 // Every other property/default/required/limit/order remains part of the historical check.
+export function withoutArrayExtension(value){
+ if(Array.isArray(value))return value.map(withoutArrayExtension);
+ if(!value||typeof value!=='object')return value;
+ const out=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,withoutArrayExtension(v)]));
+ const allowed=[['gvl','structure','enum','array'],['st_pou','function_block','gvl','structure','enum','array'],['st_pou','function_block','gvl','structure','enum','array','task']];
+ if(allowed.some(a=>JSON.stringify(a)===JSON.stringify(value.enum)))out.enum=value.enum.filter(x=>x!=='array');
+ return out;
+}
 export function withoutEnumExtension(value){
+ value=withoutArrayExtension(value);
  if(Array.isArray(value))return value.map(withoutEnumExtension);
  if(!value||typeof value!=='object')return value;
  const out=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,withoutEnumExtension(v)]));
