@@ -1,10 +1,10 @@
 # 安装与 DSH 接入
 
-实测环境为 Windows、InoProShop 1.9.1.6、DSH 0.2.0-rc.2；Node.js要求22或以上。其他电脑和安装组合尚未取得部署验收，路径、设备描述和工程库依赖按实际环境核对。
+实测环境为 Windows、InoProShop 1.9.1.6；既有桌面证据使用DSH 0.2.0-rc.2，0.11.0枚举CLI证据使用DSH 0.2.1-rc.5，分别说明验收范围。Node.js要求22或以上。其他电脑和安装组合尚未取得部署验收，路径、设备描述和工程库依赖按实际环境核对。
 
 ## 获取与构建
 
-仓库已公开，main当前提供0.10.0候选版和十九项工具，包括库依赖只读查询；无需切换候选分支。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main当前提供0.11.0候选版和十九项工具，包括普通枚举DUT及既有库依赖只读查询；无需切换候选分支。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
 git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
@@ -17,13 +17,15 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 
 已有部署更新前先保留本地改动，再正常更新main并安装/构建；不重置已有工作或改换数据目录。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 本机新增Schema接收和用户手动库查询有实际记录，不能视为回答质量全部通过。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
 
+普通枚举创建已并入main，直接从main安装/更新0.11.0候选版；保留已有改动和原MCP数据目录，不必切换原功能分支。客户端须实际收到declaration_create中objectType的enum扩展及本版工作指令，旧Schema不会自动识别。已取得DSH命令行实际接收与创建接入闭环证据，不以独立初始化替代；这不是桌面同会话、点击或运行验收。本次合并收尾未重跑既有构建、类型检查、148/148回归或工程任务。
+
 ## 接入 DSH
 
 1. 备份DSH配置。实测桌面配置入口为 `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml`，以所用DSH版本为准。
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。从main获取本候选时应为0.10.0和十九项工具，并实际收到library_inspect的精确Application、分页、expectedVersion及fieldRead Schema。既有pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.10.0本机客户端接收及手动只读库查询已有直接证据；其他部署仍需核对实际加载，独立初始化不能替代客户端接收及使用验收。
+5. 新对话先让Agent查询环境、会话和工具集合。从main获取本候选时应为0.11.0和十九项工具，declaration_create须含objectType=enum；library_inspect保留精确Application、分页、expectedVersion及fieldRead Schema。既有pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.10.0本机手动只读库查询及0.11.0枚举CLI分别有直接证据；其他部署仍需核对实际加载，不推定为桌面同会话或界面交互通过。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
@@ -90,3 +92,11 @@ object_list/object_read保留原objectType分类：功能块为function_block，
 返回清单区分原生名称/命名空间、占位符声明、当前解析字符串和来源；本机已安装不等于工程已引用，提供解析字符串不等于独立证实库已加载。无法读取的独立版本/厂商或缺失状态如实说明，默认与当前字符串原样保留，不猜字段。不递归传递依赖；没有CmpLog直接引用不足以消除历史警告。只读不追加修改基线/编译/保存；库不自动进入project_compare。长字段会明确预览，按原版本分页或按需读详情，不静默裁剪原始证据。[完整参数和边界](library-inspect.md)。
 
 0.10.0本机桌面实际使用证据：4项工程操作成功（打开1、库查询3），其中2次启动IDE，续页和详情不重采；18项引用按实际字节分页11/7完整送达，一项55字符默认约束原文详情与原IPC长度/摘要一致。没有预览长值，不能将此写成多段长值桌面验收通过。另有2次辅助PowerShell存在性检查退出失败，不计为工程失败，也不隐去；最终答复仍外露内部字段、贴完整表且有范围措辞勘误，现有简洁规则不因此重复追加。独立getter、安装/传递依赖、点击/运行等限制保持。其他部署仍应核对实际客户端；无需为阅读此记录再次重载或重跑任务。
+
+## 创建普通枚举 DUT（0.11.0候选）
+
+使用现有declaration_create，objectType=enum；精确Application直接根节点、当前expectedSnapshot及完整同名TYPE声明，只有声明区。每个成员须显式指定十进制整数-32768..32767，成员名称（忽略大小写）和值各不重复；不开放属性、显式基类型、表达式、别名、子范围、数组或继承。原结构体/GVL和POU参数保持兼容。[完整范围、工厂证据与边界](enum-dut.md)。
+
+例如让Agent创建E_DemoState（Idle=0、Running=1、Fault=2），创建PROGRAM以该类型变量和限定成员名执行CASE，再仅在PLC_PRG接入新程序。先读真实源码与任务并固定范围，首写前采集working-copy基线；逐项创建读回后统一真实编译、保存关闭重开、必要复编、最终全文/可读任务核对及同副本前后比较。PROGRAM不自动加入周期任务。编译与源码调用不是状态切换、输出或运行验证；设备/I/O不在比较覆盖内。内部身份与版本由Agent处理，用户无需填写。
+
+本机已按明确授权使用DSH 0.2.1-rc.5安装包自带CLI及已有headless profile执行一次枚举任务；`dsh-ops`提供终端/文件工具及运维命令，不等于外部任务入口。使用CLI前核对该安装版帮助和实际profile/MCP配置；标准输入提交、`--json`会话事件、持久化终态与原操作证据分别核对，不能把CLI退出或投影预览当工程成功。沿用原MCP数据目录及排他机制，不能换目录绕过冻结；超时查询原任务，不重发写入。CLI运行与桌面运行分别记证据，不自动推定共享同一会话或加载状态。[实际验收范围](enum-dut.md#dsh-命令行验收2026-11-04)。

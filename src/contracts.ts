@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.10.0';
+export const VERSION = '0.11.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -52,10 +52,10 @@ export const schemas = {
       'FUNCTION 必须显式指定 DINT/BOOL/INT/REAL/TIME；其他 POU 不接收 returnType'),
   declaration_create: z.object({ ...request, projectId:uuid, targetKind:z.literal('application').default('application'),
     applicationId:uuid, parentId:uuid, expectedSnapshot:hash,
-    name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/), objectType:z.enum(['gvl','structure']),
+    name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/), objectType:z.enum(['gvl','structure','enum']),
     declaration:z.string().min(1).max(500000) }).strict(),
   code_apply_change: z.object({ ...request, ...target, objectId: uuid, expectedHash: hash,
-    declaration: z.string().max(500000), implementation: z.string().max(500000).optional(), objectType:z.enum(['gvl','structure']).optional() }).strict(),
+    declaration: z.string().max(500000), implementation: z.string().max(500000).optional(), objectType:z.enum(['gvl','structure','enum']).optional() }).strict(),
   project_build: z.object({ ...request, ...target }).strict(),
   project_save: z.object({ ...request, ...target, expectedSnapshot: hash }).strict(),
   operation_status: z.object({ operationId: uuid.optional(), requestId: id.optional(), reconcile: z.boolean().default(false) })
@@ -74,7 +74,7 @@ export const replySchema = z.object({
   error: z.object({code:z.string(),message:z.string()}).optional()
 }).strict();
 const pouFields={pouType:z.enum(['function_block','program','function']).optional(),returnType:z.string().optional(),pouTypeSource:z.literal('native-pou-type-id-and-declaration-header').optional()};
-const objectFields={objectId:uuid.optional(),applicationId:uuid.nullable().optional(),path:z.array(z.string()).optional(),language:z.literal('ST').optional(),objectType:z.enum(['st_pou','function_block','gvl','structure']).optional(),hasImplementation:z.boolean().optional(),nativeTypeId:uuid.optional(),declaration:z.string().optional(),implementation:z.string().optional(),contentHash:hash.optional(),...pouFields};
+const objectFields={objectId:uuid.optional(),applicationId:uuid.nullable().optional(),path:z.array(z.string()).optional(),language:z.literal('ST').optional(),objectType:z.enum(['st_pou','function_block','gvl','structure','enum']).optional(),hasImplementation:z.boolean().optional(),nativeTypeId:uuid.optional(),declaration:z.string().optional(),implementation:z.string().optional(),contentHash:hash.optional(),...pouFields};
 const snapshotFields={snapshot:hash.optional(),diskHash:hash.optional()};
 const failureRow=z.object({objectId:uuid.optional(),nativeTypeId:uuid.optional(),path:z.array(z.string()),stage:z.string(),reason:z.string()});
 export const readEvidenceSchema=z.object({beforeDiskHash:hash,afterCloseDiskHash:hash,postExitDiskHash:hash.optional(),unchanged:z.boolean()});
@@ -82,7 +82,7 @@ export const searchDataSchema=z.object({projectId:uuid,applicationId:uuid.nullab
   version:hash,query:z.string(),caseSensitive:z.boolean(),areas:z.array(z.enum(['name','declaration','implementation'])),
   scope:z.object({description:z.string(),applicationPath:z.array(z.string()),treeComplete:z.boolean(),eligibleObjects:z.number().int(),readObjects:z.number().int(),
     coverageComplete:z.boolean(),skippedObjects:z.array(failureRow),readFailures:z.array(failureRow),enumerationFailures:z.array(failureRow)}),
-  matches:z.array(z.object({objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure']),contentHash:hash,...pouFields,
+  matches:z.array(z.object({objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum']),contentHash:hash,...pouFields,
     region:z.enum(['name','declaration','implementation']),position:z.object({startOffset:z.number().int(),endOffset:z.number().int(),line:z.number().int(),column:z.number().int(),endLine:z.number().int(),endColumn:z.number().int()}).nullable(),
     nameOffset:z.number().int().optional(),matchedText:z.string(),context:z.object({text:z.string(),startOffset:z.number().int(),endOffset:z.number().int()}),candidateReference:z.boolean()})),
   page:z.object({offset:z.number().int(),limit:z.number().int(),returned:z.number().int(),hasMore:z.boolean(),nextOffset:z.number().int().nullable(),retainedMatches:z.number().int(),maxResults:z.number().int(),truncated:z.boolean(),totalMatches:z.number().int().nullable(),matchedAtLeast:z.number().int()}),
@@ -137,7 +137,7 @@ export const comparisonSnapshotSchema=z.object({projectId:uuid,applicationId:uui
 const comparisonCounts=z.object({added:z.number().int(),deleted:z.number().int(),modified:z.number().int(),unchanged:z.number().int(),incomparable:z.number().int()});
 export const comparisonDataSchema=z.object({mode:z.enum(['capture','compare']),snapshot:comparisonSnapshotSchema.optional(),version:hash.optional(),baseline:comparisonSnapshotSchema.optional(),target:comparisonSnapshotSchema.optional(),
   counts:z.object({object:comparisonCounts,task:comparisonCounts}).optional(),coverageComplete:z.boolean().optional(),
-  items:z.array(z.object({index:z.number().int(),kind:z.enum(['object','task']),relativePath:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','task']),...pouFields,
+  items:z.array(z.object({index:z.number().int(),kind:z.enum(['object','task']),relativePath:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','task']),...pouFields,
     beforeIdentity:z.array(z.object({objectId:uuid,path:z.array(z.string())})),afterIdentity:z.array(z.object({objectId:uuid,path:z.array(z.string())})),category:z.enum(['added','deleted','modified','unchanged','incomparable']),
     changes:z.array(z.record(z.string(),z.unknown())),reasons:z.array(z.string())}).passthrough()).optional(),
   page:z.object({offset:z.number().int(),limit:z.number().int(),returned:z.number().int(),total:z.number().int(),hasMore:z.boolean(),nextOffset:z.number().int().nullable(),pageReduced:z.boolean()}).optional(),
@@ -189,9 +189,25 @@ export function pouDeclarationMatches(kind:string,name:string,declaration:string
     (kind==='function'?(FUNCTION_RETURN_TYPES as readonly string[]).includes(returnType ?? '')&&h.returnType?.toUpperCase()===returnType:returnType===undefined);
 }
 // Narrow declaration kind guard, not an ST parser. Real syntax is checked by the IDE compiler.
-export function declarationMatches(kind:string,name:string,declaration:string):boolean {
-  const s=declaration.replace(/'(?:\$[\s\S]|''|[^'])*'/g,"'literal'").replace(/\(\*[\s\S]*?\*\)/g,' ').replace(/\/\/[^\r\n]*/g,' ').replace(/\{[^{}]*\}/g,' ').trim();
+export function declarationMatches(kind:string,name:string,declaration:string,writing=false):boolean {
+  const comments=declaration.replace(/'(?:\$[\s\S]|''|[^'])*'/g,"'literal'").replace(/\(\*[\s\S]*?\*\)/g,' ').replace(/\/\/[^\r\n]*/g,' ');
+  // Enum writes are intentionally narrower than factory declaration recognition.
+  if(kind==='enum' && writing && /[{}]/.test(comments))return false;
+  const s=comments.replace(/\{[^{}]*\}/g,' ').trim();
   if(kind==='gvl')return /^VAR_GLOBAL\b[\s\S]*\bEND_VAR\s*$/i.test(s) && !/\b(?:TYPE|END_TYPE|STRUCT|END_STRUCT|UNION|END_UNION|PROGRAM|FUNCTION_BLOCK|FUNCTION)\b/i.test(s);
+  if(kind==='enum'){
+    const m=/^TYPE\s+([A-Za-z_][A-Za-z0-9_]{0,62})\s*:\s*\(([\s\S]*)\)\s*;\s*END_TYPE\s*$/i.exec(s);
+    if(!m || m[1].toLowerCase()!==name.toLowerCase())return false;
+    const names=new Set<string>(),values=new Set<number>();
+    for(const part of m[2].split(',')){
+      const member=/^\s*([A-Za-z_][A-Za-z0-9_]{0,62})\s*:=\s*([+-]?\d+)\s*$/.exec(part);
+      if(!member)return false;
+      const value=Number(member[2]),key=member[1].toLowerCase();
+      if(!Number.isInteger(value)||value< -32768||value>32767||names.has(key)||values.has(value))return false;
+      names.add(key);values.add(value);
+    }
+    return names.size>0;
+  }
   const m=/^TYPE\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*STRUCT\b[\s\S]*\bEND_STRUCT\s*END_TYPE\s*$/i.exec(s);
   return kind==='structure' && m?.[1].toLowerCase()===name.toLowerCase() && !/\b(?:UNION|END_UNION|EXTENDS|VAR_GLOBAL)\b/i.test(s) && (s.match(/\bSTRUCT\b/gi)||[]).length===1;
 }

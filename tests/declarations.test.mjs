@@ -46,9 +46,9 @@ test('声明对象的相同 GUID 跨工程隔离，旧目标请求不能写入�
  const back=await c.done(await c.call('object_read',{...target(a.session),objectId:r.data.objectId}));assert.equal(back.data.declaration,declaration);
 });
 
-test('声明创建不接受枚举/联合体/池/文件夹类型或实现参数',()=>{
+test('声明创建不接受联合体/池/文件夹类型或实现参数；结构体不接受枚举声明',()=>{
  const args={requestId:'x',projectId:app,applicationId:app,parentId:app,expectedSnapshot:'a'.repeat(64),name:'X',objectType:'structure',declaration};
- for(const extra of [{objectType:'enum'},{objectType:'union'},{targetKind:'pool'},{implementation:''},{name:'../X'}])assert.equal(schemas.declaration_create.safeParse({...args,...extra}).success,false);
+ for(const extra of [{objectType:'union'},{targetKind:'pool'},{implementation:''},{name:'../X'}])assert.equal(schemas.declaration_create.safeParse({...args,...extra}).success,false);
  assert.equal(declarationMatches('structure','X','TYPE X : (A, B); END_TYPE'),false);
  assert.equal(declarationMatches('structure','X','TYPE X : UNION A : INT; END_UNION END_TYPE'),false);
  assert.equal(declarationMatches('gvl','X',"VAR_GLOBAL\n Message : STRING := 'TYPE // STRUCT';\nEND_VAR"),true);

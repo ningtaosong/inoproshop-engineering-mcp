@@ -33,6 +33,7 @@
 !/docs/post-change-baseline-compare.md
 !/docs/tool-schemas.json
 !/docs/library-inspect.md
+!/docs/enum-dut.md
 node_modules/
 dist/
 .local/

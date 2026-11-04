@@ -4,6 +4,7 @@ import {z} from 'zod';
 import {outputSchemas} from '../dist/contracts.js';
 import {setup,connect,app,app2} from './helpers.mjs';import {schemas,libraryDataSchema} from '../dist/contracts.js';
 import {IdeAdapter} from '../dist/adapter.js';import {digest,atomicJson} from '../dist/storage.js';import {EventEmitter} from 'node:events';
+import {withoutEnumExtension} from './contract-compatibility.mjs';
 const type='adb5cb65-8e1d-4a00-b70a-375ea27582f3',mid='40000000-0000-4000-8000-000000000001';
 function manager(id=mid,applicationId=app,tail='库管理器',values){const prefix=['设备',applicationId===app?'应用一':'应用二',tail];
  const rows=values||[{id:'1',name:'普通库, 1.2.3 (厂商)',namespace:'中文',is_placeholder:false,is_managed:true},
@@ -16,7 +17,7 @@ async function ctx(t,extra={}){const e=await setup({libraryManagers:[manager(),m
 test('十九工具、只读Schema；十八个原输入输出Schema逐项兼容',async t=>{
  const x=await ctx(t),tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,19);const tool=tools.find(t=>t.name==='library_inspect');assert.equal(tool.annotations.readOnlyHint,true);assert(tool.outputSchema);
  const old=JSON.parse(await readFile('tests/fixtures/library-legacy-contracts.json','utf8'));
- for(const expected of old.tools){const actual=tools.find(t=>t.name===expected.name);assert(actual);assert.equal(digest(JSON.stringify(z.toJSONSchema(schemas[expected.name],{io:'input'}))),expected.inputHash,expected.name+' input');assert.equal(digest(JSON.stringify(z.toJSONSchema(outputSchemas[expected.name]))),expected.outputHash,expected.name+' output');}
+ for(const expected of old.tools){const actual=tools.find(t=>t.name===expected.name);assert(actual);assert.equal(digest(JSON.stringify(withoutEnumExtension(z.toJSONSchema(schemas[expected.name],{io:'input'})))),expected.inputHash,expected.name+' input');assert.equal(digest(JSON.stringify(withoutEnumExtension(z.toJSONSchema(outputSchemas[expected.name])))),expected.outputHash,expected.name+' output');}
  for(const args of [{applicationId:null},{targetKind:'pool'},{save:true},{limit:201},{maxReferences:0},{fieldRead:{referenceIndex:0,field:'install'}}])assert.equal(schemas.library_inspect.safeParse({projectId:app,applicationId:app,...args}).success,false);
 });
 test('直接引用、占位声明/实际解析分开，原字符串/中文/空串保留，不推断已安装或缺库',async t=>{
