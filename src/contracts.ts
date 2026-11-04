@@ -136,7 +136,7 @@ export const libraryDataSchema=z.object({...nativeQueryFields,applicationId:uuid
   fieldDetail:z.object({referenceIndex:z.number().int(),field:z.string(),offset:z.number().int(),endOffset:z.number().int(),text:z.string(),totalLength:z.number().int(),sha256:hash,hasMore:z.boolean(),nextOffset:z.number().int().nullable(),positionConvention:z.string()}).optional()
 }).passthrough();
 const declarationPositionSchema=z.object({startOffset:z.number().int().min(0),endOffset:z.number().int().min(0),line:z.number().int().min(1),column:z.number().int().min(1),endLine:z.number().int().min(1),endColumn:z.number().int().min(1)});
-export const variableDataSchema=z.object({...nativeQueryFields,applicationId:uuid,targetKind:z.literal('application'),basis:z.literal('declaration-parsing'),positionConvention:z.string(),
+export const variableDataSchema=z.object({...nativeQueryFields,applicationId:uuid,targetKind:z.literal('application'),basis:z.literal('declaration-parsing'),parserVersion:z.string().optional(),positionConvention:z.string(),
   query:z.object({objectId:uuid.nullable(),name:z.string().nullable(),caseSensitive:z.boolean(),nameMatch:z.literal('literal-substring')}),
   entries:z.array(z.object({index:z.number().int(),objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array']).nullable(),contentHash:hash.nullable(),
     category:z.enum(['variable','type-field','comment','parse-gap','function-return']),section:z.string().nullable(),name:z.string().optional(),

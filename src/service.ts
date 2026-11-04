@@ -7,7 +7,7 @@ import { type Config, type Adapter, ROOT } from './adapter.js';
 import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
 import { CONTRACT, VERSION, DomainError, reply, replySchema, pouDeclarationMatches, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema, type Reply } from './contracts.js';
 import {searchResult,taskResult,nativeInventoryResult} from './queries.js';
-import {variableResult} from './variables.js';
+import {variableResult,VARIABLE_PARSER_VERSION} from './variables.js';
 import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
@@ -411,6 +411,15 @@ export class EngineeringService {
     try {raw=replySchema.parse(await readJson(path.join(source.bridge.directory,'observed-after-exit.json')));}
     catch {throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原清单记录缺失或损坏，保持冻结，不重新派发');}
     if(raw.operationId!==source.operationId || raw.status!=='succeeded')throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原清单证据无法确认，未重新读取或派发');
+    if(op.tool==='variable_inspect'&&source.response!.data!.parserVersion!==VARIABLE_PARSER_VERSION){
+      // Verify the old native inventory before distinguishing a normal parser
+      // upgrade from corrupt evidence. No old table is silently reinterpreted.
+      variableResult(raw,{...a,offset:0,expectedVersion:undefined,sourceRead:undefined});
+      const previous=source.response!.data!.parserVersion;
+      if(previous===undefined||previous==='declaration-variables-v1')
+        throw new DomainError('conflict','VARIABLE_PARSER_VERSION_CHANGED','声明解析器已升级，原版本不能续页或读详情；请显式从首个查询重新开始，未冻结、未派发IDE');
+      throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原变量表解析器版本记录无法确认，保持冻结');
+    }
     const result=op.tool==='variable_inspect'?variableResult({...raw,operationId:op.operationId},a,{kind:'recorded-inventory',inventoryOperationId:source.operationId}):nativeInventoryResult({...raw,operationId:op.operationId},a,op.tool,{kind:'recorded-inventory',inventoryOperationId:source.operationId});
     if(result.status==='conflict'&&result.error?.code==='NATIVE_VERSION_CHANGED')throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原清单证据与已记录版本不一致，保持冻结');
     const after=digest(await fs.readFile(s.workingPath));

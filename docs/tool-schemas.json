@@ -2016,6 +2016,9 @@
                 "type": "string",
                 "const": "declaration-parsing"
               },
+              "parserVersion": {
+                "type": "string"
+              },
               "positionConvention": {
                 "type": "string"
               },
