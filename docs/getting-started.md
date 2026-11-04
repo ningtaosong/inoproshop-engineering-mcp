@@ -1,10 +1,10 @@
 # 安装与 DSH 接入
 
-实测环境为 Windows、InoProShop 1.9.1.6、DSH 0.2.0-rc.2；Node.js要求22或以上。其他电脑和安装组合尚未取得部署验收，路径、设备描述和工程库依赖按实际环境核对。
+实测环境为 Windows、InoProShop 1.9.1.6；既有桌面证据使用DSH 0.2.0-rc.2，0.11.0枚举CLI证据使用DSH 0.2.1-rc.5，分别说明验收范围。Node.js要求22或以上。其他电脑和安装组合尚未取得部署验收，路径、设备描述和工程库依赖按实际环境核对。
 
 ## 获取与构建
 
-仓库已公开，main当前提供0.10.0候选版和十九项工具，包括库依赖只读查询；无需切换候选分支。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main当前提供0.11.0候选版和十九项工具，包括普通枚举DUT及既有库依赖只读查询；无需切换候选分支。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
 git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
@@ -17,7 +17,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 
 已有部署更新前先保留本地改动，再正常更新main并安装/构建；不重置已有工作或改换数据目录。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 本机新增Schema接收和用户手动库查询有实际记录，不能视为回答质量全部通过。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
 
-本轮枚举创建仅在`codex/enum-dut-create`功能分支，0.11.0候选、十九工具，未合入main。要试用本候选，先保留已有改动，再从该分支安装/构建；不得重置已有工作。客户端须实际收到declaration_create中objectType的enum扩展及本版工作指令，旧Schema不会自动识别。已取得DSH命令行实际接收与创建接入闭环证据，不以独立初始化替代；这不是桌面同会话、点击或运行验收。
+普通枚举创建已并入main，直接从main安装/更新0.11.0候选版；保留已有改动和原MCP数据目录，不必切换原功能分支。客户端须实际收到declaration_create中objectType的enum扩展及本版工作指令，旧Schema不会自动识别。已取得DSH命令行实际接收与创建接入闭环证据，不以独立初始化替代；这不是桌面同会话、点击或运行验收。本次合并收尾未重跑既有构建、类型检查、148/148回归或工程任务。
 
 ## 接入 DSH
 
@@ -25,7 +25,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。从main获取本候选时应为0.10.0和十九项工具，并实际收到library_inspect的精确Application、分页、expectedVersion及fieldRead Schema。既有pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.10.0本机客户端接收及手动只读库查询已有直接证据；其他部署仍需核对实际加载，独立初始化不能替代客户端接收及使用验收。
+5. 新对话先让Agent查询环境、会话和工具集合。从main获取本候选时应为0.11.0和十九项工具，declaration_create须含objectType=enum；library_inspect保留精确Application、分页、expectedVersion及fieldRead Schema。既有pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.10.0本机手动只读库查询及0.11.0枚举CLI分别有直接证据；其他部署仍需核对实际加载，不推定为桌面同会话或界面交互通过。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
