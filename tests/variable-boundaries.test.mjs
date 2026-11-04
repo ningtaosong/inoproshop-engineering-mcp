@@ -83,3 +83,12 @@ test('old parser continuation conflicts without freezing or dispatch; corrupt ev
  const z=await context(t,source),valid=await z.call({limit:1}),storeZ=new Store(z.e.dataDir),invalid=await storeZ.operation(valid.operationId);invalid.response.data.parserVersion='damaged-version';await storeZ.saveOp(invalid);
  assert.equal((await z.call({limit:1,offset:1,expectedVersion:valid.data.version})).status,'unknown');assert.equal((await z.c.call('session_status')).data.globalFrozen,true);
 });
+test('legacy parser upgrade must verify original project/disk/read-only identity, not just declaration hashes',async t=>{
+ for(const change of [raw=>raw.data.projectId='90000000-0000-4000-8000-000000000001',raw=>raw.data.applicationId='90000000-0000-4000-8000-000000000001',raw=>raw.data.projectPath+='-wrong',raw=>raw.data.diskHash='f'.repeat(64),raw=>raw.data.readOnlyEvidence.postExitDiskHash='f'.repeat(64)]){
+  const x=await context(t,'PROGRAM Main\nVAR X : INT; Y : BOOL; END_VAR'),r=await x.call({limit:1}),s=new Store(x.e.dataDir),o=await s.operation(r.operationId);
+  delete o.response.data.parserVersion;await s.saveOp(o);
+  const p=path.join(o.bridge.directory,'observed-after-exit.json'),raw=JSON.parse(await readFile(p,'utf8'));change(raw);await writeFile(p,JSON.stringify(raw));
+  const q=await x.call({limit:1,offset:1,expectedVersion:r.data.version});assert.equal(q.status,'unknown',JSON.stringify(q));assert.equal((await x.c.call('session_status')).data.globalFrozen,true);
+  assert.equal((await s.operations()).filter(o=>o.tool==='variable_inspect'&&o.args.expectedVersion&&o.bridge).length,0);
+ }
+});

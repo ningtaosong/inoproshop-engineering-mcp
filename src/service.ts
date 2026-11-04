@@ -414,7 +414,8 @@ export class EngineeringService {
     if(op.tool==='variable_inspect'&&source.response!.data!.parserVersion!==VARIABLE_PARSER_VERSION){
       // Verify the old native inventory before distinguishing a normal parser
       // upgrade from corrupt evidence. No old table is silently reinterpreted.
-      variableResult(raw,{...a,offset:0,expectedVersion:undefined,sourceRead:undefined});
+      const verified=variableResult({...raw,operationId:op.operationId},{...a,offset:0,expectedVersion:undefined,sourceRead:undefined});
+      this.validateEvidence({...op,args:{...a,expectedVersion:undefined}},verified,s);
       const previous=source.response!.data!.parserVersion;
       if(previous===undefined||previous==='declaration-variables-v1')
         throw new DomainError('conflict','VARIABLE_PARSER_VERSION_CHANGED','声明解析器已升级，原版本不能续页或读详情；请显式从首个查询重新开始，未冻结、未派发IDE');
