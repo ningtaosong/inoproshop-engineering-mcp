@@ -15,7 +15,7 @@ async function compare(c,s,b,t,more={}){return c.done(await c.call('project_comp
 async function pair(t,edit,extra={}){const {e,c}=await ctx(t,extra),a=await open(c,e.source),b=await capture(c,a);assert.equal(b.status,'succeeded',JSON.stringify(b));const source=path.join(e.dir,'B.json'),p=JSON.parse(await readFile(e.source));edit(p);await writeFile(source,JSON.stringify(p));const s=await open(c,source),v=await capture(c,s);assert.equal(v.status,'succeeded',JSON.stringify(v));return {e,c,a,s,b,v};}
 
 test('project_compare: eighteen tools, readonly schema; no arbitrary text/path snapshot inputs',async t=>{
- const {e,c}=await ctx(t);await open(c,e.source);const tools=(await c.client.listTools()).tools;assert.equal(tools.length,19);const tool=tools.find(x=>x.name==='project_compare');assert(tool.annotations.readOnlyHint);assert(tool.inputSchema.properties.mode);assert(tool.outputSchema);
+ const {e,c}=await ctx(t);await open(c,e.source);const tools=(await c.client.listTools()).tools;assert.equal(tools.length,20);const tool=tools.find(x=>x.name==='project_compare');assert(tool.annotations.readOnlyHint);assert(tool.inputSchema.properties.mode);assert(tool.outputSchema);
  for(const a of [{mode:'compare'},{mode:'capture',text:'pretend source'},{mode:'capture',sourcePath:'x'},{mode:'capture',targetKind:'pool'}])assert.equal(schemas.project_compare.safeParse({projectId:app,applicationId:app,...a}).success,false);
 });
 test('real text differences preserve comments/space, positions and implementation; GUID equality is not matching',async t=>{

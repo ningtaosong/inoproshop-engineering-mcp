@@ -1,0 +1,6 @@
+[
+  {"name":"missing-semicolon","kind":"st_pou","objectName":"Main","source":"PROGRAM Main\nVAR\nX : DINT := 1\nY : BOOL := FALSE;\nEND_VAR"},
+  {"name":"inline-structure","kind":"st_pou","objectName":"Main","source":"PROGRAM Main\nVAR\nGood : DINT;\nPayload : STRUCT\nA : DINT;\nB : BOOL;\nEND_STRUCT;\nTail : INT;\nEND_VAR"},
+  {"name":"named-function-return","kind":"st_pou","objectName":"F","source":"FUNCTION F : VAR_Result\nVAR_INPUT\nX : DINT;\nEND_VAR"},
+  {"name":"missing-end-var","kind":"st_pou","objectName":"Main","source":"PROGRAM Main\nVAR\nGood : DINT;\nVAR_INPUT\nInput : BOOL;\nAnother : DINT;\nEND_VAR"}
+]
