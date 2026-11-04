@@ -10,7 +10,7 @@ const target=s=>({projectId:s.projectId,applicationId:app});
 const create=(s,snapshot)=>({...target(s),requestId:'array-create',parentId:app,expectedSnapshot:snapshot,name:'T_Values',objectType:'array',declaration:text()});
 
 test('array is an additive nineteen-tool contract extension with every legacy schema preserved',async()=>{
- const old=JSON.parse(await readFile('tests/fixtures/array-legacy-contracts.json','utf8'));assert.equal(Object.keys(schemas).length,19);
+ const old=JSON.parse(await readFile('tests/fixtures/array-legacy-contracts.json','utf8'));assert.equal(Object.keys(schemas).length,20);
  for(const t of old.tools){assert.deepEqual(withoutArrayExtension(z.toJSONSchema(schemas[t.name],{io:'input'})),t.inputSchema,t.name+' input');assert.deepEqual(withoutArrayExtension(z.toJSONSchema(outputSchemas[t.name])),t.outputSchema,t.name+' output');}
  const args=create({projectId:app},'a'.repeat(64));assert(schemas.declaration_create.safeParse(args).success);
  for(const extra of [{dimensions:1},{baseType:'DINT'},{implementation:''},{objectType:'alias'},{targetKind:'pool'}])assert(!schemas.declaration_create.safeParse({...args,...extra}).success);

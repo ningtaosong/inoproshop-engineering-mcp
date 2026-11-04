@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.12.0 候选版的十九项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.13.0 候选版的二十项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -61,6 +61,12 @@
 
 用户查询工程库时，用 library_inspect 的精确工程/Application 身份读取；按实际返回的各管理器 GUID 和所属路径分别说明，不默认合并为完整依赖树。只枚举直接 references，不代表递归传递依赖或本机已安装库。保留原生 name/namespace；占位符的 placeholder_name、default_resolution（默认声明/约束字符串）、effective_resolution（当前解析字符串）和 resolution_info（原生来源说明）分别解释，不从显示串拆造独立版本/厂商字段。已安装、已引用、已解析是不同事实；effective-resolution-reported 只表示 getter 提供字符串，不是独立的库加载/缺失证明；空值或异常仍未知，结合 unavailableFields 与 unavailableMetadata 说明缺口。
 按 actual nextOffset + expectedVersion、原 Application/maxReferences 取完页面；带 expectedVersion 的续页和 fieldRead 复用原清单，不重新启动 IDE。fieldPreviews 标记仅预览，不能当作完整值或读取失败；需要原文时用 fieldRead 的 referenceIndex/field/UTF-16 offset，按 fieldDetail.nextOffset 分段，并核对长度与摘要。枚举完成、字段是否读到、采集截断、输出分页及客户端裁剪分别判断。只陈述实际覆盖；无 CmpLog 直接引用不能排除间接依赖，也不能证明历史编译警告已消除。若引用已有诊断，注明其来源和适用版本；不为只读查询编译/保存、建立修改基线或主动解析/修复/安装/下载。库不在 project_compare 覆盖范围内；unknown、冲突与冻结按原停止规则处理。最终用普通语言简述实得结果和限制，不贴内部状态字段或长串，工作副本链接及单独完整路径仍须来自真实返回。
+
+## 变量声明查询（只读）
+
+variable_inspect对精确Application的现有支持源码做声明解析，不是原生符号表或运行采集。可按真实objectId限定对象，name为字面子串筛选，大小写选项明确；同名变量按所属对象区分。变量、结构体类型字段、FUNCTION返回声明、独立注释和解析缺口分别说明，不将枚举成员或数组类型定义计作变量，不展开所有实例成员/数组元素。类型、AT地址及修饰词保留原文，AT不证明I/O映射。只说源码显式初始化表达式；未写初始化时说“源码未显式指定”，不补零值、类型初值或运行值，按开头唯一解释规则区分类型字段/GVL聚合/块输入各层。
+
+按返回位置核对object_read的LF规范声明，UTF-16偏移从0开始/末端不含、行列从1开始。只对工具明确关联的注释说明归属，其余作为独立原文及位置。按实际nextOffset、expectedVersion和原查询/上限取页；previews表示未返回全文，带同一版本sourceRead:{objectId,offset,limit}分段取原声明，外层offset=0，不重启IDE。分别检查对象枚举、原文读取、声明解析、未覆盖对象、读取失败、解析缺口和输出截断；部分成功不等于完整变量表，缺口下无命中不证明不存在。不支持声明/不确定边界不猜后续变量。只读不追加基线/修改/编译/保存；原停止规则及简短答复、实际工作副本链接与独立完整地址要求保持。
 
 ## 离线工程差异对比（只读）
 
@@ -203,7 +209,7 @@
 
 ## 受限 ST 编译修复
 
-用户请求根据编译诊断修复时，沿用当前十九项工具和原受限流程，不建立额外 Agent、终端修复循环或在线控制流程。
+用户请求根据编译诊断修复时，沿用当前二十项工具和原受限流程，不建立额外 Agent、终端修复循环或在线控制流程。
 
 1. 先固定本次写入白名单：projectId、targetKind、applicationId、完整路径和允许修改的 objectId。
    分页读取完整 ST 列表；读取白名单对象及必要的只读接口上下文，保存其他 ST 对象的完整内容和 contentHash 作为对照。

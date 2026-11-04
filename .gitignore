@@ -35,6 +35,7 @@
 !/docs/library-inspect.md
 !/docs/enum-dut.md
 !/docs/array-dut.md
+!/docs/variables.md
 node_modules/
 dist/
 .local/

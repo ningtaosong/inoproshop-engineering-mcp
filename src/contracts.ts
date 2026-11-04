@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.12.0';
+export const VERSION = '0.13.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -23,6 +23,11 @@ export const schemas = {
     areas:z.array(z.enum(['name','declaration','implementation'])).min(1).max(3).default(['name','declaration','implementation']),
     offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(100).default(50),
     maxResults:z.number().int().min(1).max(1000).default(200),expectedVersion:hash.optional()}).strict(),
+  variable_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    objectId:uuid.optional(),name:z.string().min(1).max(256).optional(),caseSensitive:z.boolean().default(false),
+    offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(100).default(30),
+    maxObjects:z.number().int().min(1).max(2000).default(200),maxEntries:z.number().int().min(1).max(10000).default(2000),expectedVersion:hash.optional(),
+    sourceRead:z.object({objectId:uuid,offset:z.number().int().min(0).default(0),limit:z.number().int().min(2).max(1024).default(512)}).strict().optional()}).strict(),
   library_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(200).default(50),
     maxReferences:z.number().int().min(1).max(10000).default(2000),expectedVersion:hash.optional(),
@@ -130,6 +135,22 @@ export const libraryDataSchema=z.object({...nativeQueryFields,applicationId:uuid
   unavailableMetadata:z.array(z.string()),limitations:z.array(z.string()),
   fieldDetail:z.object({referenceIndex:z.number().int(),field:z.string(),offset:z.number().int(),endOffset:z.number().int(),text:z.string(),totalLength:z.number().int(),sha256:hash,hasMore:z.boolean(),nextOffset:z.number().int().nullable(),positionConvention:z.string()}).optional()
 }).passthrough();
+const declarationPositionSchema=z.object({startOffset:z.number().int().min(0),endOffset:z.number().int().min(0),line:z.number().int().min(1),column:z.number().int().min(1),endLine:z.number().int().min(1),endColumn:z.number().int().min(1)});
+export const variableDataSchema=z.object({...nativeQueryFields,applicationId:uuid,targetKind:z.literal('application'),basis:z.literal('declaration-parsing'),positionConvention:z.string(),
+  query:z.object({objectId:uuid.nullable(),name:z.string().nullable(),caseSensitive:z.boolean(),nameMatch:z.literal('literal-substring')}),
+  entries:z.array(z.object({index:z.number().int(),objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array']).nullable(),contentHash:hash.nullable(),
+    category:z.enum(['variable','type-field','comment','parse-gap','function-return']),section:z.string().nullable(),name:z.string().optional(),
+    position:declarationPositionSchema.nullable(),source:z.string().nullable(),namePosition:declarationPositionSchema.optional(),typeRaw:z.string().nullable().optional(),typePosition:declarationPositionSchema.optional(),
+    modifiers:z.array(z.string()).optional(),modifierText:z.string().nullable().optional(),hasExplicitInitializer:z.boolean().optional(),initializerRaw:z.string().nullable().optional(),initializerPosition:declarationPositionSchema.nullable().optional(),
+    addressRaw:z.string().nullable().optional(),addressPosition:declarationPositionSchema.nullable().optional(),reason:z.string().optional(),association:z.string().optional(),associatedName:z.string().optional(),commentAssociation:z.string().optional(),
+    previews:z.record(z.string(),z.object({text:z.string(),utf16Length:z.number().int(),sha256:hash,complete:z.literal(false)})).optional()})),
+  counts:z.record(z.string(),z.number().int()),scope:searchDataSchema.shape.scope,
+  coverage:z.object({objectEnumerationComplete:z.boolean(),sourceReadComplete:z.boolean(),declarationParseComplete:z.boolean(),supportedScopeComplete:z.boolean(),wholeApplicationVariableTable:z.literal(false),
+    readObjects:z.number().int(),selectedObjects:z.number().int(),parsedObjects:z.number().int(),maxObjects:z.number().int(),objectsTruncated:z.boolean(),parseGapCount:z.number().int(),uncoveredDeclarationObjects:z.array(failureRow),excludedDefinitions:z.array(z.object({objectId:uuid,path:z.array(z.string()),reason:z.string()}))}),
+  delivery:z.object({previewsAreNotMissingValues:z.literal(true),sourceReadRequiredForPreview:z.literal(true),pageReduced:z.boolean()}),
+  noMatchConclusion:z.enum(['declarations-found','no-matching-declarations-in-supported-scope','coverage-incomplete-no-definitive-absence']),limits:z.string(),
+  sourceDetail:z.object({objectId:uuid,contentHash:hash,offset:z.number().int(),endOffset:z.number().int(),text:z.string(),totalLength:z.number().int(),sha256:hash,hasMore:z.boolean(),nextOffset:z.number().int().nullable()}).optional()
+}).passthrough();
 export const comparisonSnapshotSchema=z.object({projectId:uuid,applicationId:uuid,applicationPath:z.array(z.string()),origin:z.enum(['working-copy','registered-source']),
   projectPath:z.string(),diskHash:hash,version:hash,evidence:z.object({kind:z.literal('managed-native-capture'),operationId:uuid}),
   coverage:z.object({supportedObjects:z.number().int(),objectEnumerationComplete:z.boolean(),objectCoverageComplete:z.boolean(),objectReadFailures:z.number().int(),
@@ -151,6 +172,7 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   object_list:z.object({objects:z.array(z.object(objectFields)).optional(),total:z.number().int().optional(),complete:z.boolean().optional(),nextOffset:z.number().int().nullable().optional()}).passthrough(),
   object_read:z.object(objectFields).passthrough(),
   project_search:searchDataSchema.partial().passthrough(),
+  variable_inspect:variableDataSchema.partial().passthrough(),
   task_inspect:taskDataSchema.partial().passthrough(),
   library_inspect:libraryDataSchema.partial().passthrough(),
   project_compare:comparisonDataSchema.partial().passthrough(),

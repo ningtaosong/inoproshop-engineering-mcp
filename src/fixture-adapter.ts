@@ -158,7 +158,7 @@ export class FixtureAdapter implements Adapter {
     result.operationId=req.operationId;
     if(result.data) result.data.diskHash=digest(await fs.readFile(req.projectPath));
     await atomicJson(path.join(dir,'result.json'),result);
-    if(['structure','device','libraries','compare_capture'].includes(req.command))await atomicJson(path.join(dir,'observed-after-exit.json'),result);
+    if(['search','structure','device','libraries','compare_capture'].includes(req.command))await atomicJson(path.join(dir,'observed-after-exit.json'),result);
     return result;
   }
 }

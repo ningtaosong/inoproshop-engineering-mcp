@@ -4,10 +4,10 @@
 
 ## 获取与构建
 
-仓库已公开，main提供0.12.0候选版和十九项工具，包含数组DUT及声明词法修复；直接从main获取并构建，无需切换原功能分支，既有工具兼容。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main提供0.12.0候选版和十九项工具；本轮0.13.0变量声明查询候选在codex/variable-inspect，二十项工具，尚未合并。试用新能力检出该分支并构建，原十九项兼容。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch codex/variable-inspect https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
 npm ci
 npm run build
@@ -17,7 +17,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 
 已有部署更新前先保留本地改动，再正常更新所需分支并安装/构建；不重置已有工作或改换数据目录。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 本机新增Schema接收和用户手动库查询有实际记录，不能视为回答质量全部通过。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
 
-普通枚举及限定数组创建均已并入main；升级保留已有改动和原MCP数据目录。客户端须实际收到declaration_create中objectType的enum/array扩展及本版工作指令，旧Schema不会自动识别。修复版已有157/157回归和独立MCP闭环证据，修复前DSH CLI仅归属8f8d07c，修复后未重做CLI；不以独立初始化替代客户端实际接收，也不视为桌面交互、点击或运行验收。本次合并仅检查文档和文件树，未重跑测试或工程操作。
+普通枚举及限定数组创建均已并入main；升级保留已有改动和原MCP数据目录。客户端须实际收到declaration_create中objectType的enum/array扩展及本版工作指令，旧Schema不会自动识别。修复版已有157/157回归和独立MCP闭环证据，修复前DSH CLI仅归属8f8d07c，修复后未重做CLI；不以独立初始化替代客户端实际接收，也不视为桌面交互、点击或运行验收。0.12.0合并时仅检查文档和文件树，未重跑测试或工程操作。
 
 ## 接入 DSH
 
@@ -25,7 +25,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。加载当前main时应为0.12.0和十九项工具，declaration_create须含objectType=array及enum；library_inspect保留精确Application、分页、expectedVersion及fieldRead Schema。既有pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.10.0本机手动只读库查询及0.11.0枚举CLI分别有直接证据；其他部署仍需核对实际加载，不推定为桌面同会话或界面交互通过。
+5. 新对话先让Agent查询环境、会话和工具集合。加载本候选时应为0.13.0和二十项工具，且实际收到variable_inspect的对象/名称筛选、分页及sourceRead参数，declaration_create须含objectType=array及enum；library_inspect保留精确Application、分页、expectedVersion及fieldRead Schema。既有pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.10.0本机手动只读库查询及0.11.0枚举CLI分别有直接证据；其他部署仍需核对实际加载，不推定为桌面同会话或界面交互通过。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
@@ -106,3 +106,9 @@ object_list/object_read保留原objectType分类：功能块为function_block，
 扩展现有declaration_create，objectType=array，精确Application根节点、当前expectedSnapshot、完整同名TYPE声明；不接收实现。仅一维固定长度DINT数组，显式十进制0<=下界<=上界<=255（最多256项），如TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE。创建与code_apply_change沿用相同声明校验，保持对象类型，不转换结构体/枚举/数组。无属性、显式其他基型、表达式/符号边界、多维、嵌套、可变长或初始化列表；这是产品范围，不是IDE数组上限。原生Alias工厂参数与声明/身份是证据，未取得独立数组属性getter。
 
 先读取对象与可读任务、核对重名和授权范围，首写前capture当前working-copy；创建数组后可修改范围，再创建引用类型的PROGRAM并按授权从PLC_PRG调用。统一编译、保存关闭重开、必要保存版复编、最终全文/任务、最终capture及完整比较，并实际搜索声明/名称。PROGRAM不会自动加入任务；比较不包含设备/I/O或运行。旧快照明确跳过同路径DUT则报告覆盖缺口，不能推断新增或删除。详见[数组范围与证据](array-dut.md)。DSH CLI使用现有支持入口及原MCP数据目录，模型实际接收Schema/指令另核对，不以独立初始化或直接MCP代替；CLI不代表桌面同会话、点击或数组计算/越界保护运行验收。
+
+## 变量声明查询（0.13.0候选）
+
+例如：“沿用已登记工程，只读列出GVL全局变量、PLC_PRG和FB_DelayAlarm的变量及结构体字段，说明类型、源码显式初始化表达式和声明位置。按实际分页读完，缺口如实说明，不修改、编译、保存或连接PLC。给工作副本链接及独立完整路径。”现有正常AM610数组样例同时可读取PROGRAM中的命名数组类型变量，无需制造新工程。
+
+Agent查询身份后实际使用variable_inspect，可按对象或名称字面子串筛选。声明解析不是原生符号表，变量/类型字段/函数返回声明/注释/缺口分类计数；未显式初始化说“源码未显式指定”。字段初值/GVL聚合/输入初值不当运行值，AT不是I/O映射核对。按实际nextOffset和原expectedVersion/查询/上限续页；长预览用sourceRead按同版本UTF-16偏移取原始声明。覆盖、读取失败、解析缺口及截断分别判断，不完整时不宣称完整变量表。只读不建立修改基线或编译保存。详情见[语法、位置和证据边界](variables.md)。
