@@ -1,0 +1,354 @@
+[
+  {
+    "id": "two-types-quoted-comments",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE\n(* ' *)\nTYPE T_Extra : ARRAY [1..3] OF DINT; END_TYPE\n(* ' *)\n",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "trailing-statement",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE\n(* ' *)\nx := 1;\n(* ' *)",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "unsupported-alias",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE\n(* ' *)\nTYPE Extra : REAL; END_TYPE\n(* ' *)",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "comment-quotes-markers",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "(* ' \" // (* nested ' \" *) end *)\nTYPE T_Values : // ' \" (* ignored on line\nARRAY [1 (* ' \" *) .. 3] OF DINT; END_TYPE (* ' \" // *)\n",
+    "read": true,
+    "write": true,
+    "bounds": {
+      "lower": 1,
+      "upper": 3
+    }
+  },
+  {
+    "id": "split-token",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF D(*x*)INT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "unclosed-block",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE (* never closed",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "unclosed-nested",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE (* outer (* inner *)",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "stray-block-close",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE *)",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "nested-hides-extra",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE (* one (* two *) three *) TYPE Extra : DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "external-single-string",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE 'TYPE Fake : DINT; END_TYPE'",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "external-double-string",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE \"(* // *)\"",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "unclosed-string",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE 'not closed",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "escaped-string",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE 'dollar$'quote'",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "range-7-7",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [7..7] OF DINT; END_TYPE",
+    "read": true,
+    "write": true,
+    "bounds": {
+      "lower": 7,
+      "upper": 7
+    }
+  },
+  {
+    "id": "range-0-255",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [0..255] OF DINT; END_TYPE",
+    "read": true,
+    "write": true,
+    "bounds": {
+      "lower": 0,
+      "upper": 255
+    }
+  },
+  {
+    "id": "range-255-255",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [255..255] OF DINT; END_TYPE",
+    "read": true,
+    "write": true,
+    "bounds": {
+      "lower": 255,
+      "upper": 255
+    }
+  },
+  {
+    "id": "bad-range-0",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [3..1] OF DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "bad-range-1",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [-1..2] OF DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "bad-range-2",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [0..256] OF DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "bad-range-3",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1+0..3] OF DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "bad-range-4",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [N..3] OF DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "bad-range-5",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [0..1,0..1] OF DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "bad-range-6",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [*] OF DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "wrong-element",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF INT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "extra-type",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE TYPE Extra : DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "array-attribute",
+    "kind": "array",
+    "name": "T_Values",
+    "text": "{attribute 'strict'} TYPE T_Values : ARRAY [1..3] OF DINT; END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "gvl-legal",
+    "kind": "gvl",
+    "name": "GVL_Test",
+    "text": "VAR_GLOBAL\n X : STRING := 'TYPE (* // *) END_STRUCT $' '' quote';\n W : WSTRING := \"TYPE (* *) // $\" \"\"\";\nEND_VAR",
+    "read": true,
+    "write": true
+  },
+  {
+    "id": "gvl-comments",
+    "kind": "gvl",
+    "name": "GVL_Test",
+    "text": "(* ' \" (* inner *) *)\nVAR_GLOBAL\n X : STRING := 'TYPE (* // *) END_STRUCT $' '' quote';\n W : WSTRING := \"TYPE (* *) // $\" \"\"\";\nEND_VAR // ' \" (*\n",
+    "read": true,
+    "write": true
+  },
+  {
+    "id": "gvl-two-types",
+    "kind": "gvl",
+    "name": "GVL_Test",
+    "text": "VAR_GLOBAL\n X : STRING := 'TYPE (* // *) END_STRUCT $' '' quote';\n W : WSTRING := \"TYPE (* *) // $\" \"\"\";\nEND_VAR (* ' *) TYPE Extra : DINT; END_TYPE (* ' *)",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "gvl-unclosed-comment",
+    "kind": "gvl",
+    "name": "GVL_Test",
+    "text": "VAR_GLOBAL\n X : STRING := 'TYPE (* // *) END_STRUCT $' '' quote';\n W : WSTRING := \"TYPE (* *) // $\" \"\"\";\nEND_VAR (* unclosed",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "structure-legal",
+    "kind": "structure",
+    "name": "ST_Test",
+    "text": "TYPE ST_Test : STRUCT\n X : STRING := 'STRUCT TYPE // (* *)';\nEND_STRUCT END_TYPE",
+    "read": true,
+    "write": true
+  },
+  {
+    "id": "structure-comments",
+    "kind": "structure",
+    "name": "ST_Test",
+    "text": "(* ' \" (* inner *) *)\nTYPE ST_Test : STRUCT\n X : STRING := 'STRUCT TYPE // (* *)';\nEND_STRUCT END_TYPE // ' \" (*\n",
+    "read": true,
+    "write": true
+  },
+  {
+    "id": "structure-two-types",
+    "kind": "structure",
+    "name": "ST_Test",
+    "text": "TYPE ST_Test : STRUCT\n X : STRING := 'STRUCT TYPE // (* *)';\nEND_STRUCT END_TYPE (* ' *) TYPE Extra : DINT; END_TYPE (* ' *)",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "structure-unclosed-comment",
+    "kind": "structure",
+    "name": "ST_Test",
+    "text": "TYPE ST_Test : STRUCT\n X : STRING := 'STRUCT TYPE // (* *)';\nEND_STRUCT END_TYPE (* unclosed",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "enum-legal",
+    "kind": "enum",
+    "name": "E_Test",
+    "text": "TYPE E_Test : (Idle := 0, Busy := 1); END_TYPE",
+    "read": true,
+    "write": true
+  },
+  {
+    "id": "enum-comments",
+    "kind": "enum",
+    "name": "E_Test",
+    "text": "(* ' \" (* inner *) *)\nTYPE E_Test : (Idle := 0, Busy := 1); END_TYPE // ' \" (*\n",
+    "read": true,
+    "write": true
+  },
+  {
+    "id": "enum-two-types",
+    "kind": "enum",
+    "name": "E_Test",
+    "text": "TYPE E_Test : (Idle := 0, Busy := 1); END_TYPE (* ' *) TYPE Extra : DINT; END_TYPE (* ' *)",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "enum-unclosed-comment",
+    "kind": "enum",
+    "name": "E_Test",
+    "text": "TYPE E_Test : (Idle := 0, Busy := 1); END_TYPE (* unclosed",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "struct-union",
+    "kind": "structure",
+    "name": "ST_Test",
+    "text": "TYPE ST_Test : UNION X : DINT; END_UNION END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "enum-duplicate",
+    "kind": "enum",
+    "name": "E_Test",
+    "text": "TYPE E_Test : (Idle := 0, Idle := 1); END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "enum-value-duplicate",
+    "kind": "enum",
+    "name": "E_Test",
+    "text": "TYPE E_Test : (Idle := 0, Busy := 0); END_TYPE",
+    "read": false,
+    "write": false
+  },
+  {
+    "id": "enum-attribute",
+    "kind": "enum",
+    "name": "E_Test",
+    "text": "{attribute 'strict'} TYPE E_Test : (Idle := 0); END_TYPE",
+    "read": true,
+    "write": false
+  }
+]

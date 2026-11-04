@@ -72,19 +72,54 @@ def st_object(item):
     return bool(text(item.type).lower()=="6f9dac99-8de1-4efc-8465-68ac443b7d08" and
                 getattr(item, "has_textual_declaration", False) and getattr(item, "has_textual_implementation", False))
 
+def declaration_code(source):
+    # Ordered masking, mirrored in contracts.ts. Quotes in comments are inert;
+    # strings hide comment markers, but remain opaque tokens, never whitespace.
+    # Balanced nested blocks accepted; unclosed tokens/stray block ends rejected.
+    out=[];i=0
+    while i<len(source):
+        pair=source[i:i+2];char=source[i]
+        if pair=='//':
+            i+=2
+            while i<len(source) and source[i] not in '\r\n':i+=1
+            out.append(' ')
+        elif pair=='(*':
+            depth=1;i+=2
+            while i<len(source) and depth:
+                nested=source[i:i+2]
+                if nested=='(*':depth+=1;i+=2
+                elif nested=='*)':depth-=1;i+=2
+                else:i+=1
+            if depth:return None
+            out.append(' ')
+        elif pair=='*)':return None
+        elif char in "'\"":
+            quote=char;closed=False;i+=1
+            while i<len(source):
+                if source[i]=='$':
+                    if i+1>=len(source):return None
+                    i+=2
+                elif source[i]==quote:
+                    if source[i+1:i+2]==quote:i+=2
+                    else:i+=1;closed=True;break
+                else:i+=1
+            if not closed:return None
+            out.append(quote+'literal'+quote)
+        else:out.append(char);i+=1
+    return ''.join(out)
+
 def array_bounds(name,declaration):
-    source=re.sub(r"'(?:\$[\s\S]|''|[^'])*'", "'literal'", declaration)
-    source=re.sub(r"\(\*.*?\*\)", " ", source, flags=re.S)
-    source=re.sub(r"//[^\r\n]*", " ", source).strip()
+    source=declaration_code(declaration)
+    if source is None:return None
+    source=source.strip()
     match=re.match(r"^TYPE\s+([A-Za-z_][A-Za-z0-9_]{0,62})\s*:\s*ARRAY\s*\[\s*([+-]?[0-9]+)\s*\.\.\s*([+-]?[0-9]+)\s*\]\s+OF\s+DINT\s*;\s*END_TYPE\s*$",source,re.I)
     if not match or match.group(1).lower()!=name.lower():return None
     low,high=int(match.group(2)),int(match.group(3))
     return (low,high) if 0<=low<=high<=255 and high-low+1<=256 else None
 
 def declaration_matches(kind, name, declaration, writing=False):
-    source = re.sub(r"'(?:\$[\s\S]|''|[^'])*'", "'literal'", declaration)
-    source = re.sub(r"\(\*.*?\*\)", " ", source, flags=re.S)
-    source = re.sub(r"//[^\r\n]*", " ", source)
+    source = declaration_code(declaration)
+    if source is None:return False
     if (kind=="array" or kind=="enum" and writing) and re.search(r"[{}]",source):return False
     source = re.sub(r"\{[^{}]*\}", " ", source).strip()
     if kind=="gvl":

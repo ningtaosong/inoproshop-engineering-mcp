@@ -188,9 +188,49 @@ export function pouDeclarationMatches(kind:string,name:string,declaration:string
   return !!h && h.pouType===kind && h.name.toLowerCase()===name.toLowerCase() &&
     (kind==='function'?(FUNCTION_RETURN_TYPES as readonly string[]).includes(returnType ?? '')&&h.returnType?.toUpperCase()===returnType:returnType===undefined);
 }
+// Ordered lexical masking only, not an ST compiler. Quotes inside comments are
+// inert; comment delimiters inside strings are inert. Balanced nested block
+// comments are supported. Unclosed comments/strings and stray block ends fail
+// closed. Keep string tokens opaque (not whitespace) so extra literals cannot
+// disappear into an otherwise valid array/enum declaration. Mirror in worker.py.
+function declarationCode(source:string):string|undefined {
+  const out:string[]=[];
+  let i=0;
+  while(i<source.length){
+    const pair=source.slice(i,i+2),char=source[i];
+    if(pair==='//'){
+      i+=2;while(i<source.length && source[i]!=='\r' && source[i]!=='\n')i++;
+      out.push(' ');
+    }else if(pair==='(*'){
+      let depth=1;i+=2;
+      while(i<source.length && depth){
+        const nested=source.slice(i,i+2);
+        if(nested==='(*'){depth++;i+=2;}
+        else if(nested==='*)'){depth--;i+=2;}
+        else i++;
+      }
+      if(depth)return;
+      out.push(' ');
+    }else if(pair==='*)')return;
+    else if(char==="'" || char==='"'){
+      const quote=char;let closed=false;i++;
+      while(i<source.length){
+        if(source[i]==='$'){if(i+1>=source.length)return;i+=2;}
+        else if(source[i]===quote){
+          if(source[i+1]===quote)i+=2;
+          else{i++;closed=true;break;}
+        }else i++;
+      }
+      if(!closed)return;
+      out.push(quote+'literal'+quote);
+    }else{out.push(char);i++;}
+  }
+  return out.join('');
+}
 // Array evidence is declaration-derived, not an independent native property getter.
 export function arrayBounds(name:string,declaration:string):{lower:number,upper:number}|undefined {
-  const s=declaration.replace(/'(?:\$[\s\S]|''|[^'])*'/g,"'literal'").replace(/\(\*[\s\S]*?\*\)/g,' ').replace(/\/\/[^\r\n]*/g,' ').trim();
+  const code=declarationCode(declaration);if(code===undefined)return;
+  const s=code.trim();
   const m=/^TYPE\s+([A-Za-z_][A-Za-z0-9_]{0,62})\s*:\s*ARRAY\s*\[\s*([+-]?[0-9]+)\s*\.\.\s*([+-]?[0-9]+)\s*\]\s+OF\s+DINT\s*;\s*END_TYPE\s*$/i.exec(s);
   if(!m||m[1].toLowerCase()!==name.toLowerCase())return;
   const lower=Number(m[2]),upper=Number(m[3]);
@@ -198,7 +238,7 @@ export function arrayBounds(name:string,declaration:string):{lower:number,upper:
 }
 // Narrow declaration kind guard, not an ST parser. Real syntax is checked by the IDE compiler.
 export function declarationMatches(kind:string,name:string,declaration:string,writing=false):boolean {
-  const comments=declaration.replace(/'(?:\$[\s\S]|''|[^'])*'/g,"'literal'").replace(/\(\*[\s\S]*?\*\)/g,' ').replace(/\/\/[^\r\n]*/g,' ');
+  const comments=declarationCode(declaration);if(comments===undefined)return false;
   // Enum writes are intentionally narrower than factory declaration recognition.
   if((kind==='array'||kind==='enum' && writing) && /[{}]/.test(comments))return false;
   const s=comments.replace(/\{[^{}]*\}/g,' ').trim();
