@@ -4,10 +4,10 @@
 
 ## 获取与构建
 
-仓库已公开，main提供0.12.0候选版和十九项工具；本轮0.13.0变量声明查询候选在codex/variable-inspect，二十项工具，尚未合并。试用新能力检出该分支并构建，原十九项兼容。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main提供0.13.0候选版、二十项工具，包含变量声明只读查询及边界修复，原十九项兼容。直接从main安装，不必切换候选功能分支。变量表是限定范围的声明解析，不是完整原生符号表或运行采集；设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone --branch codex/variable-inspect https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
 npm ci
 npm run build
@@ -16,6 +16,8 @@ npm run build
 InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这些软件。`npm test` 运行自动化测试；其中原生API替身不代表真实IDE或PLC验收。`test:ide` 等维护脚本可能打开并修改独立测试工程，不属于安装步骤，不对业务工程随意运行。
 
 已有部署更新前先保留本地改动，再正常更新所需分支并安装/构建；不重置已有工作或改换数据目录。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 本机新增Schema接收和用户手动库查询有实际记录，不能视为回答质量全部通过。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
+
+0.13.0修复版已有构建、类型检查、17/17定向及174/174回归，以及两组归档真实声明各17项的离线重解析核对。原真实MCP和DSH CLI证据仍归属6da68fd，未在边界修复后重新执行。当前main合并只同步文档和检查文件树/版本/链接/指令大小，未重跑这些测试或工程操作。解析器v2会明确拒绝旧v1续页；这不等于证据损坏冻结，详见[变量查询及版本边界](variables.md)。
 
 普通枚举及限定数组创建均已并入main；升级保留已有改动和原MCP数据目录。客户端须实际收到declaration_create中objectType的enum/array扩展及本版工作指令，旧Schema不会自动识别。修复版已有157/157回归和独立MCP闭环证据，修复前DSH CLI仅归属8f8d07c，修复后未重做CLI；不以独立初始化替代客户端实际接收，也不视为桌面交互、点击或运行验收。0.12.0合并时仅检查文档和文件树，未重跑测试或工程操作。
 
