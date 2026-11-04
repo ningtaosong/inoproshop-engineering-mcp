@@ -2,7 +2,7 @@
 
 通过 DeepSeek Harness（DSH）调用本地 InoProShop，完成受管理的离线工程读取、有限修改、编译、保存重开和版本对比。
 
-**本功能分支提供0.12.0候选版、十九项MCP工具，契约1.0.0；main保持已验0.11.0。** 数组能力扩展现有declaration_create，不新增工具；尚未合并。实测Windows及InoProShop1.9.1.6，DSH CLI与桌面交互分别记录。获取本候选见[入门文档](docs/getting-started.md)。不是正式v1.0。
+**main提供0.12.0候选版、十九项MCP工具，契约1.0.0。** 数组DUT能力及声明词法修复已合并，扩展现有declaration_create，不新增工具。实测Windows及InoProShop1.9.1.6，DSH CLI与桌面交互分别记录。获取本候选见[入门文档](docs/getting-started.md)。不是正式v1.0。
 
 精确 Application 的 `library_inspect` 由0.10.0引入，现有工具调用继续兼容。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 库引用、当前解析原文与独立加载状态分别表达，不把工具流程通过写成回答质量全部通过。[库查询契约与边界](docs/library-inspect.md)。
 
@@ -36,13 +36,15 @@ npm run build
 | 离线工程闭环 | project_build、project_save |
 | 可信工程快照对比 | project_compare |
 
-本分支源码范围为既有支持的ST POU声明/实现、Application根GVL、结构体、普通枚举及一维定长DINT数组DUT声明。枚举objectType=enum，使用原生Enumeration工厂，成员各显式十进制整数-32768..32767且名称和值不重复，不开放属性/显式基类型/复杂表达式。pou_create在根节点支持FUNCTION_BLOCK、PROGRAM、显式DINT/BOOL/INT/REAL/TIME返回值的FUNCTION；原功能块参数兼容，GVL、结构体、普通枚举及限定数组由declaration_create创建。PROGRAM不自动加入任务，需按授权接入现有程序并编译。[参数与边界](docs/getting-started.md#创建-st-pou)。对比覆盖所支持源码及task_inspect实际可读字段和调用顺序，不包含设备参数、I/O映射及其他非ST内容。
+当前源码范围为既有支持的ST POU声明/实现、Application根GVL、结构体、普通枚举及一维定长DINT数组DUT声明。枚举objectType=enum，使用原生Enumeration工厂，成员各显式十进制整数-32768..32767且名称和值不重复，不开放属性/显式基类型/复杂表达式。pou_create在根节点支持FUNCTION_BLOCK、PROGRAM、显式DINT/BOOL/INT/REAL/TIME返回值的FUNCTION；原功能块参数兼容，GVL、结构体、普通枚举及限定数组由declaration_create创建。PROGRAM不自动加入任务，需按授权接入现有程序并编译。[参数与边界](docs/getting-started.md#创建-st-pou)。对比覆盖所支持源码及task_inspect实际可读字段和调用顺序，不包含设备参数、I/O映射及其他非ST内容。
 
 保留单活动工程、串行队列、精确Application/对象定位、检查点、版本冲突校验、去重、写后读回和unknown冻结。源工程与工作副本分别保存，同名对象不静默覆盖。只读IDE可能写.opt等附属文件，工程哈希不变不代表目录所有文件不变。
 
 [修改前工作副本基线与交付后比较](docs/post-change-baseline-compare.md)已接入支持的Application日常修改：先采可信基线，再按原闭环修改/编译/保存重开，最后以同一副本的最终快照比较；默认不拿原交付源代替本轮基线。2026-11-02真实DSH修改闭环及比较已复核通过，当轮保持0.7.0和十八工具，无新增工程执行代码。DSH 0.2.0-rc.2客户端需使用模板的 `maxInstructionBytes: 65536`；可用 `npm run check:instructions` 静态核对UTF-8大小，详见[接入上限说明](docs/getting-started.md#指令大小与连接失败)。
 
 ## 验证状态与限制
+
+当前修复版963e45a已有最终157/157完整回归及独立MCP工程闭环证据；两次编译均0错误、1条CmpLog警告，相关越界/除零诊断日志仍受限，保存重开、保存版复编、全文和比较通过。修复后的DSH CLI未重新执行，修复前CLI仍归属8f8d07c。本次合并只同步文档并检查版本、链接、指令大小和文件树，未重跑测试或工程任务、未重启DSH，不改变脚本信任、原unknown/隔离、历史11/12及展示限制。以下初始实现及旧版本数据保留原时间语境，不与修复版结果叠加。
 
 0.12.0初始实现8f8d07c构建、类型检查及最终154/154完整回归通过；首轮142/154的辅助脚本执行限制和定向首败均保留。成功复验及两套工程验收使用仅子进程PSExecutionPolicyPreference=Bypass，未改机器/用户策略；原始脚本信任原因未确认，部署环境仍需核对，不称已修复。随后发现的数组完整声明边界问题已按顺序词法扫描修正，修复前后证据与原验收分开记录，见[声明边界修正](docs/array-dut.md#声明边界修正2026-11-04)；旧CLI结果不冒充修复后验收。
 
