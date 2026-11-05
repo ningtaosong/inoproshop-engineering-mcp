@@ -4,10 +4,10 @@
 
 ## 获取与构建
 
-仓库已公开，本轮0.14.0候选位于codex/identifier-search，二十项工具；main仍提供0.13.0。本候选扩展project_search的完整标识符模式，其他十九项契约不变，变量声明解析及既有修改流程保持。需要本轮能力时从功能分支获取，尚未合并main，不是正式Release。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main提供0.14.0候选版、二十项工具，无需切换原codex/identifier-search分支。本候选扩展project_search的完整标识符模式，当前词法版本为st-identifier-v2；默认literal、变量声明解析v2及其他十九项工具兼容边界保持。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone --branch codex/identifier-search https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
 npm ci
 npm run build
@@ -15,7 +15,7 @@ npm run build
 
 InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这些软件。`npm test` 运行自动化测试；其中原生API替身不代表真实IDE或PLC验收。`test:ide` 等维护脚本可能打开并修改独立测试工程，不属于安装步骤，不对业务工程随意运行。
 
-已有部署更新前先保留本地改动，再正常更新所需分支并安装/构建；不重置已有工作或改换数据目录。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 本机新增Schema接收和用户手动库查询有实际记录，不能视为回答质量全部通过。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
+已有部署更新前先保留本地改动，再正常更新main并安装/构建；不重置已有工作或改换数据目录。0.14.0合并只做文档和Git检查，复用已验722c2bb的构建、类型检查、54/54定向、199/199回归及两项真实MCP只读证据；旧DSH CLI仍属修复前v1阶段，修复后未重跑，不据此认定DSH已加载当前指令。[证据归属与限制](identifier-search.md#合并收尾2026-11-05)。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 本机新增Schema接收和用户手动库查询有实际记录，不能视为回答质量全部通过。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
 
 0.13.0修复版已有构建、类型检查、17/17定向及174/174回归，以及两组归档真实声明各17项的离线重解析核对；原只读MCP和DSH CLI证据仍归属6da68fd。之后2026-11-04另一次变量辅助修改CLI任务实际取得v2条目和新工作指令，完成21项工程操作及12→15秒限定修改闭环；原文、顺序/展示偏差和状态查询参数拒绝保留，不代替全部边界场景复验。2026-11-05合并仅同步文档并检查Git、文件树、版本、链接和指令大小，未重跑测试或工程操作。解析器v2明确拒绝旧v1续页，不等于证据损坏冻结，详见[变量查询及版本边界](variables.md)。
 
@@ -27,13 +27,13 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。加载本候选应为0.14.0、二十工具，project_search实际收到matchMode=literal/identifier及本轮指令；identifier必须显式指定不含name的源码areas，不能只加模式却沿用默认全部区域。variable_inspect、declaration_create、library_inspect及pou_create原参数保持；若仍为旧Schema，先停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
+5. 新对话先让Agent查询环境、会话和工具集合。加载本候选应为0.14.0、二十工具，project_search实际收到matchMode=literal/identifier及当前指令；identifier结果还须核对词法版本st-identifier-v2，不能只凭同为0.14.0认定地址修正已加载。identifier必须显式指定不含name的源码areas，不能只加模式却沿用默认全部区域。variable_inspect、declaration_create、library_inspect及pou_create原参数保持；若仍为旧Schema或词法，先停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。此次合并不重启DSH或为加载检查派发工程任务。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
 ### 指令大小与连接失败
 
-`maxInstructionBytes` 属于 **DSH MCP Client** 的配置，不是本MCP服务参数或INOPRO环境变量。本机DSH和 `@deepseek-ai/dsh-mcp-client` 均为0.2.0-rc.2，客户端Schema支持此正整数；默认32768字节。客户端将服务器instructions去掉末尾空白，添加 `### MCP server: inoproshop` 标题及两个换行，再按UTF-8字节计量；超限拒绝连接，不是工具执行超时，也不是静默截断。
+`maxInstructionBytes` 属于 **DSH MCP Client** 的配置，不是本MCP服务参数或INOPRO环境变量。2026-11-02接入核对时，本机DSH和 `@deepseek-ai/dsh-mcp-client` 均为0.2.0-rc.2，客户端Schema支持此正整数；默认32768字节。该客户端将服务器instructions去掉末尾空白，添加 `### MCP server: inoproshop` 标题及两个换行，再按UTF-8字节计量；超限拒绝连接，不是工具执行超时，也不是静默截断。
 
 2026-11-02本机实际指令文件35593字节，客户端计入标题后35619字节，超过默认上限。实际桌面配置提高到65536并正常重载后恢复十八工具，真实DSH任务完成了修改前基线、修改、保存版复编和最终比较。模板已同步这一设置；不通过缩短或截断已验工作规则掩盖问题。其他客户端版本以各自Schema为准，不能假定都支持同一字段。
 
