@@ -28,6 +28,7 @@
 !/scripts/probes/dsh-search-config-attestation.cjs
 /config/*
 !/config/dsh.example.patch.yml
+!/config/codex.example.toml
 /docs/*
 !/docs/getting-started.md
 !/docs/post-change-baseline-compare.md
@@ -37,6 +38,7 @@
 !/docs/array-dut.md
 !/docs/variables.md
 !/docs/identifier-search.md
+!/docs/codex-integration.md
 node_modules/
 dist/
 .local/

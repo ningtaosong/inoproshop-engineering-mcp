@@ -1,0 +1,23 @@
+# Example only: replace all paths with existing, verified local paths.
+# Place in the fixed checkout's .codex/config.toml (trusted project).
+# Do not add this server globally while another client owns the same data directory.
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+
+[mcp_servers.inoproshop]
+command = 'C:\Program Files\nodejs\node.exe'
+args = ['D:\InoPro-Codex-0.14\dist\server.js']
+cwd = 'D:\InoPro-Codex-0.14'
+startup_timeout_sec = 30
+tool_timeout_sec = 180
+enabled = true
+
+[mcp_servers.inoproshop.env]
+# Use the existing registry/isolation directory; never create an empty one to bypass a lease.
+INOPRO_DATA_DIR = 'D:\Existing-InoPro-Data'
+INOPRO_EXE = 'D:\InProShop\CODESYS\Common\InoProShop.exe'
+INOPRO_PROFILE = 'InoProShop(V1.9.1.6)'
+INOPRO_NO_UI = 'false'
+INOPRO_TIMEOUT_MS = '120000'
+INOPRO_RESPONSE_WAIT_MS = '15000'
+INOPRO_TEST_MODE = ''
