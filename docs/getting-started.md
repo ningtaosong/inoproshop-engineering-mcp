@@ -4,10 +4,10 @@
 
 ## 获取与构建
 
-仓库已公开，0.15.0候选位于codex/initializer-member-inspect，二十项工具，本轮尚未合并main；main仍为已验0.14.0。新候选仅扩展variable_inspect的显式具名初始化成员定位，未启用时保留变量表v2结果/分页身份；project_search两模式及st-identifier-v2、其他十九项工具边界保持。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，main提供0.15.0候选版、二十项工具。该候选仅扩展variable_inspect的显式具名初始化成员定位，未启用时保留变量表v2结果/分页身份；project_search两模式及st-identifier-v2、其他十九项工具边界保持。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone --branch codex/initializer-member-inspect https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
 npm ci
 npm run build
