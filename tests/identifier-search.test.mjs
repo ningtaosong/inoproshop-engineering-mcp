@@ -3,6 +3,7 @@ import {readFile,writeFile,readdir} from 'node:fs/promises';import path from 'no
 import {schemas,outputSchemas,searchDataSchema} from '../dist/contracts.js';import {searchResult} from '../dist/queries.js';
 import {codeHash,digest,canonical,atomicJson,Store} from '../dist/storage.js';import {EngineeringService} from '../dist/service.js';import {FixtureAdapter} from '../dist/fixture-adapter.js';
 import {app,app2,obj,obj2,setup,connect} from './helpers.mjs';
+import {withoutInitializerMemberExtension} from './contract-compatibility.mjs';
 function raw(source,extra={}){
  const corpus=[{objectId:obj,applicationId:app,path:['Device','Application','Main'],objectType:'st_pou',hasImplementation:true,declaration:'PROGRAM Main',implementation:source,contentHash:codeHash('PROGRAM Main',source)},...(extra.corpus??[])];
  return {contractVersion:'1.0.0',status:'succeeded',summary:'synthetic native corpus',operationId:obj2,data:{projectId:app,applicationId:app,targetKind:'application',projectPath:'fixture',diskHash:'a'.repeat(64),readOnlyEvidence:{beforeDiskHash:'a'.repeat(64),afterCloseDiskHash:'a'.repeat(64),postExitDiskHash:'a'.repeat(64),unchanged:true},corpus,
@@ -35,7 +36,7 @@ test('unclosed/unsupported input reports a separate lexical gap and prevents def
 });
 test('other nineteen tool schemas exactly preserve the frozen 0.13.0 contract',async()=>{
  const old=JSON.parse(await readFile('tests/fixtures/identifier-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);assert.equal(Object.keys(schemas).length,20);
- for(const t of old.tools){assert.deepEqual(z.toJSONSchema(schemas[t.name],{io:'input'}),t.inputSchema,t.name+' input');assert.deepEqual(z.toJSONSchema(outputSchemas[t.name]),t.outputSchema,t.name+' output');}
+ for(const t of old.tools){const strip=t.name==='variable_inspect'?withoutInitializerMemberExtension:x=>x;assert.deepEqual(strip(z.toJSONSchema(schemas[t.name],{io:'input'})),t.inputSchema,t.name+' input');assert.deepEqual(strip(z.toJSONSchema(outputSchemas[t.name])),t.outputSchema,t.name+' output');}
 });
 test('Unicode neighbours, supplementary letters, normalized newlines and UTF-16 spans stay original',()=>{
  const original='// 😀中文\r\n中文Config2; Config2中文; 𐐀Config2; Config2; 变量 := config2;\r\n',source=original.replace(/\r\n/g,'\n');

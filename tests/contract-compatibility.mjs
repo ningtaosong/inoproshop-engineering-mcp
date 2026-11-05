@@ -1,5 +1,20 @@
 // Each release's additive object-kind extension is removed only for historical checks.
 // Every other property/default/required/limit/order remains part of the historical check.
+export function withoutInitializerMemberExtension(value){
+ if(Array.isArray(value))return value.map(withoutInitializerMemberExtension);
+ if(!value||typeof value!=='object')return value;
+ const out=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,withoutInitializerMemberExtension(v)]));
+ if(out.properties?.sourceRead&&out.properties?.maxObjects&&out.properties?.maxEntries)
+  for(const k of ['includeInitializerMembers','maxInitializerMembers'])delete out.properties[k];
+ if(out.properties?.basis?.const==='declaration-parsing'){
+  delete out.properties.memberExtraction;
+  for(const k of ['includeInitializerMembers','maxInitializerMembers'])delete out.properties.query.properties[k];
+  const p=out.properties.entries.items.properties;
+  p.category.enum=p.category.enum.filter(x=>!['initializer-member','initializer-member-gap'].includes(x));
+  for(const k of ['parentName','parentCategory','parentNamePosition','parentDeclarationPosition','parentInitializerPosition','valueRaw','valuePosition'])delete p[k];
+ }
+ return out;
+}
 export function withoutIdentifierExtension(value){
  if(Array.isArray(value))return value.map(withoutIdentifierExtension);
  if(!value||typeof value!=='object')return value;

@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.14.0",
+  "serverVersion": "0.15.0",
   "contractVersion": "1.0.0",
   "toolCount": 20,
   "tools": [
@@ -1945,6 +1945,14 @@
             "default": false,
             "type": "boolean"
           },
+          "includeInitializerMembers": {
+            "type": "boolean"
+          },
+          "maxInitializerMembers": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000
+          },
           "offset": {
             "default": 0,
             "type": "integer",
@@ -2253,6 +2261,15 @@
                   "nameMatch": {
                     "type": "string",
                     "const": "literal-substring"
+                  },
+                  "includeInitializerMembers": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "maxInitializerMembers": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -2320,7 +2337,9 @@
                         "type-field",
                         "comment",
                         "parse-gap",
-                        "function-return"
+                        "function-return",
+                        "initializer-member",
+                        "initializer-member-gap"
                       ]
                     },
                     "section": {
@@ -2624,6 +2643,198 @@
                     "commentAssociation": {
                       "type": "string"
                     },
+                    "parentName": {
+                      "type": "string"
+                    },
+                    "parentCategory": {
+                      "type": "string",
+                      "enum": [
+                        "variable",
+                        "type-field"
+                      ]
+                    },
+                    "parentNamePosition": {
+                      "type": "object",
+                      "properties": {
+                        "startOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "endOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "line": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endLine": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endColumn": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "startOffset",
+                        "endOffset",
+                        "line",
+                        "column",
+                        "endLine",
+                        "endColumn"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "parentDeclarationPosition": {
+                      "type": "object",
+                      "properties": {
+                        "startOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "endOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "line": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endLine": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endColumn": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "startOffset",
+                        "endOffset",
+                        "line",
+                        "column",
+                        "endLine",
+                        "endColumn"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "parentInitializerPosition": {
+                      "type": "object",
+                      "properties": {
+                        "startOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "endOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "line": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endLine": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endColumn": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "startOffset",
+                        "endOffset",
+                        "line",
+                        "column",
+                        "endLine",
+                        "endColumn"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "valueRaw": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "valuePosition": {
+                      "type": "object",
+                      "properties": {
+                        "startOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "endOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "line": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endLine": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endColumn": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "startOffset",
+                        "endOffset",
+                        "line",
+                        "column",
+                        "endLine",
+                        "endColumn"
+                      ],
+                      "additionalProperties": false
+                    },
                     "previews": {
                       "type": "object",
                       "propertyNames": {
@@ -2831,6 +3042,95 @@
                   "skippedObjects",
                   "readFailures",
                   "enumerationFailures"
+                ],
+                "additionalProperties": false
+              },
+              "memberExtraction": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "parserVersion": {
+                    "type": "string"
+                  },
+                  "basis": {
+                    "type": "string",
+                    "const": "outermost-named-initializer-syntax"
+                  },
+                  "nameFilter": {
+                    "type": "string",
+                    "const": "parent-name-literal-substring"
+                  },
+                  "selectedParents": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "explicitInitializers": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "absentInitializers": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "ordinaryExpressions": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "parsedLists": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "unsupportedInitializers": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "parsedMembers": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "gapCount": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "maxInitializerMembers": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "membersTruncated": {
+                    "type": "boolean"
+                  },
+                  "completeInParsedParents": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "parserVersion",
+                  "basis",
+                  "nameFilter",
+                  "selectedParents",
+                  "explicitInitializers",
+                  "absentInitializers",
+                  "ordinaryExpressions",
+                  "parsedLists",
+                  "unsupportedInitializers",
+                  "parsedMembers",
+                  "gapCount",
+                  "maxInitializerMembers",
+                  "membersTruncated",
+                  "completeInParsedParents"
                 ],
                 "additionalProperties": false
               },

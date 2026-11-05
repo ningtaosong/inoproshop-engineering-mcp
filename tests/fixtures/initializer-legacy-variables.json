@@ -1,0 +1,514 @@
+{
+  "basis": "Synthetic fixture; 0.14.0 production variableResult, before implementation, not real engineering evidence",
+  "raw": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "Memory-only synthetic corpus, never sent to IDE",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "corpus": [
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "applicationId": "10000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "hasImplementation": true,
+          "declaration": "PROGRAM Main\nVAR\nConfig, Config2 : ST_Config := (DelayTime := T#15s, Text := 'a,b');\nNone : ST_Config;\nEND_VAR",
+          "implementation": "",
+          "contentHash": "890976b8913b4f11c6f0691a6dd2d4b8e1161e46e8e222499b4e933d774a8fb9"
+        }
+      ],
+      "scope": {
+        "description": "Memory fixture only",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      }
+    }
+  },
+  "pages": [
+    {
+      "args": {
+        "projectId": "10000000-0000-4000-8000-000000000001",
+        "targetKind": "application",
+        "applicationId": "10000000-0000-4000-8000-000000000001",
+        "caseSensitive": false,
+        "offset": 0,
+        "limit": 1,
+        "maxObjects": 200,
+        "maxEntries": 2000
+      },
+      "result": {
+        "contractVersion": "1.0.0",
+        "status": "succeeded",
+        "summary": "已按原始声明只读解析；请区分变量、类型字段、返回声明、注释及缺口",
+        "operationId": "20000000-0000-4000-8000-000000000002",
+        "data": {
+          "projectId": "10000000-0000-4000-8000-000000000001",
+          "applicationId": "10000000-0000-4000-8000-000000000001",
+          "targetKind": "application",
+          "projectPath": "synthetic-fixture",
+          "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "readOnlyEvidence": {
+            "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "unchanged": true
+          },
+          "version": "14781ac60ac9026698b23d2b5e6ca28f2fa10866bd8d3a9597f385d02f4ca4cf",
+          "basis": "declaration-parsing",
+          "parserVersion": "declaration-variables-v2",
+          "positionConvention": "LF-normalized object_read declaration; zero-based UTF-16 offsets, end exclusive; one-based UTF-16 line/column",
+          "query": {
+            "objectId": null,
+            "name": null,
+            "caseSensitive": false,
+            "nameMatch": "literal-substring"
+          },
+          "scope": {
+            "description": "Memory fixture only",
+            "applicationPath": [
+              "Device",
+              "Application"
+            ],
+            "treeComplete": true,
+            "eligibleObjects": 1,
+            "readObjects": 1,
+            "coverageComplete": true,
+            "readFailures": [],
+            "enumerationFailures": [],
+            "skippedObjects": []
+          },
+          "coverage": {
+            "objectEnumerationComplete": true,
+            "sourceReadComplete": true,
+            "declarationParseComplete": true,
+            "supportedScopeComplete": true,
+            "wholeApplicationVariableTable": false,
+            "readObjects": 1,
+            "selectedObjects": 1,
+            "parsedObjects": 1,
+            "maxObjects": 200,
+            "objectsTruncated": false,
+            "uncoveredDeclarationObjects": [],
+            "excludedDefinitions": [],
+            "parseGapCount": 0
+          },
+          "counts": {
+            "variable": 3,
+            "type-field": 0,
+            "comment": 0,
+            "parse-gap": 0,
+            "function-return": 0
+          },
+          "noMatchConclusion": "declarations-found",
+          "readOrigin": {
+            "kind": "ide",
+            "inventoryOperationId": "20000000-0000-4000-8000-000000000002"
+          },
+          "limits": "No runtime values, evaluated initial values, instance/array expansion, I/O mapping or semantic references. Read gaps/skips and parse gaps are independent. sourceRead retrieves original declaration, not implementation.",
+          "entries": [
+            {
+              "category": "variable",
+              "name": "Config",
+              "section": "VAR",
+              "modifiers": [],
+              "modifierText": "",
+              "typeRaw": "ST_Config",
+              "typePosition": {
+                "startOffset": 35,
+                "endOffset": 44,
+                "line": 3,
+                "column": 19,
+                "endLine": 3,
+                "endColumn": 28
+              },
+              "hasExplicitInitializer": true,
+              "initializerRaw": "(DelayTime := T#15s, Text := 'a,b')",
+              "initializerPosition": {
+                "startOffset": 48,
+                "endOffset": 83,
+                "line": 3,
+                "column": 32,
+                "endLine": 3,
+                "endColumn": 67
+              },
+              "addressRaw": null,
+              "addressPosition": null,
+              "namePosition": {
+                "startOffset": 17,
+                "endOffset": 23,
+                "line": 3,
+                "column": 1,
+                "endLine": 3,
+                "endColumn": 7
+              },
+              "position": {
+                "startOffset": 17,
+                "endOffset": 84,
+                "line": 3,
+                "column": 1,
+                "endLine": 3,
+                "endColumn": 68
+              },
+              "source": "Config, Config2 : ST_Config := (DelayTime := T#15s, Text := 'a,b');",
+              "commentAssociation": "shared-declaration-no-exclusive-comment-owner",
+              "objectId": "20000000-0000-4000-8000-000000000001",
+              "path": [
+                "Device",
+                "Application",
+                "Main"
+              ],
+              "objectType": "st_pou",
+              "contentHash": "890976b8913b4f11c6f0691a6dd2d4b8e1161e46e8e222499b4e933d774a8fb9",
+              "index": 0
+            }
+          ],
+          "page": {
+            "offset": 0,
+            "limit": 1,
+            "returned": 1,
+            "retained": 3,
+            "hasMore": true,
+            "nextOffset": 1,
+            "truncated": false,
+            "total": 3
+          },
+          "delivery": {
+            "previewsAreNotMissingValues": true,
+            "sourceReadRequiredForPreview": true,
+            "pageReduced": false
+          }
+        }
+      }
+    },
+    {
+      "args": {
+        "projectId": "10000000-0000-4000-8000-000000000001",
+        "targetKind": "application",
+        "applicationId": "10000000-0000-4000-8000-000000000001",
+        "caseSensitive": false,
+        "offset": 1,
+        "limit": 1,
+        "maxObjects": 200,
+        "maxEntries": 2000,
+        "expectedVersion": "14781ac60ac9026698b23d2b5e6ca28f2fa10866bd8d3a9597f385d02f4ca4cf"
+      },
+      "result": {
+        "contractVersion": "1.0.0",
+        "status": "succeeded",
+        "summary": "已按原始声明只读解析；请区分变量、类型字段、返回声明、注释及缺口",
+        "operationId": "20000000-0000-4000-8000-000000000002",
+        "data": {
+          "projectId": "10000000-0000-4000-8000-000000000001",
+          "applicationId": "10000000-0000-4000-8000-000000000001",
+          "targetKind": "application",
+          "projectPath": "synthetic-fixture",
+          "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "readOnlyEvidence": {
+            "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "unchanged": true
+          },
+          "version": "14781ac60ac9026698b23d2b5e6ca28f2fa10866bd8d3a9597f385d02f4ca4cf",
+          "basis": "declaration-parsing",
+          "parserVersion": "declaration-variables-v2",
+          "positionConvention": "LF-normalized object_read declaration; zero-based UTF-16 offsets, end exclusive; one-based UTF-16 line/column",
+          "query": {
+            "objectId": null,
+            "name": null,
+            "caseSensitive": false,
+            "nameMatch": "literal-substring"
+          },
+          "scope": {
+            "description": "Memory fixture only",
+            "applicationPath": [
+              "Device",
+              "Application"
+            ],
+            "treeComplete": true,
+            "eligibleObjects": 1,
+            "readObjects": 1,
+            "coverageComplete": true,
+            "readFailures": [],
+            "enumerationFailures": [],
+            "skippedObjects": []
+          },
+          "coverage": {
+            "objectEnumerationComplete": true,
+            "sourceReadComplete": true,
+            "declarationParseComplete": true,
+            "supportedScopeComplete": true,
+            "wholeApplicationVariableTable": false,
+            "readObjects": 1,
+            "selectedObjects": 1,
+            "parsedObjects": 1,
+            "maxObjects": 200,
+            "objectsTruncated": false,
+            "uncoveredDeclarationObjects": [],
+            "excludedDefinitions": [],
+            "parseGapCount": 0
+          },
+          "counts": {
+            "variable": 3,
+            "type-field": 0,
+            "comment": 0,
+            "parse-gap": 0,
+            "function-return": 0
+          },
+          "noMatchConclusion": "declarations-found",
+          "readOrigin": {
+            "kind": "ide",
+            "inventoryOperationId": "20000000-0000-4000-8000-000000000002"
+          },
+          "limits": "No runtime values, evaluated initial values, instance/array expansion, I/O mapping or semantic references. Read gaps/skips and parse gaps are independent. sourceRead retrieves original declaration, not implementation.",
+          "entries": [
+            {
+              "category": "variable",
+              "name": "Config2",
+              "section": "VAR",
+              "modifiers": [],
+              "modifierText": "",
+              "typeRaw": "ST_Config",
+              "typePosition": {
+                "startOffset": 35,
+                "endOffset": 44,
+                "line": 3,
+                "column": 19,
+                "endLine": 3,
+                "endColumn": 28
+              },
+              "hasExplicitInitializer": true,
+              "initializerRaw": "(DelayTime := T#15s, Text := 'a,b')",
+              "initializerPosition": {
+                "startOffset": 48,
+                "endOffset": 83,
+                "line": 3,
+                "column": 32,
+                "endLine": 3,
+                "endColumn": 67
+              },
+              "addressRaw": null,
+              "addressPosition": null,
+              "namePosition": {
+                "startOffset": 25,
+                "endOffset": 32,
+                "line": 3,
+                "column": 9,
+                "endLine": 3,
+                "endColumn": 16
+              },
+              "position": {
+                "startOffset": 17,
+                "endOffset": 84,
+                "line": 3,
+                "column": 1,
+                "endLine": 3,
+                "endColumn": 68
+              },
+              "source": "Config, Config2 : ST_Config := (DelayTime := T#15s, Text := 'a,b');",
+              "commentAssociation": "shared-declaration-no-exclusive-comment-owner",
+              "objectId": "20000000-0000-4000-8000-000000000001",
+              "path": [
+                "Device",
+                "Application",
+                "Main"
+              ],
+              "objectType": "st_pou",
+              "contentHash": "890976b8913b4f11c6f0691a6dd2d4b8e1161e46e8e222499b4e933d774a8fb9",
+              "index": 1
+            }
+          ],
+          "page": {
+            "offset": 1,
+            "limit": 1,
+            "returned": 1,
+            "retained": 3,
+            "hasMore": true,
+            "nextOffset": 2,
+            "truncated": false,
+            "total": 3
+          },
+          "delivery": {
+            "previewsAreNotMissingValues": true,
+            "sourceReadRequiredForPreview": true,
+            "pageReduced": false
+          }
+        }
+      }
+    },
+    {
+      "args": {
+        "projectId": "10000000-0000-4000-8000-000000000001",
+        "targetKind": "application",
+        "applicationId": "10000000-0000-4000-8000-000000000001",
+        "caseSensitive": false,
+        "offset": 2,
+        "limit": 1,
+        "maxObjects": 200,
+        "maxEntries": 2000,
+        "expectedVersion": "14781ac60ac9026698b23d2b5e6ca28f2fa10866bd8d3a9597f385d02f4ca4cf"
+      },
+      "result": {
+        "contractVersion": "1.0.0",
+        "status": "succeeded",
+        "summary": "已按原始声明只读解析；请区分变量、类型字段、返回声明、注释及缺口",
+        "operationId": "20000000-0000-4000-8000-000000000002",
+        "data": {
+          "projectId": "10000000-0000-4000-8000-000000000001",
+          "applicationId": "10000000-0000-4000-8000-000000000001",
+          "targetKind": "application",
+          "projectPath": "synthetic-fixture",
+          "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "readOnlyEvidence": {
+            "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "unchanged": true
+          },
+          "version": "14781ac60ac9026698b23d2b5e6ca28f2fa10866bd8d3a9597f385d02f4ca4cf",
+          "basis": "declaration-parsing",
+          "parserVersion": "declaration-variables-v2",
+          "positionConvention": "LF-normalized object_read declaration; zero-based UTF-16 offsets, end exclusive; one-based UTF-16 line/column",
+          "query": {
+            "objectId": null,
+            "name": null,
+            "caseSensitive": false,
+            "nameMatch": "literal-substring"
+          },
+          "scope": {
+            "description": "Memory fixture only",
+            "applicationPath": [
+              "Device",
+              "Application"
+            ],
+            "treeComplete": true,
+            "eligibleObjects": 1,
+            "readObjects": 1,
+            "coverageComplete": true,
+            "readFailures": [],
+            "enumerationFailures": [],
+            "skippedObjects": []
+          },
+          "coverage": {
+            "objectEnumerationComplete": true,
+            "sourceReadComplete": true,
+            "declarationParseComplete": true,
+            "supportedScopeComplete": true,
+            "wholeApplicationVariableTable": false,
+            "readObjects": 1,
+            "selectedObjects": 1,
+            "parsedObjects": 1,
+            "maxObjects": 200,
+            "objectsTruncated": false,
+            "uncoveredDeclarationObjects": [],
+            "excludedDefinitions": [],
+            "parseGapCount": 0
+          },
+          "counts": {
+            "variable": 3,
+            "type-field": 0,
+            "comment": 0,
+            "parse-gap": 0,
+            "function-return": 0
+          },
+          "noMatchConclusion": "declarations-found",
+          "readOrigin": {
+            "kind": "ide",
+            "inventoryOperationId": "20000000-0000-4000-8000-000000000002"
+          },
+          "limits": "No runtime values, evaluated initial values, instance/array expansion, I/O mapping or semantic references. Read gaps/skips and parse gaps are independent. sourceRead retrieves original declaration, not implementation.",
+          "entries": [
+            {
+              "category": "variable",
+              "name": "None",
+              "section": "VAR",
+              "modifiers": [],
+              "modifierText": "",
+              "typeRaw": "ST_Config",
+              "typePosition": {
+                "startOffset": 92,
+                "endOffset": 101,
+                "line": 4,
+                "column": 8,
+                "endLine": 4,
+                "endColumn": 17
+              },
+              "hasExplicitInitializer": false,
+              "initializerRaw": null,
+              "initializerPosition": null,
+              "addressRaw": null,
+              "addressPosition": null,
+              "namePosition": {
+                "startOffset": 85,
+                "endOffset": 89,
+                "line": 4,
+                "column": 1,
+                "endLine": 4,
+                "endColumn": 5
+              },
+              "position": {
+                "startOffset": 85,
+                "endOffset": 102,
+                "line": 4,
+                "column": 1,
+                "endLine": 4,
+                "endColumn": 18
+              },
+              "source": "None : ST_Config;",
+              "commentAssociation": "single-name-declaration",
+              "objectId": "20000000-0000-4000-8000-000000000001",
+              "path": [
+                "Device",
+                "Application",
+                "Main"
+              ],
+              "objectType": "st_pou",
+              "contentHash": "890976b8913b4f11c6f0691a6dd2d4b8e1161e46e8e222499b4e933d774a8fb9",
+              "index": 2
+            }
+          ],
+          "page": {
+            "offset": 2,
+            "limit": 1,
+            "returned": 1,
+            "retained": 3,
+            "hasMore": false,
+            "nextOffset": null,
+            "truncated": false,
+            "total": 3
+          },
+          "delivery": {
+            "previewsAreNotMissingValues": true,
+            "sourceReadRequiredForPreview": true,
+            "pageReduced": false
+          }
+        }
+      }
+    }
+  ]
+}
