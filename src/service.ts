@@ -5,8 +5,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { type Config, type Adapter, ROOT } from './adapter.js';
 import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
-import { CONTRACT, VERSION, DomainError, reply, replySchema, pouDeclarationMatches, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema, type Reply } from './contracts.js';
-import {searchResult,taskResult,nativeInventoryResult} from './queries.js';
+import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclarationMatches, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema, type Reply } from './contracts.js';
+import {searchResult,taskResult,nativeInventoryResult,SEARCH_RESULT_VERSION} from './queries.js';
+import {singleIdentifier,IDENTIFIER_LEXER_VERSION} from './st-lex.js';
 import {variableResult,VARIABLE_PARSER_VERSION} from './variables.js';
 import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
@@ -271,7 +272,9 @@ export class EngineeringService {
           !session || pathKey(d!.projectPath as string)!==pathKey(session.workingPath))invalid();
         const e=d!.readOnlyEvidence as any;
         if(e?.unchanged!==true || e.beforeDiskHash!==session!.diskHash || e.afterCloseDiskHash!==e.beforeDiskHash || e.postExitDiskHash!==e.beforeDiskHash || d!.diskHash!==e.beforeDiskHash)invalid();
-        if(command==='search'&&(d!.query!==args.query || d!.caseSensitive!==args.caseSensitive || (args.expectedVersion&&d!.version!==args.expectedVersion)))invalid();
+        if(command==='search'&&(d!.query!==args.query || d!.caseSensitive!==args.caseSensitive ||
+          d!.matchMode!==undefined&&d!.matchMode!==(args.matchMode??'literal') || (args.expectedVersion&&d!.version!==args.expectedVersion) ||
+          (d!.readOrigin as any)?.kind==='recorded-inventory'&&((d!.pageFileEvidence as any)?.beforeDiskHash!==e.beforeDiskHash||(d!.pageFileEvidence as any)?.afterDiskHash!==e.beforeDiskHash)))invalid();
         if((wide||command==='libraries'||command==='variables') && (args.expectedVersion&&d!.version!==args.expectedVersion || command==='device'&&(d!.device as any)?.objectId!==args.deviceId ||
           (d!.readOrigin as any)?.kind==='recorded-inventory'&&((d!.pageFileEvidence as any)?.beforeDiskHash!==e.beforeDiskHash||(d!.pageFileEvidence as any)?.afterDiskHash!==e.beforeDiskHash)))invalid();
       }
@@ -373,8 +376,11 @@ export class EngineeringService {
     if(['project_search','variable_inspect','task_inspect','project_structure','device_inspect','library_inspect'].includes(op.tool)) {
       if(op.tool==='project_search' && (a.offset>0&&!a.expectedVersion || new Set(a.areas).size!==a.areas.length))
         throw new DomainError('failed','SEARCH_PAGE_VERSION_REQUIRED','续页必须携带首个结果版本，搜索区域不能重复');
+      if(op.tool==='project_search'&&a.matchMode==='identifier'&&(!singleIdentifier(a.query)||a.areas.includes('name')))
+        throw new DomainError('failed','SEARCH_IDENTIFIER_QUERY','identifier只接受单个标识符且明确指定源码区域；未派发IDE');
       const currentHash=digest(await fs.readFile(s.workingPath));
       if(currentHash!==s.diskHash)throw new DomainError('conflict','READ_DISK_CHANGED','正式读取前工作副本与登记版本不一致；未启动 IDE 或保存');
+      if(op.tool==='project_search'&&a.expectedVersion)return this.searchPage(op,s,currentHash);
       if((a.valueRead||a.fieldRead||a.sourceRead)&&a.offset!==0)throw new DomainError('conflict','VALUE_PAGE_OFFSET','原文详情读取时外层offset必须为0');
       if((nativeQuery||op.tool==='library_inspect'||op.tool==='variable_inspect')&&(a.offset>0||a.expectedVersion||a.valueRead||a.fieldRead||a.sourceRead))return this.nativePage(op,s,currentHash);
       return this.bridge(op,({project_search:'search',variable_inspect:'search',task_inspect:'tasks',library_inspect:'libraries',project_structure:'structure',device_inspect:'device'} as Record<string,string>)[op.tool],s,{...a,readDiskHash:currentHash});
@@ -396,6 +402,40 @@ export class EngineeringService {
     if(command==='save' && s.lastBuild?.snapshot===a.expectedSnapshot && s.lastBuild?.diskHash && digest(await fs.readFile(s.workingPath))!==s.lastBuild.diskHash)
       throw new DomainError('conflict','BUILD_SNAPSHOT_STALE','编译后磁盘工程内容发生变化，需要重新读取并编译');
     return this.bridge(op,command,s,a);
+  }
+  private async searchPage(op:Operation,s:Session,currentHash:string):Promise<Reply> {
+    const a=op.args;
+    const source=(await this.store.operations()).find(o=>o.status==='succeeded'&&o.tool==='project_search'&&o.args.projectId===a.projectId&&
+      o.args.applicationId===a.applicationId&&(o.args.targetKind??'application')===(a.targetKind??'application')&&o.args.offset===0&&!o.args.expectedVersion&&o.response?.data?.version===a.expectedVersion);
+    const conflict=()=>{throw new DomainError('conflict','SEARCH_VERSION_CHANGED','搜索工程、查询、模式、范围或文件版本不匹配，请从首个查询重新开始；未派发IDE');};
+    if(!source)conflict();
+    const original=source!,sa=original.args;
+    const invalid=()=>{throw new DomainError('unknown','SEARCH_EVIDENCE_INVALID','原搜索归属、结果或原始证据无法确认，保持冻结；未重新采集');};
+    if(!schemas.project_search.safeParse(sa).success||!Array.isArray(sa.areas)||original.response!.status!=='succeeded'||original.response!.operationId!==original.operationId||original.response!.requestId!==original.requestId)invalid();
+    if(typeof original.project?.workingPath!=='string'||typeof original.project?.sourcePath!=='string'||!path.isAbsolute(original.project.workingPath)||!path.isAbsolute(original.project.sourcePath))invalid();
+    if(!original.project||original.project.projectId!==s.projectId||pathKey(original.project.workingPath)!==pathKey(s.workingPath)||
+      pathKey(original.project.sourcePath)!==pathKey(s.sourcePath)||original.project.applicationId!==sa.applicationId||
+      !original.bridge||original.bridge.directory!==this.store.file('ipc/'+original.operationId))invalid();
+    let raw:Reply;
+    try {raw=replySchema.parse(await readJson(path.join(original.bridge!.directory,'observed-after-exit.json')));}catch {return invalid();}
+    if(raw.operationId!==original.operationId||raw.status!=='succeeded')invalid();
+    const old=original.response!.data!.searchVersion===undefined&&original.response!.data!.matchMode===undefined&&sa.matchMode===undefined;
+    let verified:Reply;
+    try {
+      verified=searchResult(raw,sa,{legacy:old});
+      this.validateEvidence(original,verified,original.project);
+      if(canonical(verified.data)!==canonical(original.response!.data))invalid();
+    } catch {return invalid();}
+    if(original.response!.data!.diskHash!==currentHash||sa.query!==a.query||sa.caseSensitive!==a.caseSensitive||
+      canonical([...sa.areas].sort())!==canonical([...a.areas].sort())||sa.maxResults!==a.maxResults||(sa.matchMode??'literal')!==(a.matchMode??'literal')||
+      a.offset>(original.response!.data!.page as any).retainedMatches)conflict();
+    if(old)throw new DomainError('conflict','SEARCH_SCANNER_VERSION_CHANGED','合法旧字面清单已核实，但检索版本已升级；请显式从第一页重新搜索，未冻结或派发IDE');
+    if(original.response!.data!.searchVersion!==SEARCH_RESULT_VERSION||original.response!.data!.lexerVersion!==((sa.matchMode??'literal')==='identifier'?IDENTIFIER_LEXER_VERSION:null))invalid();
+    const result=searchResult({...raw,operationId:op.operationId},a,{origin:{kind:'recorded-inventory',inventoryOperationId:original.operationId}});
+    if(result.status!=='succeeded')invalid();
+    const after=digest(await fs.readFile(s.workingPath));if(after!==currentHash)throw new DomainError('unknown','READ_ONLY_FILE_CHANGED','搜索续页期间文件变化，保持冻结；未启动IDE');
+    if(result.data)result.data.pageFileEvidence={beforeDiskHash:currentHash,afterDiskHash:after};
+    this.validateEvidence(op,result,s);return result;
   }
   private async nativePage(op:Operation,s:Session,currentHash:string):Promise<Reply> {
     const a=op.args;

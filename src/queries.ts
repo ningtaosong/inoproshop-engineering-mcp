@@ -1,7 +1,8 @@
 // Engineering query computation from one native read. Raw input remains in the original IPC evidence.
 // This is not a presentation filter, persistent index, call graph or semantic reference analyzer.
-import {canonical,digest,codeHash} from './storage.js';
-import {reply,declarationMatches,type Reply} from './contracts.js';
+import {canonical,digest,codeHash,normalize} from './storage.js';
+import {reply,declarationMatches,DomainError,type Reply} from './contracts.js';
+import {lexSt,singleIdentifier,IDENTIFIER_LEXER_VERSION} from './st-lex.js';
 import {libraryInventoryResult} from './libraries.js';
 import {isStringBoundary,stringEnd} from './native-output.js';
 const areas=['name','declaration','implementation'];
@@ -13,8 +14,13 @@ export function* literalPositions(source:string,query:string,sensitive:boolean):
   // Preserve original UTF-16 positions even if Unicode lowercasing expands a character.
   for(let i=0;i+query.length<=source.length;i++)if(source.slice(i,i+query.length).toLowerCase()===needle)yield i;
 }
-export function searchResult(raw:Reply,a:any):Reply {
+function* literalRanges(source:string,query:string,sensitive:boolean){for(const start of literalPositions(source,query,sensitive))yield [start,start+query.length];}
+export const SEARCH_RESULT_VERSION='source-search-v2';
+export function searchResult(raw:Reply,a:any,options:{legacy?:boolean,origin?:{kind:string,inventoryOperationId:string}}={}):Reply {
   if(raw.status!=='succeeded')return raw;
+  const mode=a.matchMode??'literal',legacy=options.legacy===true;
+  if(mode==='identifier'&&(!singleIdentifier(a.query)||(a.areas??areas).includes('name')))
+    throw new DomainError('failed','SEARCH_IDENTIFIER_QUERY','identifier只接受单个标识符，且必须明确指定declaration/implementation区域，不接受name或默认全区域');
   const {corpus,...base}=raw.data as any;
   if(!Array.isArray(corpus))throw Error('Search corpus missing');
   const objects=[...corpus].sort((x,y)=>cmp(x.objectId,y.objectId));
@@ -38,15 +44,28 @@ export function searchResult(raw:Reply,a:any):Reply {
   }).sort((x:any,y:any)=>cmp(canonical(x),canonical(y)))};
   const version=digest(canonical({projectId:a.projectId,applicationId:a.applicationId,targetKind:a.targetKind || 'application',diskHash:base.diskHash,
     query:a.query,caseSensitive:a.caseSensitive || false,areas:selected,maxResults:a.maxResults,
+    ...(legacy?{}:{matchMode:mode,searchVersion:SEARCH_RESULT_VERSION,lexerVersion:mode==='identifier'?IDENTIFIER_LEXER_VERSION:null}),
     scope:versionScope,objects:objects.map(o=>[o.objectId,o.path,o.objectType,o.contentHash])}));
   if(a.expectedVersion&&a.expectedVersion!==version)return {...reply('conflict','搜索版本或查询条件已改变，请从首个结果重新搜索',{...base,version}),operationId:raw.operationId,error:{code:'SEARCH_VERSION_CHANGED',message:'不能混合不同工程、内容、覆盖状态或查询条件的页'}};
+  const scans=new Map<string,ReturnType<typeof lexSt>>(),gaps:any[]=[];let regionsScanned=0;
+  if(mode==='identifier')for(const o of objects)for(const region of selected){
+    if(region==='implementation'&&!o.hasImplementation)continue;
+    const source=normalize(o[region]),scan=lexSt(source,true);scans.set(o.objectId+':'+region,scan);regionsScanned++;
+    if(scan.error){const start=scan.error.start,end=scan.error.end,p=position(source,start),e=position(source,end);
+      gaps.push({objectId:o.objectId,path:o.path,contentHash:o.contentHash,region,reason:scan.error.text,
+        position:{startOffset:start,endOffset:end,...p,endLine:e.line,endColumn:e.column},context:{text:source.slice(start,stringEnd(source,start,120)),startOffset:start,endOffset:stringEnd(source,start,120)}});
+    }
+  }
+  const lexicalCoverage=mode==='identifier'?{lexerVersion:IDENTIFIER_LEXER_VERSION,complete:gaps.length===0,regionsScanned,regionsComplete:regionsScanned-gaps.length,gaps}:undefined;
   const retained:any[]=[];let overflow=false;
   outer:for(const o of objects)for(const region of selected){
     if(region==='implementation'&&!o.hasImplementation)continue;
-    const source=region==='name'?o.path.at(-1):o[region];
-    for(const start of literalPositions(source,a.query,a.caseSensitive)){
+    const source=region==='name'?o.path.at(-1):mode==='identifier'?normalize(o[region]):o[region];
+    const found=mode==='identifier'?scans.get(o.objectId+':'+region)!.tokens.filter(t=>t.id&&(a.caseSensitive?t.text===a.query:t.text.toLowerCase()===a.query.toLowerCase())).map(t=>[t.start,t.end]):
+      literalRanges(source,a.query,a.caseSensitive);
+    for(const [start,end] of found){
       if(retained.length===a.maxResults){overflow=true;break outer;}
-      const end=start+a.query.length;let from=Math.max(0,start-60),to=Math.min(source.length,end+60);
+      let from=Math.max(0,start-60),to=Math.min(source.length,end+60);
       if(from>0&&/[\uDC00-\uDFFF]/.test(source[from]))from--;if(to<source.length&&/[\uDC00-\uDFFF]/.test(source[to]))to++;
       const p=position(source,start),e=position(source,end);
       retained.push({objectId:o.objectId,path:o.path,objectType:o.objectType,contentHash:o.contentHash,region,
@@ -57,11 +76,14 @@ export function searchResult(raw:Reply,a:any):Reply {
   }
   const matches=retained.slice(a.offset,a.offset+a.limit),hasMore=a.offset+matches.length<retained.length;
   const data={...base,version,query:a.query,caseSensitive:a.caseSensitive,areas:selected,matches,
-    page:{offset:a.offset,limit:a.limit,returned:matches.length,hasMore,nextOffset:hasMore?a.offset+matches.length:null,retainedMatches:retained.length,maxResults:a.maxResults,truncated:overflow,totalMatches:overflow?null:retained.length,matchedAtLeast:retained.length+(overflow?1:0)},
-    noMatchConclusion:retained.length?'matches-found':base.scope.coverageComplete?'no-match-in-covered-scope':'coverage-incomplete-no-definitive-absence',
+    ...(legacy?{}:{matchMode:mode,searchVersion:SEARCH_RESULT_VERSION,lexerVersion:mode==='identifier'?IDENTIFIER_LEXER_VERSION:null,
+      readOrigin:options.origin??{kind:'ide',inventoryOperationId:raw.operationId},...(lexicalCoverage?{lexicalCoverage}:{})}),
+    page:{offset:a.offset,limit:a.limit,returned:matches.length,hasMore,nextOffset:hasMore?a.offset+matches.length:null,retainedMatches:retained.length,maxResults:a.maxResults,truncated:overflow,totalMatches:overflow||lexicalCoverage&&!lexicalCoverage.complete?null:retained.length,matchedAtLeast:retained.length+(overflow?1:0)},
+    noMatchConclusion:retained.length?'matches-found':base.scope.coverageComplete&&(!lexicalCoverage||lexicalCoverage.complete)?'no-match-in-covered-scope':'coverage-incomplete-no-definitive-absence',
     positionConvention:'LF-normalized object_read text; UTF-16 offsets zero-based, end exclusive; line/column one-based UTF-16; name has no code line',
-    referenceLimitations:'Literal text hits are candidate references only; comments, strings, shadowed names and indirect access are not semantically resolved'};
-  return {...raw,summary:'字面量搜索完成；请分别检查覆盖范围、截断和分页',data};
+    referenceLimitations:mode==='identifier'?'Source identifier-token occurrences only, not resolved symbols, complete cross-references or read/write/unused/rename safety analysis':
+      'Literal text hits are candidate references only; comments, strings, shadowed names and indirect access are not semantically resolved'};
+  return {...raw,summary:mode==='identifier'?'标识符词元搜索完成；请分别检查读取覆盖、词法缺口、截断和分页':'字面量搜索完成；请分别检查覆盖范围、截断和分页',data};
 }
 export function taskResult(raw:Reply,a:any):Reply {
   if(raw.status!=='succeeded')return raw;

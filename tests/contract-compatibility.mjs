@@ -1,6 +1,16 @@
 // Each release's additive object-kind extension is removed only for historical checks.
 // Every other property/default/required/limit/order remains part of the historical check.
+export function withoutIdentifierExtension(value){
+ if(Array.isArray(value))return value.map(withoutIdentifierExtension);
+ if(!value||typeof value!=='object')return value;
+ const out=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,withoutIdentifierExtension(v)]));
+ // Only the project_search input/data node has both query and areas.
+ if(out.properties?.query&&out.properties?.areas&&out.properties?.caseSensitive)
+  for(const key of ['matchMode','searchVersion','lexerVersion','lexicalCoverage','readOrigin','pageFileEvidence'])delete out.properties[key];
+ return out;
+}
 export function withoutArrayExtension(value){
+ value=withoutIdentifierExtension(value);
  if(Array.isArray(value))return value.map(withoutArrayExtension);
  if(!value||typeof value!=='object')return value;
  const out=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,withoutArrayExtension(v)]));

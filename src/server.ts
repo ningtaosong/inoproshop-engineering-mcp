@@ -22,7 +22,7 @@ const descriptions:Record<string,string>={
   project_activate:'按已查询的 projectId 核对并激活原工作副本；有未决操作时拒绝，失败保留原活动工程。',
   object_list:'分页列出精确应用的 ST POU 及根节点 GVL/结构体/普通枚举/一维定长数组 DUT；枚举明确为 objectType=enum；POU 的 pouType 区分功能块/程序/函数，保留真实 GUID、完整路径和有无实现。',
   object_read:'精确读取支持的 ST 对象及内容哈希；GVL/结构体/普通枚举/一维定长数组只有声明，implementation 为空串且 hasImplementation=false；DUT按原生身份与实际声明区分，维数/边界/元素类型来自数组声明解析，不虚构独立DUT getter。',
-  project_search:'只读字面量搜索选定工程/应用中支持的对象名称、声明和实现。明确大小写、范围/失败/跳过、位置/上下文、截断和分页；续页带 expectedVersion。文本命中仅候选引用，不是语义分析。',
+  project_search:'只读检索选定工程/应用的支持源码。matchMode默认literal：名称/声明/实现字面子串，包含注释和字符串，areas默认全部。identifier仅接受单个完整标识符，必须显式areas=[declaration,implementation]或其非空子集，不接受name/默认全区域、正则或成员表达式；按大小写选项匹配词元，跳过注释/字符串，词法缺口独立报告。保留真实身份/原文UTF-16位置/内容版本、范围/读取失败/跳过、截断和分页。按实际nextOffset+expectedVersion及原模式/条件续页，复用原清单不启动IDE；旧检索版本须重新首查，损坏证据冻结。不是语义交叉引用、读写或安全删除/重命名分析。',
   variable_inspect:'只读精确Application的支持源码声明解析（非原生符号表/运行变量）。可选objectId及name字面子串筛选。区分变量、结构体类型字段、函数返回声明、独立注释和解析缺口；保留类型/显式初始化原文及object_read一致UTF-16位置，无初始化不补默认/运行值。按实际nextOffset及expectedVersion、原查询条件和上限翻页；长字段为预览，带expectedVersion+sourceRead:{objectId,offset,limit}读取同一清单原始声明（外层offset=0，不再启动IDE）。分别核对枚举、读取、解析及截断；不完整时不推断不存在。不展开实例/数组，不核对I/O映射，不修改/编译/保存。',
   library_inspect:'只读精确 Application 的各原生库管理器直接引用。保留名称/命名空间、占位符默认与当前解析原文、解析来源及读取缺口；不把已安装/已引用/已解析混为一谈，不递归、不主动解析/修复/下载。独立版本/厂商或加载状态不可取得时明确说明，不从显示串猜字段。按实际 nextOffset + expectedVersion 和原 maxReferences 翻页；长字符串仅预览，带 expectedVersion + fieldRead:{referenceIndex,field,offset,limit} 分段读原清单（外层 offset=0，不启动 IDE）。CmpLog直接未出现不证明间接依赖不存在或历史警告已解决。',
   task_inspect:'只读精确 Application 的真实任务身份、类型、优先级、周期/单位、看门狗与顺序调用；不可读字段单列，仅唯一核实的 PROGRAM 关联 GUID。配置不代表运行观测。',

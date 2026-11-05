@@ -4,10 +4,10 @@
 
 ## 获取与构建
 
-仓库已公开，main提供0.13.0候选版、二十项工具，包含变量声明只读查询、边界修复及变量查询辅助修改工作流程，原十九项兼容。直接从main安装，不必切换候选功能分支。变量表是限定范围的声明解析，不是完整原生符号表或运行采集；设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，本轮0.14.0候选位于codex/identifier-search，二十项工具；main仍提供0.13.0。本候选扩展project_search的完整标识符模式，其他十九项契约不变，变量声明解析及既有修改流程保持。需要本轮能力时从功能分支获取，尚未合并main，不是正式Release。设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch codex/identifier-search https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
 npm ci
 npm run build
@@ -27,7 +27,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。加载本候选时应为0.13.0和二十项工具，且实际收到variable_inspect的对象/名称筛选、分页及sourceRead参数，declaration_create须含objectType=array及enum；library_inspect保留精确Application、分页、expectedVersion及fieldRead Schema。既有pou_create需包含program/function以及FUNCTION必须显式从DINT/BOOL/INT/REAL/TIME选择returnType的要求；若仍为旧Schema，停止写入，待空闲正常加载。初始化返回instructions不单独证明客户端已接收或模型正确遵循。0.10.0本机手动只读库查询及0.11.0枚举CLI分别有直接证据；其他部署仍需核对实际加载，不推定为桌面同会话或界面交互通过。
+5. 新对话先让Agent查询环境、会话和工具集合。加载本候选应为0.14.0、二十工具，project_search实际收到matchMode=literal/identifier及本轮指令；identifier必须显式指定不含name的源码areas，不能只加模式却沿用默认全部区域。variable_inspect、declaration_create、library_inspect及pou_create原参数保持；若仍为旧Schema，先停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
@@ -118,3 +118,7 @@ Agent查询身份后实际使用variable_inspect，可按对象或名称字面�
 按变量名修改初始化值时，变量表先定位，随后仍须读取所属对象全文和当前哈希，核对完整名称、作用域、原值及原文位置。name为子串，不能把多结果当唯一目标；GVL聚合条目也不是成员位置解析。仅替换授权片段，保留注释/空白及其他层初值，按既有working-copy基线、修改读回、编译、保存重开及最终比较完成；最终另查新版本变量条目，不复用旧页。目标不唯一、原值不符或相关缺口时写入前停止。该规则是Agent约束，未新增变量写入工具、事务或自动回滚。
 
 例如：“沿用双路报警工作副本，用变量表定位GVL_AlarmConfig.Config2，再读取完整声明核对原值。只调整其DelayTime源码初始化设定，保留第一路、类型/功能块初值、其他源码和任务；完成编译、保存重开、重新查询条目及本轮基线比较，说明覆盖限制和未运行验证。”业务值以用户授权及实际原文为准，不把示例当已执行记录。
+
+## 完整标识符检索（0.14.0候选）
+
+例如：“沿用正常双路副本，只读找Config和Config2的完整标识符出现位置，明确声明/实现范围并取完分页，再读取原文解释，不修改、编译或保存。”Agent使用project_search的identifier模式和显式源码areas；默认literal仍包含注释/字符串及对象名称。variable_inspect用于声明条目，二者都不是语义交叉引用，不能证明未使用或可安全删除/重命名。区域、大小写、模式和词法缺口按实际执行说明，参见[完整范围与版本升级](identifier-search.md)。

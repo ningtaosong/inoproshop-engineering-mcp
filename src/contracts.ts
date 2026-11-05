@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.13.0';
+export const VERSION = '0.14.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -19,10 +20,12 @@ export const schemas = {
   project_activate: z.object({ ...request, projectId:uuid, applicationId:uuid.optional() }).strict(),
   object_list: z.object({ ...target, offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(200).default(50) }).strict(),
   object_read: z.object({ ...target, objectId: uuid }).strict(),
-  project_search:z.object({...target,query:z.string().min(1).max(256),caseSensitive:z.boolean().default(false),
+  project_search:z.object({...target,query:z.string().min(1).max(256),caseSensitive:z.boolean().default(false),matchMode:z.enum(['literal','identifier']).default('literal'),
     areas:z.array(z.enum(['name','declaration','implementation'])).min(1).max(3).default(['name','declaration','implementation']),
     offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(100).default(50),
-    maxResults:z.number().int().min(1).max(1000).default(200),expectedVersion:hash.optional()}).strict(),
+    maxResults:z.number().int().min(1).max(1000).default(200),expectedVersion:hash.optional()}).strict()
+    .refine(a=>a.matchMode==='literal'||singleIdentifier(a.query)&&!a.areas.includes('name'),
+      'identifier只接受单个标识符且须明确指定declaration/implementation区域；不接受name或默认全区域'),
   variable_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     objectId:uuid.optional(),name:z.string().min(1).max(256).optional(),caseSensitive:z.boolean().default(false),
     offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(100).default(30),
@@ -85,6 +88,12 @@ const failureRow=z.object({objectId:uuid.optional(),nativeTypeId:uuid.optional()
 export const readEvidenceSchema=z.object({beforeDiskHash:hash,afterCloseDiskHash:hash,postExitDiskHash:hash.optional(),unchanged:z.boolean()});
 export const searchDataSchema=z.object({projectId:uuid,applicationId:uuid.nullable(),targetKind:z.enum(['application','pool']),projectPath:z.string(),diskHash:hash,readOnlyEvidence:readEvidenceSchema,
   version:hash,query:z.string(),caseSensitive:z.boolean(),areas:z.array(z.enum(['name','declaration','implementation'])),
+  matchMode:z.enum(['literal','identifier']).optional(),searchVersion:z.string().optional(),lexerVersion:z.string().nullable().optional(),
+  readOrigin:z.object({kind:z.enum(['ide','recorded-inventory']),inventoryOperationId:uuid}).optional(),pageFileEvidence:z.object({beforeDiskHash:hash,afterDiskHash:hash}).optional(),
+  lexicalCoverage:z.object({lexerVersion:z.string(),complete:z.boolean(),regionsScanned:z.number().int(),regionsComplete:z.number().int(),
+    gaps:z.array(z.object({objectId:uuid,path:z.array(z.string()),contentHash:hash,region:z.enum(['declaration','implementation']),reason:z.string(),
+      position:z.object({startOffset:z.number().int(),endOffset:z.number().int(),line:z.number().int(),column:z.number().int(),endLine:z.number().int(),endColumn:z.number().int()}),
+      context:z.object({text:z.string(),startOffset:z.number().int(),endOffset:z.number().int()})}))}).optional(),
   scope:z.object({description:z.string(),applicationPath:z.array(z.string()),treeComplete:z.boolean(),eligibleObjects:z.number().int(),readObjects:z.number().int(),
     coverageComplete:z.boolean(),skippedObjects:z.array(failureRow),readFailures:z.array(failureRow),enumerationFailures:z.array(failureRow)}),
   matches:z.array(z.object({objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array']),contentHash:hash,...pouFields,

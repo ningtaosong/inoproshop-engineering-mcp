@@ -36,6 +36,7 @@
 !/docs/enum-dut.md
 !/docs/array-dut.md
 !/docs/variables.md
+!/docs/identifier-search.md
 node_modules/
 dist/
 .local/
