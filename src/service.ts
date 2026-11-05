@@ -7,7 +7,7 @@ import { type Config, type Adapter, ROOT } from './adapter.js';
 import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
 import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclarationMatches, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema, type Reply } from './contracts.js';
 import {searchResult,taskResult,nativeInventoryResult,SEARCH_RESULT_VERSION} from './queries.js';
-import {singleIdentifier,IDENTIFIER_LEXER_VERSION} from './st-lex.js';
+import {singleIdentifier,IDENTIFIER_LEXER_VERSION,LEGACY_IDENTIFIER_LEXER_VERSION} from './st-lex.js';
 import {variableResult,VARIABLE_PARSER_VERSION} from './variables.js';
 import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
@@ -420,9 +420,10 @@ export class EngineeringService {
     try {raw=replySchema.parse(await readJson(path.join(original.bridge!.directory,'observed-after-exit.json')));}catch {return invalid();}
     if(raw.operationId!==original.operationId||raw.status!=='succeeded')invalid();
     const old=original.response!.data!.searchVersion===undefined&&original.response!.data!.matchMode===undefined&&sa.matchMode===undefined;
+    const oldIdentifier=original.response!.data!.searchVersion===SEARCH_RESULT_VERSION&&sa.matchMode==='identifier'&&original.response!.data!.lexerVersion===LEGACY_IDENTIFIER_LEXER_VERSION;
     let verified:Reply;
     try {
-      verified=searchResult(raw,sa,{legacy:old});
+      verified=searchResult(raw,sa,{legacy:old,identifierVersion:oldIdentifier?LEGACY_IDENTIFIER_LEXER_VERSION:undefined});
       this.validateEvidence(original,verified,original.project);
       if(canonical(verified.data)!==canonical(original.response!.data))invalid();
     } catch {return invalid();}
@@ -430,6 +431,7 @@ export class EngineeringService {
       canonical([...sa.areas].sort())!==canonical([...a.areas].sort())||sa.maxResults!==a.maxResults||(sa.matchMode??'literal')!==(a.matchMode??'literal')||
       a.offset>(original.response!.data!.page as any).retainedMatches)conflict();
     if(old)throw new DomainError('conflict','SEARCH_SCANNER_VERSION_CHANGED','合法旧字面清单已核实，但检索版本已升级；请显式从第一页重新搜索，未冻结或派发IDE');
+    if(oldIdentifier)throw new DomainError('conflict','SEARCH_LEXER_VERSION_CHANGED','合法旧标识符清单已按原词法核实，直接地址边界已修正；请显式重新首查，未冻结或派发IDE');
     if(original.response!.data!.searchVersion!==SEARCH_RESULT_VERSION||original.response!.data!.lexerVersion!==((sa.matchMode??'literal')==='identifier'?IDENTIFIER_LEXER_VERSION:null))invalid();
     const result=searchResult({...raw,operationId:op.operationId},a,{origin:{kind:'recorded-inventory',inventoryOperationId:original.operationId}});
     if(result.status!=='succeeded')invalid();

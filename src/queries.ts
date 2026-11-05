@@ -2,7 +2,7 @@
 // This is not a presentation filter, persistent index, call graph or semantic reference analyzer.
 import {canonical,digest,codeHash,normalize} from './storage.js';
 import {reply,declarationMatches,DomainError,type Reply} from './contracts.js';
-import {lexSt,singleIdentifier,IDENTIFIER_LEXER_VERSION} from './st-lex.js';
+import {lexSt,singleIdentifier,IDENTIFIER_LEXER_VERSION,LEGACY_IDENTIFIER_LEXER_VERSION} from './st-lex.js';
 import {libraryInventoryResult} from './libraries.js';
 import {isStringBoundary,stringEnd} from './native-output.js';
 const areas=['name','declaration','implementation'];
@@ -16,9 +16,11 @@ export function* literalPositions(source:string,query:string,sensitive:boolean):
 }
 function* literalRanges(source:string,query:string,sensitive:boolean){for(const start of literalPositions(source,query,sensitive))yield [start,start+query.length];}
 export const SEARCH_RESULT_VERSION='source-search-v2';
-export function searchResult(raw:Reply,a:any,options:{legacy?:boolean,origin?:{kind:string,inventoryOperationId:string}}={}):Reply {
+export function searchResult(raw:Reply,a:any,options:{legacy?:boolean,identifierVersion?:typeof IDENTIFIER_LEXER_VERSION|typeof LEGACY_IDENTIFIER_LEXER_VERSION,origin?:{kind:string,inventoryOperationId:string}}={}):Reply {
   if(raw.status!=='succeeded')return raw;
   const mode=a.matchMode??'literal',legacy=options.legacy===true;
+  // Internal historical-proof replay only; no request Schema exposes this option.
+  const lexerVersion=mode==='identifier'?(options.identifierVersion??IDENTIFIER_LEXER_VERSION):null;
   if(mode==='identifier'&&(!singleIdentifier(a.query)||(a.areas??areas).includes('name')))
     throw new DomainError('failed','SEARCH_IDENTIFIER_QUERY','identifier只接受单个标识符，且必须明确指定declaration/implementation区域，不接受name或默认全区域');
   const {corpus,...base}=raw.data as any;
@@ -44,19 +46,19 @@ export function searchResult(raw:Reply,a:any,options:{legacy?:boolean,origin?:{k
   }).sort((x:any,y:any)=>cmp(canonical(x),canonical(y)))};
   const version=digest(canonical({projectId:a.projectId,applicationId:a.applicationId,targetKind:a.targetKind || 'application',diskHash:base.diskHash,
     query:a.query,caseSensitive:a.caseSensitive || false,areas:selected,maxResults:a.maxResults,
-    ...(legacy?{}:{matchMode:mode,searchVersion:SEARCH_RESULT_VERSION,lexerVersion:mode==='identifier'?IDENTIFIER_LEXER_VERSION:null}),
+    ...(legacy?{}:{matchMode:mode,searchVersion:SEARCH_RESULT_VERSION,lexerVersion}),
     scope:versionScope,objects:objects.map(o=>[o.objectId,o.path,o.objectType,o.contentHash])}));
   if(a.expectedVersion&&a.expectedVersion!==version)return {...reply('conflict','搜索版本或查询条件已改变，请从首个结果重新搜索',{...base,version}),operationId:raw.operationId,error:{code:'SEARCH_VERSION_CHANGED',message:'不能混合不同工程、内容、覆盖状态或查询条件的页'}};
   const scans=new Map<string,ReturnType<typeof lexSt>>(),gaps:any[]=[];let regionsScanned=0;
   if(mode==='identifier')for(const o of objects)for(const region of selected){
     if(region==='implementation'&&!o.hasImplementation)continue;
-    const source=normalize(o[region]),scan=lexSt(source,true);scans.set(o.objectId+':'+region,scan);regionsScanned++;
+    const source=normalize(o[region]),scan=lexSt(source,true,lexerVersion!==LEGACY_IDENTIFIER_LEXER_VERSION);scans.set(o.objectId+':'+region,scan);regionsScanned++;
     if(scan.error){const start=scan.error.start,end=scan.error.end,p=position(source,start),e=position(source,end);
       gaps.push({objectId:o.objectId,path:o.path,contentHash:o.contentHash,region,reason:scan.error.text,
         position:{startOffset:start,endOffset:end,...p,endLine:e.line,endColumn:e.column},context:{text:source.slice(start,stringEnd(source,start,120)),startOffset:start,endOffset:stringEnd(source,start,120)}});
     }
   }
-  const lexicalCoverage=mode==='identifier'?{lexerVersion:IDENTIFIER_LEXER_VERSION,complete:gaps.length===0,regionsScanned,regionsComplete:regionsScanned-gaps.length,gaps}:undefined;
+  const lexicalCoverage=mode==='identifier'?{lexerVersion,complete:gaps.length===0,regionsScanned,regionsComplete:regionsScanned-gaps.length,gaps}:undefined;
   const retained:any[]=[];let overflow=false;
   outer:for(const o of objects)for(const region of selected){
     if(region==='implementation'&&!o.hasImplementation)continue;
@@ -76,7 +78,7 @@ export function searchResult(raw:Reply,a:any,options:{legacy?:boolean,origin?:{k
   }
   const matches=retained.slice(a.offset,a.offset+a.limit),hasMore=a.offset+matches.length<retained.length;
   const data={...base,version,query:a.query,caseSensitive:a.caseSensitive,areas:selected,matches,
-    ...(legacy?{}:{matchMode:mode,searchVersion:SEARCH_RESULT_VERSION,lexerVersion:mode==='identifier'?IDENTIFIER_LEXER_VERSION:null,
+    ...(legacy?{}:{matchMode:mode,searchVersion:SEARCH_RESULT_VERSION,lexerVersion,
       readOrigin:options.origin??{kind:'ide',inventoryOperationId:raw.operationId},...(lexicalCoverage?{lexicalCoverage}:{})}),
     page:{offset:a.offset,limit:a.limit,returned:matches.length,hasMore,nextOffset:hasMore?a.offset+matches.length:null,retainedMatches:retained.length,maxResults:a.maxResults,truncated:overflow,totalMatches:overflow||lexicalCoverage&&!lexicalCoverage.complete?null:retained.length,matchedAtLeast:retained.length+(overflow?1:0)},
     noMatchConclusion:retained.length?'matches-found':base.scope.coverageComplete&&(!lexicalCoverage||lexicalCoverage.complete)?'no-match-in-covered-scope':'coverage-incomplete-no-definitive-absence',

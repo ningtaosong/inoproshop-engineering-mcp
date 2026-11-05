@@ -2,7 +2,8 @@
 // Declaration mode preserves the v2 parser's tokens. Strict identifier mode is
 // a bounded lexical vocabulary, not an IEC grammar or symbol resolver.
 export type Token={text:string,start:number,end:number,id?:boolean};
-export const IDENTIFIER_LEXER_VERSION='st-identifier-v1';
+export const LEGACY_IDENTIFIER_LEXER_VERSION='st-identifier-v1';
+export const IDENTIFIER_LEXER_VERSION='st-identifier-v2';
 const first=/[\p{L}_]/u,rest=/[\p{L}\p{N}_]/u;
 export const singleIdentifier=(s:string)=>/^[\p{L}_][\p{L}\p{N}_]*$/u.test(s);
 const numeric=/^(?:2#[01_]+|8#[0-7_]+|16#[0-9a-f_]+|[0-9][0-9_]*(?:\.[0-9][0-9_]*)?(?:e[+-]?[0-9][0-9_]*)?)/i;
@@ -10,7 +11,9 @@ const numberTypes=new Set(['BYTE','WORD','DWORD','LWORD','SINT','INT','DINT','LI
 const stringTypes=new Set(['STRING','WSTRING','CHAR','WCHAR']);
 const timeTypes=new Set(['T','TIME','LTIME']);
 const dateTypes=new Set(['D','DATE','LDATE','TOD','TIME_OF_DAY','LTOD','DT','DATE_AND_TIME','LDT']);
-export function lexSt(s:string,strictIdentifiers=false){
+// recognizeAddresses=false is reserved for verifying already-published v1 search
+// evidence. Non-strict declaration lexing never enters the address branch.
+export function lexSt(s:string,strictIdentifiers=false,recognizeAddresses=true){
  const tokens:Token[]=[],comments:Token[]=[];let i=0,error:Token|undefined;
  const fail=(text:string,start:number)=>{error={text,start,end:s.length};};
  while(i<s.length){
@@ -28,6 +31,15 @@ export function lexSt(s:string,strictIdentifiers=false){
    i++;let closed=false;
    while(i<s.length){if(s[i]==='$'){i+=2;}else if(s[i]===c){if(s[i+1]===c)i+=2;else{i++;closed=true;break;}}else i++;}
    if(!closed){fail('Unclosed quoted string',start);break;}
+  }else if(strictIdentifiers&&recognizeAddresses&&c==='%'){
+   // Bounded lexical shape only: I/Q/M, optional X/B/W/D/L, decimal position
+   // components. This neither validates an address nor inspects an I/O mapping.
+   const address=/^%[IQM][XBWDL]?[0-9]+(?:\.[0-9]+)*/i.exec(s.slice(i))?.[0];
+   const end=i+(address?.length??0),next=s[end];
+   if(!address||next!==undefined&&!/^[\s;:,()[\]{}+*/<>=&^|\-]$/u.test(next)){
+    fail('Unsupported or uncertain direct address boundary',start);break;
+   }
+   i=end;
   }else if(first.test(c)){
    i+=c.length;while(i<s.length){const c=String.fromCodePoint(s.codePointAt(i)!);if(!rest.test(c))break;i+=c.length;}
    if(strictIdentifiers&&s[i]==='#'){
