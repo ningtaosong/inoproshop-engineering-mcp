@@ -6,6 +6,7 @@ import {searchResult} from './queries.js';
 import {isStringBoundary,stringEnd,jsonBytes} from './native-output.js';
 
 import {lexSt as lex,type Token} from './st-lex.js';
+import {parseInitializerMembers,INITIALIZER_MEMBER_PARSER_VERSION} from './initializer-members.js';
 type Span={startOffset:number,endOffset:number,line:number,column:number,endLine:number,endColumn:number};
 export const VARIABLE_PARSER_VERSION='declaration-variables-v2';
 const sections=new Set(['VAR','VAR_INPUT','VAR_OUTPUT','VAR_IN_OUT','VAR_GLOBAL']);
@@ -142,7 +143,7 @@ export function parseDeclaration(source:string,kind:string,name:string){
 const preview=(s:string)=>({text:s.slice(0,stringEnd(s,0,256)),utf16Length:s.length,sha256:digest(s),complete:false});
 function boundedEntry(row:any){
  const r={...row},previews:any={};
- for(const k of ['typeRaw','initializerRaw','addressRaw','modifierText','source'])if(typeof r[k]==='string'&&r[k].length>256){previews[k]=preview(r[k]);r[k]=null;}
+ for(const k of ['typeRaw','initializerRaw','addressRaw','modifierText','source','valueRaw'])if(typeof r[k]==='string'&&r[k].length>256){previews[k]=preview(r[k]);r[k]=null;}
  return {...r,...(Object.keys(previews).length?{previews}:{})};
 }
 function variableInventory(raw:Reply,a:any,origin:{kind:string,inventoryOperationId:string}):Reply {
@@ -154,7 +155,27 @@ function variableInventory(raw:Reply,a:any,origin:{kind:string,inventoryOperatio
  const selected=objects.filter(o=>!a.objectId||o.objectId===a.objectId),truncatedObjects=selected.length>a.maxObjects;
  const parsed=selected.slice(0,a.maxObjects).map(o=>({object:o,...parseDeclaration(o.declaration,o.objectType,o.path.at(-1))}));
  const matched=(name:string)=>!a.name||(a.caseSensitive?name.includes(a.name):name.toLowerCase().includes(a.name.toLowerCase()));
+ const memberMode=a.includeInitializerMembers===true,maxMembers=a.maxInitializerMembers??200;
+ const memberExtraction={enabled:true,parserVersion:INITIALIZER_MEMBER_PARSER_VERSION,basis:'outermost-named-initializer-syntax',
+  nameFilter:'parent-name-literal-substring',selectedParents:0,explicitInitializers:0,absentInitializers:0,ordinaryExpressions:0,
+  parsedLists:0,unsupportedInitializers:0,parsedMembers:0,gapCount:0,maxInitializerMembers:maxMembers,membersTruncated:false,completeInParsedParents:true};
+ const memberRows:any[]=[];
+ if(memberMode)for(const p of parsed)for(const parent of p.rows.filter(r=>['variable','type-field'].includes(r.category)&&matched(r.name))){
+  memberExtraction.selectedParents++;
+  if(!parent.hasExplicitInitializer){memberExtraction.absentInitializers++;continue;}
+  memberExtraction.explicitInitializers++;
+  const found=parseInitializerMembers(p.object.declaration,parent.initializerPosition.startOffset,parent.initializerPosition.endOffset,Math.max(0,maxMembers-memberExtraction.parsedMembers));
+  if(found.status==='not-named')memberExtraction.ordinaryExpressions++;
+  else if(found.status==='parsed')memberExtraction.parsedLists++;
+  else memberExtraction.unsupportedInitializers++;
+  memberExtraction.parsedMembers+=found.rows.length;memberExtraction.gapCount+=found.gaps.length;
+  memberExtraction.membersTruncated ||= found.truncated;memberExtraction.completeInParsedParents &&= found.complete;
+  for(const row of [...found.rows,...found.gaps])memberRows.push({...row,parentName:parent.name,parentCategory:parent.category,parentNamePosition:parent.namePosition,
+   parentDeclarationPosition:parent.position,parentInitializerPosition:parent.initializerPosition,section:parent.section,
+   objectId:p.object.objectId,path:p.object.path,objectType:p.object.objectType,contentHash:p.object.contentHash});
+ }
  const rows=parsed.flatMap(p=>p.rows.filter(row=>!['variable','type-field'].includes(row.category)||matched(row.name)).map(row=>({...row,objectId:p.object.objectId,path:p.object.path,objectType:p.object.objectType,contentHash:p.object.contentHash})));
+ if(memberMode){rows.push(...memberRows);rows.sort((x,y)=>canonical(x.path).localeCompare(canonical(y.path))||x.objectId.localeCompare(y.objectId)||x.position.startOffset-y.position.startOffset||x.category.localeCompare(y.category)||String(x.parentName??'').localeCompare(String(y.parentName??'')));}
  if(a.objectId&&!selected.length)rows.push({category:'parse-gap',objectId:a.objectId,path:[],objectType:null,contentHash:null,section:null,reason:'Requested object unavailable in supported read inventory; inspect source failures/skips, not proof of variable absence',position:null,source:''});
  rows.forEach((r,i)=>r.index=i);
  const uncovered=d.scope.skippedObjects.filter((x:any)=>(!a.objectId||a.objectId===x.objectId)&&['6f9dac99-8de1-4efc-8465-68ac443b7d08','ffbfa93a-b94d-45fc-a329-229860183b1d','2db5746d-d284-4425-9f7f-2663a34b0ebc'].includes(x.nativeTypeId));
@@ -162,17 +183,20 @@ function variableInventory(raw:Reply,a:any,origin:{kind:string,inventoryOperatio
  const coverage={objectEnumerationComplete:d.scope.treeComplete,sourceReadComplete:readComplete,declarationParseComplete:parseComplete,supportedScopeComplete:readComplete&&parseComplete,
   wholeApplicationVariableTable:false,readObjects:objects.length,selectedObjects:selected.length,parsedObjects:parsed.length,maxObjects:a.maxObjects,objectsTruncated:truncatedObjects,
   uncoveredDeclarationObjects:uncovered,excludedDefinitions:parsed.filter(p=>p.excluded).map(p=>({objectId:p.object.objectId,path:p.object.path,reason:p.excluded})),parseGapCount:rows.filter(r=>r.category==='parse-gap').length};
- const version=digest(canonical({parser:VARIABLE_PARSER_VERSION,sourceVersion:validated.version,objectId:a.objectId??null,name:a.name??null,caseSensitive:a.caseSensitive,maxObjects:a.maxObjects,maxEntries:a.maxEntries,coverage}));
+ const version=digest(canonical({parser:VARIABLE_PARSER_VERSION,sourceVersion:validated.version,objectId:a.objectId??null,name:a.name??null,caseSensitive:a.caseSensitive,maxObjects:a.maxObjects,maxEntries:a.maxEntries,coverage,
+  ...(memberMode?{includeInitializerMembers:true,memberExtraction}:{})}));
  const reject=(code:string,message:string)=>({...reply('conflict',message),operationId:raw.operationId,error:{code,message}});
  if(a.expectedVersion&&version!==a.expectedVersion)return reject('NATIVE_VERSION_CHANGED','变量表内容、查询或覆盖版本已变化，请重新查询，未混合页面');
  const truncated=rows.length>a.maxEntries,retained=rows.slice(0,a.maxEntries);
  if(a.offset>retained.length)return reject('VARIABLE_PAGE_OUT_OF_RANGE','偏移超出原清单，请使用实际nextOffset');
- const counts=Object.fromEntries(['variable','type-field','comment','parse-gap','function-return'].map(c=>[c,rows.filter(r=>r.category===c).length]));
+ const counts=Object.fromEntries(['variable','type-field','comment','parse-gap','function-return',...(memberMode?['initializer-member','initializer-member-gap']:[])].map(c=>[c,rows.filter(r=>r.category===c).length]));
  const base={projectId:d.projectId,applicationId:d.applicationId,targetKind:'application',projectPath:d.projectPath,diskHash:d.diskHash,readOnlyEvidence:d.readOnlyEvidence,version,
   basis:'declaration-parsing',parserVersion:VARIABLE_PARSER_VERSION,positionConvention:'LF-normalized object_read declaration; zero-based UTF-16 offsets, end exclusive; one-based UTF-16 line/column',
-  query:{objectId:a.objectId??null,name:a.name??null,caseSensitive:a.caseSensitive,nameMatch:'literal-substring'},scope:d.scope,coverage,counts,
+  query:{objectId:a.objectId??null,name:a.name??null,caseSensitive:a.caseSensitive,nameMatch:'literal-substring',...(memberMode?{includeInitializerMembers:true,maxInitializerMembers:maxMembers}:{})},scope:d.scope,coverage,counts,
+  ...(memberMode?{memberExtraction}:{}),
   noMatchConclusion:counts.variable+counts['type-field']?'declarations-found':readComplete&&parseComplete?'no-matching-declarations-in-supported-scope':'coverage-incomplete-no-definitive-absence',
-  readOrigin:origin,limits:'No runtime values, evaluated initial values, instance/array expansion, I/O mapping or semantic references. Read gaps/skips and parse gaps are independent. sourceRead retrieves original declaration, not implementation.'};
+  readOrigin:origin,limits:'No runtime values, evaluated initial values, instance/array expansion, I/O mapping or semantic references. Read gaps/skips and parse gaps are independent. sourceRead retrieves original declaration, not implementation.'+
+   (memberMode?' Named members are explicit outer initializer syntax only, not type-member validity. Name filters parents, not members. Member gaps/limits do not imply parent declaration read failure.':'')};
  let sourceDetail:any,entries:any[]=[],returned=0;
  if(a.sourceRead){
   const v=a.sourceRead,o=objects.find(o=>o.objectId===v.objectId&&(!a.objectId||o.objectId===a.objectId));
@@ -187,7 +211,7 @@ function variableInventory(raw:Reply,a:any,origin:{kind:string,inventoryOperatio
  }
  const end=a.offset+returned,more=end<retained.length;
  const result={...raw,summary:'已按原始声明只读解析；请区分变量、类型字段、返回声明、注释及缺口',data:{...base,entries,...(sourceDetail?{sourceDetail}:{}),
-  page:{offset:a.offset,limit:a.limit,returned,retained:retained.length,hasMore:!sourceDetail&&more,nextOffset:!sourceDetail&&more?end:null,truncated,total:readComplete&&parseComplete&&!truncated?rows.length:null},
+  page:{offset:a.offset,limit:a.limit,returned,retained:retained.length,hasMore:!sourceDetail&&more,nextOffset:!sourceDetail&&more?end:null,truncated,total:readComplete&&parseComplete&&!truncated&&(!memberMode||memberExtraction.completeInParsedParents)?rows.length:null},
   delivery:{previewsAreNotMissingValues:true,sourceReadRequiredForPreview:true,pageReduced:!sourceDetail&&returned<Math.min(a.limit,retained.length-a.offset)}}};
  if(jsonBytes(result)>14000||!sourceDetail&&retained.length>a.offset&&!returned)return {...reply('unsupported','元数据超过响应上限，完整原声明仍在原IPC；未宣称已返回完整表'),operationId:raw.operationId,error:{code:'VARIABLE_METADATA_TOO_LARGE',message:'不能通过默认值或静默裁剪补齐'}};
  return result;

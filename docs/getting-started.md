@@ -4,10 +4,10 @@
 
 ## 获取与构建
 
-仓库已公开，main提供0.14.0候选版、二十项工具，无需切换原codex/identifier-search分支。本候选扩展project_search的完整标识符模式，当前词法版本为st-identifier-v2；默认literal、变量声明解析v2及其他十九项工具兼容边界保持。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，0.15.0候选位于codex/initializer-member-inspect，二十项工具，本轮尚未合并main；main仍为已验0.14.0。新候选仅扩展variable_inspect的显式具名初始化成员定位，未启用时保留变量表v2结果/分页身份；project_search两模式及st-identifier-v2、其他十九项工具边界保持。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
-git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
+git clone --branch codex/initializer-member-inspect https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
 cd D:\InoPro
 npm ci
 npm run build
@@ -15,7 +15,7 @@ npm run build
 
 InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这些软件。`npm test` 运行自动化测试；其中原生API替身不代表真实IDE或PLC验收。`test:ide` 等维护脚本可能打开并修改独立测试工程，不属于安装步骤，不对业务工程随意运行。
 
-已有部署更新前先保留本地改动，再正常更新main并安装/构建；不重置已有工作或改换数据目录。0.14.0合并只做文档和Git检查，复用已验722c2bb的构建、类型检查、54/54定向、199/199回归及两项真实MCP只读证据；旧DSH CLI仍属修复前v1阶段，修复后未重跑，不据此认定DSH已加载当前指令。[证据归属与限制](identifier-search.md#合并收尾2026-11-05)。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 本机新增Schema接收和用户手动库查询有实际记录，不能视为回答质量全部通过。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
+已有部署更新前先保留本地改动，再正常更新所需分支并安装/构建；不重置已有工作或改换数据目录。以下0.14.0等为原阶段证据：0.14.0合并只做文档和Git检查，复用已验722c2bb的构建、类型检查、54/54定向、199/199回归及两项真实MCP只读证据；旧DSH CLI仍属修复前v1阶段，修复后未重跑，不据此认定DSH已加载当前指令。[证据归属与限制](identifier-search.md#合并收尾2026-11-05)。**DSH库查询工具只读流程通过；答复简洁展示及部分措辞未完全遵循，原文和勘误保留。** 本机新增Schema接收和用户手动库查询有实际记录，不能视为回答质量全部通过。正常DSH只有确认空闲、无未发送输入及活动/未确认终止操作时才加载新Schema；不能确认就保留待办。独立初始化不代表客户端已经收到新工具。
 
 0.13.0修复版已有构建、类型检查、17/17定向及174/174回归，以及两组归档真实声明各17项的离线重解析核对；原只读MCP和DSH CLI证据仍归属6da68fd。之后2026-11-04另一次变量辅助修改CLI任务实际取得v2条目和新工作指令，完成21项工程操作及12→15秒限定修改闭环；原文、顺序/展示偏差和状态查询参数拒绝保留，不代替全部边界场景复验。2026-11-05合并仅同步文档并检查Git、文件树、版本、链接和指令大小，未重跑测试或工程操作。解析器v2明确拒绝旧v1续页，不等于证据损坏冻结，详见[变量查询及版本边界](variables.md)。
 
@@ -27,7 +27,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。加载本候选应为0.14.0、二十工具，project_search实际收到matchMode=literal/identifier及当前指令；identifier结果还须核对词法版本st-identifier-v2，不能只凭同为0.14.0认定地址修正已加载。identifier必须显式指定不含name的源码areas，不能只加模式却沿用默认全部区域。variable_inspect、declaration_create、library_inspect及pou_create原参数保持；若仍为旧Schema或词法，先停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。此次合并不重启DSH或为加载检查派发工程任务。
+5. 新对话先让Agent查询环境、会话和工具集合。加载本候选应为0.15.0、二十工具，variable_inspect实际收到includeInitializerMembers及maxInitializerMembers与当前指令。显式提取后的memberExtraction.parserVersion为named-initializer-members-v1；未启用时仍declaration-variables-v2。project_search的matchMode=literal/identifier及st-identifier-v2不变，identifier必须显式指定不含name的源码areas。若仍为旧Schema，停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
@@ -113,9 +113,9 @@ object_list/object_read保留原objectType分类：功能块为function_block，
 
 例如：“沿用已登记工程，只读列出GVL全局变量、PLC_PRG和FB_DelayAlarm的变量及结构体字段，说明类型、源码显式初始化表达式和声明位置。按实际分页读完，缺口如实说明，不修改、编译、保存或连接PLC。给工作副本链接及独立完整路径。”现有正常AM610数组样例同时可读取PROGRAM中的命名数组类型变量，无需制造新工程。
 
-Agent查询身份后实际使用variable_inspect，可按对象或名称字面子串筛选。声明解析不是原生符号表，变量/类型字段/函数返回声明/注释/缺口分类计数；未显式初始化说“源码未显式指定”。字段初值/GVL聚合/输入初值不当运行值，AT不是I/O映射核对。按实际nextOffset和原expectedVersion/查询/上限续页；长预览用sourceRead按同版本UTF-16偏移取原始声明。覆盖、读取失败、解析缺口及截断分别判断，不完整时不宣称完整变量表。只读不建立修改基线或编译保存。详情见[语法、位置和证据边界](variables.md)。
+Agent查询身份后实际使用variable_inspect，可按对象或父名称字面子串筛选。声明解析不是原生符号表，变量/类型字段/函数返回声明/注释/缺口分类计数；未显式初始化说“源码未显式指定”。可显式includeInitializerMembers=true提取最外层具名成员，maxInitializerMembers默认200、最大2000；name仍筛父名，成员/名称/值分别定位，嵌套值不展开，成员及缺口不计变量。完整性另看memberExtraction，不把语法位置当类型成员有效性、实例全部初值或安全写入事务。字段初值/GVL聚合/输入初值不当运行值，AT不是I/O映射核对。按实际nextOffset和原expectedVersion/查询/开关/上限续页；长预览用sourceRead按同版本UTF-16偏移取原始声明。覆盖、读取失败、解析缺口及截断分别判断，不完整时不宣称完整变量表。只读不建立修改基线或编译保存。详情见[语法、位置和证据边界](variables.md#具名聚合初始化成员0150候选)。
 
-按变量名修改初始化值时，变量表先定位，随后仍须读取所属对象全文和当前哈希，核对完整名称、作用域、原值及原文位置。name为子串，不能把多结果当唯一目标；GVL聚合条目也不是成员位置解析。仅替换授权片段，保留注释/空白及其他层初值，按既有working-copy基线、修改读回、编译、保存重开及最终比较完成；最终另查新版本变量条目，不复用旧页。目标不唯一、原值不符或相关缺口时写入前停止。该规则是Agent约束，未新增变量写入工具、事务或自动回滚。
+按变量名修改初始化值时，变量表先定位，随后仍须读取所属对象全文和当前哈希，核对完整名称、作用域、原值及原文位置。name为子串，不能把多结果当唯一目标；父GVL聚合条目本身不提供成员位置，即使显式提取了成员也须核对完整原文。仅替换授权片段，保留注释/空白及其他层初值，按既有working-copy基线、修改读回、编译、保存重开及最终比较完成；最终另查新版本变量条目，不复用旧页。目标不唯一、原值不符或相关缺口时写入前停止。该规则是Agent约束，未新增变量写入工具、事务或自动回滚。
 
 例如：“沿用双路报警工作副本，用变量表定位GVL_AlarmConfig.Config2，再读取完整声明核对原值。只调整其DelayTime源码初始化设定，保留第一路、类型/功能块初值、其他源码和任务；完成编译、保存重开、重新查询条目及本轮基线比较，说明覆盖限制和未运行验证。”业务值以用户授权及实际原文为准，不把示例当已执行记录。
 

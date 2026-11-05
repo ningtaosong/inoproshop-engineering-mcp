@@ -445,7 +445,8 @@ export class EngineeringService {
     const source=(await this.store.operations()).find(o=>o.status==='succeeded'&&o.tool===op.tool&&o.args.projectId===a.projectId&&o.args.deviceId===a.deviceId&&o.args.applicationId===a.applicationId&&o.args.targetKind===a.targetKind&&
       o.args.offset===0&&!o.args.valueRead&&!o.args.fieldRead&&!o.args.sourceRead&&(o.response?.data?.readOrigin as any)?.kind==='ide'&&o.response?.data?.version===a.expectedVersion);
     if(!source || source.response!.data!.diskHash!==currentHash || source.args.maxNodes!==a.maxNodes || source.args.maxParameters!==a.maxParameters || source.args.maxReferences!==a.maxReferences ||
-      op.tool==='variable_inspect'&&(source.args.objectId!==a.objectId||source.args.name!==a.name||source.args.caseSensitive!==a.caseSensitive||source.args.maxObjects!==a.maxObjects||source.args.maxEntries!==a.maxEntries))
+      op.tool==='variable_inspect'&&(source.args.objectId!==a.objectId||source.args.name!==a.name||source.args.caseSensitive!==a.caseSensitive||source.args.maxObjects!==a.maxObjects||source.args.maxEntries!==a.maxEntries||
+        (source.args.includeInitializerMembers===true)!==(a.includeInitializerMembers===true)||a.includeInitializerMembers===true&&(source.args.maxInitializerMembers??200)!==(a.maxInitializerMembers??200)))
       throw new DomainError('conflict','NATIVE_VERSION_CHANGED','未找到同一工程/设备/范围/磁盘版本的原清单，请从第一页重新查询');
     if(!source.project||pathKey(source.project.workingPath)!==pathKey(s.workingPath)||!source.bridge)
       throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原清单归属或证据目录无法确认，保持冻结');
@@ -453,6 +454,18 @@ export class EngineeringService {
     try {raw=replySchema.parse(await readJson(path.join(source.bridge.directory,'observed-after-exit.json')));}
     catch {throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原清单记录缺失或损坏，保持冻结，不重新派发');}
     if(raw.operationId!==source.operationId || raw.status!=='succeeded')throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原清单证据无法确认，未重新读取或派发');
+    if(op.tool==='variable_inspect'&&a.includeInitializerMembers===true){
+      // Only the explicit new mode is recomputed here. Legacy v2 table results
+      // and identities retain their existing path; do not silently reparse pages.
+      const invalid=()=>{throw new DomainError('unknown','VARIABLE_MEMBER_EVIDENCE_INVALID','原成员清单身份、原文或已发布结果无法核实，保持冻结；未派发IDE');};
+      if(!schemas.variable_inspect.safeParse(source.args).success||source.response!.operationId!==source.operationId||source.response!.requestId!==source.requestId||
+        source.project.projectId!==s.projectId||source.project.applicationId!==a.applicationId||pathKey(source.project.sourcePath)!==pathKey(s.sourcePath)||source.bridge.directory!==this.store.file('ipc/'+source.operationId))invalid();
+      try{
+        const verified=variableResult(raw,source.args);
+        this.validateEvidence(source,verified,source.project);
+        if(canonical(verified.data)!==canonical(source.response!.data))invalid();
+      }catch{return invalid();}
+    }
     if(op.tool==='variable_inspect'&&source.response!.data!.parserVersion!==VARIABLE_PARSER_VERSION){
       // Verify the old native inventory before distinguishing a normal parser
       // upgrade from corrupt evidence. No old table is silently reinterpreted.

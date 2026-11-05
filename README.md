@@ -2,13 +2,17 @@
 
 通过 DeepSeek Harness（DSH）调用本地 InoProShop，完成受管理的离线工程读取、有限修改、编译、保存重开和版本对比。
 
-**main提供0.14.0候选版、二十项MCP工具，契约1.0.0；不是正式v1.0。** 扩展project_search：默认literal保留含注释/字符串的子串搜索；identifier只查显式指定的声明/实现区域，按完整词元匹配并报告独立词法缺口，当前词法版本为st-identifier-v2。续页复用原清单，不是符号交叉引用、变量未使用或安全删除/重命名分析。[范围与版本边界](docs/identifier-search.md)。
+**codex/initializer-member-inspect提供0.15.0候选版、二十项MCP工具，契约1.0.0；本轮不合并main，不是正式v1.0。** 扩展variable_inspect，显式includeInitializerMembers=true定位最外层具名聚合初始化的直接成员、名称和值；保留父变量，成员及缺口单独计数。嵌套值整体保留、不求值，不是类型成员解析、完整实例展开或运行读取，也没有新增变量写入事务。[参数、兼容和边界](docs/variables.md#具名聚合初始化成员0150候选)。
+
+本轮构建、类型检查、14/14新增定向和213/213完整回归通过；真实MCP开发端6项、一次DSH CLI另4项只读工程操作分别复核，实际初始化仍10秒/15秒、主工程未改。CLI答复范围标注及展示有勘误，原文保留；.opt变化单列，不称桌面、完整配置或运行通过。[实际范围与限制](docs/variables.md#本轮实际验证2026-11-050150)。
+
+main仍提供已验0.14.0候选。project_search的literal/identifier及st-identifier-v2不变；未启用成员提取时变量表保持declaration-variables-v2的旧结果和分页身份，其余十九项工具输入输出不变。[检索范围](docs/identifier-search.md)。
 
 此前f112118阶段构建、类型检查、相关45/45及完整190/190回归通过；真实MCP与一次DSH CLI只读流程及收尾最小MCP分页证据保留原归属。当前直接地址修正升级为st-identifier-v2，地址内部文字不再作为名称，未知形式报告缺口；合法旧页核实后明确要求重新首查，不误冻结。原答复勘误、首败及一份.opt变化保持，CLI不重跑，桌面、点击及运行未验。[当前范围与历史证据](docs/identifier-search.md)。
 
-0.14.0合并收尾仅同步当前安装入口及证据归属；产品实现、Schema、词法/缓存处理和工作指令与已验722c2bb一致。本轮只检查Git、文档、归档完整性和指令大小，没有重跑构建、测试或工程任务。修复后的54/54定向、199/199回归及两项MCP只读证据不与旧CLI合并统计，修复后未重跑CLI，也不证明DSH已加载新指令。[合并与验证边界](docs/identifier-search.md#合并收尾2026-11-05)。
+此前0.14.0合并收尾仅同步当时安装入口及证据归属；当时产品实现、Schema、词法/缓存处理和工作指令与已验722c2bb一致。该次只检查Git、文档、归档完整性和指令大小，没有重跑构建、测试或工程任务。其修复后的54/54定向、199/199回归及两项MCP只读证据不与旧CLI合并统计，修复后未重跑CLI，也不证明DSH已加载新指令。[合并与验证边界](docs/identifier-search.md#合并收尾2026-11-05)。
 
-保留0.13.0的variable_inspect、声明边界修复、旧解析版本续页处理及变量查询辅助修改工作流程，变量表仍为declaration-variables-v2，其他十九项工具兼容边界保持。实测Windows及InoProShop1.9.1.6，DSH CLI与桌面交互分别记录。直接从main获取本候选，见[入门文档](docs/getting-started.md)。
+保留0.13.0的variable_inspect、声明边界修复、旧解析版本续页处理及变量查询辅助修改工作流程，未启用成员提取时变量表仍为declaration-variables-v2，其他十九项工具兼容边界保持。实测Windows及InoProShop1.9.1.6，DSH CLI与桌面交互分别记录。获取0.15.0使用功能分支，见[入门文档](docs/getting-started.md)。
 
 新增[变量声明只读查询](docs/variables.md)：从真实支持源码解析局部/全局/输入输出及结构体字段，保留类型、显式初始化原文和声明位置；不是原生符号表或运行采集。完整性、同版本分页和长原文详情分别说明，不补默认值，不修改、编译或保存。
 
