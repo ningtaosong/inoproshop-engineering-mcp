@@ -5,7 +5,7 @@ import {reply,DomainError,type Reply} from './contracts.js';
 import {searchResult} from './queries.js';
 import {isStringBoundary,stringEnd,jsonBytes} from './native-output.js';
 
-type Token={text:string,start:number,end:number,id?:boolean};
+import {lexSt as lex,type Token} from './st-lex.js';
 type Span={startOffset:number,endOffset:number,line:number,column:number,endLine:number,endColumn:number};
 export const VARIABLE_PARSER_VERSION='declaration-variables-v2';
 const sections=new Set(['VAR','VAR_INPUT','VAR_OUTPUT','VAR_IN_OUT','VAR_GLOBAL']);
@@ -14,32 +14,6 @@ const allSections=new Set([...sections,'VAR_TEMP','VAR_EXTERNAL','VAR_ACCESS','V
 const compoundBoundaries=new Set(['STRUCT','END_STRUCT','UNION','END_UNION','TYPE','END_TYPE']);
 const modifiers=new Set(['CONSTANT','RETAIN','NON_RETAIN','PERSISTENT']);
 const upper=(t?:Token)=>t?.text.toUpperCase() ?? '';
-const first=/[\p{L}_]/u,rest=/[\p{L}\p{N}_]/u;
-function lex(s:string){
- const tokens:Token[]=[],comments:Token[]=[];let i=0,error:Token|undefined;
- while(i<s.length){
-  const start=i,c=String.fromCodePoint(s.codePointAt(i)!),p=s.slice(i,i+2);
-  if(/\s/u.test(c)){i+=c.length;continue;}
-  if(p==='//'){i+=2;while(i<s.length&&!/[\r\n]/.test(s[i]))i++;comments.push({text:s.slice(start,i),start,end:i});continue;}
-  if(p==='(*'){
-   i+=2;let depth=1;
-   while(i<s.length&&depth){const p=s.slice(i,i+2);if(p==='(*'){depth++;i+=2;}else if(p==='*)'){depth--;i+=2;}else i++;}
-   if(depth){error={text:'Unclosed block comment',start,end:s.length};break;}
-   comments.push({text:s.slice(start,i),start,end:i});continue;
-  }
-  if(p==='*)'){error={text:'Stray block comment terminator',start,end:s.length};break;}
-  if(c==="'"||c==='"'){
-   i++;let closed=false;
-   while(i<s.length){if(s[i]==='$'){i+=2;}else if(s[i]===c){if(s[i+1]===c)i+=2;else{i++;closed=true;break;}}else i++;}
-   if(!closed){error={text:'Unclosed quoted string',start,end:s.length};break;}
-  }else if(first.test(c)){
-   i+=c.length;while(i<s.length){const c=String.fromCodePoint(s.codePointAt(i)!);if(!rest.test(c))break;i+=c.length;}
-   tokens.push({text:s.slice(start,i),start,end:i,id:true});continue;
-  }else i+=[':=','..'].includes(p)?2:c.length;
-  tokens.push({text:s.slice(start,i),start,end:i});
- }
- return {tokens,comments,error};
-}
 export function declarationPosition(s:string,start:number,end:number):Span {
  const p=(i:number)=>{const prefix=s.slice(0,i);return {line:prefix.split('\n').length,column:i-prefix.lastIndexOf('\n')};};
  const b=p(start),e=p(end);return {startOffset:start,endOffset:end,...b,endLine:e.line,endColumn:e.column};
@@ -173,8 +147,9 @@ function boundedEntry(row:any){
 }
 function variableInventory(raw:Reply,a:any,origin:{kind:string,inventoryOperationId:string}):Reply {
  if(raw.status!=='succeeded')return raw;
- // Validate the existing source inventory without relaxing any write/type guards.
- const validated=searchResult(raw,{...a,query:'\0variable-inventory-validation',areas:['name'],caseSensitive:true,offset:0,limit:1,maxResults:1}).data as any;
+ // Internal inventory identity stays at the existing v2 variable-table digest.
+ // Public project_search modes must not invalidate another tool's stored pages.
+ const validated=searchResult(raw,{...a,query:'\0variable-inventory-validation',areas:['name'],caseSensitive:true,offset:0,limit:1,maxResults:1},{legacy:true}).data as any;
  const d=raw.data as any,objects=[...d.corpus].map(o=>({...o,declaration:normalize(o.declaration)})).sort((x:any,y:any)=>canonical(x.path).localeCompare(canonical(y.path))||x.objectId.localeCompare(y.objectId));
  const selected=objects.filter(o=>!a.objectId||o.objectId===a.objectId),truncatedObjects=selected.length>a.maxObjects;
  const parsed=selected.slice(0,a.maxObjects).map(o=>({object:o,...parseDeclaration(o.declaration,o.objectType,o.path.at(-1))}));

@@ -1,0 +1,147 @@
+{
+  "origin": "Synthetic fixture captured with unchanged 0.13.0 compiled search, before 0.14.0 implementation/build; not real IDE evidence",
+  "raw": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "synthetic 0.13 native corpus",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "corpus": [
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "applicationId": "10000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "hasImplementation": true,
+          "declaration": "PROGRAM Main",
+          "implementation": "// 中文😀 Config2\nGVL.Config2.DelayTime; Name := 'Config2';",
+          "contentHash": "e8cf5875edff39cf73c9e144a57b631d16890eec9b78ebaf5759b14a04add02c"
+        }
+      ],
+      "scope": {
+        "description": "synthetic supported source",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      }
+    }
+  },
+  "args": {
+    "projectId": "10000000-0000-4000-8000-000000000001",
+    "targetKind": "application",
+    "applicationId": "10000000-0000-4000-8000-000000000001",
+    "query": "Config2",
+    "caseSensitive": false,
+    "areas": [
+      "implementation"
+    ],
+    "offset": 0,
+    "limit": 1,
+    "maxResults": 200
+  },
+  "result": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "字面量搜索完成；请分别检查覆盖范围、截断和分页",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "scope": {
+        "description": "synthetic supported source",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      },
+      "version": "a62e7e414635aec069847b7d67de8c4c020d578e8b1948a5a95bc8e5e4a7956e",
+      "query": "Config2",
+      "caseSensitive": false,
+      "areas": [
+        "implementation"
+      ],
+      "matches": [
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "e8cf5875edff39cf73c9e144a57b631d16890eec9b78ebaf5759b14a04add02c",
+          "region": "implementation",
+          "position": {
+            "startOffset": 8,
+            "endOffset": 15,
+            "line": 1,
+            "column": 9,
+            "endLine": 1,
+            "endColumn": 16
+          },
+          "matchedText": "Config2",
+          "context": {
+            "text": "// 中文😀 Config2\nGVL.Config2.DelayTime; Name := 'Config2';",
+            "startOffset": 0,
+            "endOffset": 57
+          },
+          "candidateReference": true
+        }
+      ],
+      "page": {
+        "offset": 0,
+        "limit": 1,
+        "returned": 1,
+        "hasMore": true,
+        "nextOffset": 1,
+        "retainedMatches": 3,
+        "maxResults": 200,
+        "truncated": false,
+        "totalMatches": 3,
+        "matchedAtLeast": 3
+      },
+      "noMatchConclusion": "matches-found",
+      "positionConvention": "LF-normalized object_read text; UTF-16 offsets zero-based, end exclusive; line/column one-based UTF-16; name has no code line",
+      "referenceLimitations": "Literal text hits are candidate references only; comments, strings, shadowed names and indirect access are not semantically resolved"
+    }
+  }
+}

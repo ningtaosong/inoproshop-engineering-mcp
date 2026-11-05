@@ -2,6 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';
 import {readFile,writeFile,readdir} from 'node:fs/promises';import path from 'node:path';import {z} from 'zod';
 import {parseDeclaration,variableResult} from '../dist/variables.js';
 import {schemas,outputSchemas,variableDataSchema} from '../dist/contracts.js';
+import {withoutIdentifierExtension} from './contract-compatibility.mjs';
 import {setup,connect,app,app2,obj,obj2} from './helpers.mjs';
 import {digest,codeHash} from '../dist/storage.js';
 
@@ -63,7 +64,7 @@ async function ctx(t,extra={}){
 test('twenty tools; all nineteen existing contracts unchanged; precise read-only input/output schema',async t=>{
  const x=await ctx(t);const tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,20);assert(tools.find(x=>x.name==='variable_inspect').annotations.readOnlyHint);
  const old=JSON.parse(await readFile('tests/fixtures/variable-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);
- for(const t of old.tools){assert.deepEqual(z.toJSONSchema(schemas[t.name],{io:'input'}),t.inputSchema,t.name+' input');assert.deepEqual(z.toJSONSchema(outputSchemas[t.name]),t.outputSchema,t.name+' output');}
+ for(const t of old.tools){const strip=t.name==='project_search'?withoutIdentifierExtension:x=>x;assert.deepEqual(strip(z.toJSONSchema(schemas[t.name],{io:'input'})),t.inputSchema,t.name+' input');assert.deepEqual(strip(z.toJSONSchema(outputSchemas[t.name])),t.outputSchema,t.name+' output');}
  for(const a of [{applicationId:null},{targetKind:'pool'},{limit:101},{write:true},{maxObjects:0},{sourceRead:{objectId:obj,offset:-1}}])assert(!schemas.variable_inspect.safeParse({...x.target,...a}).success);
  assert(variableDataSchema.safeParse((await x.call({})).data).success);
 });

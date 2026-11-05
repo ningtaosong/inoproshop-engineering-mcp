@@ -1,0 +1,819 @@
+{
+  "origin": {
+    "base": "f1121186c616ce3bd3f4b7913a1af95ad8f4bbfb",
+    "method": "Actual dist production searchResult, variableResult and parseDeclaration before code changes; synthetic corpus, no IDE dispatch"
+  },
+  "raw": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "Memory-only synthetic corpus, never sent to IDE",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "corpus": [
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "applicationId": "10000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "hasImplementation": true,
+          "declaration": "PROGRAM Main\nVAR\n    Input AT %IX0.0 : BOOL;\n    IX0 : BOOL;\nEND_VAR",
+          "implementation": "IX0 := %IX0.0;",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748"
+        }
+      ],
+      "scope": {
+        "description": "Memory fixture only",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      }
+    }
+  },
+  "args": {
+    "projectId": "10000000-0000-4000-8000-000000000001",
+    "targetKind": "application",
+    "applicationId": "10000000-0000-4000-8000-000000000001",
+    "query": "IX0",
+    "caseSensitive": false,
+    "matchMode": "identifier",
+    "areas": [
+      "declaration",
+      "implementation"
+    ],
+    "offset": 0,
+    "limit": 100,
+    "maxResults": 200
+  },
+  "result": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "标识符词元搜索完成；请分别检查读取覆盖、词法缺口、截断和分页",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "scope": {
+        "description": "Memory fixture only",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      },
+      "version": "4b053080edadc57bf3f1cc248b49482d486547762f098a929797bc21f3f3c462",
+      "query": "IX0",
+      "caseSensitive": false,
+      "areas": [
+        "declaration",
+        "implementation"
+      ],
+      "matches": [
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "region": "declaration",
+          "position": {
+            "startOffset": 31,
+            "endOffset": 34,
+            "line": 3,
+            "column": 15,
+            "endLine": 3,
+            "endColumn": 18
+          },
+          "matchedText": "IX0",
+          "context": {
+            "text": "PROGRAM Main\nVAR\n    Input AT %IX0.0 : BOOL;\n    IX0 : BOOL;\nEND_VAR",
+            "startOffset": 0,
+            "endOffset": 68
+          },
+          "candidateReference": true
+        },
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "region": "declaration",
+          "position": {
+            "startOffset": 49,
+            "endOffset": 52,
+            "line": 4,
+            "column": 5,
+            "endLine": 4,
+            "endColumn": 8
+          },
+          "matchedText": "IX0",
+          "context": {
+            "text": "PROGRAM Main\nVAR\n    Input AT %IX0.0 : BOOL;\n    IX0 : BOOL;\nEND_VAR",
+            "startOffset": 0,
+            "endOffset": 68
+          },
+          "candidateReference": true
+        },
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "region": "implementation",
+          "position": {
+            "startOffset": 0,
+            "endOffset": 3,
+            "line": 1,
+            "column": 1,
+            "endLine": 1,
+            "endColumn": 4
+          },
+          "matchedText": "IX0",
+          "context": {
+            "text": "IX0 := %IX0.0;",
+            "startOffset": 0,
+            "endOffset": 14
+          },
+          "candidateReference": true
+        },
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "region": "implementation",
+          "position": {
+            "startOffset": 8,
+            "endOffset": 11,
+            "line": 1,
+            "column": 9,
+            "endLine": 1,
+            "endColumn": 12
+          },
+          "matchedText": "IX0",
+          "context": {
+            "text": "IX0 := %IX0.0;",
+            "startOffset": 0,
+            "endOffset": 14
+          },
+          "candidateReference": true
+        }
+      ],
+      "matchMode": "identifier",
+      "searchVersion": "source-search-v2",
+      "lexerVersion": "st-identifier-v1",
+      "readOrigin": {
+        "kind": "ide",
+        "inventoryOperationId": "20000000-0000-4000-8000-000000000002"
+      },
+      "lexicalCoverage": {
+        "lexerVersion": "st-identifier-v1",
+        "complete": true,
+        "regionsScanned": 2,
+        "regionsComplete": 2,
+        "gaps": []
+      },
+      "page": {
+        "offset": 0,
+        "limit": 100,
+        "returned": 4,
+        "hasMore": false,
+        "nextOffset": null,
+        "retainedMatches": 4,
+        "maxResults": 200,
+        "truncated": false,
+        "totalMatches": 4,
+        "matchedAtLeast": 4
+      },
+      "noMatchConclusion": "matches-found",
+      "positionConvention": "LF-normalized object_read text; UTF-16 offsets zero-based, end exclusive; line/column one-based UTF-16; name has no code line",
+      "referenceLimitations": "Source identifier-token occurrences only, not resolved symbols, complete cross-references or read/write/unused/rename safety analysis"
+    }
+  },
+  "variableArgs": {
+    "projectId": "10000000-0000-4000-8000-000000000001",
+    "targetKind": "application",
+    "applicationId": "10000000-0000-4000-8000-000000000001",
+    "caseSensitive": false,
+    "offset": 0,
+    "limit": 100,
+    "maxObjects": 200,
+    "maxEntries": 2000
+  },
+  "variableResult": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "已按原始声明只读解析；请区分变量、类型字段、返回声明、注释及缺口",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "version": "7382e4a73c59b9af362fc1772eab1ccbd3215de41165fb68ecf98354fd827610",
+      "basis": "declaration-parsing",
+      "parserVersion": "declaration-variables-v2",
+      "positionConvention": "LF-normalized object_read declaration; zero-based UTF-16 offsets, end exclusive; one-based UTF-16 line/column",
+      "query": {
+        "objectId": null,
+        "name": null,
+        "caseSensitive": false,
+        "nameMatch": "literal-substring"
+      },
+      "scope": {
+        "description": "Memory fixture only",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      },
+      "coverage": {
+        "objectEnumerationComplete": true,
+        "sourceReadComplete": true,
+        "declarationParseComplete": true,
+        "supportedScopeComplete": true,
+        "wholeApplicationVariableTable": false,
+        "readObjects": 1,
+        "selectedObjects": 1,
+        "parsedObjects": 1,
+        "maxObjects": 200,
+        "objectsTruncated": false,
+        "uncoveredDeclarationObjects": [],
+        "excludedDefinitions": [],
+        "parseGapCount": 0
+      },
+      "counts": {
+        "variable": 2,
+        "type-field": 0,
+        "comment": 0,
+        "parse-gap": 0,
+        "function-return": 0
+      },
+      "noMatchConclusion": "declarations-found",
+      "readOrigin": {
+        "kind": "ide",
+        "inventoryOperationId": "20000000-0000-4000-8000-000000000002"
+      },
+      "limits": "No runtime values, evaluated initial values, instance/array expansion, I/O mapping or semantic references. Read gaps/skips and parse gaps are independent. sourceRead retrieves original declaration, not implementation.",
+      "entries": [
+        {
+          "category": "variable",
+          "name": "Input",
+          "section": "VAR",
+          "modifiers": [],
+          "modifierText": "",
+          "typeRaw": "BOOL",
+          "typePosition": {
+            "startOffset": 39,
+            "endOffset": 43,
+            "line": 3,
+            "column": 23,
+            "endLine": 3,
+            "endColumn": 27
+          },
+          "hasExplicitInitializer": false,
+          "initializerRaw": null,
+          "initializerPosition": null,
+          "addressRaw": "%IX0.0",
+          "addressPosition": {
+            "startOffset": 30,
+            "endOffset": 36,
+            "line": 3,
+            "column": 14,
+            "endLine": 3,
+            "endColumn": 20
+          },
+          "namePosition": {
+            "startOffset": 21,
+            "endOffset": 26,
+            "line": 3,
+            "column": 5,
+            "endLine": 3,
+            "endColumn": 10
+          },
+          "position": {
+            "startOffset": 21,
+            "endOffset": 44,
+            "line": 3,
+            "column": 5,
+            "endLine": 3,
+            "endColumn": 28
+          },
+          "source": "Input AT %IX0.0 : BOOL;",
+          "commentAssociation": "single-name-declaration",
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "index": 0
+        },
+        {
+          "category": "variable",
+          "name": "IX0",
+          "section": "VAR",
+          "modifiers": [],
+          "modifierText": "",
+          "typeRaw": "BOOL",
+          "typePosition": {
+            "startOffset": 55,
+            "endOffset": 59,
+            "line": 4,
+            "column": 11,
+            "endLine": 4,
+            "endColumn": 15
+          },
+          "hasExplicitInitializer": false,
+          "initializerRaw": null,
+          "initializerPosition": null,
+          "addressRaw": null,
+          "addressPosition": null,
+          "namePosition": {
+            "startOffset": 49,
+            "endOffset": 52,
+            "line": 4,
+            "column": 5,
+            "endLine": 4,
+            "endColumn": 8
+          },
+          "position": {
+            "startOffset": 49,
+            "endOffset": 60,
+            "line": 4,
+            "column": 5,
+            "endLine": 4,
+            "endColumn": 16
+          },
+          "source": "IX0 : BOOL;",
+          "commentAssociation": "single-name-declaration",
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "index": 1
+        }
+      ],
+      "page": {
+        "offset": 0,
+        "limit": 100,
+        "returned": 2,
+        "retained": 2,
+        "hasMore": false,
+        "nextOffset": null,
+        "truncated": false,
+        "total": 2
+      },
+      "delivery": {
+        "previewsAreNotMissingValues": true,
+        "sourceReadRequiredForPreview": true,
+        "pageReduced": false
+      }
+    }
+  },
+  "parsed": {
+    "rows": [
+      {
+        "category": "variable",
+        "name": "Input",
+        "section": "VAR",
+        "modifiers": [],
+        "modifierText": "",
+        "typeRaw": "BOOL",
+        "typePosition": {
+          "startOffset": 39,
+          "endOffset": 43,
+          "line": 3,
+          "column": 23,
+          "endLine": 3,
+          "endColumn": 27
+        },
+        "hasExplicitInitializer": false,
+        "initializerRaw": null,
+        "initializerPosition": null,
+        "addressRaw": "%IX0.0",
+        "addressPosition": {
+          "startOffset": 30,
+          "endOffset": 36,
+          "line": 3,
+          "column": 14,
+          "endLine": 3,
+          "endColumn": 20
+        },
+        "namePosition": {
+          "startOffset": 21,
+          "endOffset": 26,
+          "line": 3,
+          "column": 5,
+          "endLine": 3,
+          "endColumn": 10
+        },
+        "position": {
+          "startOffset": 21,
+          "endOffset": 44,
+          "line": 3,
+          "column": 5,
+          "endLine": 3,
+          "endColumn": 28
+        },
+        "source": "Input AT %IX0.0 : BOOL;",
+        "commentAssociation": "single-name-declaration"
+      },
+      {
+        "category": "variable",
+        "name": "IX0",
+        "section": "VAR",
+        "modifiers": [],
+        "modifierText": "",
+        "typeRaw": "BOOL",
+        "typePosition": {
+          "startOffset": 55,
+          "endOffset": 59,
+          "line": 4,
+          "column": 11,
+          "endLine": 4,
+          "endColumn": 15
+        },
+        "hasExplicitInitializer": false,
+        "initializerRaw": null,
+        "initializerPosition": null,
+        "addressRaw": null,
+        "addressPosition": null,
+        "namePosition": {
+          "startOffset": 49,
+          "endOffset": 52,
+          "line": 4,
+          "column": 5,
+          "endLine": 4,
+          "endColumn": 8
+        },
+        "position": {
+          "startOffset": 49,
+          "endOffset": 60,
+          "line": 4,
+          "column": 5,
+          "endLine": 4,
+          "endColumn": 16
+        },
+        "source": "IX0 : BOOL;",
+        "commentAssociation": "single-name-declaration"
+      }
+    ],
+    "complete": true
+  },
+  "literalArgs": {
+    "projectId": "10000000-0000-4000-8000-000000000001",
+    "targetKind": "application",
+    "applicationId": "10000000-0000-4000-8000-000000000001",
+    "query": "IX0",
+    "caseSensitive": false,
+    "matchMode": "literal",
+    "areas": [
+      "declaration",
+      "implementation"
+    ],
+    "offset": 0,
+    "limit": 100,
+    "maxResults": 200
+  },
+  "literalResult": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "字面量搜索完成；请分别检查覆盖范围、截断和分页",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "scope": {
+        "description": "Memory fixture only",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      },
+      "version": "9509c82f30bde20c45d92fe667a35df0e44c54e47af6539430af525c73cd331f",
+      "query": "IX0",
+      "caseSensitive": false,
+      "areas": [
+        "declaration",
+        "implementation"
+      ],
+      "matches": [
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "region": "declaration",
+          "position": {
+            "startOffset": 31,
+            "endOffset": 34,
+            "line": 3,
+            "column": 15,
+            "endLine": 3,
+            "endColumn": 18
+          },
+          "matchedText": "IX0",
+          "context": {
+            "text": "PROGRAM Main\nVAR\n    Input AT %IX0.0 : BOOL;\n    IX0 : BOOL;\nEND_VAR",
+            "startOffset": 0,
+            "endOffset": 68
+          },
+          "candidateReference": true
+        },
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "region": "declaration",
+          "position": {
+            "startOffset": 49,
+            "endOffset": 52,
+            "line": 4,
+            "column": 5,
+            "endLine": 4,
+            "endColumn": 8
+          },
+          "matchedText": "IX0",
+          "context": {
+            "text": "PROGRAM Main\nVAR\n    Input AT %IX0.0 : BOOL;\n    IX0 : BOOL;\nEND_VAR",
+            "startOffset": 0,
+            "endOffset": 68
+          },
+          "candidateReference": true
+        },
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "region": "implementation",
+          "position": {
+            "startOffset": 0,
+            "endOffset": 3,
+            "line": 1,
+            "column": 1,
+            "endLine": 1,
+            "endColumn": 4
+          },
+          "matchedText": "IX0",
+          "context": {
+            "text": "IX0 := %IX0.0;",
+            "startOffset": 0,
+            "endOffset": 14
+          },
+          "candidateReference": true
+        },
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "214f68d53c8f383c4b85a0a469204d946d474c17e28b95b4654e2bb359bff748",
+          "region": "implementation",
+          "position": {
+            "startOffset": 8,
+            "endOffset": 11,
+            "line": 1,
+            "column": 9,
+            "endLine": 1,
+            "endColumn": 12
+          },
+          "matchedText": "IX0",
+          "context": {
+            "text": "IX0 := %IX0.0;",
+            "startOffset": 0,
+            "endOffset": 14
+          },
+          "candidateReference": true
+        }
+      ],
+      "matchMode": "literal",
+      "searchVersion": "source-search-v2",
+      "lexerVersion": null,
+      "readOrigin": {
+        "kind": "ide",
+        "inventoryOperationId": "20000000-0000-4000-8000-000000000002"
+      },
+      "page": {
+        "offset": 0,
+        "limit": 100,
+        "returned": 4,
+        "hasMore": false,
+        "nextOffset": null,
+        "retainedMatches": 4,
+        "maxResults": 200,
+        "truncated": false,
+        "totalMatches": 4,
+        "matchedAtLeast": 4
+      },
+      "noMatchConclusion": "matches-found",
+      "positionConvention": "LF-normalized object_read text; UTF-16 offsets zero-based, end exclusive; line/column one-based UTF-16; name has no code line",
+      "referenceLimitations": "Literal text hits are candidate references only; comments, strings, shadowed names and indirect access are not semantically resolved"
+    }
+  },
+  "declarationTokens": {
+    "tokens": [
+      {
+        "text": "PROGRAM",
+        "start": 0,
+        "end": 7,
+        "id": true
+      },
+      {
+        "text": "Main",
+        "start": 8,
+        "end": 12,
+        "id": true
+      },
+      {
+        "text": "VAR",
+        "start": 13,
+        "end": 16,
+        "id": true
+      },
+      {
+        "text": "Input",
+        "start": 21,
+        "end": 26,
+        "id": true
+      },
+      {
+        "text": "AT",
+        "start": 27,
+        "end": 29,
+        "id": true
+      },
+      {
+        "text": "%",
+        "start": 30,
+        "end": 31
+      },
+      {
+        "text": "IX0",
+        "start": 31,
+        "end": 34,
+        "id": true
+      },
+      {
+        "text": ".",
+        "start": 34,
+        "end": 35
+      },
+      {
+        "text": "0",
+        "start": 35,
+        "end": 36
+      },
+      {
+        "text": ":",
+        "start": 37,
+        "end": 38
+      },
+      {
+        "text": "BOOL",
+        "start": 39,
+        "end": 43,
+        "id": true
+      },
+      {
+        "text": ";",
+        "start": 43,
+        "end": 44
+      },
+      {
+        "text": "IX0",
+        "start": 49,
+        "end": 52,
+        "id": true
+      },
+      {
+        "text": ":",
+        "start": 53,
+        "end": 54
+      },
+      {
+        "text": "BOOL",
+        "start": 55,
+        "end": 59,
+        "id": true
+      },
+      {
+        "text": ";",
+        "start": 59,
+        "end": 60
+      },
+      {
+        "text": "END_VAR",
+        "start": 61,
+        "end": 68,
+        "id": true
+      }
+    ],
+    "comments": []
+  }
+}

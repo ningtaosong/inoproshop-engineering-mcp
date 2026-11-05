@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.13.0",
+  "serverVersion": "0.14.0",
   "contractVersion": "1.0.0",
   "toolCount": 20,
   "tools": [
@@ -1124,6 +1124,14 @@
             "default": false,
             "type": "boolean"
           },
+          "matchMode": {
+            "default": "literal",
+            "type": "string",
+            "enum": [
+              "literal",
+              "identifier"
+            ]
+          },
           "areas": {
             "default": [
               "name",
@@ -1280,6 +1288,202 @@
                     "implementation"
                   ]
                 }
+              },
+              "matchMode": {
+                "type": "string",
+                "enum": [
+                  "literal",
+                  "identifier"
+                ]
+              },
+              "searchVersion": {
+                "type": "string"
+              },
+              "lexerVersion": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "readOrigin": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "ide",
+                      "recorded-inventory"
+                    ]
+                  },
+                  "inventoryOperationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "inventoryOperationId"
+                ],
+                "additionalProperties": false
+              },
+              "pageFileEvidence": {
+                "type": "object",
+                "properties": {
+                  "beforeDiskHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "afterDiskHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "beforeDiskHash",
+                  "afterDiskHash"
+                ],
+                "additionalProperties": false
+              },
+              "lexicalCoverage": {
+                "type": "object",
+                "properties": {
+                  "lexerVersion": {
+                    "type": "string"
+                  },
+                  "complete": {
+                    "type": "boolean"
+                  },
+                  "regionsScanned": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "regionsComplete": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "gaps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "objectId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "contentHash": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "region": {
+                          "type": "string",
+                          "enum": [
+                            "declaration",
+                            "implementation"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "position": {
+                          "type": "object",
+                          "properties": {
+                            "startOffset": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "endOffset": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "line": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "column": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "endLine": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "endColumn": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "startOffset",
+                            "endOffset",
+                            "line",
+                            "column",
+                            "endLine",
+                            "endColumn"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "context": {
+                          "type": "object",
+                          "properties": {
+                            "text": {
+                              "type": "string"
+                            },
+                            "startOffset": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "endOffset": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "text",
+                            "startOffset",
+                            "endOffset"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "objectId",
+                        "path",
+                        "contentHash",
+                        "region",
+                        "reason",
+                        "position",
+                        "context"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "lexerVersion",
+                  "complete",
+                  "regionsScanned",
+                  "regionsComplete",
+                  "gaps"
+                ],
+                "additionalProperties": false
               },
               "scope": {
                 "type": "object",

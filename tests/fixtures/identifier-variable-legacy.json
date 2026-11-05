@@ -1,0 +1,208 @@
+{
+  "origin": {
+    "base": "47af962653bdd737fb8c2d0bd7323a3cf125ab58",
+    "method": "Original git source of queries/variables transpiled in isolated memory runner; native declarations remain synthetic existing fixture; no service/IDE execution"
+  },
+  "raw": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "synthetic 0.13 native corpus",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "corpus": [
+        {
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "applicationId": "10000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "hasImplementation": true,
+          "declaration": "PROGRAM Main\nVAR\nConfig : DINT := 10;\nConfig2 : DINT := 15;\nEND_VAR",
+          "implementation": "// 中文😀 Config2\nGVL.Config2.DelayTime; Name := 'Config2';",
+          "contentHash": "5d73e35f9c04dd8f659d2e28cf83335f5b9c18d044e01c24e8e28c3db356d1fd"
+        }
+      ],
+      "scope": {
+        "description": "synthetic supported source",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      }
+    }
+  },
+  "args": {
+    "projectId": "10000000-0000-4000-8000-000000000001",
+    "targetKind": "application",
+    "applicationId": "10000000-0000-4000-8000-000000000001",
+    "caseSensitive": false,
+    "offset": 0,
+    "limit": 1,
+    "maxObjects": 200,
+    "maxEntries": 2000
+  },
+  "result": {
+    "contractVersion": "1.0.0",
+    "status": "succeeded",
+    "summary": "已按原始声明只读解析；请区分变量、类型字段、返回声明、注释及缺口",
+    "operationId": "20000000-0000-4000-8000-000000000002",
+    "data": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "applicationId": "10000000-0000-4000-8000-000000000001",
+      "targetKind": "application",
+      "projectPath": "synthetic-fixture",
+      "diskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "readOnlyEvidence": {
+        "beforeDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "afterCloseDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "postExitDiskHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "unchanged": true
+      },
+      "version": "183ca29889b8b4dd84abf3e01adce1e95e251cb2d2b07ea9382900e2257cffa2",
+      "basis": "declaration-parsing",
+      "parserVersion": "declaration-variables-v2",
+      "positionConvention": "LF-normalized object_read declaration; zero-based UTF-16 offsets, end exclusive; one-based UTF-16 line/column",
+      "query": {
+        "objectId": null,
+        "name": null,
+        "caseSensitive": false,
+        "nameMatch": "literal-substring"
+      },
+      "scope": {
+        "description": "synthetic supported source",
+        "applicationPath": [
+          "Device",
+          "Application"
+        ],
+        "treeComplete": true,
+        "eligibleObjects": 1,
+        "readObjects": 1,
+        "coverageComplete": true,
+        "readFailures": [],
+        "enumerationFailures": [],
+        "skippedObjects": []
+      },
+      "coverage": {
+        "objectEnumerationComplete": true,
+        "sourceReadComplete": true,
+        "declarationParseComplete": true,
+        "supportedScopeComplete": true,
+        "wholeApplicationVariableTable": false,
+        "readObjects": 1,
+        "selectedObjects": 1,
+        "parsedObjects": 1,
+        "maxObjects": 200,
+        "objectsTruncated": false,
+        "uncoveredDeclarationObjects": [],
+        "excludedDefinitions": [],
+        "parseGapCount": 0
+      },
+      "counts": {
+        "variable": 2,
+        "type-field": 0,
+        "comment": 0,
+        "parse-gap": 0,
+        "function-return": 0
+      },
+      "noMatchConclusion": "declarations-found",
+      "readOrigin": {
+        "kind": "ide",
+        "inventoryOperationId": "20000000-0000-4000-8000-000000000002"
+      },
+      "limits": "No runtime values, evaluated initial values, instance/array expansion, I/O mapping or semantic references. Read gaps/skips and parse gaps are independent. sourceRead retrieves original declaration, not implementation.",
+      "entries": [
+        {
+          "category": "variable",
+          "name": "Config",
+          "section": "VAR",
+          "modifiers": [],
+          "modifierText": "",
+          "typeRaw": "DINT",
+          "typePosition": {
+            "startOffset": 26,
+            "endOffset": 30,
+            "line": 3,
+            "column": 10,
+            "endLine": 3,
+            "endColumn": 14
+          },
+          "hasExplicitInitializer": true,
+          "initializerRaw": "10",
+          "initializerPosition": {
+            "startOffset": 34,
+            "endOffset": 36,
+            "line": 3,
+            "column": 18,
+            "endLine": 3,
+            "endColumn": 20
+          },
+          "addressRaw": null,
+          "addressPosition": null,
+          "namePosition": {
+            "startOffset": 17,
+            "endOffset": 23,
+            "line": 3,
+            "column": 1,
+            "endLine": 3,
+            "endColumn": 7
+          },
+          "position": {
+            "startOffset": 17,
+            "endOffset": 37,
+            "line": 3,
+            "column": 1,
+            "endLine": 3,
+            "endColumn": 21
+          },
+          "source": "Config : DINT := 10;",
+          "commentAssociation": "single-name-declaration",
+          "objectId": "20000000-0000-4000-8000-000000000001",
+          "path": [
+            "Device",
+            "Application",
+            "Main"
+          ],
+          "objectType": "st_pou",
+          "contentHash": "5d73e35f9c04dd8f659d2e28cf83335f5b9c18d044e01c24e8e28c3db356d1fd",
+          "index": 0
+        }
+      ],
+      "page": {
+        "offset": 0,
+        "limit": 1,
+        "returned": 1,
+        "retained": 2,
+        "hasMore": true,
+        "nextOffset": 1,
+        "truncated": false,
+        "total": 2
+      },
+      "delivery": {
+        "previewsAreNotMissingValues": true,
+        "sourceReadRequiredForPreview": true,
+        "pageReduced": false
+      }
+    }
+  }
+}
