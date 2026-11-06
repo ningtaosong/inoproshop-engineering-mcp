@@ -20,7 +20,7 @@ export function configuration(env = process.env): Config {
     testMode:env.INOPRO_TEST_MODE==='fixture',fixture:env.INOPRO_TEST_FIXTURE
   };
 }
-export interface BridgeRequest { operationId: string; command: string; projectPath: string; args: any; }
+export interface BridgeRequest { operationId: string; command: string; projectPath: string; args: any; fileGuard?:{mode:'direct';expectedDiskHash:string}; }
 export interface Adapter {
   execute(request: BridgeRequest, directory: string, onStart: (pid:number)=>Promise<void>): Promise<Reply>;
   reconcile(directory: string): Promise<Reply | undefined>;
@@ -75,10 +75,13 @@ export class IdeAdapter implements Adapter {
     const request=await readJson(path.join(directory,'request.json'));
     if(!request || response.operationId!==request.operationId)
       throw new DomainError('unknown','RESULT_ID_MISMATCH','桥接结果与原操作不匹配');
-    if(['search','tasks','structure','device','libraries','compare_capture'].includes(request.command)) {
+    if(['search','tasks','structure','device','libraries','compare_capture'].includes(request.command) || request.fileGuard&&['inspect','list','read'].includes(request.command)) {
       if(response.status==='unknown'&&response.error?.code==='READ_ONLY_FILE_CHANGED')return response;
       const after=digest(await fs.readFile(request.projectPath)),e=response.data?.readOnlyEvidence;
-      if(after!==request.args.readDiskHash || (response.status==='succeeded' && (!e || e.beforeDiskHash!==request.args.readDiskHash || e.afterCloseDiskHash!==after || e.unchanged!==true))) {
+      const expected=request.fileGuard?.expectedDiskHash??request.args.readDiskHash;
+      // A pre-open version conflict is a confirmed rejection, not an uncertain write.
+      if(response.status==='conflict'&&response.error?.code==='PROJECT_FILE_CHANGED'&&request.fileGuard)return response;
+      if(after!==expected || (response.status==='succeeded' && (!e || e.beforeDiskHash!==expected || e.afterCloseDiskHash!==after || e.unchanged!==true))) {
         const failed:Reply={contractVersion:'1.0.0',operationId:request.operationId,status:'unknown',summary:'只读操作的文件证据不一致，结果不可信，保持冻结',
           error:{code:'READ_ONLY_FILE_CHANGED',message:'未自动保存、恢复或重放；请核对原操作和文件'},data:{priorResult:response,expectedDiskHash:request.args.readDiskHash,observedDiskHash:after}};
         await atomicJson(path.join(directory,'observed-after-exit.json'),failed);return failed;

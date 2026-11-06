@@ -699,7 +699,7 @@ def create_text_object(project, req, args, kind, lifecycle=None):
         recovery = {"status":"unknown"}
         detail=exception_evidence(error)
         try:
-            if lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
+            if req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")
             project=lifecycle["project"]
             if created_id is not None and created_id not in before_ids:
@@ -727,25 +727,51 @@ def create_text_object(project, req, args, kind, lifecycle=None):
         return failure("failed" if recovery["status"]=="succeeded" else "unknown","PARTIAL_CREATE",text(error),
             {"createdObjectId":created_id,"partialContent":partial,"recovery":recovery,"checkpoint":req["checkpointPath"],"primaryException":detail}), lifecycle["project"]
 
+def direct_exclusive_probe(project_path):
+    from System.IO import FileStream, FileMode, FileAccess, FileShare
+    handle = FileStream(project_path, FileMode.Open, FileAccess.Read, getattr(FileShare, "None"))
+    handle.Dispose()
+
+def direct_file_guard(req, state):
+    guard=req.get("fileGuard")
+    if not guard:return None
+    target=req["projectPath"]
+    if guard.get("mode")!="direct" or not guard.get("expectedDiskHash"):
+        lifecycle_reject(state,failure("conflict","DIRECT_BINDING_INVALID",u"直接工程绑定信息不完整，未打开"))
+    for suffix in (".lock",".lck",".~lock",".~u"):
+        if os.path.lexists(target+suffix):
+            lifecycle_reject(state,failure("conflict","PROJECT_BUSY",u"指定工程存在外部占用标记；未接管、未删除标记"))
+    try:direct_exclusive_probe(target)
+    except Exception as error:
+        lifecycle_reject(state,failure("conflict","PROJECT_BUSY",u"指定工程无法排他读取，未打开或写入",{"probeError":exception_evidence(error)}))
+    before=file_hash(target)
+    if before!=guard["expectedDiskHash"]:
+        lifecycle_reject(state,failure("conflict","PROJECT_FILE_CHANGED",u"指定工程在派发后发生变化，未打开或写入"))
+    return {"projectPath":target,"expectedDiskHash":guard["expectedDiskHash"],"beforeDiskHash":before,"exclusiveProbe":True}
+
 def dispatch(req):
     project = None
     lifecycle = lifecycle_state(project_path=req["projectPath"])
     response = None
     command, args = req["command"], req["args"]
-    read_only = command in ("search","tasks","structure","device","libraries","compare_capture")
+    read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
+    direct_evidence = None
     before_hash = None
     if command not in ("inspect", "list", "read", "search", "tasks", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
+        direct_evidence=direct_file_guard(req,lifecycle)
         if read_only:
             before_hash=file_hash(req["projectPath"])
-            if before_hash!=args["readDiskHash"]:
+            if before_hash!=(req.get("fileGuard",{}).get("expectedDiskHash") or args["readDiskHash"]):
                 lifecycle_reject(lifecycle,failure("conflict","READ_DISK_CHANGED",u"正式读取前工程文件已变化，未打开或保存",{"beforeDiskHash":before_hash}))
         if projects.primary is not None:
             lifecycle_reject(lifecycle,failure("conflict", "UNOWNED_PROJECT", u"新启动实例已有工程；拒绝接管"))
-        if command in ("change", "create", "create_declaration"):
+        if command in ("change", "create", "create_declaration") or req.get("fileGuard") and command=="save":
             shutil.copyfile(req["projectPath"], req["checkpointPath"])
         project = lifecycle_open(lifecycle,req["projectPath"])
+        if direct_evidence and file_hash(req["projectPath"])!=direct_evidence["beforeDiskHash"]:
+            lifecycle_reject(lifecycle,failure("conflict","PROJECT_FILE_CHANGED",u"打开期间文件发生变化，未提交修改"))
         if os.path.normcase(os.path.abspath(text(project.path))) != os.path.normcase(os.path.abspath(req["projectPath"])):
             lifecycle_reject(lifecycle,failure("conflict", "PROJECT_PATH_MISMATCH", u"IDE 实际工程路径不匹配"))
         if command == "structure":
@@ -810,7 +836,7 @@ def dispatch(req):
                         recovery = {"status": "unknown"}
                         detail = exception_evidence(e)
                         try:
-                            if lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
+                            if req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")
                             project = lifecycle["project"]
                             item, names, aid = locate(project, app_id, args["objectId"])
@@ -853,6 +879,13 @@ def dispatch(req):
             if response is not None:
                 response.setdefault("data",{})["readOnlyEvidence"]=evidence
         if response is not None:response.setdefault("data",{})["lifecycle"]=lifecycle_report(lifecycle)
+    if direct_evidence:
+        if response.get("data") is None:response["data"]={}
+        response["data"]["directFileEvidence"]=direct_evidence
+        response["data"]["projectPath"]=req["projectPath"]
+        response["data"]["editMode"]="direct"
+        if response["data"].pop("persistedToWorkingCopy",False):response["data"]["persistedToProject"]=True
+        response["summary"]=response["summary"].replace(u"工作副本",u"指定工程")
     return response
 
 request_path = os.environ.get("INOPRO_BRIDGE_REQUEST")

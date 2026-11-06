@@ -43,12 +43,15 @@ export interface Operation {
   activation?: { previousActiveProjectId: string|null; revision: number };
 }
 export interface Session {
+  // Missing storageMode is the historical copy binding. sourceHash is the
+  // registration-time provenance hash; diskHash is the current editable file.
+  storageMode?: 'direct'; editMode?: 'direct'; directPath?: string;
   projectId: string; sessionId: string; sourcePath: string; workingPath: string;
   sourceHash: string; targetKind?: 'application'|'pool'; applicationId?: string|null; applications?: any[]; lastBuild?: any;
   snapshot?: string; diskHash?: string; buildApplicable?: boolean; lastStateOperationId?: string;
 }
 export interface Registry {
-  version: 1; revision: number; activeProjectId: string|null; projects: Session[];
+  version: 1|2; revision: number; activeProjectId: string|null; projects: Session[];
   lastTransitionOperationId?: string;
 }
 export const pathKey = (p:string) => path.resolve(p).toLowerCase();
@@ -89,16 +92,22 @@ export class Store {
     if(!s || typeof s.projectId!=='string' || typeof s.sessionId!=='string' || typeof s.sourcePath!=='string' ||
       typeof s.workingPath!=='string' || !path.isAbsolute(s.sourcePath) || !path.isAbsolute(s.workingPath) || !/^[a-f0-9]{64}$/.test(s.sourceHash))
       throw new DomainError('unknown','CORRUPT_REGISTRY','工程登记结构损坏，停止工程操作');
+    if((s.storageMode!==undefined && s.storageMode!=='direct') || (s.editMode!==undefined && s.editMode!=='direct') ||
+      (s.editMode==='direct' && (typeof s.directPath!=='string'||!path.isAbsolute(s.directPath))) ||
+      (s.storageMode==='direct' && (s.editMode!=='direct' || pathKey(s.sourcePath)!==pathKey(s.workingPath))))
+      throw new DomainError('unknown','CORRUPT_REGISTRY','直接工程绑定模式或路径损坏');
   }
   async registry():Promise<Registry> {
     const r=await this.get('registry.json');
     if(r!==undefined) {
-      if(r.version!==1 || !Number.isInteger(r.revision) || r.revision<0 || !Array.isArray(r.projects) ||
+      if(![1,2].includes(r.version) || !Number.isInteger(r.revision) || r.revision<0 || !Array.isArray(r.projects) ||
         !(r.activeProjectId===null || typeof r.activeProjectId==='string'))
         throw new DomainError('unknown','CORRUPT_REGISTRY','工程登记结构损坏');
       r.projects.forEach((s:any)=>this.validateSession(s));
+      if(r.version===1&&r.projects.some((s:Session)=>s.editMode==='direct'||s.storageMode==='direct'))
+        throw new DomainError('unknown','CORRUPT_REGISTRY','直接编辑登记必须使用 v2；禁止旧格式误识别为副本');
       if(new Set(r.projects.map((s:Session)=>s.projectId)).size!==r.projects.length ||
-        new Set(r.projects.map((s:Session)=>pathKey(s.sourcePath))).size!==r.projects.length ||
+        new Set(r.projects.filter((s:Session)=>s.storageMode!=='direct').map((s:Session)=>pathKey(s.sourcePath))).size!==r.projects.filter((s:Session)=>s.storageMode!=='direct').length ||
         new Set(r.projects.map((s:Session)=>pathKey(s.workingPath))).size!==r.projects.length ||
         (r.activeProjectId!==null && !r.projects.some((s:Session)=>s.projectId===r.activeProjectId)))
         throw new DomainError('unknown','CORRUPT_REGISTRY','工程登记身份或活动指针不一致');
@@ -142,6 +151,9 @@ export class Store {
       throw new DomainError('unknown','TRANSITION_CONFLICT','切换前登记已改变，保持冻结');
     const i=r.projects.findIndex(p=>p.projectId===s.projectId);
     if(i<0)r.projects.push(s);else r.projects[i]=s;
+    // Older binaries reject v2 rather than silently treating direct bindings as copies.
+    // Original records are retained verbatim; only the registry envelope is upgraded.
+    if(s.editMode==='direct')r.version=2;
     r.activeProjectId=s.projectId;r.revision++;r.lastTransitionOperationId=op.operationId;
     await this.put('registry.json',r);return s;
   }

@@ -33,6 +33,7 @@
 !/config/codex-write-validation.example.toml
 /docs/*
 !/docs/getting-started.md
+!/docs/direct-project-edit.md
 !/docs/post-change-baseline-compare.md
 !/docs/tool-schemas.json
 !/docs/library-inspect.md
