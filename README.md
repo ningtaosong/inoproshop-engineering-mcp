@@ -10,7 +10,7 @@ main同时提供“初始化成员定位 → 限定修改 → 最终比较”工
 
 project_search的literal/identifier及st-identifier-v2不变；未启用成员提取时变量表保持declaration-variables-v2的旧结果和分页身份，其余十九项工具输入输出不变。[检索范围](docs/identifier-search.md)。
 
-main保留Codex本机接入说明和[脱敏配置模板](config/codex.example.toml)，见[接入与服务移交](docs/codex-integration.md)。既有Codex验收及私有配置仍引用独立的0.14.0固定构建，不因main更新而自动升级；不能将DSH的0.15.0证据当作Codex已加载或已验收0.15.0。一次只允许一个客户端占用工程服务。
+main同时提供Codex本机接入说明、[0.14.0脱敏模板](config/codex.example.toml)和[0.15.0专用模板](config/codex-write-validation.example.toml)。固定构建的Codex CLI模型已完成一次独立副本5→8秒修改、编译、保存关闭重开及最终比较；原0.14.0与本轮0.15.0固定构建和项目配置分别保留，不自动切换桌面端。实际接收、输出裁剪、移交条件及[事后复核与合并边界](docs/codex-integration.md#0150-cli接入合并收尾2026-11-06)分别说明。一次只允许一个客户端占用工程服务；CLI通过不代表桌面交互、指令全文进入模型上下文或历史回答质量全部通过。
 
 此前f112118阶段构建、类型检查、相关45/45及完整190/190回归通过；真实MCP与一次DSH CLI只读流程及收尾最小MCP分页证据保留原归属。当前直接地址修正升级为st-identifier-v2，地址内部文字不再作为名称，未知形式报告缺口；合法旧页核实后明确要求重新首查，不误冻结。原答复勘误、首败及一份.opt变化保持，CLI不重跑，桌面、点击及运行未验。[当前范围与历史证据](docs/identifier-search.md)。
 

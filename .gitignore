@@ -29,6 +29,7 @@
 /config/*
 !/config/dsh.example.patch.yml
 !/config/codex.example.toml
+!/config/codex-write-validation.example.toml
 /docs/*
 !/docs/getting-started.md
 !/docs/post-change-baseline-compare.md
