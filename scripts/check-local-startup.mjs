@@ -4,6 +4,7 @@ import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {assessScriptTrust} from './lib/startup-trust.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const hash=b=>createHash('sha256').update(b).digest('hex');
@@ -11,29 +12,34 @@ const options={};
 try {
   for(let i=2;i<process.argv.length;i++) {
     if(process.argv[i]==='--help') {
-      console.log('node scripts/check-local-startup.mjs [--probe-dir <new-absolute-directory>]\n'+
-        'Checks Windows PowerShell policy/signatures using the OS-native security module.\n'+
+      console.log('node scripts/check-local-startup.mjs [--script-root <existing-absolute-checkout>] [--probe-dir <new-absolute-directory>]\n'+
+        'Checks Windows PowerShell policy/signatures and OS file zones using the OS-native security module.\n'+
         'Optional probes copy and read-lock a new .txt file only. No service/IDE or policy change.');
       process.exit(0);
     }
-    if(process.argv[i]!=='--probe-dir'||options.probeDir||!process.argv[i+1])throw new Error('Unknown/duplicate option or missing --probe-dir value');
-    options.probeDir=process.argv[++i];
-    if(!path.isAbsolute(options.probeDir))throw new Error('--probe-dir must be an absolute new directory');
+    const option={'--probe-dir':'probeDir','--script-root':'scriptRoot'}[process.argv[i]];
+    if(!option||options[option]||!process.argv[i+1])throw new Error('Unknown/duplicate option or missing value');
+    options[option]=process.argv[++i];
+    if(!path.isAbsolute(options[option]))throw new Error('Diagnostic paths must be absolute');
   }
   if(process.platform!=='win32')throw new Error('This diagnostic requires Windows; no cross-host fallback');
   const systemRoot=process.env.SystemRoot||process.env.WINDIR;
   if(!systemRoot||!path.isAbsolute(systemRoot))throw new Error('Windows SystemRoot is unavailable');
   const powershell=path.join(systemRoot,'System32','WindowsPowerShell','v1.0','powershell.exe');
-  const scripts=['copy-closed-project.ps1','maintenance-read-lock.ps1'].map(n=>path.join(root,'scripts',n));
+  const scriptRoot=options.scriptRoot??root;
+  const scripts=['copy-closed-project.ps1','maintenance-read-lock.ps1'].map(n=>path.join(scriptRoot,'scripts',n));
   const sourceFiles=await Promise.all(scripts.map(async p=>{
     let zone;
     try {zone=await readFile(p+':Zone.Identifier');}
     catch(e) {if(e.code!=='ENOENT')throw e;}
     // Do not print download/referrer URLs, which may contain private tokens.
-    return {path:p,sha256:hash(await readFile(p)),zoneIdentifierPresent:!!zone,
+    const sha256=hash(await readFile(p));
+    const bundledSha256=hash(await readFile(path.join(root,'scripts',path.basename(p))));
+    return {path:p,sha256,bundledSha256,matchesBundledHelper:sha256===bundledSha256,zoneIdentifierPresent:!!zone,
       zoneIdentifierSha256:zone?hash(zone):null,
       zoneId:zone?.toString('utf8').match(/^ZoneId\s*=\s*(\d+)\s*$/mi)?.[1]??null};
   }));
+  if(sourceFiles.some(f=>!f.matchesBundledHelper))throw new Error('Helper contents differ from this diagnostic checkout; no script probe permitted');
   const env={...process.env};
   const parentTemporarySetting=env.PSExecutionPolicyPreference??null;
   // Clear only the diagnostic child's temporary override, never a registry policy
@@ -63,7 +69,10 @@ Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsof
 $paths = ConvertFrom-Json $env:INOPRO_STARTUP_SCRIPT_PATHS
 $files = @($paths | ForEach-Object {
   $p = $_; $sig = Get-AuthenticodeSignature -LiteralPath $p
-  [ordered]@{path=$p;signatureStatus=$sig.Status.ToString()}
+  $zone = $null; $zoneError = $null
+  try { $zone = [Security.Policy.Zone]::CreateFromUrl(([Uri]$p).AbsoluteUri).SecurityZone.ToString() }
+  catch { $zoneError = $_.Exception.Message }
+  [ordered]@{path=$p;signatureStatus=$sig.Status.ToString();securityZone=$zone;securityZoneError=$zoneError}
 })
 [ordered]@{pid=$PID;executable=[Diagnostics.Process]::GetCurrentProcess().MainModule.FileName;
 version=$PSVersionTable.PSVersion.ToString();edition=$PSVersionTable.PSEdition;
@@ -74,7 +83,7 @@ files=$files} | ConvertTo-Json -Depth 6
 `;
   const metadata=await child(['-NoLogo','-NoProfile','-NonInteractive','-Command',command]);
   const result={scope:'Startup diagnostics, not engineering or a service handoff controller',
-    root,node:{executable:process.execPath,version:process.version},parentTemporarySetting,
+    root,scriptRoot,node:{executable:process.execPath,version:process.version},parentTemporarySetting,
     machineOrUserPolicyChanged:false,trustChanged:false,serviceStarted:false,sourceFiles,checks};
   if(metadata.exitCode!==0)throw Object.assign(new Error('Native PowerShell metadata unavailable; retain raw error, do not infer policy or continue probes'),{result});
   result.powerShell=JSON.parse(metadata.stdout);
@@ -90,9 +99,9 @@ files=$files} | ConvertTo-Json -Depth 6
     throw Object.assign(new Error('Current execution policy does not permit validating these local scripts; no policy change made'),{result});
   if(parentTemporarySetting&&['bypass','unrestricted'].includes(parentTemporarySetting.toLowerCase()))
     throw Object.assign(new Error('Invoking process still has a temporary bypass; diagnostic child is clean, but normal launch is not validated'),{result});
-  const blockers=ps.files.filter(f=>f.signatureStatus!=='Valid'&&
-    (ps.effectivePolicy==='AllSigned'||['3','4'].includes(sourceFiles.find(s=>s.path===f.path)?.zoneId)));
-  if(blockers.length)throw Object.assign(new Error('Signature/Internet-zone condition requires owner review; no automatic unblock or policy change'),{result});
+  result.scriptTrust=ps.files.map(f=>({path:f.path,securityZone:f.securityZone,
+    ...assessScriptTrust(ps.effectivePolicy,f,sourceFiles.find(s=>s.path===f.path)?.zoneId)}));
+  if(result.scriptTrust.some(f=>!f.eligible))throw Object.assign(new Error('Script trust is blocked or unconfirmed; inspect OS zone and signature evidence. No automatic unblock, policy change or alternate-root fallback'),{result});
   if(options.probeDir) {
     await mkdir(options.probeDir); // No recursive creation and no reuse/overwrite.
     const source=path.join(options.probeDir,'startup-source.txt'),copy=path.join(options.probeDir,'startup-copy.txt');
