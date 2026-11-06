@@ -2,7 +2,7 @@
 
 通过 DeepSeek Harness（DSH）调用本地 InoProShop，完成受管理的离线工程读取、有限修改、编译、保存重开和版本对比。
 
-[本机启动诊断与DSH／Codex移交](docs/startup-handoff.md)区分脚本信任、解释器、网络及租约问题；仅诊断脚本和说明，不新增MCP工具。无临时Bypass的文本辅助检查已通过，实际移交因检测到用户输入保留待办。
+[本机启动诊断与DSH／Codex移交](docs/startup-handoff.md)区分脚本信任、解释器、网络及租约问题；仅诊断脚本和说明，不新增MCP工具。无临时Bypass的文本辅助检查已通过；随后一次DSH正常释放→固定0.15.0 Codex CLI状态查询→CLI释放→DSH恢复已完成。上次因输入活动停止的记录保留，历史信任拒绝与辅助进程崩溃根因仍未确认。
 
 **main提供0.15.0候选版、二十项MCP工具，契约1.0.0；不是正式v1.0。** 扩展variable_inspect，显式includeInitializerMembers=true定位最外层具名聚合初始化的直接成员、名称和值；保留父变量，成员及缺口单独计数。嵌套值整体保留、不求值，不是类型成员解析、完整实例展开或运行读取，也没有新增变量写入事务。[参数、兼容和边界](docs/variables.md#具名聚合初始化成员0150候选)。
 
