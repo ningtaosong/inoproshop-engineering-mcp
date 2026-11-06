@@ -1,6 +1,6 @@
 # 完整标识符源码检索（0.14.0候选）
 
-在原project_search中增加matchMode，不新增工具，共二十项。main提供0.14.0候选版，包含codex/identifier-search已验实现及直接地址边界修正，当前词法版本st-identifier-v2；不是正式Release。本页描述源码出现位置，不是编译器符号表、语义交叉引用、读写或安全重命名分析。不会改变量、工程、设备或任务。
+在原project_search中增加matchMode，不新增工具，共二十项。本能力在0.14.0引入；main当前提供0.15.0候选版，包含codex/identifier-search已验实现及直接地址边界修正，当前词法版本st-identifier-v2；不是正式Release。本页描述源码出现位置，不是编译器符号表、语义交叉引用、读写或安全重命名分析。不会改变量、工程、设备或任务。
 
 ## 两种模式与默认值
 
