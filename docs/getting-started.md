@@ -31,6 +31,8 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
+启动失败先区分解释器/路径、策略/信任、模型/网络及租约占用。可运行不启动工程服务的[本地诊断与正常移交步骤](startup-handoff.md)；不要固化临时Bypass或递归解锁。检测到用户输入时停止自动退出，原服务未确认退出前不启动另一客户端。该轮脚本诊断已通过，实际移交因输入活动保留待办，不能写成完整移交已验收。
+
 ### 指令大小与连接失败
 
 `maxInstructionBytes` 属于 **DSH MCP Client** 的配置，不是本MCP服务参数或INOPRO环境变量。2026-11-02接入核对时，本机DSH和 `@deepseek-ai/dsh-mcp-client` 均为0.2.0-rc.2，客户端Schema支持此正整数；默认32768字节。该客户端将服务器instructions去掉末尾空白，添加 `### MCP server: inoproshop` 标题及两个换行，再按UTF-8字节计量；超限拒绝连接，不是工具执行超时，也不是静默截断。

@@ -23,6 +23,7 @@
 !/scripts/inspect-environment.mjs
 !/scripts/export-contracts.mjs
 !/scripts/check-instructions-size.mjs
+!/scripts/check-local-startup.mjs
 /scripts/probes/*
 !/scripts/probes/dsh-prompt-attestation.cjs
 !/scripts/probes/dsh-search-config-attestation.cjs
@@ -40,6 +41,7 @@
 !/docs/variables.md
 !/docs/identifier-search.md
 !/docs/codex-integration.md
+!/docs/startup-handoff.md
 node_modules/
 dist/
 .local/
