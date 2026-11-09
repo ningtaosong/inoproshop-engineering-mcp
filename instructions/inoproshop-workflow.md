@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.18.0 候选版的二十三项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.19.0 候选版的二十四项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -37,6 +37,12 @@
   operation_status仅传operationId或requestId其中一个查询标识，不同时传两项；running继续查询原操作，不为等待调用无必要的辅助终端。
   unknown、冲突、依赖缺失等仍按下面的停止规则，不能为了减少追问绕过冻结。
 - 日常答复遵守下面的默认答复要求。需要澄清时只问影响业务结果的最少信息，不让用户凭内部编号才能继续使用。
+
+## 功能块原生 Method
+
+- method_create仅用于精确Application内用户ST FUNCTION_BLOCK的原生子方法；先按真实GUID读取父FB全文/哈希及当前snapshot、diskHash，不凭同名猜父对象。显式access=PUBLIC、returnType=void或DINT，提交完整同名METHOD PUBLIC声明和实现；expectedParentHash、expectedSnapshot、expectedDiskHash均使用当前版本。同父重名拒绝，不覆盖；不同FB同名方法分别定位。
+- object_list/object_read返回method及parentId/parentPath。修改用code_apply_change，显式objectType=method、parentId、expectedHash和全文，保留名称、返回类型、PUBLIC及父关系；检查点、磁盘校验、去重和写后保存重开沿用。无独立访问/返回getter，不假称已读取；以实际工厂、原生Method类型/父对象及声明为依据。不开放Property/Get/Set、接口、继承、重载、改名或删除。
+- 从FB实例实际调用方法并接入被任务调用的程序后再编译；父FB文本未变不能代替子方法核对。方法变化使旧编译失效，最终读回方法、父FB及实际调用方。只读变量查询将Method返回声明单列，检索仍是源码词元；未支持子对象或声明缺口明确报告。默认不采集基线或比较；明确要求比较时按完整父路径和原生父身份核对方法，不按短名配对。源码调用和编译不是运行观测。
 
 ## 工程检索与任务只读查询
 

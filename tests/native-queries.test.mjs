@@ -13,7 +13,7 @@ async function context(t,extra={}){const e=await setup({...fixture(),...extra}),
 // done accepts a Reply, so resolve the call before polling.
 async function invoke(c,tool,a={}){return c.c.done(await c.c.call(tool,{projectId:c.s.projectId,...a}));}
 test('新增正式 Schema 与十七工具：旧十五输入兼容，新工具不接受写入/App/名称猜测参数',async t=>{
- const c=await context(t);const tools=(await c.c.client.listTools()).tools;assert.equal(tools.length,23);
+ const c=await context(t);const tools=(await c.c.client.listTools()).tools;assert.equal(tools.length,24);
  for(const name of ['project_structure','device_inspect']){const tool=tools.find(x=>x.name===name);assert.equal(tool.annotations.readOnlyHint,true);assert(tool.inputSchema&&tool.outputSchema);}
  for(const a of [{projectId:app,save:true},{projectId:app,limit:201},{projectId:app,maxNodes:0},{projectId:app,applicationId:app}])assert.equal(schemas.project_structure.safeParse(a).success,false);
  assert.equal(schemas.device_inspect.safeParse({projectId:app,deviceId:dev,firmware:true}).success,false);

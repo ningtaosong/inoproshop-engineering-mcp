@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.18.0';
+export const VERSION = '0.19.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -70,8 +70,13 @@ export const schemas = {
     applicationId:uuid, parentId:uuid, expectedSnapshot:hash,
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/), objectType:z.enum(['gvl','structure','enum','array']),
     declaration:z.string().min(1).max(500000) }).strict(),
+  method_create:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    parentId:uuid,expectedParentHash:hash,expectedSnapshot:hash,expectedDiskHash:hash,
+    name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/),access:z.literal('PUBLIC'),returnType:z.enum(['void','DINT']),
+    declaration:z.string().min(1).max(500000),implementation:z.string().max(500000)}).strict(),
   code_apply_change: z.object({ ...request, ...target, objectId: uuid, expectedHash: hash,
-    declaration: z.string().max(500000), implementation: z.string().max(500000).optional(), objectType:z.enum(['gvl','structure','enum','array']).optional() }).strict(),
+    declaration: z.string().max(500000), implementation: z.string().max(500000).optional(), objectType:z.enum(['gvl','structure','enum','array','method']).optional(),parentId:uuid.optional() }).strict()
+    .refine(a=>a.objectType==='method'?a.parentId!==undefined:a.parentId===undefined,'Method修改须显式objectType=method和parentId；其他对象不接收parentId'),
   project_build: z.object({ ...request, ...target }).strict(),
   project_save: z.object({ ...request, ...target, expectedSnapshot: hash }).strict(),
   operation_status: z.object({ operationId: uuid.optional(), requestId: id.optional(), reconcile: z.boolean().default(false) })
@@ -90,7 +95,8 @@ export const replySchema = z.object({
   error: z.object({code:z.string(),message:z.string()}).optional()
 }).strict();
 const pouFields={pouType:z.enum(['function_block','program','function']).optional(),returnType:z.string().optional(),pouTypeSource:z.literal('native-pou-type-id-and-declaration-header').optional()};
-const objectFields={objectId:uuid.optional(),applicationId:uuid.nullable().optional(),path:z.array(z.string()).optional(),language:z.literal('ST').optional(),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array']).optional(),hasImplementation:z.boolean().optional(),nativeTypeId:uuid.optional(),declaration:z.string().optional(),implementation:z.string().optional(),contentHash:hash.optional(),...pouFields};
+const methodFields={parentId:uuid.optional(),parentPath:z.array(z.string()).optional(),access:z.literal('PUBLIC').optional(),methodReturnType:z.enum(['void','DINT']).optional(),methodMetadataSource:z.literal('native-method-type-parent-and-declaration-header').optional()};
+const objectFields={objectId:uuid.optional(),applicationId:uuid.nullable().optional(),path:z.array(z.string()).optional(),language:z.literal('ST').optional(),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array','method']).optional(),hasImplementation:z.boolean().optional(),nativeTypeId:uuid.optional(),declaration:z.string().optional(),implementation:z.string().optional(),contentHash:hash.optional(),...pouFields,...methodFields};
 const snapshotFields={snapshot:hash.optional(),diskHash:hash.optional()};
 const failureRow=z.object({objectId:uuid.optional(),nativeTypeId:uuid.optional(),path:z.array(z.string()),stage:z.string(),reason:z.string()});
 export const readEvidenceSchema=z.object({beforeDiskHash:hash,afterCloseDiskHash:hash,postExitDiskHash:hash.optional(),unchanged:z.boolean()});
@@ -103,8 +109,8 @@ export const searchDataSchema=z.object({projectId:uuid,applicationId:uuid.nullab
       position:z.object({startOffset:z.number().int(),endOffset:z.number().int(),line:z.number().int(),column:z.number().int(),endLine:z.number().int(),endColumn:z.number().int()}),
       context:z.object({text:z.string(),startOffset:z.number().int(),endOffset:z.number().int()})}))}).optional(),
   scope:z.object({description:z.string(),applicationPath:z.array(z.string()),treeComplete:z.boolean(),eligibleObjects:z.number().int(),readObjects:z.number().int(),
-    coverageComplete:z.boolean(),skippedObjects:z.array(failureRow),readFailures:z.array(failureRow),enumerationFailures:z.array(failureRow)}),
-  matches:z.array(z.object({objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array']),contentHash:hash,...pouFields,
+    coverageComplete:z.boolean(),skippedObjects:z.array(failureRow),readFailures:z.array(failureRow),enumerationFailures:z.array(failureRow),unsupportedChildren:z.array(failureRow).optional(),methodCoverageVersion:z.literal('fb-methods-v1').optional()}),
+  matches:z.array(z.object({objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array','method']),contentHash:hash,...pouFields,...methodFields,
     region:z.enum(['name','declaration','implementation']),position:z.object({startOffset:z.number().int(),endOffset:z.number().int(),line:z.number().int(),column:z.number().int(),endLine:z.number().int(),endColumn:z.number().int()}).nullable(),
     nameOffset:z.number().int().optional(),matchedText:z.string(),context:z.object({text:z.string(),startOffset:z.number().int(),endOffset:z.number().int()}),candidateReference:z.boolean()})),
   page:z.object({offset:z.number().int(),limit:z.number().int(),returned:z.number().int(),hasMore:z.boolean(),nextOffset:z.number().int().nullable(),retainedMatches:z.number().int(),maxResults:z.number().int(),truncated:z.boolean(),totalMatches:z.number().int().nullable(),matchedAtLeast:z.number().int()}),
@@ -155,8 +161,8 @@ export const libraryDataSchema=z.object({...nativeQueryFields,applicationId:uuid
 const declarationPositionSchema=z.object({startOffset:z.number().int().min(0),endOffset:z.number().int().min(0),line:z.number().int().min(1),column:z.number().int().min(1),endLine:z.number().int().min(1),endColumn:z.number().int().min(1)});
 export const variableDataSchema=z.object({...nativeQueryFields,applicationId:uuid,targetKind:z.literal('application'),basis:z.literal('declaration-parsing'),parserVersion:z.string().optional(),positionConvention:z.string(),
   query:z.object({objectId:uuid.nullable(),name:z.string().nullable(),caseSensitive:z.boolean(),nameMatch:z.literal('literal-substring'),includeInitializerMembers:z.literal(true).optional(),maxInitializerMembers:z.number().int().optional()}),
-  entries:z.array(z.object({index:z.number().int(),objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array']).nullable(),contentHash:hash.nullable(),
-    category:z.enum(['variable','type-field','comment','parse-gap','function-return','initializer-member','initializer-member-gap']),section:z.string().nullable(),name:z.string().optional(),
+  entries:z.array(z.object({index:z.number().int(),objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array','method']).nullable(),contentHash:hash.nullable(),...methodFields,
+    category:z.enum(['variable','type-field','comment','parse-gap','function-return','method-return','initializer-member','initializer-member-gap']),section:z.string().nullable(),name:z.string().optional(),
     position:declarationPositionSchema.nullable(),source:z.string().nullable(),namePosition:declarationPositionSchema.optional(),typeRaw:z.string().nullable().optional(),typePosition:declarationPositionSchema.optional(),
     modifiers:z.array(z.string()).optional(),modifierText:z.string().nullable().optional(),hasExplicitInitializer:z.boolean().optional(),initializerRaw:z.string().nullable().optional(),initializerPosition:declarationPositionSchema.nullable().optional(),
     addressRaw:z.string().nullable().optional(),addressPosition:declarationPositionSchema.nullable().optional(),reason:z.string().optional(),association:z.string().optional(),associatedName:z.string().optional(),commentAssociation:z.string().optional(),
@@ -212,6 +218,7 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   pou_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),parentId:uuid.optional(),
     created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),
     recovery:z.object({status:stateSchema}).passthrough().optional()}).passthrough(),
+  method_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),reopened:z.boolean().optional(),creationMethod:z.string().optional()}).passthrough(),
   code_apply_change:z.object({...objectFields,...snapshotFields,checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),recovery:z.object({status:stateSchema}).passthrough().optional()}).passthrough(),
   project_build:z.object({...snapshotFields,applicationId:uuid.nullable().optional(),targetKind:z.enum(['application','pool']).optional(),completed:z.boolean().optional(),diagnosticsComplete:z.boolean().optional(),diagnostics:z.array(z.object({severity:z.string(),text:z.string()}).passthrough()).optional(),buildPassed:z.boolean().nullable().optional()}).passthrough(),
   project_save:z.object({...snapshotFields,saved:z.boolean().optional(),reopened:z.boolean().optional(),buildApplicable:z.boolean().optional()}).passthrough(),
@@ -238,12 +245,24 @@ export function pouDeclarationMatches(kind:string,name:string,declaration:string
   return !!h && h.pouType===kind && h.name.toLowerCase()===name.toLowerCase() &&
     (kind==='function'?(FUNCTION_RETURN_TYPES as readonly string[]).includes(returnType ?? '')&&h.returnType?.toUpperCase()===returnType:returnType===undefined);
 }
+// Narrow PUBLIC ST Method header, not an ST compiler or independent access getter.
+// The native factory omits PUBLIC in its default text. Writes require it explicitly.
+export function methodHeader(declaration:string,explicit=false) {
+  const s=declarationCode(declaration);if(s===undefined)return;
+  const m=/^\s*METHOD\s+(?:(PUBLIC)\s+)?([A-Za-z_][A-Za-z0-9_]{0,62})\s*(?::\s*(DINT)\b)?\s*([\s\S]*)$/i.exec(s);
+  if(!m||explicit&&!m[1]||['PUBLIC','PRIVATE','PROTECTED','INTERNAL','FINAL','ABSTRACT','OVERRIDE'].includes(m[2].toUpperCase()))return;
+  if(!/^(?:\s*VAR(?:_INPUT|_OUTPUT|_IN_OUT)?\b(?:(?!\b(?:VAR|VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR_TEMP|VAR_EXTERNAL|VAR_ACCESS|VAR_CONFIG|VAR_STAT|VAR_INST|METHOD|PROPERTY|FUNCTION_BLOCK|FUNCTION|PROGRAM|END_VAR)\b)[\s\S])*\bEND_VAR\b\s*)*$/i.test(m[4]))return;
+  return {name:m[2],access:'PUBLIC' as const,returnType:m[3]?'DINT' as const:'void' as const};
+}
+export function methodDeclarationMatches(name:string,declaration:string,returnType:string,access:string) {
+  const h=methodHeader(declaration,true);return !!h&&h.name.toLowerCase()===name.toLowerCase()&&h.returnType===returnType&&h.access===access;
+}
 // Ordered lexical masking only, not an ST compiler. Quotes inside comments are
 // inert; comment delimiters inside strings are inert. Balanced nested block
 // comments are supported. Unclosed comments/strings and stray block ends fail
 // closed. Keep string tokens opaque (not whitespace) so extra literals cannot
 // disappear into an otherwise valid array/enum declaration. Mirror in worker.py.
-function declarationCode(source:string):string|undefined {
+export function declarationCode(source:string):string|undefined {
   const out:string[]=[];
   let i=0;
   while(i<source.length){

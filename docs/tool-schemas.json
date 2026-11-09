@@ -1,7 +1,7 @@
 {
-  "serverVersion": "0.18.0",
+  "serverVersion": "0.19.0",
   "contractVersion": "1.0.0",
-  "toolCount": 23,
+  "toolCount": 24,
   "tools": [
     {
       "name": "environment_inspect",
@@ -1095,7 +1095,8 @@
                         "gvl",
                         "structure",
                         "enum",
-                        "array"
+                        "array",
+                        "method"
                       ]
                     },
                     "hasImplementation": {
@@ -1130,6 +1131,32 @@
                     "pouTypeSource": {
                       "type": "string",
                       "const": "native-pou-type-id-and-declaration-header"
+                    },
+                    "parentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "parentPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "access": {
+                      "type": "string",
+                      "const": "PUBLIC"
+                    },
+                    "methodReturnType": {
+                      "type": "string",
+                      "enum": [
+                        "void",
+                        "DINT"
+                      ]
+                    },
+                    "methodMetadataSource": {
+                      "type": "string",
+                      "const": "native-method-type-parent-and-declaration-header"
                     }
                   },
                   "additionalProperties": false
@@ -1293,7 +1320,8 @@
                   "gvl",
                   "structure",
                   "enum",
-                  "array"
+                  "array",
+                  "method"
                 ]
               },
               "hasImplementation": {
@@ -1328,6 +1356,32 @@
               "pouTypeSource": {
                 "type": "string",
                 "const": "native-pou-type-id-and-declaration-header"
+              },
+              "parentId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "parentPath": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "access": {
+                "type": "string",
+                "const": "PUBLIC"
+              },
+              "methodReturnType": {
+                "type": "string",
+                "enum": [
+                  "void",
+                  "DINT"
+                ]
+              },
+              "methodMetadataSource": {
+                "type": "string",
+                "const": "native-method-type-parent-and-declaration-header"
               }
             },
             "additionalProperties": {}
@@ -1893,6 +1947,46 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "unsupportedChildren": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "objectId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "nativeTypeId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "stage": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "stage",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "methodCoverageVersion": {
+                    "type": "string",
+                    "const": "fb-methods-v1"
                   }
                 },
                 "required": [
@@ -1932,7 +2026,8 @@
                         "gvl",
                         "structure",
                         "enum",
-                        "array"
+                        "array",
+                        "method"
                       ]
                     },
                     "contentHash": {
@@ -1953,6 +2048,32 @@
                     "pouTypeSource": {
                       "type": "string",
                       "const": "native-pou-type-id-and-declaration-header"
+                    },
+                    "parentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "parentPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "access": {
+                      "type": "string",
+                      "const": "PUBLIC"
+                    },
+                    "methodReturnType": {
+                      "type": "string",
+                      "enum": [
+                        "void",
+                        "DINT"
+                      ]
+                    },
+                    "methodMetadataSource": {
+                      "type": "string",
+                      "const": "native-method-type-parent-and-declaration-header"
                     },
                     "region": {
                       "type": "string",
@@ -2584,7 +2705,8 @@
                             "gvl",
                             "structure",
                             "enum",
-                            "array"
+                            "array",
+                            "method"
                           ]
                         },
                         {
@@ -2603,6 +2725,32 @@
                         }
                       ]
                     },
+                    "parentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "parentPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "access": {
+                      "type": "string",
+                      "const": "PUBLIC"
+                    },
+                    "methodReturnType": {
+                      "type": "string",
+                      "enum": [
+                        "void",
+                        "DINT"
+                      ]
+                    },
+                    "methodMetadataSource": {
+                      "type": "string",
+                      "const": "native-method-type-parent-and-declaration-header"
+                    },
                     "category": {
                       "type": "string",
                       "enum": [
@@ -2611,6 +2759,7 @@
                         "comment",
                         "parse-gap",
                         "function-return",
+                        "method-return",
                         "initializer-member",
                         "initializer-member-gap"
                       ]
@@ -3303,6 +3452,46 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "unsupportedChildren": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "objectId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "nativeTypeId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "stage": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "stage",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "methodCoverageVersion": {
+                    "type": "string",
+                    "const": "fb-methods-v1"
                   }
                 },
                 "required": [
@@ -7481,7 +7670,8 @@
                   "gvl",
                   "structure",
                   "enum",
-                  "array"
+                  "array",
+                  "method"
                 ]
               },
               "hasImplementation": {
@@ -7517,6 +7707,32 @@
                 "type": "string",
                 "const": "native-pou-type-id-and-declaration-header"
               },
+              "parentId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "parentPath": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "access": {
+                "type": "string",
+                "const": "PUBLIC"
+              },
+              "methodReturnType": {
+                "type": "string",
+                "enum": [
+                  "void",
+                  "DINT"
+                ]
+              },
+              "methodMetadataSource": {
+                "type": "string",
+                "const": "native-method-type-parent-and-declaration-header"
+              },
               "snapshot": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
@@ -7527,11 +7743,6 @@
               },
               "name": {
                 "type": "string"
-              },
-              "parentId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
               },
               "created": {
                 "type": "boolean"
@@ -7729,7 +7940,8 @@
                   "gvl",
                   "structure",
                   "enum",
-                  "array"
+                  "array",
+                  "method"
                 ]
               },
               "hasImplementation": {
@@ -7765,6 +7977,32 @@
                 "type": "string",
                 "const": "native-pou-type-id-and-declaration-header"
               },
+              "parentId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "parentPath": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "access": {
+                "type": "string",
+                "const": "PUBLIC"
+              },
+              "methodReturnType": {
+                "type": "string",
+                "enum": [
+                  "void",
+                  "DINT"
+                ]
+              },
+              "methodMetadataSource": {
+                "type": "string",
+                "const": "native-method-type-parent-and-declaration-header"
+              },
               "snapshot": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
@@ -7775,11 +8013,6 @@
               },
               "name": {
                 "type": "string"
-              },
-              "parentId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
               },
               "created": {
                 "type": "boolean"
@@ -7816,6 +8049,274 @@
                   "status"
                 ],
                 "additionalProperties": {}
+              }
+            },
+            "additionalProperties": {}
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "status",
+          "summary"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "method_create",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "targetKind": {
+            "default": "application",
+            "type": "string",
+            "const": "application"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "expectedParentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expectedSnapshot": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expectedDiskHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+          },
+          "access": {
+            "type": "string",
+            "const": "PUBLIC"
+          },
+          "returnType": {
+            "type": "string",
+            "enum": [
+              "void",
+              "DINT"
+            ]
+          },
+          "declaration": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500000
+          },
+          "implementation": {
+            "type": "string",
+            "maxLength": 500000
+          }
+        },
+        "required": [
+          "requestId",
+          "projectId",
+          "applicationId",
+          "parentId",
+          "expectedParentHash",
+          "expectedSnapshot",
+          "expectedDiskHash",
+          "name",
+          "access",
+          "returnType",
+          "declaration",
+          "implementation"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "conflict",
+              "unsupported",
+              "unknown"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "objectId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "applicationId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "path": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "language": {
+                "type": "string",
+                "const": "ST"
+              },
+              "objectType": {
+                "type": "string",
+                "enum": [
+                  "st_pou",
+                  "function_block",
+                  "gvl",
+                  "structure",
+                  "enum",
+                  "array",
+                  "method"
+                ]
+              },
+              "hasImplementation": {
+                "type": "boolean"
+              },
+              "nativeTypeId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "declaration": {
+                "type": "string"
+              },
+              "implementation": {
+                "type": "string"
+              },
+              "contentHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "pouType": {
+                "type": "string",
+                "enum": [
+                  "function_block",
+                  "program",
+                  "function"
+                ]
+              },
+              "returnType": {
+                "type": "string"
+              },
+              "pouTypeSource": {
+                "type": "string",
+                "const": "native-pou-type-id-and-declaration-header"
+              },
+              "parentId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "parentPath": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "access": {
+                "type": "string",
+                "const": "PUBLIC"
+              },
+              "methodReturnType": {
+                "type": "string",
+                "enum": [
+                  "void",
+                  "DINT"
+                ]
+              },
+              "methodMetadataSource": {
+                "type": "string",
+                "const": "native-method-type-parent-and-declaration-header"
+              },
+              "snapshot": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "diskHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "created": {
+                "type": "boolean"
+              },
+              "beforeSnapshot": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "checkpoint": {
+                "type": "string"
+              },
+              "reopened": {
+                "type": "boolean"
+              },
+              "creationMethod": {
+                "type": "string"
               }
             },
             "additionalProperties": {}
@@ -7904,8 +8405,14 @@
               "gvl",
               "structure",
               "enum",
-              "array"
+              "array",
+              "method"
             ]
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           }
         },
         "required": [
@@ -7984,7 +8491,8 @@
                   "gvl",
                   "structure",
                   "enum",
-                  "array"
+                  "array",
+                  "method"
                 ]
               },
               "hasImplementation": {
@@ -8019,6 +8527,32 @@
               "pouTypeSource": {
                 "type": "string",
                 "const": "native-pou-type-id-and-declaration-header"
+              },
+              "parentId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "parentPath": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "access": {
+                "type": "string",
+                "const": "PUBLIC"
+              },
+              "methodReturnType": {
+                "type": "string",
+                "enum": [
+                  "void",
+                  "DINT"
+                ]
+              },
+              "methodMetadataSource": {
+                "type": "string",
+                "const": "native-method-type-parent-and-declaration-header"
               },
               "snapshot": {
                 "type": "string",
