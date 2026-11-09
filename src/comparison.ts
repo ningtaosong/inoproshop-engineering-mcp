@@ -138,7 +138,8 @@ export function compareReply(b:Snapshot,t:Snapshot,a:any):Reply {
   const base={mode:'compare',version,baseline:snapshotSummary(b),target:snapshotSummary(t),counts,
     coverageComplete:b.scope.coverageComplete&&t.scope.coverageComplete&&b.taskCoverage.complete&&t.taskCoverage.complete&&!enumGaps.length,
     gaps:{count:issues.length,entries:preview(issues.slice(0,8)),entriesTruncated:issues.length>8,fullEvidence:'Original capture IPC sourceInventory/taskInventory'},
-    excluded,matching:'Exact case-sensitive Application-relative path + supported type; GUIDs are evidence only; no rename inference',
+    excluded,matching:'Exact case-sensitive Application-relative path + supported type; GUIDs are evidence only; no rename inference'+
+      (items.some(i=>i.objectType==='method')?'; Methods additionally require unchanged native parent GUID/path':'') ,
     normalization:'CRLF/CR -> LF only; all other whitespace/comments preserved',taskMeaning:'Configuration fields and call order only, not measured scan time'};
   let data:any;
   if(a.detail){
