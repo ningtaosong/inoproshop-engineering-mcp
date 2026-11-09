@@ -50,6 +50,9 @@ class Methods(unittest.TestCase):
         self.fb.embedded_object_types=['3b83b776-fb25-43b8-99f2-3c507c9143fc']
         m=self.fb.create_method('ReadState','DINT','ST');m.textual_declaration.replace(self.args['declaration']);m.embedded_object_types=[]
         self.assertIsNone(self.e['object_kind'](m))
+    def test_inheritance_and_interfaces_are_not_opened_by_method_creation(self):
+        for head in ['FUNCTION_BLOCK FB_State EXTENDS Base','FUNCTION_BLOCK FB_State IMPLEMENTS IThing']:
+            self.fb.textual_declaration.replace(head+'\nVAR\nEND_VAR');r,p=self.run_create();self.assertEqual(r['status'],'unsupported');self.assertEqual(self.control['factory_calls'],0)
     def test_same_parent_case_insensitive_collision_refused(self):
         child=Node(self.p,'readstate',declaration='METHOD PUBLIC readstate : DINT',implementation='',nativeType=METHOD);child.parent=self.fb;self.fb.children.append(child);self.args=self.arguments('ReadState','DINT')
         r,p=self.run_create();self.assertEqual(r['error']['code'],'METHOD_EXISTS');self.assertEqual(self.control['factory_calls'],0)

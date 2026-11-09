@@ -143,7 +143,7 @@ export class FixtureAdapter implements Adapter {
       result=reply('succeeded','测试对象已读取',{...object,contentHash:codeHash(object.declaration,object.implementation),testMode:true});
     } else if(req.command==='create_method'){
       const parent=objects.find((o:any)=>o.objectId===a.parentId),beforeSnapshot=snapshot();
-      if(!parent||!/^\s*FUNCTION_BLOCK\b/i.test(parent.declaration))result={...reply('unsupported','测试非FB父对象'),error:{code:'METHOD_PARENT_OR_PERMISSION',message:'Not exact user FB'}};
+      if(!parent||!/^\s*FUNCTION_BLOCK\s+[A-Za-z_][A-Za-z0-9_]*\s*(?=VAR(?:_INPUT|_OUTPUT|_IN_OUT)?\b|$)/i.test(parent.declaration))result={...reply('unsupported','测试非FB父对象'),error:{code:'METHOD_PARENT_OR_PERMISSION',message:'Not exact user FB'}};
       else if(parent.readOnly||p.methodPermissionDenied)result={...reply('unsupported','测试只读/权限拒绝'),error:{code:'METHOD_PARENT_OR_PERMISSION',message:'Permission denied'}};
       else if(!methodDeclarationMatches(a.name,a.declaration,a.returnType,a.access))result={...reply('failed','测试Method声明不匹配'),error:{code:'INVALID_METHOD_DECLARATION',message:'Header mismatch'}};
       else if(a.expectedSnapshot!==beforeSnapshot||a.expectedParentHash!==codeHash(parent.declaration,parent.implementation))result={...reply('conflict','测试父/子版本过期'),error:{code:'METHOD_PARENT_VERSION_CHANGED',message:'Parent or children changed'}};

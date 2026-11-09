@@ -196,11 +196,15 @@ def method_matches(name,declaration,return_type,access):
     h=method_header(declaration,True)
     return bool(h and h['name'].lower()==name.lower() and h['returnType']==return_type and h['access']==access)
 
+def method_parent_declaration(declaration):
+    code=declaration_code(declaration)
+    return bool(code is not None and re.match(r'^\s*FUNCTION_BLOCK\s+[A-Za-z_][A-Za-z0-9_]*\s*(?=VAR(?:_INPUT|_OUTPUT|_IN_OUT)?\b|$)',code,re.I))
+
 def method_fb(project,parent_id,aid):
     rows=[(x,n,a) for x,n,a in walk(project) if text(x.guid).lower()==parent_id and a==aid]
     if len(rows)!=1:raise ValueError('Method parent GUID not unique within exact Application')
     parent,names,_=rows[0]
-    if not st_object(parent) or not method_is_st(parent) or not function_block_name(text(parent.textual_declaration.text)):raise ValueError('Method parent is not a verified user ST FUNCTION_BLOCK')
+    if not st_object(parent) or not method_is_st(parent) or not method_parent_declaration(text(parent.textual_declaration.text)):raise ValueError('Method parent is not a verified plain user ST FUNCTION_BLOCK')
     # Current-project tree only; reject any library-manager ancestry explicitly.
     owner=parent.parent;seen=set()
     while text(owner.guid).lower()!=aid:

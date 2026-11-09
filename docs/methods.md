@@ -4,7 +4,7 @@
 
 ## 支持范围
 
-精确Application内、当前用户工程树中ST FUNCTION_BLOCK的直接原生子方法。首版只开放显式PUBLIC及无返回值（returnType=void）或DINT；普通局部、输入、输出和输入输出声明沿用限定ST读取范围。Property/Get/Set、继承、接口、重载、改名和删除未开放。修改现有Method保持原名称、访问级别、返回类型和父关系，不以普通FUNCTION或父FB文本拼接代替Method。
+精确Application内、当前用户工程树中ST FUNCTION_BLOCK的直接原生子方法。首版只开放显式PUBLIC及无返回值（returnType=void）或DINT；普通局部、输入、输出和输入输出声明沿用限定ST读取范围。Property/Get/Set、继承、接口、重载、改名和删除未开放；带继承或接口首部的父 FB 拒绝作为本轮写目标。修改现有Method保持原名称、访问级别、返回类型和父关系，不以普通FUNCTION或父FB文本拼接代替Method。
 
 本机InoProShop1.9.1.6实际接口为 `fb.create_method(name, return_type, ImplementationLanguages.st)`。无返回值传空字符串，DINT传原字符串；工厂无访问级别参数，默认声明省略PUBLIC，随后写入明确的METHOD PUBLIC原生声明并实际编译。方法原生类型标识为f8a58466-d7f6-439f-bbb8-d4600e41d099，父FB为原POU类型。没有取得独立访问级别、返回类型getter；证据来自工厂参数、原生类型/父GUID和声明全文，不冒称独立属性读取。
 
