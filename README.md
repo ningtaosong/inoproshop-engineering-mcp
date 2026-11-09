@@ -6,7 +6,7 @@
 
 S1 新增 [已有周期任务的周期与优先级编辑](docs/task-config.md)：`task_config_update`，只改明确授权的整数毫秒周期和/或优先级，原 `task_inspect` 保持只读。原二十二项工具输入兼容，登记仍为 v2。客户端须加载候选构建及 Schema 才能使用；固定入口不会随分支开发自动更新。下文 0.17.0 及旧版本验收保留原归属。
 
-S2a增加[功能块原生ST Method](docs/methods.md)：PUBLIC、void/DINT，创建用method_create，读取/修改复用现有工具；不开放Property/Get/Set、继承、接口、重载、改名或删除。父FB不变不能替代方法核对；没有新增默认比较或运行验证。
+S2a增加[功能块原生ST Method](docs/methods.md)：PUBLIC、void/DINT，创建用method_create，读取/修改复用现有工具；不开放Property/Get/Set、继承、接口、重载、改名或删除。父FB不变不能替代方法核对；没有新增默认比较或运行验证。独立MCP及一次DSH CLI工程闭环通过，263项加本轮未改15项隔离复用，分组278/278；CLI流程与简短展示未全部遵循，详见方法说明。
 
 ## 从这里开始
 
