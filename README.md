@@ -1,6 +1,6 @@
 # InoProShop Engineering MCP
 
-通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，辅助读取、限定修改、编译、保存重开和比较离线工程。
+通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，直接修改指定离线工程，编译并保存重开；工程比较按需使用。
 
 **main 提供 0.16.0 候选版、二十一项 MCP 工具，契约 1.0.0。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
 
@@ -8,14 +8,14 @@
 
 1. 阅读[安装与日常使用](docs/getting-started.md)，确认环境和直接编辑指定工程的使用方式。
 2. 选择一个客户端：[DSH 接入](docs/getting-started.md#接入-dsh)或 [Codex 固定版本接入](docs/codex-integration.md)。已有部署沿用原登记数据目录；一次只允许一个客户端占用工程服务。
-3. 首次从[只读任务](docs/getting-started.md#首次试用)开始。需要修改时，说明目标、当前值、允许改动和必须保留的内容，按[日常修改闭环](docs/getting-started.md#日常修改闭环)执行。
+3. 在客户端指定 `.project` 文件或提供完整路径，说明要改什么，按[日常修改闭环](docs/getting-started.md#日常修改闭环)执行；有原值条件或保留项时一并说明。也可先做[只读解释](docs/getting-started.md#首次试用)，但不是修改前置任务。
 4. 遇到运行中、冲突、unknown 或冻结，按[停止与保全](docs/getting-started.md#停止与保全)处理。切换客户端先走[正常服务移交](docs/startup-handoff.md#正常移交步骤与停止条件)，保留用户输入，确认原服务退出。
 
 配置模板：[DSH](config/dsh.example.patch.yml)、[Codex 当前 0.16.0](config/codex-direct-edit.example.toml)。[Codex 0.14.0](config/codex.example.toml)和[0.15.0](config/codex-write-validation.example.toml)仅保留历史用途，不能接管登记 v2。模板路径是需替换的示例，固定构建的本机位置和已执行命令保留在本地复核包，不提交私人配置。
 
 ## 直接编辑指定工程
 
-默认 `project_open(projectPath)` 打开用户指定文件，后续修改、保存回同一路径，不创建业务副本。修改前后用 `project_compare` 的 `origin=current-project` 采集历史快照；后台检查点保留，但不是另一份交付。旧 `project_open_copy` 保持显式复制语义，旧登记和隔离不迁移。详见[直接编辑设计与验收](docs/direct-project-edit.md)。
+默认 `project_open(projectPath)` 打开用户指定文件，后续修改、保存回同一路径，不创建业务副本。日常流程为：指定文件和需求 → 必要读取定位 → 修改 → 编译 → 保存关闭重开 → 必要复编及目标读回 → 简短报告。不默认通读全工程、采集比较基线或执行前后比较；只有用户明确要求比较时才用 `project_compare`。版本校验、内部文本快照、写前检查点及冲突保护保留，检查点不是另一份交付。旧 `project_open_copy` 保持显式复制语义，旧登记和隔离不迁移。详见[直接编辑设计与验收](docs/direct-project-edit.md)。
 
 0.16.0 的验证结果与下列旧版本证据分别记录，固定客户端不会因仓库版本变化自动升级。
 
@@ -67,7 +67,7 @@
 | 检索、结构和配置只读 | project_search、project_structure、task_inspect、device_inspect、library_inspect |
 | 当前工程历史快照和比较 | project_compare |
 
-[工具 Schema](docs/tool-schemas.json) · [Agent 工作指令](instructions/inoproshop-workflow.md) · [变量与成员定位](docs/variables.md) · [检索模式](docs/identifier-search.md) · [修改前基线与比较](docs/post-change-baseline-compare.md) · [库查询](docs/library-inspect.md) · [枚举](docs/enum-dut.md) · [数组](docs/array-dut.md)。各专题保留其历史提交、首败、修正和验证归属，不简单累加不同阶段测试数量。
+[工具 Schema](docs/tool-schemas.json) · [Agent 工作指令](instructions/inoproshop-workflow.md) · [变量与成员定位](docs/variables.md) · [检索模式](docs/identifier-search.md) · [按需基线与比较](docs/post-change-baseline-compare.md) · [库查询](docs/library-inspect.md) · [枚举](docs/enum-dut.md) · [数组](docs/array-dut.md)。各专题保留其历史提交、首败、修正和验证归属，不简单累加不同阶段测试数量。
 
 ## 保留限制
 

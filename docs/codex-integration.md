@@ -4,6 +4,8 @@
 
 当前main提供0.16.0候选版、二十一项工具，直接编辑和登记v2边界见[专门说明](direct-project-edit.md)。新接入参考[0.16.0模板](../config/codex-direct-edit.example.toml)及下方升级步骤；原[0.14.0模板](../config/codex.example.toml)和[0.15.0模板](../config/codex-write-validation.example.toml)仅保留历史用途。旧二进制不能接管v2登记。切换须正常移交服务，不要求Codex桌面同步切换。CLI、桌面工具调用、桌面交互和链接点击分别验收，不能因共享配置而推定共同通过。
 
+日常修改采用[简化流程](getting-started.md#日常修改闭环)：指定文件和需求，必要定位后修改、编译、保存重开并读回；只有明确要求比较才采集比较基线。下面历史验收中已执行的完整比较保持原记录，不代表每次使用必须重复。此工作指令调整须由实际入口加载，仓库其他工作区的改动不会自动更新固定构建所读的指令，也不构成本次新模型验收。
+
 ## Windows 环境与固定构建
 
 需要 Windows Node 22 或以上、InoProShop 1.9.1.6 和可用的 Codex 客户端认证。使用 Windows 可执行文件和绝对路径；WSL 客户端、Linux 路径和跨宿主启动本轮不适用。`codex mcp-server` 是把 Codex 作为服务端，不是接入本工程服务的命令。
