@@ -40,6 +40,7 @@ export interface Operation {
   response?: Reply; bridge?: { directory: string; pid?: number }; finishedAt?: string;
   registryVersion?: 1;
   project?: Session;
+  creation?: {projectId:string;sessionId:string;projectPath:string;preset:string};
   activation?: { previousActiveProjectId: string|null; revision: number };
 }
 export interface Session {

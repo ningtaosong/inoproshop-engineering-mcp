@@ -750,6 +750,10 @@ def direct_file_guard(req, state):
     return {"projectPath":target,"expectedDiskHash":guard["expectedDiskHash"],"beforeDiskHash":before,"exclusiveProbe":True}
 
 def dispatch(req):
+    if req['command']=='new_project':
+        sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+        from project_create import create_minimal
+        return create_minimal(req,dict(globals(),projects=projects))
     project = None
     lifecycle = lifecycle_state(project_path=req["projectPath"])
     response = None

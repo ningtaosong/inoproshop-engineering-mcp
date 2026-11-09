@@ -124,7 +124,7 @@ test('本地或全局隔离记录缺失/损坏不视作已恢复；旧工具 Sch
  const anchorPath=(await fs.readdir(isolationDirectory)).map(f=>path.join(isolationDirectory,f));let own;
  for(const q of anchorPath)if(JSON.parse(await fs.readFile(q)).value?.dataDir===c.env.dataDir)own=q;
  const anchor=await fs.readFile(own);await fs.unlink(own);assert.equal((await c.service.status()).data.globalFrozen,true);await fs.writeFile(own,anchor);
- const client=await connect(c.env.dataDir);t.after(()=>client.client.close());assert.equal((await client.client.listTools()).tools.length,21);
+ const client=await connect(c.env.dataDir);t.after(()=>client.client.close());assert.equal((await client.client.listTools()).tools.length,22);
  const status=await client.call('session_status',{});assert.equal(status.status,'succeeded');assert.equal(status.data.isolatedProjects.length,1);
 });
 test('原生/桥接进程缺失及损坏 IPC 结果不能用退出推断绕过；必要源锁缺失仍阻止',async t=>{

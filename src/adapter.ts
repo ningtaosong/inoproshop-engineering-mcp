@@ -32,7 +32,7 @@ export class IdeAdapter implements Adapter {
     catch { throw new DomainError('unsupported','IDE_MISSING',`未找到 InoProShop：${this.config.executable}`); }
     await fs.mkdir(directory,{recursive:true});
     const requestFile=path.join(directory,'request.json');
-    await atomicJson(requestFile,{...request,resultPath:path.join(directory,'result.json'),checkpointPath:path.join(directory,'checkpoint.project')});
+    await atomicJson(requestFile,{...request,resultPath:path.join(directory,'result.json'),...(request.command==='new_project'?{ideExecutable:this.config.executable}:{checkpointPath:path.join(directory,'checkpoint.project')})});
     const option=(name:string,value:string)=> {
       if(/["\r\n]/.test(value)) throw new DomainError('failed','INVALID_LAUNCH_ARGUMENT','启动参数包含不支持的引号或换行');
       return process.platform==='win32'?`--${name}="${value}"`:`--${name}=${value}`;
@@ -54,7 +54,7 @@ export class IdeAdapter implements Adapter {
       })]);
       const result=await this.reconcile(directory);
       if(!result) throw new DomainError('unknown','RESULT_MISSING',`IDE 已退出 (${code})，缺少完整结果，禁止重放`);
-      if(result.data) {
+      if(result.data && (request.command!=='new_project'||await fs.access(request.projectPath).then(()=>true,()=>false))) {
         if(result.data.diskHash!==undefined)result.data.workerDiskHash ??= result.data.diskHash;
         result.data.diskHash=digest(await fs.readFile(request.projectPath));
         result.data.postExitDiskHashObserved=true;
@@ -75,6 +75,13 @@ export class IdeAdapter implements Adapter {
     const request=await readJson(path.join(directory,'request.json'));
     if(!request || response.operationId!==request.operationId)
       throw new DomainError('unknown','RESULT_ID_MISMATCH','桥接结果与原操作不匹配');
+    if(request.command==='new_project'&&response.status==='succeeded') {
+      const current=digest(await fs.readFile(request.projectPath));
+      if(response.data?.diskHash!==current||response.data?.creationEvidence?.savedDiskHash!==current)
+        throw new DomainError('unknown','CREATE_DISK_CHANGED','新建结果与退出后的指定文件不同，保持冻结');
+      response.data.postExitDiskHashObserved=true;
+      await atomicJson(path.join(directory,'observed-after-exit.json'),response);
+    }
     if(['search','tasks','structure','device','libraries','compare_capture'].includes(request.command) || request.fileGuard&&['inspect','list','read'].includes(request.command)) {
       if(response.status==='unknown'&&response.error?.code==='READ_ONLY_FILE_CHANGED')return response;
       const after=digest(await fs.readFile(request.projectPath)),e=response.data?.readOnlyEvidence;

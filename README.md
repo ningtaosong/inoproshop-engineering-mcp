@@ -2,7 +2,7 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，直接修改指定离线工程，编译并保存重开；工程比较按需使用。
 
-**main 提供 0.16.0 候选版、二十一项 MCP 工具，契约 1.0.0。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
+**本分支提供 0.17.0 候选版、二十二项 MCP 工具，契约 1.0.0；main 仍为 0.16.0，尚未合并。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
 
 ## 从这里开始
 
@@ -14,6 +14,8 @@
 配置模板：[DSH](config/dsh.example.patch.yml)、[Codex 当前 0.16.0](config/codex-direct-edit.example.toml)。[Codex 0.14.0](config/codex.example.toml)和[0.15.0](config/codex-write-validation.example.toml)仅保留历史用途，不能接管登记 v2。模板路径是需替换的示例，固定构建的本机位置和已执行命令保留在本地复核包，不提交私人配置。
 
 ## 直接编辑指定工程
+
+需要从新路径开始时，使用 [新建最小 AM610 工程](docs/project-create.md)的 `project_create`；仅固定预设，不复制既有用户工程。已有文件仍使用 `project_open`。新能力需加载本分支的工具定义，现有固定客户端入口不会自动升级。
 
 默认 `project_open(projectPath)` 打开用户指定文件，后续修改、保存回同一路径，不创建业务副本。日常流程为：指定文件和需求 → 必要读取定位 → 修改 → 编译 → 保存关闭重开 → 必要复编及目标读回 → 简短报告。不默认通读全工程、采集比较基线或执行前后比较；只有用户明确要求比较时才用 `project_compare`。版本校验、内部文本快照、写前检查点及冲突保护保留，检查点不是另一份交付。旧 `project_open_copy` 保持显式复制语义，旧登记和隔离不迁移。详见[直接编辑设计与验收](docs/direct-project-edit.md)。
 
@@ -60,7 +62,7 @@
 | 用途 | 工具 |
 | --- | --- |
 | 环境、状态和操作证据 | environment_inspect、session_status、operation_status |
-| 直接打开、登记和切换；显式旧副本 | project_open、project_list、project_activate、project_open_copy |
+| 最小AM610新建、直接打开、登记和切换；显式旧副本 | project_create、project_open、project_list、project_activate、project_open_copy |
 | 对象与声明 | object_list、object_read、variable_inspect |
 | 限定修改与创建 | code_apply_change、pou_create、declaration_create |
 | 编译和保存重开 | project_build、project_save |
