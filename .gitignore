@@ -31,6 +31,7 @@
 !/config/dsh.example.patch.yml
 !/config/codex.example.toml
 !/config/codex-write-validation.example.toml
+!/config/codex-direct-edit.example.toml
 /docs/*
 !/docs/getting-started.md
 !/docs/direct-project-edit.md
