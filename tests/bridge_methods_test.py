@@ -63,6 +63,11 @@ class Methods(unittest.TestCase):
     def test_inheritance_and_interfaces_are_not_opened_by_method_creation(self):
         for head in ['FUNCTION_BLOCK FB_State EXTENDS Base','FUNCTION_BLOCK FB_State IMPLEMENTS IThing']:
             self.fb.textual_declaration.replace(head+'\nVAR\nEND_VAR');r,p=self.run_create();self.assertEqual(r['status'],'unsupported');self.assertEqual(self.control['factory_calls'],0)
+    def test_library_ancestry_and_ambiguous_parent_identity_refuse_before_factory(self):
+        library=Node(self.p,'Library Manager',nativeType='adb5cb65-8e1d-4a00-b70a-375ea27582f3');library.parent=self.app;library.children=[self.fb];self.fb.parent=library;self.app.children=[library]
+        result,p=self.run_create();self.assertEqual(result['status'],'unsupported');self.assertEqual(self.control['factory_calls'],0)
+        self.setUp();duplicate=Node(self.p,'FB_Duplicate',declaration=self.fb.textual_declaration.text,implementation='',guid=self.fb.guid);duplicate.parent=self.app;self.app.children.append(duplicate)
+        result,p=self.run_create();self.assertEqual(result['status'],'unsupported');self.assertEqual(self.control['factory_calls'],0)
     def test_same_parent_case_insensitive_collision_refused(self):
         child=Node(self.p,'readstate',declaration='METHOD PUBLIC readstate : DINT',implementation='',nativeType=METHOD);child.parent=self.fb;self.fb.children.append(child);self.args=self.arguments('ReadState','DINT')
         r,p=self.run_create();self.assertEqual(r['error']['code'],'METHOD_EXISTS');self.assertEqual(self.control['factory_calls'],0)

@@ -109,3 +109,15 @@ for(const tool of ['project_search','variable_inspect'])test(tool+': legitimate 
   }finally{await x.service.store.release();}
  }
 });
+
+
+test('Actual MCP stdio validates native Method comparison output, not only direct service results',async t=>{
+ const e=await seed(),c=await connect(e.dataDir,{INOPRO_RESPONSE_WAIT_MS:'1000'});t.after(()=>c.client.close());
+ const call=async(name,args)=>{const raw=await c.client.callTool({name,arguments:args});assert(!raw.isError,JSON.stringify(raw));return c.done(raw.structuredContent);};
+ const opened=await call('project_open_copy',{requestId:'open-method-schema',sourcePath:e.source,applicationId:app});assert.equal(opened.status,'succeeded');
+ const s=opened.data.session,target={projectId:s.projectId,applicationId:app};
+ const baseline=await call('project_compare',{...target,mode:'capture',requestId:'schema-before'});
+ const r=await call('method_create',request({s},opened.data));assert.equal(r.status,'succeeded');
+ const after=await call('project_compare',{...target,mode:'capture',requestId:'schema-after'});
+ const result=await call('project_compare',{...target,mode:'compare',baselineOperationId:baseline.operationId,targetOperationId:after.operationId});assert.equal(result.status,'succeeded');assert(result.data.items.some(i=>i.objectType==='method'&&i.parentId===fb));
+});

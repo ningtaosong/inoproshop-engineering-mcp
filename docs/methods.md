@@ -10,7 +10,7 @@
 
 ## 创建和修改
 
-先用object_list/object_read确定真实父FB和Application，读取父FB当前全文/哈希及当前snapshot、diskHash。method_create提交：
+先用object_list/object_read确定真实父FB和Application，用object_read读取父FB当前全文/contentHash，snapshot、diskHash从当前session_status会话或最新成功写响应取得并核对磁盘，不假定object_read包含snapshot。method_create提交：
 
 ```json
 {
@@ -55,3 +55,5 @@ Method以objectType=method返回，含parentId、parentPath、access和methodRet
 ST 身份取自公开的 `embedded_object_types`：已核对嵌入类型 `3b83b776-fb25-43b8-99f2-3c507c9143fc` 与本机 ST 实现类的 `TypeGuidAttribute` 一致。父 FB 和 Method 均须具有该标识，无法读取或非 ST 时不纳入支持；不能仅凭“有文本实现”推断为 ST。这里没有声称存在独立的访问级别或返回类型 getter，访问级别与返回声明仍由原生 Method 类型、工厂参数及全文首部核对。
 
 能力探测中的 PLCopen XML 导出在本机 OEM 组件构造阶段失败，原异常保留；产品没有使用该失败入口。原生保存重开探测另有一次断言仅因子对象枚举顺序改变而失败，按 GUID 逐项核对全文与父关系一致后，独立只读重开及保存版编译通过。替身测试不计作 IDE 验收。
+
+旧Schema客户端须正常加载新定义；原调用参数保持兼容，不等于旧客户端已能识别新增Method对象类型。

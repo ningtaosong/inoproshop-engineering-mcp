@@ -40,7 +40,7 @@
 
 ## 功能块原生 Method
 
-- method_create仅用于精确Application内用户ST FUNCTION_BLOCK的原生子方法；先按真实GUID读取父FB全文/哈希及当前snapshot、diskHash，不凭同名猜父对象。显式access=PUBLIC、returnType=void或DINT，提交完整同名METHOD PUBLIC声明和实现；expectedParentHash、expectedSnapshot、expectedDiskHash均使用当前版本。同父重名拒绝，不覆盖；不同FB同名方法分别定位。
+- method_create仅用于精确Application内用户ST FUNCTION_BLOCK的原生子方法；先按真实GUID用object_read读取父FB全文/contentHash；snapshot、diskHash取当前session_status会话或最新成功写响应，并核对当前文件，不假定object_read含snapshot，不凭同名猜父对象。显式access=PUBLIC、returnType=void或DINT，提交完整同名METHOD PUBLIC声明和实现；expectedParentHash、expectedSnapshot、expectedDiskHash均使用当前版本。同父重名拒绝，不覆盖；不同FB同名方法分别定位。
 - object_list/object_read返回method及parentId/parentPath。修改用code_apply_change，显式objectType=method、parentId、expectedHash和全文，保留名称、返回类型、PUBLIC及父关系；检查点、磁盘校验、去重和写后保存重开沿用。无独立访问/返回getter，不假称已读取；以实际工厂、原生Method类型/父对象及声明为依据。不开放Property/Get/Set、接口、继承、重载、改名或删除。
 - 从FB实例实际调用方法并接入被任务调用的程序后再编译；父FB文本未变不能代替子方法核对。方法变化使旧编译失效，最终读回方法、父FB及实际调用方。只读变量查询将Method返回声明单列，检索仍是源码词元；未支持子对象或声明缺口明确报告。默认不采集基线或比较；明确要求比较时按完整父路径和原生父身份核对方法，不按短名配对。源码调用和编译不是运行观测。
 

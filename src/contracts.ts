@@ -186,7 +186,7 @@ export const comparisonSnapshotSchema=z.object({projectId:uuid,applicationId:uui
 const comparisonCounts=z.object({added:z.number().int(),deleted:z.number().int(),modified:z.number().int(),unchanged:z.number().int(),incomparable:z.number().int()});
 export const comparisonDataSchema=z.object({mode:z.enum(['capture','compare']),snapshot:comparisonSnapshotSchema.optional(),version:hash.optional(),baseline:comparisonSnapshotSchema.optional(),target:comparisonSnapshotSchema.optional(),
   counts:z.object({object:comparisonCounts,task:comparisonCounts}).optional(),coverageComplete:z.boolean().optional(),
-  items:z.array(z.object({index:z.number().int(),kind:z.enum(['object','task']),relativePath:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array','task']),...pouFields,
+  items:z.array(z.object({index:z.number().int(),kind:z.enum(['object','task']),relativePath:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array','method','task']),...pouFields,...methodFields,
     beforeIdentity:z.array(z.object({objectId:uuid,path:z.array(z.string())})),afterIdentity:z.array(z.object({objectId:uuid,path:z.array(z.string())})),category:z.enum(['added','deleted','modified','unchanged','incomparable']),
     changes:z.array(z.record(z.string(),z.unknown())),reasons:z.array(z.string())}).passthrough()).optional(),
   page:z.object({offset:z.number().int(),limit:z.number().int(),returned:z.number().int(),total:z.number().int(),hasMore:z.boolean(),nextOffset:z.number().int().nullable(),pageReduced:z.boolean()}).optional(),

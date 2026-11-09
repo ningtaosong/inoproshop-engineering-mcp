@@ -5812,6 +5812,7 @@
                         "structure",
                         "enum",
                         "array",
+                        "method",
                         "task"
                       ]
                     },
@@ -5829,6 +5830,32 @@
                     "pouTypeSource": {
                       "type": "string",
                       "const": "native-pou-type-id-and-declaration-header"
+                    },
+                    "parentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "parentPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "access": {
+                      "type": "string",
+                      "const": "PUBLIC"
+                    },
+                    "methodReturnType": {
+                      "type": "string",
+                      "enum": [
+                        "void",
+                        "DINT"
+                      ]
+                    },
+                    "methodMetadataSource": {
+                      "type": "string",
+                      "const": "native-method-type-parent-and-declaration-header"
                     },
                     "beforeIdentity": {
                       "type": "array",
