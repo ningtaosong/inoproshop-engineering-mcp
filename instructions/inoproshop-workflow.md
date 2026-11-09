@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.16.0 候选版的二十一项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.17.0 候选版的二十二项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -12,7 +12,8 @@
 用户可直接在客户端指定 .project 文件，或提供完整绝对路径，再说明修改需求；已有文件上下文能唯一确定路径时不要求重复填写。GUID、Application ID、projectId、哈希、snapshot、requestId 和工具顺序由你查询、记录并处理，
 不得要求用户填写技术表单、复制工具参数或替你定位声明/调用。路径和目标明确时直接执行，不为已授权的打开、读取、修改、编译、保存额外要求确认。
 
-- 先查环境与会话。按用户指定的完整工程路径调用 project_open（projectPath）直接打开，内部生成唯一 requestId，不要求用户提供 Application GUID。
+- 先查环境与会话。已有工程按用户指定完整路径调用 project_open（projectPath）直接打开；明确要求新建时用 project_create（projectPath），只接受尚不存在的本机绝对 .project 路径，内部生成唯一 requestId，不要求用户提供设备标识或 Application GUID。
+  project_create 仅初始化固定最小 AM610-CPU1608TP 预设：已安装设备描述4102/10f4 0002/3.5.11.11（不是固件版本）、空ST PLC_PRG、20ms周期MainTask调用PLC_PRG及OEM标准支持节点/库，不含业务逻辑，不提供任意设备/任务/I/O编辑。原生向导初始化暂存只作操作证据，排他发布至用户指定文件后保存重开核对并按直接模式登记，没有第二份业务副本；后续project_open复用同一路径身份。目标存在/登记/别名或占用冲突时停止，不覆盖、改名、改目录；原操作不确定时保留文件与阶段证据，查询原操作，不重新创建或自动删除。新文件不存在创建前备份，不伪造检查点；后续修改沿用既有检查点。新建不等于已编译，按用户需求用既有对象创建/修改工具接入业务、真实编译并保存重开读回；未要求比较仍不调用project_compare。不是跨IDE/文件/登记的原子事务或自动回滚。
   根据实际返回的应用和完整对象列表，把用户名称解析为完整路径及真实 GUID。分页直到 complete=true，再确定候选。
   多 Application 时先从返回身份只读核对候选，必要时用同一工程路径和返回的 Application ID 选择应用后列出对象；不要直接索要 GUID。
   只有同名对象/实例存在多个合理候选且上下文无法唯一确定时，才用人能读懂的完整路径提出一次必要选择题。

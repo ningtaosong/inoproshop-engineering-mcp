@@ -1,7 +1,7 @@
 {
-  "serverVersion": "0.16.0",
+  "serverVersion": "0.17.0",
   "contractVersion": "1.0.0",
-  "toolCount": 21,
+  "toolCount": 22,
   "tools": [
     {
       "name": "environment_inspect",
@@ -394,6 +394,154 @@
               "activeProjectId",
               "writeFrozen"
             ],
+            "additionalProperties": {}
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "status",
+          "summary"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_create",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "projectPath": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "requestId",
+          "projectPath"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "conflict",
+              "unsupported",
+              "unknown"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "projectPath": {
+                "type": "string"
+              },
+              "editMode": {
+                "type": "string",
+                "const": "direct"
+              },
+              "creationEvidence": {
+                "type": "object",
+                "properties": {
+                  "preset": {
+                    "type": "string",
+                    "const": "am610-minimal-v1"
+                  },
+                  "publishedExclusively": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "reopened": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "noBusinessCopy": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "required": [
+                  "preset",
+                  "publishedExclusively",
+                  "reopened",
+                  "noBusinessCopy"
+                ],
+                "additionalProperties": {}
+              },
+              "session": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "workingPath": {
+                    "type": "string"
+                  },
+                  "editMode": {
+                    "type": "string",
+                    "const": "direct"
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "workingPath",
+                  "editMode"
+                ],
+                "additionalProperties": {}
+              },
+              "snapshot": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "diskHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
             "additionalProperties": {}
           },
           "error": {

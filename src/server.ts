@@ -18,6 +18,7 @@ const descriptions:Record<string,string>={
   environment_inspect:'读取本机路径、版本和实测能力；初始化不会修改工程。',
   session_status:'查询受管理工程、Application 及未决请求，不进入工程队列。',
   project_list:'只读列出本数据目录已登记工程、实际工程路径、应用选择和各自最后确认状态；不启动 IDE。',
+  project_create:'仅新建固定 AM610-CPU1608TP 最小预设：原生 OEM 向导、已安装设备描述4102/10f4 0002/3.5.11.11（非固件），空ST PLC_PRG，20ms周期MainTask调用PLC_PRG；含OEM标准支持节点/库。只需新的本机绝对.project路径，必要目录可创建，已存在/占用/登记冲突拒绝，不覆盖或改名。原生初始化暂存仅作操作证据，排他发布到指定路径后关闭重开核对并按直接模式登记，无第二份业务副本。不提供通用设备/任务/I/O编辑。requestId复用原操作；不确定时保留文件冻结，不删除重试，无创建前检查点/原子事务/自动回滚。后续project_open复用同一路径身份；编译仍须实际project_build，未要求比较不调用project_compare。',
   project_open:'默认直接打开指定 projectPath，后续修改保存回同一文件，不创建业务副本。已登记副本路径可按原身份同路径复用；不会按来源路径重定向到旧副本。外部占用/版本冲突停止，不接管外部 IDE。',
   project_open_copy:'新源创建独立副本并激活；已登记源或副本复用原副本，核对成功后切换。禁止覆盖源工程。',
   project_activate:'按已查询的 projectId 核对并激活原登记工程（保持直接/副本模式）；有未决操作时拒绝，失败保留原活动工程。',

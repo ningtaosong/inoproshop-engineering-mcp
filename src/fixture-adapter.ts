@@ -10,6 +10,22 @@ export class FixtureAdapter implements Adapter {
   async reconcile(directory:string) { return readJson(path.join(directory,'result.json')); }
   async execute(req:BridgeRequest, dir:string, onStart:(pid:number)=>Promise<void>):Promise<Reply> {
     await fs.mkdir(dir,{recursive:true}); await atomicJson(path.join(dir,'request.json'),req);
+    if(req.command==='new_project') {
+      const aid=randomUUID(),pid=randomUUID(),tid=randomUUID(),appPath=['Device','Plc Logic','Application'];
+      const declaration='PROGRAM PLC_PRG\nVAR\nEND_VAR',implementation='',objectId=randomUUID();
+      const prg={objectId,applicationId:aid,path:[...appPath,'PLC_PRG'],objectType:'st_pou',pouType:'program',hasImplementation:true,
+        nativeTypeId:'6f9dac99-8de1-4efc-8465-68ac443b7d08',declaration,implementation,contentHash:codeHash(declaration,implementation)};
+      const applications=[{applicationId:aid,path:appPath}],task={applicationId:aid,taskId:tid,path:[...appPath,'Task Configuration','MainTask'],
+        rawFields:{kind_of_task:'Cyclic',interval:'t#20ms',priority:'1',interval_unit:'ms'},watchdog:{enabled:'False'},unavailableFields:[],rawCalls:[['PLC_PRG','']],callsComplete:true};
+      const p={testFixture:true,applications,objects:[prg],tasks:[task]};
+      await fs.writeFile(req.projectPath,JSON.stringify(p),{flag:'wx'});
+      const diskHash=digest(await fs.readFile(req.projectPath)),snapshot=digest(canonical([prg]));
+      const result={...reply('succeeded','Fixture-only native new-project substitute',{projectPath:req.projectPath,editMode:'direct',applications,snapshot,diskHash,postExitDiskHashObserved:true,
+        created:true,testMode:true,creationEvidence:{preset:'am610-minimal-v1',publishedExclusively:true,reopened:true,noBusinessCopy:true,savedDiskHash:diskHash,
+          applicationId:aid,device:{type:4102,id:'10f4 0002',version:'3.5.11.11'},deviceObjectId:pid,plcPrg:prg,
+          task:{objectId:tid,kind:'Cyclic',interval:'t#20ms',calls:[['PLC_PRG','']]}}}),operationId:req.operationId};
+      await atomicJson(path.join(dir,'result.json'),result);return result;
+    }
     const p=await readJson(req.projectPath);
     if(!p?.testFixture) throw new DomainError('failed','FIXTURE_ONLY','测试模式只接受显式 testFixture JSON');
     if(p.delayMs) await new Promise(r=>setTimeout(r,p.delayMs));

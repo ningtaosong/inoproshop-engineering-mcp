@@ -13,6 +13,7 @@ import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
+import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 
 export class EngineeringService {
   readonly store: Store;
@@ -83,6 +84,16 @@ export class EngineeringService {
     if(args.reconcile && (op.status==='running'||op.status==='unknown')) {
       if(op.status==='running' && alive(op.ownerPid) && !this.persistencePoison) return this.operationReply(op,'running','原服务仍在执行，查询不会中断或重放');
       await this.store.acquire();
+      if(op.tool==='project_create') {
+        if(!op.creation) return this.operationReply(op,'unknown','缺少原新建路径预留证据，保留现场，不能重放');
+        await this.store.acquire(op.creation.projectPath);
+        if(op.bridge?.pid&&alive(op.bridge.pid))return this.operationReply(op,'unknown','原新建进程仍存在，保持冻结，不重新创建');
+        if(op.bridge) {
+          const observed=await this.adapter.reconcile(op.bridge.directory);
+          if(observed){await this.finish(op,replySchema.parse(observed));return op.response!;}
+        }
+        return this.operationReply(op,'unknown','原新建操作缺少可核对终态，保留文件，不覆盖重试');
+      }
       const project=await this.originalProject(op);
       op.project=project;
       await this.store.acquire(project.sourcePath);
@@ -142,7 +153,7 @@ export class EngineeringService {
     }
     if(ops.some(o=>!isolatedIds.has(o.operationId)&&(o.status==='unknown'||(o.status==='running'&&!alive(o.ownerPid)))))
       throw new DomainError('unknown','PENDING_UNKNOWN','存在未决操作；请先查询并核对 operation_status，禁止派发后续工程操作');
-    const switching=['project_open','project_open_copy','project_activate'].includes(tool);
+    const switching=['project_create','project_open','project_open_copy','project_activate'].includes(tool);
     if(switching && ops.some(o=>o.status==='running'&&!isolatedIds.has(o.operationId)))throw new DomainError('conflict','PENDING_OPERATION','存在运行中或排队操作，不能切换；请先查询原操作');
     let registry;
     try {registry=await this.store.ensureRegistry();}
@@ -184,7 +195,11 @@ export class EngineeringService {
     })]);
   }
   private async finish(op:Operation,result:Reply) {
-    const switching=['project_open','project_open_copy','project_activate'].includes(op.tool);
+    const switching=['project_create','project_open','project_open_copy','project_activate'].includes(op.tool);
+    if(op.tool==='project_create'&&result.status==='succeeded') {
+      op.project=await createdSession(this.store,op,result);
+      await this.store.saveOp(op);
+    }
     if(switching && result.status==='succeeded') {
       const session={...await this.originalProject(op)};
       session.applications=result.data?.applications as any[];
@@ -231,6 +246,9 @@ export class EngineeringService {
     if(switching && !['succeeded','unknown'].includes(result.status) && op.project &&
       !(await this.store.registry()).projects.some(s=>pathKey(s.sourcePath)===pathKey(op.project!.sourcePath)))
       await this.store.releaseSource(op.project.sourcePath);
+    if(op.tool==='project_create'&&op.creation&&!['succeeded','unknown'].includes(result.status)&&
+      !(await this.store.registry()).projects.some(s=>pathKey(s.workingPath)===pathKey(op.creation!.projectPath)))
+      await this.store.releaseSource(op.creation.projectPath);
   }
   private async bridge(op:Operation,command:string,session:Session,args:any):Promise<Reply> {
     await maintenanceGuard();await assertNotIsolated(this.store,session.projectId,[session.sourcePath,session.workingPath]);
@@ -343,6 +361,16 @@ export class EngineeringService {
       const registry=await this.store.registry();
       if(registry.activeProjectId!==op.activation.previousActiveProjectId || registry.revision!==op.activation.revision)
         throw new DomainError('conflict','ACTIVE_CHANGED','受理后活动工程或登记状态改变，未切换');
+      if(op.tool==='project_create') {
+        const target=await reserveProject(this.store,op,registry);
+        await guardNewPath(target);await maintenanceGuard();
+        op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
+        const result=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'new_project',projectPath:target,args:{preset:op.creation!.preset}},
+          op.bridge.directory,async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
+        await createdSession(this.store,op,result);
+        // Validation/registration occurs in finish only after final file evidence.
+        return result;
+      }
       let session:Session|undefined;
       if(op.tool==='project_activate') {
         session=registry.projects.find(s=>s.projectId===a.projectId);

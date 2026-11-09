@@ -35,6 +35,7 @@
 /docs/*
 !/docs/getting-started.md
 !/docs/direct-project-edit.md
+!/docs/project-create.md
 !/docs/post-change-baseline-compare.md
 !/docs/tool-schemas.json
 !/docs/library-inspect.md
