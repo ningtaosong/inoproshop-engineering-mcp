@@ -5,6 +5,7 @@ import {reply,declarationMatches,DomainError,type Reply} from './contracts.js';
 import {lexSt,singleIdentifier,IDENTIFIER_LEXER_VERSION,LEGACY_IDENTIFIER_LEXER_VERSION} from './st-lex.js';
 import {libraryInventoryResult} from './libraries.js';
 import {isStringBoundary,stringEnd} from './native-output.js';
+import {taskConfigurationVersion,TASK_CONFIGURATION_SCHEME} from './task-config.js';
 const areas=['name','declaration','implementation'];
 function cmp(a:string,b:string){return a<b?-1:a>b?1:0;}
 function position(source:string,index:number){const prefix=source.slice(0,index),line=prefix.split('\n').length;return {line,column:index-(prefix.lastIndexOf('\n')+1)+1};}
@@ -105,6 +106,7 @@ export function taskResult(raw:Reply,a:any):Reply {
       meaning:kind==='Cyclic'?'configured-cycle-period':['Event','ExternalEvent','External','Freewheeling','Status','ParentSynchron'].includes(kind)?'not-a-cycle-period':'unknown-task-type'},calls};
   });
   return {...raw,summary:'已读取任务配置；配置不代表实际运行观测',data:{...base,tasks,resolutionReadFailures,
+    configurationVersion:taskConfigurationVersion(raw.data),configurationVersionScheme:TASK_CONFIGURATION_SCHEME,
     version:digest(canonical({projectId:a.projectId,applicationId:a.applicationId,diskHash:base.diskHash,tasks,resolutionReadFailures,enumerationFailures:base.enumerationFailures})),
     configurationOnly:true,runtimeObserved:false}};
 }

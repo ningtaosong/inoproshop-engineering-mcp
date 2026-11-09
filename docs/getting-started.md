@@ -1,6 +1,6 @@
 # 安装、接入与日常离线试用
 
-main提供0.17.0候选、22项工具。需要[新建最小AM610工程](project-create.md)时从main获取，安装依赖并部署到独立固定入口；不要覆盖现有客户端构建。客户端须实际收到新增project_create及当前指令，保留的旧0.16入口仍是21项工具，不会因Git合并自动升级。下文0.16与旧客户端记录保留各自验证归属。
+main提供0.18.0候选、23项工具。从main获取，安装依赖并部署到独立固定入口；不要覆盖现有客户端构建。客户端须实际收到project_create、task_config_update及当前指令，保留的旧0.16入口仍是21项工具，不会因Git合并自动升级。下文0.16与旧客户端记录保留各自验证归属。
 
 本文同时保留0.16.0直接编辑及固定客户端的历史接入记录；0.17.0新建能力和验证边界见[专门说明](project-create.md)。只适用于已有证据覆盖的本机离线场景，各次验收保留原版本归属；0.16.0直接编辑历史另见[原说明](direct-project-edit.md)。
 
@@ -14,7 +14,7 @@ main提供0.17.0候选、22项工具。需要[新建最小AM610工程](project-c
 
 ## 获取与构建
 
-仓库已公开，当前 main 提供 0.17.0 候选版、二十二项工具。新增 project_create，原二十一项工具保持调用兼容；登记 v2 的旧二进制兼容限制见[工程与副本](#工程与副本)及[新建登记兼容说明](project-create.md#合并复核2026-11-09)。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，当前 main 提供 0.18.0 候选版、二十三项工具。新增task_config_update，原二十二项Schema保持兼容；task_inspect保持只读，兼容增加任务版本证据；登记 v2 的旧二进制兼容限制见[工程与副本](#工程与副本)及[新建登记兼容说明](project-create.md#合并复核2026-11-09)。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
 git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
@@ -37,7 +37,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。加载当前候选应为0.17.0、二十二工具，实际收到project_create的新路径参数及project_open的projectPath参数、project_compare的current-project来源及当前指令；variable_inspect保留includeInitializerMembers及maxInitializerMembers。显式提取后的memberExtraction.parserVersion为named-initializer-members-v1；未启用时仍declaration-variables-v2。project_search的matchMode=literal/identifier及st-identifier-v2不变，identifier必须显式指定不含name的源码areas。若仍为旧Schema，停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
+5. 新对话先让Agent查询环境、会话和工具集合。加载当前候选应为0.18.0、二十三工具，实际收到task_config_update的任务/磁盘版本及可选intervalMs、priority参数，以及project_create的新路径参数及project_open的projectPath参数、project_compare的current-project来源及当前指令；variable_inspect保留includeInitializerMembers及maxInitializerMembers。显式提取后的memberExtraction.parserVersion为named-initializer-members-v1；未启用时仍declaration-variables-v2。project_search的matchMode=literal/identifier及st-identifier-v2不变，identifier必须显式指定不含name的源码areas。若仍为旧Schema，停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
@@ -78,6 +78,8 @@ npm run check:instructions
 需要新能力时确认客户端实际收到相应工具 Schema 和指令；服务版本号、配置文件写入或独立初始化成功不能代替客户端接收证据。只读解释不追加修改前基线、编译或保存流程。
 
 ## 日常修改闭环
+
+S1 已合入main，为 0.18.0／二十三工具，新增 [已有周期任务配置编辑](task-config.md)。0.17.0及下列固定客户端历史记录保留原归属；使用新工具须正常加载对应固定构建，不能把代码更新当作客户端已收到。已有任务仅可改整数毫秒周期及优先级，先读取任务配置版本和磁盘版本；任务变化后须真实新编译，ST全文不变也不能沿用旧编译。其他任务字段只核对实际可读项，不宣称完整设备配置一致。
 
 指定工程和修改需求 → 必要读取定位 → 直接修改指定文件 → 真实编译 → 保存、关闭重开 → 根据保存结果判断必要复编 → 修改对象最终读回 → 简短报告。
 

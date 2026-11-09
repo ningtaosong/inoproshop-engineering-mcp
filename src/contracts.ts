@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.17.0';
+export const VERSION = '0.18.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -41,6 +41,10 @@ export const schemas = {
     fieldRead:z.object({referenceIndex:z.number().int().min(0).max(9999),field:z.enum(['id','name','namespace','placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid']),
       offset:z.number().int().min(0).default(0),limit:z.number().int().min(2).max(2048).default(1024)}).strict().optional()}).strict(),
   task_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid}).strict(),
+  task_config_update:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    taskId:uuid,expectedTaskVersion:hash,expectedDiskHash:hash,
+    intervalMs:z.number().int().min(1).max(60000).optional(),priority:z.number().int().min(0).max(31).optional()}).strict()
+    .refine(a=>a.intervalMs!==undefined||a.priority!==undefined,'至少提供 intervalMs 或 priority；未提供的字段保持原值'),
   project_compare:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     requestId:id.optional(),mode:z.enum(['capture','compare']),origin:z.enum(['current-project','working-copy','registered-source']).default('working-copy'),
     baselineOperationId:uuid.optional(),targetOperationId:uuid.optional(),expectedVersion:hash.optional(),
@@ -194,6 +198,10 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   project_search:searchDataSchema.partial().passthrough(),
   variable_inspect:variableDataSchema.partial().passthrough(),
   task_inspect:taskDataSchema.partial().passthrough(),
+  task_config_update:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),taskId:uuid.optional(),
+    changed:z.boolean().optional(),reopened:z.boolean().optional(),configurationVersion:hash.optional(),taskConfigurationVersion:hash.optional(),
+    before:z.record(z.string(),z.unknown()).optional(),after:z.record(z.string(),z.unknown()).optional(),
+    checkpoint:z.string().optional(),...snapshotFields}).passthrough(),
   library_inspect:libraryDataSchema.partial().passthrough(),
   project_compare:comparisonDataSchema.partial().passthrough(),
   project_structure:structureDataSchema.partial().passthrough(),

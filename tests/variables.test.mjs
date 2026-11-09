@@ -62,7 +62,7 @@ async function ctx(t,extra={}){
  const target={projectId:o.data.session.projectId,applicationId:app};return {e,c,s:o.data.session,target,call:async a=>c.done(await c.call('variable_inspect',{...target,...a}))};
 }
 test('twenty tools; all nineteen existing contracts unchanged; precise read-only input/output schema',async t=>{
- const x=await ctx(t);const tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,22);assert(tools.find(x=>x.name==='variable_inspect').annotations.readOnlyHint);
+ const x=await ctx(t);const tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,23);assert(tools.find(x=>x.name==='variable_inspect').annotations.readOnlyHint);
  const old=JSON.parse(await readFile('tests/fixtures/variable-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);
  for(const t of old.tools){const strip=withoutIdentifierExtension;assert.deepEqual(strip(z.toJSONSchema(schemas[t.name],{io:'input'})),t.inputSchema,t.name+' input');assert.deepEqual(strip(z.toJSONSchema(outputSchemas[t.name])),t.outputSchema,t.name+' output');}
  for(const a of [{applicationId:null},{targetKind:'pool'},{limit:101},{write:true},{maxObjects:0},{sourceRead:{objectId:obj,offset:-1}}])assert(!schemas.variable_inspect.safeParse({...x.target,...a}).success);

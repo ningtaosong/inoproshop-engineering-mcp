@@ -34,7 +34,10 @@ class Lifecycle(unittest.TestCase):
         tree=ast.parse(Path('bridge/worker.py').read_text(encoding='utf8'))
         self.env=dict(unicode=str,hashlib=hashlib,json=json,re=re,os=os,CONTRACT='1.0.0')
         exec(compile(ast.Module(body=[x for x in tree.body if isinstance(x,ast.FunctionDef)],type_ignores=[]),'bridge/worker.py','exec'),self.env)
-        self.req=dict(command='save',projectPath='fixture.project',args=dict(applicationId='app',expectedSnapshot='snapshot'))
+        self.req=dict(command='save',projectPath='fixture.project',args=dict(projectId='fixture-project',applicationId='app',expectedSnapshot='snapshot'))
+        # This lifecycle-only handle has no native tree. Supply an explicit empty
+        # task inventory for the new save verification, retaining the real digest.
+        self.env['task_inventory']=lambda p,a:dict(projectId=a['projectId'],applicationId=a['applicationId'],tasks=[],enumerationFailures=[])
     def run_save(self,native,verify_failure=False):
         self.env.update(projects=native,application=lambda *a:None)
         def snapshot(p):
@@ -45,6 +48,7 @@ class Lifecycle(unittest.TestCase):
     def test_success_closes_each_owned_handle_once_and_reports_stages(self):
         n=Native();r=self.run_save(n)
         self.assertEqual(r['status'],'succeeded')
+        self.assertRegex(r['data']['taskConfigurationVersion'],r'^[a-f0-9]{64}$')
         self.assertEqual([p.close_calls for p in n.handles],[1,1])
         self.assertEqual(sum(p.save_calls for p in n.handles),1)
         self.assertEqual([e['stage'] for e in r['data']['lifecycle']['events']],['initial-open','save','close-before-reopen','reopen','reopen-verification','final-cleanup'])

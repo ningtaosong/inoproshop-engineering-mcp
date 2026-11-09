@@ -44,8 +44,9 @@ test('客户端取消只取消等待，原请求继续发布持久化结果',asy
   const args={sourcePath:env.source,requestId:'cancelled',applicationId:app};
   const controller=new AbortController(); const pending=c.call('project_open_copy',args,{signal:controller.signal});
   await new Promise(r=>setTimeout(r,80)); controller.abort(); await assert.rejects(pending);
-  await new Promise(r=>setTimeout(r,320));
-  const original=await c.call('operation_status',{requestId:'cancelled'}); assert.equal(original.status,'succeeded');
+  // Cancellation ends the client wait, not the engineering operation. Query
+  // the original request to a bounded terminal result instead of assuming 320ms.
+  const original=await c.done(await c.call('operation_status',{requestId:'cancelled'})); assert.equal(original.status,'succeeded');
   const duplicate=await c.call('project_open_copy',args); assert.equal(duplicate.operationId,original.operationId);
 });
 

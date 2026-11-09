@@ -350,6 +350,96 @@ def task_inventory(project,args):
       "tasks":tasks,"programs":programs,"resolutionReadFailures":failures,"enumerationFailures":errors,
       "coverageComplete":not errors and not failures and not any(t["unavailableFields"] for t in tasks)}
 
+def task_configuration_version(inventory):
+    return sha(encode(['task-configuration-v1',inventory['projectId'],inventory['applicationId'],
+        sorted(inventory['tasks'],key=lambda t:t['taskId']),inventory['enumerationFailures']]))
+
+def configured_interval_ms(fields):
+    if fields.get('interval_unit')!='ms':return None
+    match=re.match(r'^(?:t#([0-9]+)ms|([0-9]+))$',fields.get('interval',''),re.I)
+    return int(match.group(1) or match.group(2)) if match else None
+
+def task_config_update(project,req,args,state):
+    """Existing Cyclic task only. No task factories, calls/watchdog/CPU writes or rollback."""
+    allowed=set(('requestId','projectId','targetKind','applicationId','taskId','expectedTaskVersion','expectedDiskHash','intervalMs','priority'))
+    for key,low,high in [('intervalMs',1,60000),('priority',0,31)]:
+        if key in args and (isinstance(args[key],bool) or not isinstance(args[key],(int,long)) or not low<=args[key]<=high):
+            return failure('failed','INVALID_TASK_PATCH',u'仅支持整数毫秒1..60000及整数优先级0..31'),project
+    if set(args)-allowed or not any(k in args for k in ('intervalMs','priority')):
+        return failure('failed','INVALID_TASK_PATCH',u'仅允许周期和优先级，至少提供一项'),project
+    before=task_inventory(project,args)
+    version=task_configuration_version(before)
+    if version!=args['expectedTaskVersion']:
+        return failure('conflict','TASK_VERSION_CHANGED',u'实际任务配置与原版本不符，未写入',{'configurationVersion':version}),project
+    if file_hash(req['projectPath'])!=args['expectedDiskHash']:
+        return failure('conflict','TASK_DISK_CHANGED',u'磁盘工程与预期不符，未写入'),project
+    matches=[t for t in before['tasks'] if t['taskId']==args['taskId']]
+    native=[x for x,n,aid in walk(project) if aid==args['applicationId'] and text(x.guid).lower()==args['taskId'] and getattr(x,'is_task',False)]
+    if len(matches)!=1 or len(native)!=1:
+        return failure('conflict','TASK_NOT_UNIQUE',u'精确Application内任务身份不唯一，未写入'),project
+    row=matches[0];fields=row['rawFields']
+    required=set(('kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'))
+    if before['enumerationFailures'] or any(t['unavailableFields'] or not t['callsComplete'] or not required.issubset(t['rawFields']) or not set(('enabled','time','time_unit','sensitivity')).issubset(t['watchdog']) for t in before['tasks']):
+        return failure('unsupported','TASK_CONFIGURATION_INCOMPLETE',u'原生任务字段或枚举不完整，未写入'),project
+    if fields.get('kind_of_task')!='Cyclic':
+        return failure('unsupported','TASK_NOT_CYCLIC',u'只支持已有周期型任务，未写入'),project
+    old_interval=configured_interval_ms(fields)
+    if old_interval is None or not re.match(r'^[0-9]+$',fields.get('priority','')):
+        return failure('unsupported','TASK_UNITS_UNCONFIRMED',u'原周期单位或优先级文本无法可靠解释，未写入'),project
+    if not 1<=old_interval<=60000 or not 0<=int(fields['priority'])<=31:
+        return failure('unsupported','TASK_CURRENT_RANGE_UNSUPPORTED',u'原任务值超出首版已验证范围，未写入'),project
+    from System.IO import File,FileAttributes,FileStream,FileMode,FileAccess,FileShare
+    if int(File.GetAttributes(req['projectPath'])) & int(FileAttributes.ReadOnly):
+        return failure('unsupported','TASK_PROJECT_READ_ONLY',u'工程文件只读，未写入'),project
+    try:
+        # Native projects.open defaults allow_readonly=False; also require write ACL
+        # before any setter. No permission/security setting is changed.
+        handle=FileStream(req['projectPath'],FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite);handle.Dispose()
+    except Exception as e:
+        return failure('unsupported','TASK_PROJECT_READ_ONLY',text(e)),project
+    task=native[0];old_snapshot=snapshot(project);actions=[]
+    changes={}
+    if 'intervalMs' in args and old_interval!=args['intervalMs']:changes['interval']='t#%dms'%args['intervalMs']
+    if 'priority' in args and int(fields['priority'])!=args['priority']:changes['priority']=str(args['priority'])
+    common={'projectId':args['projectId'],'applicationId':args['applicationId'],'taskId':args['taskId'],'before':before,'snapshot':old_snapshot,
+        'configurationVersionScheme':'task-configuration-v1','configurationOnly':True,'runtimeObserved':False}
+    if not changes:
+        return success(u'请求值与原配置一致；未调用setter、保存或重开',dict(common,changed=False,noOp=True,after=before,actions=[],
+            configurationVersion=version,taskConfigurationVersion=version,reopened=False)),project
+    directory=os.path.dirname(req['resultPath'])
+    shutil.copyfile(req['projectPath'],req['checkpointPath'])
+    publish(os.path.join(directory,'task-before.json'),dict(common,configurationVersion=version))
+    try:
+        for field in ('interval','priority'):
+            if field not in changes:continue
+            event={'field':field,'nativeValue':changes[field],'status':'started'};actions.append(event)
+            publish(os.path.join(directory,'task-set-%s-start.json'%field),dict(event))
+            setattr(task,field,changes[field])
+            event.update(status='succeeded',readback=text(getattr(task,field)))
+            publish(os.path.join(directory,'task-set-%s-end.json'%field),dict(event))
+        expected=json.loads(encode(before))
+        for t in expected['tasks']:
+            if t['taskId']==args['taskId']:t['rawFields'].update(changes)
+        after_set=task_inventory(project,args)
+        if task_configuration_version(after_set)!=task_configuration_version(expected) or snapshot(project)!=old_snapshot:
+            raise ValueError('Task write readback or preserved task/source fields differ')
+        publish(os.path.join(directory,'task-after-set.json'),after_set)
+        project=lifecycle_save_reopen(state)
+        after=task_inventory(project,args)
+        if task_configuration_version(after)!=task_configuration_version(expected) or snapshot(project)!=old_snapshot:
+            raise ValueError('Reopened task identity/configuration or preserved source differs')
+        publish(os.path.join(directory,'task-after-reopen.json'),after)
+        return success(u'已有周期任务配置已写入、保存关闭重开并核对可读保留字段；需真实新编译',dict(common,
+            changed=True,noOp=False,after=after,actions=actions,configurationVersion=task_configuration_version(after),
+            taskConfigurationVersion=task_configuration_version(after),checkpoint=req['checkpointPath'],persistedToWorkingCopy=True,reopened=True)),project
+    except Exception as e:
+        partial=None
+        if state['project'] is not None:
+            try:partial=task_inventory(state['project'],args)
+            except Exception:pass
+        return failure('unknown','TASK_WRITE_INCOMPLETE',text(e),dict(common,actions=actions,partial=partial,
+            checkpoint=req['checkpointPath'],primaryException=exception_evidence(e),automaticRollback=False)),state['project']
+
 def native_structure(project, args):
     """Same native child API as walk; retain non-ST objects and per-branch failures."""
     nodes, failures, native = [], [], {}
@@ -761,7 +851,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -794,6 +884,8 @@ def dispatch(req):
                 response = success(u"已在一次 IDE 读取中取得搜索范围与完整原文",search_inventory(project,args))
             elif command == "tasks":
                 response = success(u"已只读取得真实任务字段与程序候选",task_inventory(project,args))
+            elif command == 'task_update':
+                response,project=task_config_update(project,req,args,lifecycle)
             elif command == "libraries":
                 response = success(u"已只读取得精确 Application 的库直接引用与原生解析信息",library_inventory(project,args))
             elif command == "list":
@@ -855,15 +947,25 @@ def dispatch(req):
                         response = failure("failed" if recovery["status"] == "succeeded" else "unknown", "PARTIAL_WRITE", text(e),
                             {"partialContent": observed, "recovery": recovery, "checkpoint": req["checkpointPath"],"primaryException":detail})
             elif command == "build":
+                task_before=task_configuration_version(task_inventory(project,args)) if target_kind=='application' else None
                 response = compile_application(project, app_id, target_kind)
+                if target_kind=='application' and response.get('data') is not None:
+                    task_after=task_configuration_version(task_inventory(project,args))
+                    if task_before!=task_after:raise ValueError('Task configuration changed during build')
+                    response['data']['taskConfigurationVersion']=task_after
             elif command == "save":
                 before = snapshot(project)
+                task_before=task_configuration_version(task_inventory(project,args)) if target_kind=='application' else None
                 if before != args["expectedSnapshot"]:
                     response = failure("conflict", "SNAPSHOT_CONFLICT", u"保存目标快照已改变", {"snapshot": before})
                 else:
                     project = lifecycle_save_reopen(lifecycle)
                     after = lifecycle_call(lifecycle,"reopen-verification",lambda:snapshot(project))
                     response = success(u"工程已保存、关闭并重新打开确认", {"saved": True, "reopened": True, "snapshot": after}) if before == after else failure("unknown", "REOPEN_MISMATCH", u"重开后快照不一致", {"before": before, "after": after})
+                    if target_kind=='application':
+                        task_after=task_configuration_version(task_inventory(project,args))
+                        if task_before!=task_after:raise ValueError('Reopened task configuration differs')
+                        response.setdefault('data',{})['taskConfigurationVersion']=task_after
     except Exception as e:
         response = lifecycle.get("rejection")
         if response is None:

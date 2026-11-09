@@ -206,12 +206,15 @@ export async function evaluateIsolation(root:string,operationId?:string) {
           const p=path.join(dir,n),bytes=await fs.readFile(p);originalRecords.push({path:p,sha256:digest(bytes),base64:bytes.toString('base64')});
         }
         const req=await readJson(path.join(dir,'request.json')),dispatch=await readJson(path.join(dir,'dispatched.json'));
-        const command=({project_save:'save',project_build:'build',code_apply_change:'change',pou_create:'create',declaration_create:'create_declaration',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect',object_list:'list',object_read:'read',project_search:'search',task_inspect:'tasks',library_inspect:'libraries'} as Record<string,string>)[op.tool];
+        const command=({project_save:'save',project_build:'build',code_apply_change:'change',pou_create:'create',declaration_create:'create_declaration',task_config_update:'task_update',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect',object_list:'list',object_read:'read',project_search:'search',task_inspect:'tasks',library_inspect:'libraries'} as Record<string,string>)[op.tool];
         if(!req||req.operationId!==op.operationId||pathKey(req.projectPath??'')!==pathKey(selected.workingPath)||
           !command||req.command!==command||Object.entries(op.args).some(([k,v])=>canonical(req.args?.[k])!==canonical(v)))blockers.push('原桥接请求不完整或身份不一致：'+op.operationId);
         if(!dispatch||dispatch.operationId!==op.operationId||dispatch.pid!==op.bridge?.pid)blockers.push('原派发/PID证据不完整：'+op.operationId);
         if(['code_apply_change','pou_create','declaration_create'].includes(op.tool)){
           await record(path.join(dir,'checkpoint.project'),true);await record(path.join(dir,'before.json'),true);
+        }
+        if(op.tool==='task_config_update'){
+          await record(path.join(dir,'checkpoint.project'),true);await record(path.join(dir,'task-before.json'),true);
         }
       }
       for(const a of aliases){

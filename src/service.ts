@@ -14,6 +14,7 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
+import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
 
 export class EngineeringService {
   readonly store: Store;
@@ -218,8 +219,7 @@ export class EngineeringService {
         // 旧格式 open 的恢复仅允许指向原已登记项，不推断新工程。
         if(!op.activation) {const r=await this.store.registry();op.activation={previousActiveProjectId:r.activeProjectId,revision:r.revision};}
         session.snapshot=result.data?.snapshot as string;session.diskHash=result.data?.diskHash as string;
-        if(session.lastBuild && (session.lastBuild.applicationId!==session.applicationId || session.lastBuild.targetKind!==session.targetKind ||
-          session.lastBuild.snapshot!==session.snapshot || session.lastBuild.diskHash!==session.diskHash))delete session.lastBuild;
+        if(session.lastBuild && !buildApplies(session,session))delete session.lastBuild;
         session.buildApplicable=!!session.lastBuild;session.lastStateOperationId=op.operationId;
         const committed=await this.store.activate(session,op);
         result={...result,data:{...result.data,projectPath:committed.workingPath,editMode:committed.editMode||'copy',session:committed,
@@ -234,8 +234,8 @@ export class EngineeringService {
         if(op.tool==='project_build')s.lastBuild={operationId:op.operationId,...result.data};
         if(result.data?.snapshot)s.snapshot=result.data.snapshot as string;
         if(result.data?.diskHash)s.diskHash=result.data.diskHash as string;
-        s.buildApplicable=!!s.lastBuild && s.lastBuild.applicationId===s.applicationId &&
-          (s.lastBuild.targetKind || 'application')===s.targetKind && s.lastBuild.snapshot===s.snapshot && s.lastBuild.diskHash===s.diskHash;
+        if(result.data?.taskConfigurationVersion)s.taskConfigurationVersion=result.data.taskConfigurationVersion as string;
+        s.buildApplicable=buildApplies(s,s);
         s.lastStateOperationId=op.operationId;await this.store.saveSession(s);
       }
     }
@@ -279,7 +279,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -349,9 +349,29 @@ export class EngineeringService {
         const diagnostics=d!.diagnostics as any[];
         if(diagnostics.some(m=>typeof m.text!=='string'||!['fatalerror','error','warning','information','info','text'].includes(m.severity)) || d!.buildPassed!==!diagnostics.some(m=>['fatalerror','error'].includes(m.severity))) invalid();
       }
+      if(command==='task_update') {
+        const before=d!.before as any,after=d!.after as any;
+        if(!before||!after||d!.projectId!==args.projectId||d!.applicationId!==args.applicationId||d!.taskId!==args.taskId||
+          d!.configurationVersionScheme!==TASK_CONFIGURATION_SCHEME||!isHash(d!.snapshot)||!isHash(d!.diskHash)||
+          before.projectId!==args.projectId||after.projectId!==args.projectId||before.applicationId!==args.applicationId||after.applicationId!==args.applicationId||
+          before.projectPath!==after.projectPath||pathKey(before.projectPath)!==pathKey(session!.workingPath)||
+          !Array.isArray(before.tasks)||!Array.isArray(after.tasks)||before.enumerationFailures?.length!==0||after.enumerationFailures?.length!==0||
+          before.tasks.some((t:any)=>t.unavailableFields?.length!==0||t.callsComplete!==true)||
+          taskConfigurationVersion(before)!==args.expectedTaskVersion||taskConfigurationVersion(after)!==d!.configurationVersion||d!.taskConfigurationVersion!==d!.configurationVersion)invalid();
+        const expected=structuredClone(before),rows=expected.tasks.filter((t:any)=>t.taskId===args.taskId);
+        if(rows.length!==1||rows[0].rawFields.kind_of_task!=='Cyclic'||rows[0].rawFields.interval_unit!=='ms')invalid();
+        const actions:any[]=[];
+        if(args.intervalMs!==undefined&&configuredIntervalMs(rows[0].rawFields)!==args.intervalMs){rows[0].rawFields.interval='t#'+args.intervalMs+'ms';actions.push({field:'interval',nativeValue:'t#'+args.intervalMs+'ms'});}
+        if(args.priority!==undefined&&Number(rows[0].rawFields.priority)!==args.priority){rows[0].rawFields.priority=String(args.priority);actions.push({field:'priority',nativeValue:String(args.priority)});}
+        if(taskConfigurationVersion(expected)!==taskConfigurationVersion(after)||d!.changed!==(actions.length>0)||
+          canonical((d!.actions as any[])?.map(({field,nativeValue,status,readback}:any)=>({field,nativeValue,status,readback})))!==canonical(actions.map(a=>({...a,status:'succeeded',readback:a.nativeValue}))))invalid();
+        if(d!.changed===true&&(d!.reopened!==true||!persisted()||d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project')))invalid();
+        if(d!.changed===false&&(d!.noOp!==true||d!.reopened!==false||d!.diskHash!==args.expectedDiskHash))invalid();
+        d!.buildApplicable=d!.changed===true?false:buildApplies(session,d);
+      }
       if(command==='save') {
         if(d!.saved!==true || d!.reopened!==true || d!.snapshot!==args.expectedSnapshot || !isHash(d!.diskHash)) invalid();
-        d!.buildApplicable=!!session?.lastBuild && session.lastBuild.snapshot===d!.snapshot && session.lastBuild.diskHash===d!.diskHash;
+        d!.buildApplicable=buildApplies(session,d);
       }
     }
   }
@@ -411,6 +431,12 @@ export class EngineeringService {
     await this.store.acquire(s.sourcePath);
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
+    if(op.tool==='task_config_update') {
+      validateTaskPatch(a);
+      if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
+        throw new DomainError('conflict','TASK_DISK_CHANGED','任务写入前磁盘版本与登记/请求不一致；未派发IDE');
+      return this.bridge(op,'task_update',s,a);
+    }
     if(op.tool==='project_compare') {
       if(a.mode==='compare')return this.compareRecorded(op,s);
       if(s.storageMode==='direct'&&a.origin==='registered-source')throw new DomainError('unsupported','NO_REGISTERED_SOURCE','直接工程没有不变的来源文件；请使用 current-project 和写入前真实采集的历史快照');

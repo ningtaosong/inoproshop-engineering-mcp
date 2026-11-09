@@ -49,7 +49,7 @@ export interface Session {
   storageMode?: 'direct'; editMode?: 'direct'; directPath?: string;
   projectId: string; sessionId: string; sourcePath: string; workingPath: string;
   sourceHash: string; targetKind?: 'application'|'pool'; applicationId?: string|null; applications?: any[]; lastBuild?: any;
-  snapshot?: string; diskHash?: string; buildApplicable?: boolean; lastStateOperationId?: string;
+  snapshot?: string; diskHash?: string; buildApplicable?: boolean; lastStateOperationId?: string; taskConfigurationVersion?: string;
 }
 export interface Registry {
   version: 1|2; revision: number; activeProjectId: string|null; projects: Session[];
