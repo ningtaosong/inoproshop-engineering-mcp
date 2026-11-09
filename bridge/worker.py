@@ -967,7 +967,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "create_method", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)

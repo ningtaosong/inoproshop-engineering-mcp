@@ -12,6 +12,7 @@ class Methods(unittest.TestCase):
         self.manager=Manager();self.control=self.manager.control;self.p=Project(self.manager);self.app=self.p.children[0]
         self.fb=Node(self.p,'FB_State',declaration='FUNCTION_BLOCK FB_State\nVAR\n State:DINT:=7;\nEND_VAR',implementation='');self.app.children.append(self.fb)
         def attach(p):
+            p.path='test.project'
             def visit(node,parent):
                 node.parent=parent
                 node.embedded_object_types=["3b83b776-fb25-43b8-99f2-3c507c9143fc"]
@@ -37,6 +38,15 @@ class Methods(unittest.TestCase):
     def arguments(self,name,ret):
         return dict(applicationId=self.app.guid,parentId=self.fb.guid,name=name,access='PUBLIC',returnType=ret,expectedSnapshot=self.e['snapshot'](self.p),expectedDiskHash='a'*64,expectedParentHash=self.e['content_hash'](self.fb.textual_declaration.text,''),declaration='METHOD PUBLIC '+name+(' : DINT' if ret=='DINT' else '')+'\nVAR_INPUT\nEND_VAR',implementation=name+' := State;' if ret=='DINT' else 'State := 0;')
     def run_create(self):return self.e['create_method'](self.p,self.req,self.args,self.state)
+    def test_fixed_dispatch_accepts_method_with_checkpoint_and_full_native_path(self):
+        self.manager.primary=None
+        copies=[];self.e['shutil']=SimpleNamespace(copyfile=lambda source,target:copies.append((source,target)))
+        self.e['sys']=__import__('sys');self.e['traceback']=__import__('traceback')
+        req=dict(self.req,command='create_method',args=self.args)
+        result=self.e['dispatch'](req)
+        self.assertEqual(result['status'],'succeeded',result)
+        self.assertEqual(self.control['factory_calls'],1);self.assertEqual(len(copies),1)
+        self.assertEqual(result['data']['parentId'],self.fb.guid);self.assertFalse(result['data']['lifecycle']['ownedHandleRemaining'])
     def test_void_and_dint_factory_parameters_identity_parent_and_reopen(self):
         for name,ret in [('ResetState','void'),('ReadState','DINT')]:
             self.setUp();self.args=self.arguments(name,ret);before=self.e['snapshot'](self.p);result,p=self.run_create();self.assertEqual(result['status'],'succeeded',result)
