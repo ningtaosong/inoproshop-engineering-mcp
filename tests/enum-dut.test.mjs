@@ -13,7 +13,7 @@ const invalid=[declaration.replace('TYPE E_State','TYPE Other'),declaration.repl
 
 test('十九工具和旧Schema兼容，仅允许声明对象类型枚举的加法扩展',async()=>{
  const old=JSON.parse(await readFile('tests/fixtures/enum-legacy-contracts.json','utf8'));
- assert.equal(Object.keys(schemas).length,20);assert.equal(old.toolCount,19);
+ assert.equal(Object.keys(schemas).length,21);assert.equal(old.toolCount,19);
  for(const t of old.tools){assert.deepEqual(withoutEnumExtension(z.toJSONSchema(schemas[t.name],{io:'input'})),t.inputSchema,t.name+' input');assert.deepEqual(withoutEnumExtension(z.toJSONSchema(outputSchemas[t.name])),t.outputSchema,t.name+' output');}
  const a={requestId:'x',projectId:app,applicationId:app,parentId:app,expectedSnapshot:'a'.repeat(64),name:'E_State',objectType:'enum',declaration};
  assert(schemas.declaration_create.safeParse(a).success);

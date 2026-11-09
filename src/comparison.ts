@@ -9,7 +9,8 @@ const fail=(message:string):never=>{throw new DomainError('unknown','COMPARE_EVI
 const cmp=(a:string,b:string)=>a<b?-1:a>b?1:0;
 export function captureSnapshot(raw:Reply,a:any,s:Session,operationId:string) {
   if(raw.status!=='succeeded'||raw.operationId!==operationId)fail('快照原结果不是可确认的成功读取');
-  const d=raw.data as any,origin=a.origin || 'working-copy',projectPath=origin==='registered-source'?s.sourcePath:s.workingPath;
+  const d=raw.data as any,origin=s.editMode==='direct'&&(!a.origin||a.origin==='working-copy')?'current-project':a.origin || 'working-copy',projectPath=origin==='registered-source'?s.sourcePath:s.workingPath;
+  if(s.storageMode==='direct'&&origin==='registered-source')fail('直接工程没有独立不变的登记源文件');
   const diskHash=origin==='registered-source'?s.sourceHash:s.diskHash,e=d?.readOnlyEvidence;
   if(!d||d.projectId!==s.projectId||d.applicationId!==a.applicationId||d.targetKind!=='application'||
     pathKey(d.projectPath)!==pathKey(projectPath)||d.diskHash!==diskHash||!e||!e.unchanged||

@@ -13,6 +13,8 @@ export class FixtureAdapter implements Adapter {
     const p=await readJson(req.projectPath);
     if(!p?.testFixture) throw new DomainError('failed','FIXTURE_ONLY','测试模式只接受显式 testFixture JSON');
     if(p.delayMs) await new Promise(r=>setTimeout(r,p.delayMs));
+    if(req.fileGuard && digest(await fs.readFile(req.projectPath))!==req.fileGuard.expectedDiskHash)
+      throw new DomainError('conflict','PROJECT_FILE_CHANGED','夹具派发后文件变化');
     const a=req.args;
     const supported=(o:any)=>!o.objectType || ['st_pou','function_block'].includes(o.objectType) || (['gvl','structure','enum','array'].includes(o.objectType) &&
       (!['enum','array'].includes(o.objectType)||declarationMatches(o.objectType,o.path.at(-1),o.declaration)) && o.path.length===(p.applications.find((x:any)=>x.applicationId===o.applicationId)?.path.length ?? -2)+1);
@@ -134,7 +136,10 @@ export class FixtureAdapter implements Adapter {
         await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(path.join(dir,'before.json'),old);
         object.declaration=normalize(a.declaration);
-        if(p.failImplementation) {
+        if(p.failImplementation && req.fileGuard) {
+          await atomicJson(req.projectPath,p);
+          result={...reply('unknown','直接编辑部分失败，未自动回滚',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_WRITE',message:'Injected failure; preserve state'}};
+        } else if(p.failImplementation) {
           const observed={...object}; Object.assign(object,old);
           await atomicJson(req.projectPath,p);
           result=reply('failed','实现写入失败，已读回恢复',{partialContent:observed,recovery:{status:'succeeded',contentHash:codeHash(object.declaration,object.implementation)}});
@@ -151,10 +156,20 @@ export class FixtureAdapter implements Adapter {
     } else if(req.command==='save') {
       if(snapshot()!==a.expectedSnapshot) result=reply('conflict','保存快照已过期',{snapshot:snapshot()});
       else {
+        if(req.fileGuard)await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(req.projectPath,p); const reopened=await readJson(req.projectPath);
         result=reply('succeeded','测试文件已重新读取',{saved:true,reopened:true,snapshot:snapshot(),diskHash:digest(await fs.readFile(req.projectPath)),objectCount:reopened.objects.length,testMode:true});
       }
     } else throw new DomainError('unsupported','COMMAND_UNSUPPORTED','未支持的桥接操作');
+    if(req.fileGuard&&result.data) {
+      result.data.directFileEvidence={projectPath:req.projectPath,expectedDiskHash:req.fileGuard.expectedDiskHash,beforeDiskHash:req.fileGuard.expectedDiskHash,exclusiveProbe:true,testDouble:true};
+      result.data.projectPath=req.projectPath;result.data.editMode='direct';
+      if(result.data.persistedToWorkingCopy){delete result.data.persistedToWorkingCopy;result.data.persistedToProject=true;}
+      if(['inspect','list','read'].includes(req.command)) {
+        const after=digest(await fs.readFile(req.projectPath));
+        result.data.readOnlyEvidence={beforeDiskHash:req.fileGuard.expectedDiskHash,afterCloseDiskHash:after,postExitDiskHash:after,unchanged:after===req.fileGuard.expectedDiskHash};
+      }
+    }
     result.operationId=req.operationId;
     if(result.data) result.data.diskHash=digest(await fs.readFile(req.projectPath));
     await atomicJson(path.join(dir,'result.json'),result);

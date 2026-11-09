@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.15.0';
+export const VERSION = '0.16.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -16,6 +16,7 @@ export const schemas = {
   environment_inspect: z.object({}).strict(),
   session_status: z.object({}).strict(),
   project_list: z.object({}).strict(),
+  project_open: z.object({ ...request, projectPath: z.string().min(1).max(2048), applicationId: uuid.optional() }).strict(),
   project_open_copy: z.object({ ...request, sourcePath: z.string().min(1).max(2048), applicationId: uuid.optional() }).strict(),
   project_activate: z.object({ ...request, projectId:uuid, applicationId:uuid.optional() }).strict(),
   object_list: z.object({ ...target, offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(200).default(50) }).strict(),
@@ -40,7 +41,7 @@ export const schemas = {
       offset:z.number().int().min(0).default(0),limit:z.number().int().min(2).max(2048).default(1024)}).strict().optional()}).strict(),
   task_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid}).strict(),
   project_compare:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
-    requestId:id.optional(),mode:z.enum(['capture','compare']),origin:z.enum(['working-copy','registered-source']).default('working-copy'),
+    requestId:id.optional(),mode:z.enum(['capture','compare']),origin:z.enum(['current-project','working-copy','registered-source']).default('working-copy'),
     baselineOperationId:uuid.optional(),targetOperationId:uuid.optional(),expectedVersion:hash.optional(),
     offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(50).default(10),
     detail:z.object({itemIndex:z.number().int().min(0),changeIndex:z.number().int().min(0),side:z.enum(['before','after']),
@@ -167,7 +168,7 @@ export const variableDataSchema=z.object({...nativeQueryFields,applicationId:uui
   noMatchConclusion:z.enum(['declarations-found','no-matching-declarations-in-supported-scope','coverage-incomplete-no-definitive-absence']),limits:z.string(),
   sourceDetail:z.object({objectId:uuid,contentHash:hash,offset:z.number().int(),endOffset:z.number().int(),text:z.string(),totalLength:z.number().int(),sha256:hash,hasMore:z.boolean(),nextOffset:z.number().int().nullable()}).optional()
 }).passthrough();
-export const comparisonSnapshotSchema=z.object({projectId:uuid,applicationId:uuid,applicationPath:z.array(z.string()),origin:z.enum(['working-copy','registered-source']),
+export const comparisonSnapshotSchema=z.object({projectId:uuid,applicationId:uuid,applicationPath:z.array(z.string()),origin:z.enum(['current-project','working-copy','registered-source']),
   projectPath:z.string(),diskHash:hash,version:hash,evidence:z.object({kind:z.literal('managed-native-capture'),operationId:uuid}),
   coverage:z.object({supportedObjects:z.number().int(),objectEnumerationComplete:z.boolean(),objectCoverageComplete:z.boolean(),objectReadFailures:z.number().int(),
     skippedObjects:z.number().int(),enumerationFailures:z.number().int(),taskCount:z.number().int(),taskCoverageComplete:z.boolean(),taskEnumerationFailures:z.number().int(),taskResolutionReadFailures:z.number().int()}),excluded:z.array(z.string())});
@@ -182,6 +183,7 @@ export const comparisonDataSchema=z.object({mode:z.enum(['capture','compare']),s
 const payloads:Record<keyof typeof schemas,z.ZodType>={
   environment_inspect:z.object({serverVersion:z.string(),contractVersion:z.string(),node:z.string(),executable:z.string(),profile:z.string(),mode:z.string(),dataDir:z.string(),ideInstalled:z.boolean(),supportedVersion:z.string(),missingDependencies:z.array(z.string()),productionFallbackToFixture:z.literal(false)}).passthrough(),
   session_status:z.object({session:z.object({projectId:uuid,sessionId:uuid,sourcePath:z.string(),workingPath:z.string(),sourceHash:hash,applicationId:uuid.nullable().optional()}).passthrough().nullable(),pending:z.array(z.object({operationId:uuid,requestId:z.string(),tool:z.string(),status:stateSchema})),writeFrozen:z.boolean(),globalFrozen:z.boolean().optional(),availability:z.enum(['global-frozen','active-project-isolated','available']).optional(),isolatedProjects:z.array(z.record(z.string(),z.unknown())).optional()}),
+  project_open:z.object({projectPath:z.string().optional(),editMode:z.literal('direct').optional(),session:z.object({projectId:uuid,workingPath:z.string(),editMode:z.literal('direct')}).passthrough().optional(),...snapshotFields}).passthrough(),
   project_open_copy:z.object({applications:z.array(z.object({applicationId:uuid,path:z.array(z.string())}).passthrough()).optional(),poolBuildAvailable:z.boolean().optional(),session:z.object({projectId:uuid,sessionId:uuid,sourcePath:z.string(),workingPath:z.string(),sourceHash:hash,applicationId:uuid.nullable().optional()}).passthrough().optional(),...snapshotFields}).passthrough(),
   project_list:z.object({projects:z.array(z.object({projectId:uuid,sourcePath:z.string(),workingPath:z.string(),active:z.boolean()}).passthrough()),activeProjectId:uuid.nullable(),writeFrozen:z.boolean()}).passthrough(),
   project_activate:z.object({session:z.object({projectId:uuid,workingPath:z.string()}).passthrough().optional(),...snapshotFields}).passthrough(),

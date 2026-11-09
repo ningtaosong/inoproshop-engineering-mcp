@@ -12,6 +12,7 @@ import {variableResult,VARIABLE_PARSER_VERSION} from './variables.js';
 import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
+import {bindDirect,guardDirect} from './direct-project.js';
 
 export class EngineeringService {
   readonly store: Store;
@@ -59,7 +60,7 @@ export class EngineeringService {
     const r=await this.store.registry();const status=await this.status();
     if(status.status!=='succeeded')return status;
     const isolated=(status.data!.isolatedProjects as any[]);
-    return reply('succeeded','已登记工程（只读，不打开 IDE）',{projects:r.projects.map(s=>({...s,name:path.basename(s.sourcePath),active:s.projectId===r.activeProjectId,
+    return reply('succeeded','已登记工程（只读，不打开 IDE）',{projects:r.projects.map(s=>({...s,projectPath:s.workingPath,name:path.basename(s.workingPath),active:s.projectId===r.activeProjectId,
       availability:status.data!.globalFrozen?'global-frozen':isolated.some(e=>e.projectId===s.projectId)?'isolated':'available'})),
       activeProjectId:r.activeProjectId,writeFrozen:status.data!.writeFrozen,globalFrozen:status.data!.globalFrozen,isolatedProjects:isolated});
   }
@@ -71,6 +72,7 @@ export class EngineeringService {
     // 兼容旧请求；按原 projectId / 原源路径查登记，不能拿当前活动项猜归属。
     const r=await this.store.registry();
     const s=op.args.projectId?r.projects.find(p=>p.projectId===op.args.projectId):
+      op.tool==='project_open'&&op.args.projectPath?r.projects.find(p=>pathKey(p.workingPath)===pathKey(op.args.projectPath)):
       op.tool==='project_open_copy'&&op.args.sourcePath?r.projects.find(p=>pathKey(p.sourcePath)===pathKey(op.args.sourcePath)):undefined;
     if(!s)throw new DomainError('unknown','OPERATION_PROJECT_MISSING','缺少可确认的原操作工程身份，保持冻结');
     return s;
@@ -88,6 +90,7 @@ export class EngineeringService {
       if(op.bridge) {
         const observed=await this.adapter.reconcile(op.bridge.directory);
         if(observed) {
+          this.validateDirect(observed,op.tool==='project_compare'&&op.args.origin==='registered-source'?{...project,workingPath:project.sourcePath,diskHash:project.sourceHash}:project);
           const parsed=this.prepareResult(op,replySchema.parse(observed));
           this.validateEvidence(op,parsed,project);
           if(parsed.status==='succeeded' && op.tool!=='project_compare' && parsed.data?.diskHash && parsed.data.diskHash!==digest(await fs.readFile(project.workingPath)))
@@ -139,13 +142,13 @@ export class EngineeringService {
     }
     if(ops.some(o=>!isolatedIds.has(o.operationId)&&(o.status==='unknown'||(o.status==='running'&&!alive(o.ownerPid)))))
       throw new DomainError('unknown','PENDING_UNKNOWN','存在未决操作；请先查询并核对 operation_status，禁止派发后续工程操作');
-    const switching=['project_open_copy','project_activate'].includes(tool);
+    const switching=['project_open','project_open_copy','project_activate'].includes(tool);
     if(switching && ops.some(o=>o.status==='running'&&!isolatedIds.has(o.operationId)))throw new DomainError('conflict','PENDING_OPERATION','存在运行中或排队操作，不能切换；请先查询原操作');
     let registry;
     try {registry=await this.store.ensureRegistry();}
     catch(e:any) {this.persistencePoison=e.message;throw new DomainError('unknown','REGISTRY_UNAVAILABLE','登记无法确认，保持冻结：'+e.message);}
     const current=registry.projects.find(s=>s.projectId===registry.activeProjectId);
-    await assertNotIsolated(this.store,args.projectId,args.sourcePath?[args.sourcePath]:[]);
+    await assertNotIsolated(this.store,args.projectId,[args.sourcePath,args.projectPath].filter(Boolean));
     if(!switching && (!current || current.projectId!==args.projectId))
       throw new DomainError('conflict','PROJECT_NOT_ACTIVE','请求工程不是活动工程；请先明确激活目标，再使用其真实身份');
     const op:Operation={schemaVersion:1,registryVersion:1,operationId:randomUUID(),requestId,tool,args,fingerprint,status:'running',ownerPid:process.pid,startedAt:new Date().toISOString(),
@@ -181,7 +184,7 @@ export class EngineeringService {
     })]);
   }
   private async finish(op:Operation,result:Reply) {
-    const switching=['project_open_copy','project_activate'].includes(op.tool);
+    const switching=['project_open','project_open_copy','project_activate'].includes(op.tool);
     if(switching && result.status==='succeeded') {
       const session={...await this.originalProject(op)};
       session.applications=result.data?.applications as any[];
@@ -204,7 +207,8 @@ export class EngineeringService {
           session.lastBuild.snapshot!==session.snapshot || session.lastBuild.diskHash!==session.diskHash))delete session.lastBuild;
         session.buildApplicable=!!session.lastBuild;session.lastStateOperationId=op.operationId;
         const committed=await this.store.activate(session,op);
-        result={...result,data:{...result.data,session:committed,reused:op.tool==='project_activate'||!!op.project?.diskHash}};
+        result={...result,data:{...result.data,projectPath:committed.workingPath,editMode:committed.editMode||'copy',session:committed,
+          reused:op.tool==='project_activate'||(await this.store.operations()).some(o=>o.operationId!==op.operationId&&o.status==='succeeded'&&o.project?.projectId===committed.projectId)}};
       }
     }
     if(!switching && op.tool!=='project_compare' && result.status==='succeeded' && op.project) {
@@ -230,14 +234,24 @@ export class EngineeringService {
   }
   private async bridge(op:Operation,command:string,session:Session,args:any):Promise<Reply> {
     await maintenanceGuard();await assertNotIsolated(this.store,session.projectId,[session.sourcePath,session.workingPath]);
+    const direct=session.editMode==='direct';
+    if(direct)await guardDirect(this.store,session);
     op.bridge={directory:this.store.file('ipc/'+op.operationId)};
     await this.store.saveOp(op);
-    const result=await this.adapter.execute({operationId:op.operationId,command,projectPath:session.workingPath,args},op.bridge.directory,async pid=> {
+    const result=await this.adapter.execute({operationId:op.operationId,command,projectPath:session.workingPath,args,
+      ...(direct?{fileGuard:{expectedDiskHash:session.diskHash!,mode:'direct' as const}}:{})},op.bridge.directory,async pid=> {
       op.bridge!.pid=pid; await this.store.saveOp(op);
     });
+    this.validateDirect(result,session);
     const parsed=this.prepareResult(op,replySchema.parse(result));
     this.validateEvidence(op,parsed,session);
     return boundNativeReply(parsed);
+  }
+  private validateDirect(result:Reply,session:Session) {
+    if(session.editMode!=='direct'||result.status!=='succeeded')return;
+    const e=result.data?.directFileEvidence as any;
+    if(!e||e.expectedDiskHash!==session.diskHash||e.beforeDiskHash!==session.diskHash||e.exclusiveProbe!==true||pathKey(e.projectPath||'')!==pathKey(session.workingPath))
+      throw new DomainError('unknown','DIRECT_EVIDENCE_INVALID','直接工程的版本/原生占用检查证据无法确认，保持冻结');
   }
   private prepareResult(op:Operation,result:Reply):Reply {
     if(op.tool==='variable_inspect')return variableResult(result,op.args);
@@ -247,12 +261,13 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
       const isHash=(v:unknown)=>typeof v==='string' && /^[a-f0-9]{64}$/.test(v);
       const invalid=()=> { throw new DomainError('unknown','RESULT_CONTRACT_MISMATCH','桥接结果缺少完整证据或与指定对象不匹配'); };
+      const persisted=()=>session?.editMode==='direct'?d!.persistedToProject===true:d!.persistedToWorkingCopy===true;
       const declared=(v:any)=> {
         const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',enum:'2db5746d-d284-4425-9f7f-2663a34b0ebc',array:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
         const appPath=session?.applications?.find(x=>x.applicationId===args.applicationId)?.path;
@@ -285,7 +300,7 @@ export class EngineeringService {
         if(d!.objectId!==args.objectId || d!.applicationId!==args.applicationId || typeof d!.declaration!=='string' || typeof d!.implementation!=='string' || codeHash(d!.declaration as string,d!.implementation as string)!==d!.contentHash) invalid();
         if((d!.hasImplementation===false || ['gvl','structure','enum','array'].includes(d!.objectType as string)) && !declared(d))invalid();
         if(command==='change' && ((args.objectType && d!.objectType!==args.objectType) || (args.implementation===undefined && !declared(d)) ||
-          d!.contentHash!==codeHash(args.declaration,args.implementation ?? '') || !isHash(d!.snapshot) || !isHash(d!.diskHash) || d!.persistedToWorkingCopy!==true || d!.reopened!==true)) invalid();
+          d!.contentHash!==codeHash(args.declaration,args.implementation ?? '') || !isHash(d!.snapshot) || !isHash(d!.diskHash) || !persisted() || d!.reopened!==true)) invalid();
       }
       if(command==='create_declaration') {
         const expectedPath=[...(session?.applications?.find(x=>x.applicationId===args.applicationId)?.path || []),args.name];
@@ -295,7 +310,7 @@ export class EngineeringService {
           d!.created!==true || typeof d!.objectId!=='string' || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(d!.objectId) || d!.objectId===args.parentId ||
           canonical(d!.path)!==canonical(expectedPath) || d!.contentHash!==codeHash(args.declaration,'') || codeHash(d!.declaration as string,'')!==d!.contentHash ||
           d!.beforeSnapshot!==args.expectedSnapshot || !isHash(d!.snapshot) || d!.snapshot===d!.beforeSnapshot || !isHash(d!.diskHash) ||
-          d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project') || d!.persistedToWorkingCopy!==true || d!.reopened!==true) invalid();
+          d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project') || !persisted() || d!.reopened!==true) invalid();
       }
       if(command==='create') {
         const expectedPath=[...(session?.applications?.find(x=>x.applicationId===args.applicationId)?.path || []),args.name];
@@ -309,7 +324,7 @@ export class EngineeringService {
           (args.pouType==='function'?d!.returnType?.toString().toUpperCase()!==args.returnType:d!.returnType!==undefined) ||
           codeHash(d!.declaration as string,d!.implementation as string)!==d!.contentHash || d!.contentHash!==codeHash(args.declaration,args.implementation) ||
           d!.beforeSnapshot!==args.expectedSnapshot || !isHash(d!.snapshot) || d!.snapshot===d!.beforeSnapshot || !isHash(d!.diskHash) ||
-          d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project') || d!.persistedToWorkingCopy!==true || d!.reopened!==true) invalid();
+          d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project') || !persisted() || d!.reopened!==true) invalid();
       }
       if(command==='build') {
         if(d!.applicationId!==args.applicationId || d!.targetKind!==(args.targetKind || 'application') || d!.completed!==true || d!.diagnosticsComplete!==true || typeof d!.buildPassed!=='boolean' || !Array.isArray(d!.diagnostics) || !isHash(d!.snapshot) || !isHash(d!.diskHash)) invalid();
@@ -332,13 +347,15 @@ export class EngineeringService {
       if(op.tool==='project_activate') {
         session=registry.projects.find(s=>s.projectId===a.projectId);
         if(!session)throw new DomainError('failed','PROJECT_NOT_FOUND','未找到已登记工程');
+      } else if(op.tool==='project_open') {
+        session=await bindDirect(this.store,op,registry,this.config.testMode);
       } else {
         if(!path.isAbsolute(a.sourcePath)) throw new DomainError('failed','ABSOLUTE_PATH_REQUIRED','源工程必须使用绝对路径');
         // 已登记路径即使源文件不在，也可使用仍完整的原工作副本；新路径必须实际解析。
-        session=registry.projects.find(s=>[s.sourcePath,s.workingPath].some(p=>pathKey(p)===pathKey(a.sourcePath)));
+        session=registry.projects.find(s=>s.storageMode!=='direct'&&[s.sourcePath,s.workingPath].some(p=>pathKey(p)===pathKey(a.sourcePath)));
         if(!session) {
           const source=await fs.realpath(a.sourcePath);
-          session=registry.projects.find(s=>[s.sourcePath,s.workingPath].some(p=>pathKey(p)===pathKey(source)));
+          session=registry.projects.find(s=>s.storageMode!=='direct'&&[s.sourcePath,s.workingPath].some(p=>pathKey(p)===pathKey(source)));
           if(!session) {
             // 首次多应用选择失败的副本保留在原操作中；再次精确选择时复用它，避免重复复制。
             const candidate=(await this.store.operations()).find(o=>o.operationId!==op.operationId && o.tool==='project_open_copy' &&
@@ -368,10 +385,11 @@ export class EngineeringService {
     op.project={...s};await this.store.saveOp(op);
     if(op.tool==='project_compare') {
       if(a.mode==='compare')return this.compareRecorded(op,s);
+      if(s.storageMode==='direct'&&a.origin==='registered-source')throw new DomainError('unsupported','NO_REGISTERED_SOURCE','直接工程没有不变的来源文件；请使用 current-project 和写入前真实采集的历史快照');
       const original=a.origin==='registered-source',projectPath=original?s.sourcePath:s.workingPath,expected=original?s.sourceHash:s.diskHash;
       const currentHash=digest(await fs.readFile(projectPath));
       if(currentHash!==expected)throw new DomainError('conflict','COMPARE_DISK_CHANGED','采集前文件与登记版本不一致；未启动 IDE 或保存');
-      return this.bridge(op,'compare_capture',{...s,workingPath:projectPath,diskHash:expected},{...a,readDiskHash:currentHash});
+      return this.bridge(op,'compare_capture',{...s,workingPath:projectPath,diskHash:expected,...(s.editMode==='direct'?{directPath:await fs.realpath(projectPath)}:{})},{...a,readDiskHash:currentHash});
     }
     if(['project_search','variable_inspect','task_inspect','project_structure','device_inspect','library_inspect'].includes(op.tool)) {
       if(op.tool==='project_search' && (a.offset>0&&!a.expectedVersion || new Set(a.areas).size!==a.areas.length))

@@ -1,7 +1,7 @@
 {
-  "serverVersion": "0.15.0",
+  "serverVersion": "0.16.0",
   "contractVersion": "1.0.0",
-  "toolCount": 20,
+  "toolCount": 21,
   "tools": [
     {
       "name": "environment_inspect",
@@ -394,6 +394,131 @@
               "activeProjectId",
               "writeFrozen"
             ],
+            "additionalProperties": {}
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "status",
+          "summary"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "project_open",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "projectPath": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "requestId",
+          "projectPath"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "conflict",
+              "unsupported",
+              "unknown"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "projectPath": {
+                "type": "string"
+              },
+              "editMode": {
+                "type": "string",
+                "const": "direct"
+              },
+              "session": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "workingPath": {
+                    "type": "string"
+                  },
+                  "editMode": {
+                    "type": "string",
+                    "const": "direct"
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "workingPath",
+                  "editMode"
+                ],
+                "additionalProperties": {}
+              },
+              "snapshot": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "diskHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
             "additionalProperties": {}
           },
           "error": {
@@ -4515,6 +4640,7 @@
             "default": "working-copy",
             "type": "string",
             "enum": [
+              "current-project",
               "working-copy",
               "registered-source"
             ]
@@ -4653,6 +4779,7 @@
                   "origin": {
                     "type": "string",
                     "enum": [
+                      "current-project",
                       "working-copy",
                       "registered-source"
                     ]
@@ -4796,6 +4923,7 @@
                   "origin": {
                     "type": "string",
                     "enum": [
+                      "current-project",
                       "working-copy",
                       "registered-source"
                     ]
@@ -4935,6 +5063,7 @@
                   "origin": {
                     "type": "string",
                     "enum": [
+                      "current-project",
                       "working-copy",
                       "registered-source"
                     ]

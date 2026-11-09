@@ -59,10 +59,12 @@ async function context(t,source='PROGRAM Main\nVAR Config : ST_Config := (A := 1
  const opened=await c.done(await c.call('project_open_copy',{sourcePath:e.source,applicationId:app,requestId:'member-fixture'}));assert.equal(opened.status,'succeeded');
  const q={projectId:opened.data.session.projectId,applicationId:app,includeInitializerMembers:true,limit:1};const call=async a=>c.done(await c.call('variable_inspect',{...q,...a}));return {e,c,q,call,store:new Store(e.dataDir),working:opened.data.session.workingPath};
 }
-test('twenty tools, explicit opt-in Schema, all other nineteen contracts remain exactly 0.14',async t=>{
- const x=await context(t),tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,20);assert(tools.find(x=>x.name==='variable_inspect').inputSchema.properties.includeInitializerMembers);
+test('twenty-one tools, explicit opt-in; legacy contracts unchanged except additive compare origin',async t=>{
+ const x=await context(t),tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,21);assert(tools.find(x=>x.name==='variable_inspect').inputSchema.properties.includeInitializerMembers);
  const old=JSON.parse(await readFile('tests/fixtures/initializer-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);
- for(const t of old.tools){assert.deepEqual(z.toJSONSchema(schemas[t.name],{io:'input'}),t.inputSchema,t.name);assert.deepEqual(z.toJSONSchema(outputSchemas[t.name]),t.outputSchema,t.name);}
+ // 0.16 adds current-project to compare origins; retain every pre-existing field/value.
+ const legacyCompare=v=>{if(Array.isArray(v))return v.map(legacyCompare);if(v&&typeof v==='object')return Object.fromEntries(Object.entries(v).map(([k,x])=>[k,k==='enum'&&Array.isArray(x)?x.filter(e=>e!=='current-project'):legacyCompare(x)]));return v;};
+ for(const t of old.tools){const input=z.toJSONSchema(schemas[t.name],{io:'input'}),output=z.toJSONSchema(outputSchemas[t.name]);assert.deepEqual(t.name==='project_compare'?legacyCompare(input):input,t.inputSchema,t.name);assert.deepEqual(t.name==='project_compare'?legacyCompare(output):output,t.outputSchema,t.name);}
  for(const bad of [{includeInitializerMembers:'true'},{includeInitializerMembers:undefined,maxInitializerMembers:2},{includeInitializerMembers:false,maxInitializerMembers:1},{maxInitializerMembers:0},{maxInitializerMembers:2001},{memberWrite:true}])assert(!schemas.variable_inspect.safeParse({...x.q,...bad}).success,JSON.stringify(bad));
  const r=await x.call({});assert(variableDataSchema.safeParse(r.data).success,JSON.stringify(r));
 });

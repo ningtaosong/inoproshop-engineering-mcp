@@ -35,8 +35,8 @@ test('unclosed/unsupported input reports a separate lexical gap and prevents def
  }
 });
 test('other nineteen tool schemas exactly preserve the frozen 0.13.0 contract',async()=>{
- const old=JSON.parse(await readFile('tests/fixtures/identifier-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);assert.equal(Object.keys(schemas).length,20);
- for(const t of old.tools){const strip=t.name==='variable_inspect'?withoutInitializerMemberExtension:x=>x;assert.deepEqual(strip(z.toJSONSchema(schemas[t.name],{io:'input'})),t.inputSchema,t.name+' input');assert.deepEqual(strip(z.toJSONSchema(outputSchemas[t.name])),t.outputSchema,t.name+' output');}
+ const old=JSON.parse(await readFile('tests/fixtures/identifier-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);assert.equal(Object.keys(schemas).length,21);
+ for(const t of old.tools){const strip=withoutInitializerMemberExtension;assert.deepEqual(strip(z.toJSONSchema(schemas[t.name],{io:'input'})),t.inputSchema,t.name+' input');assert.deepEqual(strip(z.toJSONSchema(outputSchemas[t.name])),t.outputSchema,t.name+' output');}
 });
 test('Unicode neighbours, supplementary letters, normalized newlines and UTF-16 spans stay original',()=>{
  const original='// 😀中文\r\n中文Config2; Config2中文; 𐐀Config2; Config2; 变量 := config2;\r\n',source=original.replace(/\r\n/g,'\n');
