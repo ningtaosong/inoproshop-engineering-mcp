@@ -82,7 +82,9 @@ test('切换受理后排队的旧 A 请求执行前拒绝，不能用相同 GUID
   const c=await context(t,{reconcile:d=>f.reconcile(d),execute:async(req,...rest)=>{
     dispatched.push({command:req.command,path:req.projectPath});if(hold&&req.command==='inspect'){enteredResolve();await barrier;}return f.execute(req,...rest);
   }});
-  const a=(await c.open(c.env.source)).data.session,b=(await c.open(c.other)).data.session;
+  const openedA=await c.open(c.env.source),openedB=await c.open(c.other);
+  assert.equal(openedA.status,'succeeded',JSON.stringify(openedA));assert.equal(openedB.status,'succeeded',JSON.stringify(openedB));
+  const a=openedA.data.session,b=openedB.data.session;
   await c.invoke('project_activate',{requestId:'initial-back',projectId:a.projectId});hold=true;
   const switching=c.service.call('project_activate',{requestId:'switch-B',projectId:b.projectId});await entered;
   const queued=c.service.call('object_read',{...target(a),objectId:obj});

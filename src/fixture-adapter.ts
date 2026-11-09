@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches, type Reply } from './contracts.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
+import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs} from './task-config.js';
 
 export class FixtureAdapter implements Adapter {
   async reconcile(directory:string) { return readJson(path.join(directory,'result.json')); }
@@ -16,7 +17,7 @@ export class FixtureAdapter implements Adapter {
       const prg={objectId,applicationId:aid,path:[...appPath,'PLC_PRG'],objectType:'st_pou',pouType:'program',hasImplementation:true,
         nativeTypeId:'6f9dac99-8de1-4efc-8465-68ac443b7d08',declaration,implementation,contentHash:codeHash(declaration,implementation)};
       const applications=[{applicationId:aid,path:appPath}],task={applicationId:aid,taskId:tid,path:[...appPath,'Task Configuration','MainTask'],
-        rawFields:{kind_of_task:'Cyclic',interval:'t#20ms',priority:'1',interval_unit:'ms'},watchdog:{enabled:'False'},unavailableFields:[],rawCalls:[['PLC_PRG','']],callsComplete:true};
+        rawFields:{kind_of_task:'Cyclic',interval:'t#20ms',priority:'1',interval_unit:'ms',core_binding:'-2',event:'',external_event:'',parent_synchron_task:'',event_pou_guid:randomUUID()},watchdog:{enabled:'False',time:'',time_unit:'ms',sensitivity:'1'},unavailableFields:[],rawCalls:[['PLC_PRG','']],callsComplete:true};
       const p={testFixture:true,applications,objects:[prg],tasks:[task]};
       await fs.writeFile(req.projectPath,JSON.stringify(p),{flag:'wx'});
       const diskHash=digest(await fs.readFile(req.projectPath)),snapshot=digest(canonical([prg]));
@@ -38,7 +39,35 @@ export class FixtureAdapter implements Adapter {
     const snapshot=()=>digest(canonical(p.objects.map((o:any)=>({...o,declaration:normalize(o.declaration),implementation:normalize(o.implementation)}))));
     let result!:Reply;
     const object=objects.find((o:any)=>o.objectId===a.objectId);
-    if(req.command==='inspect') result=reply('succeeded','测试工程副本已打开',{applications:p.applications,poolBuildAvailable:p.applications.length===0&&p.objects.length>0,projectPath:req.projectPath,snapshot:snapshot(),testMode:true});
+    const taskInventory=()=>({projectId:a.projectId,applicationId:a.applicationId,targetKind:'application',projectPath:req.projectPath,
+      applicationPath:p.applications.find((x:any)=>x.applicationId===a.applicationId)?.path||[],
+      tasks:(p.tasks||[]).filter((t:any)=>t.applicationId===a.applicationId).map(({applicationId,...t}:any)=>structuredClone(t)),
+      programs:objects.filter((o:any)=>!o.queryReadError&&/^\s*PROGRAM\b/i.test(o.declaration)).map((o:any)=>({objectId:o.objectId,path:o.path})),
+      resolutionReadFailures:[],enumerationFailures:p.treeReadError?[{path:[],stage:'enumeration',reason:p.treeReadError}]:[],coverageComplete:!p.treeReadError});
+    if(req.command==='task_update') {
+      validateTaskPatch(a);const before=taskInventory(),version=taskConfigurationVersion(before),rows=before.tasks.filter((t:any)=>t.taskId===a.taskId);
+      if(version!==a.expectedTaskVersion)result={...reply('conflict','任务配置版本已变'),error:{code:'TASK_VERSION_CHANGED',message:'not written'}};
+      else if(digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash)result={...reply('conflict','任务磁盘版本已变'),error:{code:'TASK_DISK_CHANGED',message:'not written'}};
+      else if(rows.length!==1)result={...reply('conflict','任务身份不唯一'),error:{code:'TASK_NOT_UNIQUE',message:'not written'}};
+      else if(before.enumerationFailures.length||before.tasks.some((t:any)=>t.unavailableFields.length||!t.callsComplete))result={...reply('unsupported','字段不完整'),error:{code:'TASK_CONFIGURATION_INCOMPLETE',message:'not written'}};
+      else if(rows[0].rawFields.kind_of_task!=='Cyclic')result={...reply('unsupported','非周期任务'),error:{code:'TASK_NOT_CYCLIC',message:'not written'}};
+      else if(p.taskReadOnly)result={...reply('unsupported','只读工程'),error:{code:'TASK_PROJECT_READ_ONLY',message:'not written'}};
+      else if(configuredIntervalMs(rows[0].rawFields)===undefined||!/^\d+$/.test(rows[0].rawFields.priority))result={...reply('unsupported','单位未知'),error:{code:'TASK_UNITS_UNCONFIRMED',message:'not written'}};
+      else {
+        const task=p.tasks.find((t:any)=>t.applicationId===a.applicationId&&t.taskId===a.taskId),actions:any[]=[];
+        for(const [field,value,changed] of [['interval','t#'+a.intervalMs+'ms',a.intervalMs!==undefined&&configuredIntervalMs(task.rawFields)!==a.intervalMs],['priority',String(a.priority),a.priority!==undefined&&Number(task.rawFields.priority)!==a.priority]] as any[])if(changed)actions.push({field,nativeValue:value,status:'succeeded',readback:value});
+        if(actions.length){await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));await atomicJson(path.join(dir,'task-before.json'),before);}
+        for(const action of actions){task.rawFields[action.field]=action.nativeValue;if(p.failTaskField===action.field)break;}
+        if(actions.length)await atomicJson(req.projectPath,p);
+        const after=taskInventory(),version=taskConfigurationVersion(after);
+        const evidence={projectId:a.projectId,applicationId:a.applicationId,taskId:a.taskId,before,after,changed:actions.length>0,noOp:actions.length===0,
+          snapshot:snapshot(),configurationVersion:version,taskConfigurationVersion:version,configurationVersionScheme:'task-configuration-v1',actions,reopened:actions.length>0,
+          ...(actions.length?{checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true}:{}),testMode:true};
+        result=p.failTaskField||p.failTaskLifecycle?{...reply('unknown','任务部分写入或保存重开失败，保留现场',{...evidence,...(p.failTaskLifecycle?{failedStage:p.failTaskLifecycle}:{}),automaticRollback:false}),error:{code:'TASK_WRITE_INCOMPLETE',message:'Injected failure'}}:reply('succeeded','任务配置替身读回',evidence);
+        if(p.wrongTaskReadback)after.tasks[0].rawFields.core_binding='tampered';
+      }
+    }
+    else if(req.command==='inspect') result=reply('succeeded','测试工程副本已打开',{applications:p.applications,poolBuildAvailable:p.applications.length===0&&p.objects.length>0,projectPath:req.projectPath,snapshot:snapshot(),testMode:true});
     else if(req.command==='libraries') {
       const managers=(p.libraryManagers || []).filter((m:any)=>m.applicationId===a.applicationId).map(({applicationId,references,...m}:any)=>({...m,enumerationComplete:true,capturedReferences:0}));
       const references:any[]=[];let truncated=false;
@@ -169,12 +198,14 @@ export class FixtureAdapter implements Adapter {
     } else if(req.command==='build') {
       const diagnostics=objects.filter((o:any)=>o.implementation.includes('SYNTAX_ERROR')).map((o:any)=>({severity:'error',text:'测试诊断标记（非 ST 编译器）',objectId:o.objectId}));
       result=reply(p.incompleteDiagnostics?'unknown':'succeeded','测试编译替身结果',{completed:true,diagnosticsComplete:!p.incompleteDiagnostics,diagnostics,buildPassed:p.incompleteDiagnostics?null:diagnostics.length===0,snapshot:snapshot(),applicationId:a.applicationId,targetKind:a.targetKind || 'application',testMode:true});
+      if(a.targetKind!=='pool')result.data!.taskConfigurationVersion=taskConfigurationVersion(taskInventory());
     } else if(req.command==='save') {
       if(snapshot()!==a.expectedSnapshot) result=reply('conflict','保存快照已过期',{snapshot:snapshot()});
       else {
         if(req.fileGuard)await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(req.projectPath,p); const reopened=await readJson(req.projectPath);
         result=reply('succeeded','测试文件已重新读取',{saved:true,reopened:true,snapshot:snapshot(),diskHash:digest(await fs.readFile(req.projectPath)),objectCount:reopened.objects.length,testMode:true});
+        if(a.targetKind!=='pool')result.data!.taskConfigurationVersion=taskConfigurationVersion(taskInventory());
       }
     } else throw new DomainError('unsupported','COMMAND_UNSUPPORTED','未支持的桥接操作');
     if(req.fileGuard&&result.data) {

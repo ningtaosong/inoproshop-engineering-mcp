@@ -3,6 +3,7 @@
 !/.gitignore
 !/.gitattributes
 !/README.md
+!/agent.md
 !/package.json
 !/package-lock.json
 !/tsconfig.json
@@ -36,6 +37,7 @@
 !/docs/getting-started.md
 !/docs/direct-project-edit.md
 !/docs/project-create.md
+!/docs/task-config.md
 !/docs/post-change-baseline-compare.md
 !/docs/tool-schemas.json
 !/docs/library-inspect.md

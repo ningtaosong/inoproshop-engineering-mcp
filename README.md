@@ -2,7 +2,9 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，直接修改指定离线工程，编译并保存重开；工程比较按需使用。
 
-**main 提供 0.17.0 候选版、二十二项 MCP 工具，契约 1.0.0。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
+**本分支提供 0.18.0 候选版、二十三项 MCP 工具，契约 1.0.0；尚未合并 main。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
+
+S1 新增 [已有周期任务的周期与优先级编辑](docs/task-config.md)：`task_config_update`，只改明确授权的整数毫秒周期和/或优先级，原 `task_inspect` 保持只读。原二十二项工具输入兼容，登记仍为 v2。客户端须加载候选构建及 Schema 才能使用；固定入口不会随分支开发自动更新。下文 0.17.0 及旧版本验收保留原归属。
 
 ## 从这里开始
 
@@ -69,6 +71,7 @@
 | 最小AM610新建、直接打开、登记和切换；显式旧副本 | project_create、project_open、project_list、project_activate、project_open_copy |
 | 对象与声明 | object_list、object_read、variable_inspect |
 | 限定修改与创建 | code_apply_change、pou_create、declaration_create |
+| 已有周期任务的周期、优先级 | task_config_update（先 task_inspect 定位和读取版本） |
 | 编译和保存重开 | project_build、project_save |
 | 检索、结构和配置只读 | project_search、project_structure、task_inspect、device_inspect、library_inspect |
 | 当前工程历史快照和比较 | project_compare |
