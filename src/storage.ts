@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { DomainError, type Reply } from './contracts.js';
+import { LeaseFiles, type LeaseOptions } from './lease-files.js';
 
 // 对象哈希固定为 UTF-8 JSON 数组 [声明, 实现]，只把 CRLF/CR 规范为 LF。
 export const normalize = (s: string) => s.replace(/\r\n?/g, '\n');
@@ -57,8 +58,19 @@ export interface Registry {
 }
 export const pathKey = (p:string) => path.resolve(p).toLowerCase();
 export class Store {
-  private held = new Set<string>();
-  constructor(readonly root: string) {}
+  private leases: LeaseFiles;
+  constructor(readonly root: string, options: LeaseOptions = {}) {
+    this.leases=new LeaseFiles(root,options,async(owner,source)=>{
+      if(pathKey(owner.dataDir)===pathKey(this.root))return;
+      const foreign=new Store(owner.dataDir);
+      await fs.access(foreign.file('operations')).catch(()=>{throw new DomainError('unknown','FOREIGN_RECORDS_MISSING','原锁所属目录或操作记录缺失，不能推断无未决操作');});
+      const registry=await foreign.registry();
+      if(!source || !registry.projects.some(p=>pathKey(p.sourcePath)===pathKey(source)))
+        throw new DomainError('unknown','FOREIGN_RECORDS_MISSING','原锁缺少可确认的工程归属记录');
+      if((await foreign.operations()).some(x=>x.status==='running'||x.status==='unknown'))
+        throw new DomainError('unknown','FOREIGN_PENDING','另一服务数据目录存在未决操作，须先在原目录核对');
+    });
+  }
   file(name: string) { return path.join(this.root,name); }
   async put(name: string, value: unknown) {
     await atomicJson(this.file(name), {schemaVersion:1,checksum:digest(canonical(value)),value});
@@ -159,54 +171,7 @@ export class Store {
     await this.put('registry.json',r);return s;
   }
   sourceLock(source:string) {return path.join(os.tmpdir(),'inoproshop-mcp-locks',digest(pathKey(source))+'.lock');}
-  async lease(file: string, source?:string) {
-    if(this.held.has(file)) {
-      const owner=await readJson(file);
-      if(owner?.pid!==process.pid || typeof owner.dataDir!=='string' || pathKey(owner.dataDir)!==pathKey(this.root))
-        throw new DomainError('unknown','LOCK_CHANGED','已持有的锁发生外部变化');
-      return;
-    }
-    await fs.mkdir(path.dirname(file),{recursive:true});
-    for(let attempt=0;attempt<2;attempt++) {
-      try {
-        const f = await fs.open(file,'wx');
-        try { await f.writeFile(JSON.stringify({pid:process.pid,dataDir:this.root,createdAt:new Date().toISOString()})); await f.sync(); }
-        finally { await f.close(); }
-        this.held.add(file); return;
-      } catch(e:any) {
-        if(e.code!=='EEXIST') throw e;
-        const owner = await readJson(file);
-        if(!Number.isInteger(owner?.pid) || typeof owner.dataDir!=='string' || !path.isAbsolute(owner.dataDir))
-          throw new DomainError('unknown','LOCK_RECORD_INVALID','锁归属记录损坏，不能自动接管');
-        if(alive(owner.pid)) throw new DomainError('conflict','SESSION_BUSY',`工程或数据目录被另一服务实例占用：${file}`);
-        // 其他数据目录遗留的工程锁仅在没有未决操作且记录完好时允许接管。
-        if(pathKey(owner.dataDir)!==pathKey(this.root)) {
-          const foreign=new Store(owner.dataDir);
-          await fs.access(foreign.file('operations')).catch(()=>{throw new DomainError('unknown','FOREIGN_RECORDS_MISSING','原锁所属目录或操作记录缺失，不能推断无未决操作');});
-          const registry=await foreign.registry();
-          if(!source || !registry.projects.some(p=>pathKey(p.sourcePath)===pathKey(source)))
-            throw new DomainError('unknown','FOREIGN_RECORDS_MISSING','原锁缺少可确认的工程归属记录');
-          const pending = await foreign.operations();
-          if(pending.some(x=>x.status==='running'||x.status==='unknown'))
-            throw new DomainError('unknown','FOREIGN_PENDING','另一服务数据目录存在未决操作，须先在原目录核对');
-        }
-        // 接管也必须排他，否则两个重启进程可能把彼此刚建立的新锁当作旧锁移走。
-        const guardPath=file+'.reclaim';
-        let guard;
-        try { guard=await fs.open(guardPath,'wx'); }
-        catch { throw new DomainError('conflict','LOCK_RECLAIM_BUSY','另一实例正在核对遗留锁；若接管进程崩溃须人工核对 reclaim 标记'); }
-        try {
-          await guard.writeFile(JSON.stringify({pid:process.pid,createdAt:new Date().toISOString()})); await guard.sync();
-          const current=await readJson(file);
-          if(current?.pid && alive(current.pid)) throw new DomainError('conflict','SESSION_BUSY','工程锁已经被另一存活实例取得');
-          if(current && canonical(current)!==canonical(owner)) throw new DomainError('conflict','SESSION_BUSY','遗留锁已改变，请重新查询状态');
-          try { await fs.rename(file,file+'.stale.'+randomUUID()); }
-          catch(e:any) { if(e.code!=='ENOENT') throw e; }
-        } finally { await guard.close(); await fs.unlink(guardPath); }
-      }
-    }
-    throw new DomainError('conflict','SESSION_BUSY','未取得排他锁');
-  }
+  async lease(file:string,source?:string) {await this.leases.acquire(file,source); }
   async acquire(source?: string) {
     // Maintenance takes a separate gate and then verifies no live service lease.
     // Check both sides of lease acquisition so neither side can win an unchecked race.
@@ -216,20 +181,6 @@ export class Store {
     if(source) await this.lease(this.sourceLock(source),source);
     await maintenanceGuard();
   }
-  async releaseSource(source:string) {
-    const file=this.sourceLock(source);if(!this.held.has(file))return;
-    const owner=await readJson(file);
-    if(owner?.pid!==process.pid || typeof owner.dataDir!=='string' || pathKey(owner.dataDir)!==pathKey(this.root))throw new DomainError('unknown','LOCK_CHANGED','源锁归属无法确认');
-    await fs.unlink(file);this.held.delete(file);
-  }
-  async release() {
-    // 退出前先核对全部归属，不能因 PID 相同就删掉已被替换的锁，也不先释放部分保护。
-    for(const file of this.held) {
-      const owner=await readJson(file);
-      if(owner?.pid!==process.pid || typeof owner.dataDir!=='string' || pathKey(owner.dataDir)!==pathKey(this.root))
-        throw new DomainError('unknown','LOCK_CHANGED','退出时锁归属无法确认，保留全部锁');
-    }
-    for(const file of this.held) await fs.unlink(file);
-    this.held.clear();
-  }
+  async releaseSource(source:string) {await this.leases.release([this.sourceLock(source)]); }
+  async release() {await this.leases.release(); }
 }

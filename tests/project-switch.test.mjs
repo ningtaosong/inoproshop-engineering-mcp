@@ -1,7 +1,7 @@
 // 明确为 Fixture 契约/竞争/故障测试，不是 IDE 编译或 DSH 桌面证据。
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile,writeFile,mkdir,copyFile,access,realpath,unlink} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,copyFile,access,realpath,unlink,rename} from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {setup,connect,app,app2,obj} from './helpers.mjs';
@@ -19,7 +19,10 @@ async function context(t,adapter=new FixtureAdapter()) {
   const services=[];
   const create=()=>{const s=new EngineeringService({dataDir:env.dataDir,testMode:true,responseWaitMs:10},adapter);services.push(s);return s;};
   const service=create();t.after(async()=>{for(const s of services)await s.store.release();});
-  async function done(result,s=service){while(result.status==='running'){await new Promise(r=>setTimeout(r,5));result=await s.call('operation_status',{operationId:result.operationId});}return result;}
+  // In-process tests can await the already-dispatched queue. Do not repeatedly
+  // reopen the operation file every 5ms while its writer publishes a rename.
+  // Terminal status is still checked through the original operation identity.
+  async function done(result,s=service){while(result.status==='running'){await s.queue;result=await s.call('operation_status',{operationId:result.operationId});}return result;}
   const invoke=async(tool,args={},s=service)=>done(await s.call(tool,args),s);
   const open=(sourcePath,requestId='open-'+randomUUID(),s=service)=>invoke('project_open_copy',{sourcePath,requestId,applicationId:app},s);
   return {env,other,service,create,done,invoke,open};
@@ -108,6 +111,9 @@ test('运行和排队操作存在时拒绝切换，状态/登记查询不阻塞�
 test('打开失败、外部修改或副本丢失均保留 A，失败临时锁只释放自己的源锁',async t=>{
   const c=await context(t),a=(await c.open(c.env.source)).data.session;
   await writeFile(c.other,JSON.stringify({notFixture:true}));const failed=await c.open(c.other);assert.equal(failed.status,'failed');
+  // The terminal record is published before the queue finishes releasing its
+  // temporary lease. Observe that original completion, not a fixed delay.
+  await c.service.queue;
   assert.equal((await c.service.store.session()).projectId,a.projectId);await access(c.service.store.file('service.lock'));
   await access(c.service.store.sourceLock(a.sourcePath));await assert.rejects(()=>access(c.service.store.sourceLock(c.other)));
   await copyFile(c.env.source,c.other);const b=(await c.open(c.other)).data.session;
@@ -257,11 +263,13 @@ test('新格式登记丢失不回退 session 或重新复制；无桥接结果�
 
 test('安全退出核对全部锁归属；同 PID 的外部替换不能导致部分锁先被删除',async t=>{
   const c=await context(t),a=(await c.open(c.env.source)).data.session,lock=c.service.store.sourceLock(a.sourcePath);
-  const original=await readFile(lock);await atomicJson(lock,{pid:process.pid,dataDir:path.join(c.env.dir,'其他所属目录')});
+  // Preserve the original file identity as well as bytes for teardown. A new
+  // file with copied bytes is now correctly treated as a different lease.
+  const original=lock+'.fixture-original';await rename(lock,original);await atomicJson(lock,{pid:process.pid,dataDir:path.join(c.env.dir,'其他所属目录')});
   try {
     await assert.rejects(()=>c.service.store.release(),e=>e.code==='LOCK_CHANGED');
     await access(c.service.store.file('service.lock'));await access(lock);
-  } finally {await writeFile(lock,original);}
+  } finally {await unlink(lock);await rename(original,lock);}
 });
 
 test('同时核对多个原结果也串行提交，各工程编译状态不相互覆盖',async t=>{
