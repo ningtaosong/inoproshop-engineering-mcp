@@ -85,7 +85,9 @@ def organize(project,req,args,state):
             new_path=next(r['path'] for r in reopened['nodes'] if r['objectId']==source_id)
             for prg in expected_task['programs']:
                 if prg['objectId']==source_id:prg['path']=new_path
-        if after!=reopened or expected_task!=task_after:raise ValueError('Reopened structure or readable task configuration differs')
+        actual_task=json.loads(encode(task_after))
+        expected_task['programs'].sort(key=lambda r:r['objectId']);actual_task['programs'].sort(key=lambda r:r['objectId'])
+        if after!=reopened or expected_task!=actual_task:raise ValueError('Reopened structure or readable task configuration differs')
         row=next(r for r in reopened['nodes'] if r['objectId']==new_id)
         data={'projectId':args['projectId'],'applicationId':aid,'changed':True,'noOp':False,'reopened':True,'beforeStructure':before,'afterStructure':reopened,'taskBefore':task_before,'taskAfter':task_after,'snapshot':snapshot(project),'checkpoint':req['checkpointPath'],'persistedToWorkingCopy':True,'actions':actions,'object':read_object(*locate(project,aid,new_id)) if moving else row}
         return success(u'原生结构操作已保存关闭重开；GUID、父链、源码与可读任务配置核对',data),project

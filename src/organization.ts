@@ -1,4 +1,4 @@
-import {canonical,digest} from './storage.js';
+import {canonical,digest,codeHash} from './storage.js';
 import {DomainError,type Reply} from './contracts.js';
 export const ORGANIZATION_SCHEME='application-organization-v1';
 export const FOLDER_NATIVE='738bea1e-99bb-4f04-90bb-a7a567e74e3a';
@@ -34,12 +34,16 @@ export function organizationResult(raw:Reply,a:any,tool:string):Reply {
       if(expected.some((n:any)=>n.parentId===target.objectId&&n.objectId!==a.objectId&&n.name.toLowerCase()===source.name.toLowerCase()))throw Error('Name collision');
       changed=a.sourceParentId!==a.targetParentId;const old=source.path,next=[...target.path,source.name];
       for(const n of expected)if(canonical(n.path.slice(0,old.length))===canonical(old))n.path=[...next,...n.path.slice(old.length)];source.parentId=a.targetParentId;
-      if(canonical(d.object.path)!==canonical(next)||d.object.contentHash!==source.sourceHash)throw Error('Moved object source/path differs');
+      if(canonical(d.object.path)!==canonical(next)||d.object.contentHash!==source.sourceHash||d.object.applicationId!==a.applicationId||d.object.nativeTypeId!==source.nativeTypeId||typeof d.object.declaration!=='string'||typeof d.object.implementation!=='string'||codeHash(d.object.declaration,d.object.implementation)!==source.sourceHash)throw Error('Moved object source/path differs');
     }
     expected.sort((a:any,b:any)=>a.objectId<b.objectId?-1:a.objectId>b.objectId?1:0);
     const expectedTask=structuredClone(d.taskBefore);
     if(tool==='object_move')for(const p of expectedTask.programs??[])if(p.objectId===a.objectId)p.path=d.object.path;
-    if(canonical(expectedTask)!==canonical(d.taskAfter))throw Error('Readable tasks or unrelated PROGRAM identities changed');
+    // PROGRAM enumeration order is not task call order. Keep all identities and
+    // expected paths, but compare this derived catalog by GUID. Raw task calls
+    // and every other task field retain their original order and exact values.
+    const actualTask=structuredClone(d.taskAfter),sortPrograms=(v:any)=>{v.programs?.sort((a:any,b:any)=>a.objectId<b.objectId?-1:a.objectId>b.objectId?1:0);};sortPrograms(expectedTask);sortPrograms(actualTask);
+    if(canonical(expectedTask)!==canonical(actualTask))throw Error('Readable tasks or unrelated PROGRAM identities changed');
     if(canonical(expected)!==canonical(c.nodes)||d.changed!==changed||d.noOp===changed||d.reopened!==changed||!Array.isArray(d.actions)||d.actions.length!==(changed?1:0)||changed&&d.actions[0].status!=='returned'||!changed&&b.version!==c.version)throw Error('Unrelated structure/source changed or no-op evidence inconsistent');
     const {beforeStructure,afterStructure,taskBefore,taskAfter,...rest}=d;
     return {...raw,data:{...rest,structureVersion:c.version,structuralEvidence:{scheme:ORGANIZATION_SCHEME,beforeVersion:b.version,afterVersion:c.version,verified:true,sourceAndChildrenPreserved:true,readableTasksPreserved:true,beforeNodeCount:b.nodes.length,afterNodeCount:c.nodes.length},buildApplicable:false}};
