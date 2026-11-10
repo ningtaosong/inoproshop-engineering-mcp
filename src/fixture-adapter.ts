@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { type Adapter, type BridgeRequest } from './adapter.js';
-import { reply, DomainError, pouDeclarationMatches, declarationMatches, type Reply } from './contracts.js';
+import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches, type Reply } from './contracts.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
 import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs} from './task-config.js';
 
@@ -14,7 +14,7 @@ export class FixtureAdapter implements Adapter {
     if(req.command==='new_project') {
       const aid=randomUUID(),pid=randomUUID(),tid=randomUUID(),appPath=['Device','Plc Logic','Application'];
       const declaration='PROGRAM PLC_PRG\nVAR\nEND_VAR',implementation='',objectId=randomUUID();
-      const prg={objectId,applicationId:aid,path:[...appPath,'PLC_PRG'],objectType:'st_pou',pouType:'program',hasImplementation:true,
+      const prg={objectId,applicationId:aid,path:[...appPath,'PLC_PRG'],objectType:'st_pou',pouType:'program',pouTypeSource:'native-pou-type-id-and-declaration-header',hasImplementation:true,
         nativeTypeId:'6f9dac99-8de1-4efc-8465-68ac443b7d08',declaration,implementation,contentHash:codeHash(declaration,implementation)};
       const applications=[{applicationId:aid,path:appPath}],task={applicationId:aid,taskId:tid,path:[...appPath,'Task Configuration','MainTask'],
         rawFields:{kind_of_task:'Cyclic',interval:'t#20ms',priority:'1',interval_unit:'ms',core_binding:'-2',event:'',external_event:'',parent_synchron_task:'',event_pou_guid:randomUUID()},watchdog:{enabled:'False',time:'',time_unit:'ms',sensitivity:'1'},unavailableFields:[],rawCalls:[['PLC_PRG','']],callsComplete:true};
@@ -33,7 +33,7 @@ export class FixtureAdapter implements Adapter {
     if(req.fileGuard && digest(await fs.readFile(req.projectPath))!==req.fileGuard.expectedDiskHash)
       throw new DomainError('conflict','PROJECT_FILE_CHANGED','夹具派发后文件变化');
     const a=req.args;
-    const supported=(o:any)=>!o.objectType || ['st_pou','function_block'].includes(o.objectType) || (['gvl','structure','enum','array'].includes(o.objectType) &&
+    const supported=(o:any)=>!o.objectType || ['st_pou','function_block'].includes(o.objectType) || o.objectType==='method'&&o.language==='ST'&&methodDeclarationMatches(o.path.at(-1),o.declaration,o.methodReturnType,o.access)&&p.objects.some((x:any)=>x.objectId===o.parentId&&x.applicationId===o.applicationId&&/^\s*FUNCTION_BLOCK\b/.test(x.declaration)&&canonical(x.path)===canonical(o.parentPath)) || (['gvl','structure','enum','array'].includes(o.objectType) &&
       (!['enum','array'].includes(o.objectType)||declarationMatches(o.objectType,o.path.at(-1),o.declaration)) && o.path.length===(p.applications.find((x:any)=>x.applicationId===o.applicationId)?.path.length ?? -2)+1);
     const objects=p.objects.filter((o:any)=>o.applicationId===a.applicationId && supported(o));
     const snapshot=()=>digest(canonical(p.objects.map((o:any)=>({...o,declaration:normalize(o.declaration),implementation:normalize(o.implementation)}))));
@@ -116,11 +116,13 @@ export class FixtureAdapter implements Adapter {
       const enumerationFailures=p.treeReadError?[{path:appPath,stage:'enumeration',reason:p.treeReadError}]:[];
       let sourceInventory:any,taskInventory:any;
       if(req.command!=='tasks') {
-        const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',enum:'2db5746d-d284-4425-9f7f-2663a34b0ebc',array:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
+        const native:Record<string,string>={method:'f8a58466-d7f6-439f-bbb8-d4600e41d099',gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',enum:'2db5746d-d284-4425-9f7f-2663a34b0ebc',array:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
         const corpus=objects.filter((o:any)=>!o.queryReadError).map((o:any)=>({...o,language:'ST',objectType:o.objectType || (/^FUNCTION_BLOCK\b/.test(o.declaration)?'function_block':'st_pou'),nativeTypeId:native[o.objectType] || '6f9dac99-8de1-4efc-8465-68ac443b7d08',hasImplementation:!['gvl','structure','enum','array'].includes(o.objectType),declaration:normalize(o.declaration),implementation:normalize(o.implementation),contentHash:codeHash(o.declaration,o.implementation)}));
         result=reply('succeeded','测试一次读取搜索范围',{projectId:a.projectId,applicationId:a.applicationId,targetKind:a.targetKind,projectPath:req.projectPath,corpus,
           scope:{description:'fixture supported ST only; not real IDE',applicationPath:appPath,treeComplete:!p.treeReadError,eligibleObjects:objects.length,readObjects:corpus.length,coverageComplete:!failures.length&&!enumerationFailures.length,
             skippedObjects:p.objects.filter((o:any)=>o.applicationId===a.applicationId&&!supported(o)).map((o:any)=>({objectId:o.objectId,path:o.path,stage:'unsupported-type',reason:'Fixture unsupported kind/location'})),readFailures:failures,enumerationFailures},testMode:true});
+        const methods=p.objects.filter((o:any)=>o.applicationId===a.applicationId&&(o.objectType==='method'||o.nativeTypeId==='f8a58466-d7f6-439f-bbb8-d4600e41d099'));
+        if(methods.length){const scope=result.data!.scope as any;scope.methodCoverageVersion='fb-methods-v1';const gaps=methods.filter((o:any)=>!supported(o)).map((o:any)=>({objectId:o.objectId,path:o.path,nativeTypeId:'f8a58466-d7f6-439f-bbb8-d4600e41d099',stage:'unsupported-method',reason:'Fixture unsupported Method header/parent'}));if(gaps.length){scope.unsupportedChildren=gaps;scope.coverageComplete=false;scope.skippedObjects=scope.skippedObjects.map((r:any)=>gaps.find((g:any)=>g.objectId===r.objectId)||r);}}
         sourceInventory=result.data;
       }
       if(req.command!=='search') {
@@ -139,6 +141,21 @@ export class FixtureAdapter implements Adapter {
     else if(req.command==='read') {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','未找到精确对象');
       result=reply('succeeded','测试对象已读取',{...object,contentHash:codeHash(object.declaration,object.implementation),testMode:true});
+    } else if(req.command==='create_method'){
+      const parent=objects.find((o:any)=>o.objectId===a.parentId),beforeSnapshot=snapshot();
+      if(!parent||!/^\s*FUNCTION_BLOCK\s+[A-Za-z_][A-Za-z0-9_]*\s*(?=VAR(?:_INPUT|_OUTPUT|_IN_OUT)?\b|$)/i.test(parent.declaration))result={...reply('unsupported','测试非FB父对象'),error:{code:'METHOD_PARENT_OR_PERMISSION',message:'Not exact user FB'}};
+      else if(parent.readOnly||p.methodPermissionDenied)result={...reply('unsupported','测试只读/权限拒绝'),error:{code:'METHOD_PARENT_OR_PERMISSION',message:'Permission denied'}};
+      else if(!methodDeclarationMatches(a.name,a.declaration,a.returnType,a.access))result={...reply('failed','测试Method声明不匹配'),error:{code:'INVALID_METHOD_DECLARATION',message:'Header mismatch'}};
+      else if(a.expectedSnapshot!==beforeSnapshot||a.expectedParentHash!==codeHash(parent.declaration,parent.implementation))result={...reply('conflict','测试父/子版本过期'),error:{code:'METHOD_PARENT_VERSION_CHANGED',message:'Parent or children changed'}};
+      else if(p.objects.some((o:any)=>o.parentId===a.parentId&&o.path.at(-1).toLowerCase()===a.name.toLowerCase()))result={...reply('conflict','测试同父重名'),error:{code:'METHOD_EXISTS',message:'No overwrite'}};
+      else{
+        const checkpoint=path.join(dir,'checkpoint.project');await fs.copyFile(req.projectPath,checkpoint);await atomicJson(path.join(dir,'before.json'),{parentId:a.parentId,parentHash:a.expectedParentHash,snapshot:beforeSnapshot,expectedAbsent:true});
+        const created={objectId:randomUUID(),applicationId:a.applicationId,path:[...parent.path,a.name],parentId:a.parentId,parentPath:parent.path,objectType:'method',nativeTypeId:'f8a58466-d7f6-439f-bbb8-d4600e41d099',hasImplementation:true,language:'ST',access:'PUBLIC',methodReturnType:a.returnType,methodMetadataSource:'native-method-type-parent-and-declaration-header',declaration:normalize(a.declaration),implementation:normalize(a.implementation)};
+        p.objects.push(created);await atomicJson(req.projectPath,p);
+        const factory={factory:'create_method',arguments:[a.name,a.returnType==='void'?'':a.returnType,'cc393387-a21c-4f68-a3e3-84c36951965d'],objectId:created.objectId,parentId:a.parentId,nativeTypeId:created.nativeTypeId,defaultDeclaration:'METHOD '+a.name+(a.returnType==='DINT'?' : DINT':'')+'\nVAR_INPUT\nEND_VAR\n',defaultImplementation:'',embeddedObjectTypes:['3b83b776-fb25-43b8-99f2-3c507c9143fc']};await atomicJson(path.join(dir,'factory.json'),factory);
+        result=p.failMethodSave||p.failMethodReopen||p.failMethodReadback?{...reply('unknown','测试Method保存/重开/读回不确定',{createdObjectId:created.objectId,checkpoint,actions:['native-method-factory-returned','declaration-replaced','implementation-replaced']}),error:{code:'PARTIAL_METHOD_CREATE',message:'Injected uncertainty, no rollback'}}:
+          reply('succeeded','Method创建替身，非原生证据',{...created,name:a.name,created:true,beforeParentHash:a.expectedParentHash,beforeSnapshot,snapshot:snapshot(),checkpoint,contentHash:codeHash(created.declaration,created.implementation),persistedToWorkingCopy:true,reopened:true,creationMethod:'create_method(name, return_type, ImplementationLanguages.st)',factoryEvidence:factory});
+      }
     } else if(req.command==='create'||req.command==='create_declaration') {
       const kind=req.command==='create'?a.pouType:a.objectType,isPou=req.command==='create';
       const parent=p.applications.find((x:any)=>x.applicationId===a.applicationId);
@@ -146,13 +163,13 @@ export class FixtureAdapter implements Adapter {
       else if(isPou?!pouDeclarationMatches(kind,a.name,a.declaration,a.returnType):!declarationMatches(kind,a.name,a.declaration,true)) result={...reply('failed','测试声明首部不一致'),error:{code:'INVALID_DECLARATION',message:'声明首部不一致'}};
       else if(snapshot()!==a.expectedSnapshot) result={...reply('conflict','测试快照已改变',{snapshot:snapshot()}),error:{code:'SNAPSHOT_CONFLICT',message:'创建前快照冲突'}};
       else {
-        const collisions=p.objects.filter((o:any)=>(o.applicationId===a.applicationId||o.applicationId===null)&&o.path.at(-1).toLowerCase()===a.name.toLowerCase());
+        const collisions=p.objects.filter((o:any)=>o.objectType!=='method'&&(o.applicationId===a.applicationId||o.applicationId===null)&&o.path.at(-1).toLowerCase()===a.name.toLowerCase());
         if(collisions.length) result={...reply('conflict','测试同名对象存在',{collisions}),error:{code:'OBJECT_EXISTS',message:'不覆盖同名对象'}};
         else {
           const beforeSnapshot=snapshot(); const checkpoint=path.join(dir,'checkpoint.project');
           await fs.copyFile(req.projectPath,checkpoint);
           await atomicJson(path.join(dir,'before.json'),{expectedAbsent:true,parentId:a.parentId,name:a.name,snapshot:beforeSnapshot});
-          const native:Record<string,string>={gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',enum:'2db5746d-d284-4425-9f7f-2663a34b0ebc',array:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
+          const native:Record<string,string>={method:'f8a58466-d7f6-439f-bbb8-d4600e41d099',gvl:'ffbfa93a-b94d-45fc-a329-229860183b1d',structure:'2db5746d-d284-4425-9f7f-2663a34b0ebc',enum:'2db5746d-d284-4425-9f7f-2663a34b0ebc',array:'2db5746d-d284-4425-9f7f-2663a34b0ebc'};
           const created={objectId:randomUUID(),applicationId:a.applicationId,path:[...parent.path,a.name],language:'ST',objectType:isPou?(kind==='function_block'?kind:'st_pou'):kind,hasImplementation:isPou,nativeTypeId:native[kind] || '6f9dac99-8de1-4efc-8465-68ac443b7d08',
             ...(isPou?{pouType:kind,pouTypeSource:'native-pou-type-id-and-declaration-header',...(a.returnType?{returnType:a.returnType}:{})}:{}),declaration:normalize(a.declaration),implementation:''};
           p.objects.push(created);
@@ -174,14 +191,15 @@ export class FixtureAdapter implements Adapter {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','对象不在选定 Application');
       const old={...object};
       const decl=['gvl','structure','enum','array'].includes(object.objectType);
-      if((a.objectType && a.objectType!==object.objectType) || (decl && (a.implementation ?? '')!=='') || (decl && !declarationMatches(object.objectType,object.path.at(-1),a.declaration,true)) || (!decl && a.implementation===undefined))
+      if((a.objectType && a.objectType!==object.objectType) || (decl && (a.implementation ?? '')!=='') || (decl && !declarationMatches(object.objectType,object.path.at(-1),a.declaration,true)) || (!decl && a.implementation===undefined)||object.objectType==='method'&&(a.objectType!=='method'||a.parentId!==object.parentId||!methodDeclarationMatches(object.path.at(-1),a.declaration,object.methodReturnType,object.access)))
         result={...reply('unsupported','测试对象类型不匹配'),error:{code:'OBJECT_TYPE_MISMATCH',message:'未写入'}};
+      else if(object.objectType==='method'&&(object.readOnly||p.methodPermissionDenied))result={...reply('unsupported','Method权限拒绝'),error:{code:'METHOD_PERMISSION',message:'Read-only'}};
       else if(codeHash(old.declaration,old.implementation)!==a.expectedHash) result=reply('conflict','旧哈希不一致',{actualHash:codeHash(old.declaration,old.implementation)});
       else {
         await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(path.join(dir,'before.json'),old);
         object.declaration=normalize(a.declaration);
-        if(p.failImplementation && req.fileGuard) {
+        if(p.failImplementation && (req.fileGuard||object.objectType==='method')) {
           await atomicJson(req.projectPath,p);
           result={...reply('unknown','直接编辑部分失败，未自动回滚',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_WRITE',message:'Injected failure; preserve state'}};
         } else if(p.failImplementation) {

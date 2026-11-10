@@ -1,7 +1,7 @@
 // Read-only declaration parsing, not a compiler, native symbol table or runtime scan.
 // Never used by the write guards. All ranges address the original LF-normalized text.
 import {canonical,digest,normalize} from './storage.js';
-import {reply,DomainError,type Reply} from './contracts.js';
+import {reply,DomainError,methodHeader,type Reply} from './contracts.js';
 import {searchResult} from './queries.js';
 import {isStringBoundary,stringEnd,jsonBytes} from './native-output.js';
 
@@ -48,6 +48,13 @@ export function parseDeclaration(source:string,kind:string,name:string){
   if(upper(t[0])!=='TYPE'||t[1]?.text.toLowerCase()!==name.toLowerCase()||t[2]?.text!==':'||upper(t[3])!=='STRUCT'){
    gap(0,s.length,'Unsupported structure header/attributes');return {rows,complete:false};
   }i=4;
+ }else if(kind==='method'){
+  const h=methodHeader(s,true);
+  if(!h||h.name.toLowerCase()!==name.toLowerCase()){gap(0,s.length,'Unsupported Method header/access/return type');return {rows,complete:false};}
+  i=upper(t[1])==='PUBLIC'?3:2;
+  if(h.returnType==='DINT'){
+   const colon=i++;const ret=t[i++];rows.push({category:'method-return',name,section:null,typeRaw:s.slice(ret.start,ret.end),typePosition:pos(ret.start,ret.end),position:pos(t[0].start,ret.end),source:s.slice(t[0].start,ret.end)});
+  }
  }else if(kind!=='gvl'){
   if(!['PROGRAM','FUNCTION_BLOCK','FUNCTION'].includes(upper(t[0]))||t[1]?.text.toLowerCase()!==name.toLowerCase()){
    gap(0,s.length,'Unsupported POU header/attributes');return {rows,complete:false};
@@ -174,7 +181,7 @@ function variableInventory(raw:Reply,a:any,origin:{kind:string,inventoryOperatio
    parentDeclarationPosition:parent.position,parentInitializerPosition:parent.initializerPosition,section:parent.section,
    objectId:p.object.objectId,path:p.object.path,objectType:p.object.objectType,contentHash:p.object.contentHash});
  }
- const rows=parsed.flatMap(p=>p.rows.filter(row=>!['variable','type-field'].includes(row.category)||matched(row.name)).map(row=>({...row,objectId:p.object.objectId,path:p.object.path,objectType:p.object.objectType,contentHash:p.object.contentHash})));
+ const rows=parsed.flatMap(p=>p.rows.filter(row=>!['variable','type-field'].includes(row.category)||matched(row.name)).map(row=>({...row,objectId:p.object.objectId,path:p.object.path,objectType:p.object.objectType,contentHash:p.object.contentHash,...(p.object.objectType==='method'?{parentId:p.object.parentId,parentPath:p.object.parentPath,access:p.object.access,methodReturnType:p.object.methodReturnType,methodMetadataSource:p.object.methodMetadataSource}:{})})));
  if(memberMode){rows.push(...memberRows);rows.sort((x,y)=>canonical(x.path).localeCompare(canonical(y.path))||x.objectId.localeCompare(y.objectId)||x.position.startOffset-y.position.startOffset||x.category.localeCompare(y.category)||String(x.parentName??'').localeCompare(String(y.parentName??'')));}
  if(a.objectId&&!selected.length)rows.push({category:'parse-gap',objectId:a.objectId,path:[],objectType:null,contentHash:null,section:null,reason:'Requested object unavailable in supported read inventory; inspect source failures/skips, not proof of variable absence',position:null,source:''});
  rows.forEach((r,i)=>r.index=i);
@@ -189,7 +196,7 @@ function variableInventory(raw:Reply,a:any,origin:{kind:string,inventoryOperatio
  if(a.expectedVersion&&version!==a.expectedVersion)return reject('NATIVE_VERSION_CHANGED','变量表内容、查询或覆盖版本已变化，请重新查询，未混合页面');
  const truncated=rows.length>a.maxEntries,retained=rows.slice(0,a.maxEntries);
  if(a.offset>retained.length)return reject('VARIABLE_PAGE_OUT_OF_RANGE','偏移超出原清单，请使用实际nextOffset');
- const counts=Object.fromEntries(['variable','type-field','comment','parse-gap','function-return',...(memberMode?['initializer-member','initializer-member-gap']:[])].map(c=>[c,rows.filter(r=>r.category===c).length]));
+ const counts=Object.fromEntries(['variable','type-field','comment','parse-gap','function-return',...(parsed.some(p=>p.object.objectType==='method')?['method-return']:[]),...(memberMode?['initializer-member','initializer-member-gap']:[])].map(c=>[c,rows.filter(r=>r.category===c).length]));
  const base={projectId:d.projectId,applicationId:d.applicationId,targetKind:'application',projectPath:d.projectPath,diskHash:d.diskHash,readOnlyEvidence:d.readOnlyEvidence,version,
   basis:'declaration-parsing',parserVersion:VARIABLE_PARSER_VERSION,positionConvention:'LF-normalized object_read declaration; zero-based UTF-16 offsets, end exclusive; one-based UTF-16 line/column',
   query:{objectId:a.objectId??null,name:a.name??null,caseSensitive:a.caseSensitive,nameMatch:'literal-substring',...(memberMode?{includeInitializerMembers:true,maxInitializerMembers:maxMembers}:{})},scope:d.scope,coverage,counts,

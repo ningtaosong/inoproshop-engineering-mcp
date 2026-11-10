@@ -140,6 +140,8 @@ def declaration_matches(kind, name, declaration, writing=False):
     return bool(kind=="structure" and match and match.group(1).lower()==name.lower() and not re.search(r"\b(UNION|END_UNION|EXTENDS|VAR_GLOBAL)\b",source,re.I) and len(re.findall(r"\bSTRUCT\b",source,re.I))==1)
 
 def object_kind(item):
+    if text(item.type).lower()=="f8a58466-d7f6-439f-bbb8-d4600e41d099":
+        return "method" if method_is_st(item) and getattr(item,"has_textual_declaration",False) and getattr(item,"has_textual_implementation",False) and method_header(text(item.textual_declaration.text),True) else None
     if st_object(item):return "function_block" if function_block_name(text(item.textual_declaration.text)) else "st_pou"
     if not getattr(item,"has_textual_declaration",False) or getattr(item,"has_textual_implementation",False):return None
     native = text(item.type).lower()
@@ -150,6 +152,9 @@ def object_kind(item):
 
 def editable(project,item,aid):
     kind = object_kind(item)
+    if kind=="method":
+        try:method_owner(project,item,aid);return True
+        except Exception:return False
     if kind in ("gvl","structure","enum","array"):
         # 本轮声明类对象仅精确 Application 直接根节点，不包括池/文件夹。
         return aid is not None and any(text(x.guid).lower()==text(item.guid).lower() for x in application(project,aid).get_children(False))
@@ -162,7 +167,107 @@ def read_object(item, names, app_id):
             "language": "ST", "objectType":object_kind(item),"hasImplementation":bool(getattr(item,"has_textual_implementation",False)),
             "nativeTypeId":text(item.type).lower(),"declaration": d, "implementation": i, "contentHash": content_hash(d, i)}
     result.update(pou_fields(item))
+    if object_kind(item)=="method":
+        h=method_header(d,True)
+        result.update(parentId=text(item.parent.guid).lower(),parentPath=names[:-1],access=h['access'],methodReturnType=h['returnType'],methodMetadataSource='native-method-type-parent-and-declaration-header')
     return result
+
+def unsupported_fb_child(item):
+    if text(item.type).lower()=='f8a58466-d7f6-439f-bbb8-d4600e41d099':return True
+    try:return bool((getattr(item,'has_textual_declaration',False) or getattr(item,'has_textual_implementation',False)) and function_block_name(text(item.parent.textual_declaration.text)))
+    except Exception:return False
+
+def method_is_st(item):
+    # Documented embedded_object_types, verified against installed ST object's
+    # TypeGuidAttribute (not the CLR auto-generated Type.GUID). Never infer ST
+    # from has_textual_implementation: IL can also be textual.
+    try:return '3b83b776-fb25-43b8-99f2-3c507c9143fc' in [text(t).lower() for t in item.embedded_object_types]
+    except Exception:return False
+
+def method_header(declaration,explicit=False):
+    code=declaration_code(declaration)
+    if code is None:return None
+    m=re.match(r'^\s*METHOD\s+(?:(PUBLIC)\s+)?([A-Za-z_][A-Za-z0-9_]{0,62})\s*(?::\s*(DINT)\b)?\s*([\s\S]*)$',code,re.I)
+    if not m or explicit and not m.group(1) or m.group(2).upper() in ('PUBLIC','PRIVATE','PROTECTED','INTERNAL','FINAL','ABSTRACT','OVERRIDE'):return None
+    if not re.match(r'^(?:\s*VAR(?:_INPUT|_OUTPUT|_IN_OUT)?\b(?:(?!\b(?:VAR|VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR_TEMP|VAR_EXTERNAL|VAR_ACCESS|VAR_CONFIG|VAR_STAT|VAR_INST|METHOD|PROPERTY|FUNCTION_BLOCK|FUNCTION|PROGRAM|END_VAR)\b)[\s\S])*\bEND_VAR\b\s*)*$',m.group(4),re.I):return None
+    return {'name':m.group(2),'access':'PUBLIC','returnType':'DINT' if m.group(3) else 'void'}
+
+def method_matches(name,declaration,return_type,access):
+    h=method_header(declaration,True)
+    return bool(h and h['name'].lower()==name.lower() and h['returnType']==return_type and h['access']==access)
+
+def method_parent_declaration(declaration):
+    code=declaration_code(declaration)
+    return bool(code is not None and re.match(r'^\s*FUNCTION_BLOCK\s+[A-Za-z_][A-Za-z0-9_]*\s*(?=VAR(?:_INPUT|_OUTPUT|_IN_OUT)?\b|$)',code,re.I))
+
+def method_fb(project,parent_id,aid):
+    rows=[(x,n,a) for x,n,a in walk(project) if text(x.guid).lower()==parent_id and a==aid]
+    if len(rows)!=1:raise ValueError('Method parent GUID not unique within exact Application')
+    parent,names,_=rows[0]
+    if not st_object(parent) or not method_is_st(parent) or not method_parent_declaration(text(parent.textual_declaration.text)):raise ValueError('Method parent is not a verified plain user ST FUNCTION_BLOCK')
+    # Current-project tree only; reject any library-manager ancestry explicitly.
+    owner=parent.parent;seen=set()
+    while text(owner.guid).lower()!=aid:
+        key=text(owner.guid).lower()
+        if key in seen or text(owner.type).lower()=='adb5cb65-8e1d-4a00-b70a-375ea27582f3':raise ValueError('Library/ambiguous Method parent scope')
+        seen.add(key);owner=owner.parent
+    return rows[0]
+
+def method_owner(project,item,aid):
+    if aid is None:raise ValueError('Method requires exact Application')
+    return method_fb(project,text(item.parent.guid).lower(),aid)
+
+def method_write_permission(project,item,creating=False):
+    # Verified installed get_object_permission + check_permission(False), no prompt.
+    kinds=[scriptengine.ObjectPermissionKind.Modify]
+    if creating:kinds.append(scriptengine.ObjectPermissionKind.AddRemoveChildren)
+    for kind in kinds:
+        if not project.user_management.get_object_permission(item,kind).check_permission(False):raise ValueError('Native object permission denied: '+text(kind))
+
+def method_file_writable(project_path):
+    from System.IO import File,FileAttributes,FileStream,FileMode,FileAccess,FileShare
+    if int(File.GetAttributes(project_path)) & int(FileAttributes.ReadOnly):raise ValueError('Project file is read-only')
+    handle=FileStream(project_path,FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite);handle.Dispose()
+
+def create_method(project,req,args,lifecycle):
+    aid=args['applicationId'];parent_id=args['parentId'];created_id=None;actions=[]
+    if not method_matches(args['name'],args['declaration'],args['returnType'],args['access']):return failure('failed','INVALID_METHOD_DECLARATION',u'Method名称、PUBLIC访问级别或返回声明不匹配'),project
+    try:
+        parent,names,_=method_fb(project,parent_id,aid)
+        method_file_writable(req['projectPath']);method_write_permission(project,parent,True)
+    except Exception as e:return failure('unsupported','METHOD_PARENT_OR_PERMISSION',text(e)),project
+    before_snapshot=snapshot(project);parent_hash=content_hash(text(parent.textual_declaration.text),text(parent.textual_implementation.text))
+    if before_snapshot!=args['expectedSnapshot'] or parent_hash!=args['expectedParentHash']:return failure('conflict','METHOD_PARENT_VERSION_CHANGED',u'父FB或相关子对象状态已变化，未创建'),project
+    if file_hash(req['projectPath'])!=args['expectedDiskHash']:return failure('conflict','METHOD_DISK_CHANGED',u'工程磁盘版本已变化，未创建'),project
+    children=parent.get_children(False)
+    collisions=[{'objectId':text(x.guid).lower(),'name':text(x.get_name())} for x in children if text(x.get_name()).lower()==args['name'].lower()]
+    if collisions:return failure('conflict','METHOD_EXISTS',u'同一父FB下已存在同名子对象，未覆盖',{'collisions':collisions}),project
+    directory=os.path.dirname(req['resultPath']);before_ids=set(text(x.guid).lower() for x,n,a in walk(project))
+    publish(os.path.join(directory,'before.json'),{'parentId':parent_id,'parentPath':names,'parentHash':parent_hash,'snapshot':before_snapshot,'expectedAbsent':True,'children':[{'objectId':text(x.guid).lower(),'name':text(x.get_name())} for x in children]})
+    try:
+        ret='' if args['returnType']=='void' else 'DINT'
+        created=parent.create_method(args['name'],ret,scriptengine.ImplementationLanguages.st);created_id=text(created.guid).lower();actions.append('native-method-factory-returned')
+        factory={'factory':'create_method','arguments':[args['name'],ret,text(scriptengine.ImplementationLanguages.st)],'objectId':created_id,'parentId':text(created.parent.guid).lower(),'nativeTypeId':text(created.type).lower(),'defaultDeclaration':text(created.textual_declaration.text),'defaultImplementation':text(created.textual_implementation.text),'accessParameter':'No factory access argument; explicit PUBLIC in native declaration, compile verified'}
+        factory['embeddedObjectTypes']=[text(t).lower() for t in created.embedded_object_types]
+        publish(os.path.join(directory,'factory.json'),factory)
+        h=method_header(factory['defaultDeclaration'])
+        if created_id in before_ids or not method_is_st(created) or factory['parentId']!=parent_id or factory['nativeTypeId']!='f8a58466-d7f6-439f-bbb8-d4600e41d099' or text(created.get_name())!=args['name'] or not h or h['returnType']!=args['returnType'] or h['name'].lower()!=args['name'].lower():raise ValueError('Native Method identity/language/header differs from request')
+        method_write_permission(project,created)
+        created.textual_declaration.replace(normalize(args['declaration']));actions.append('declaration-replaced')
+        created.textual_implementation.replace(normalize(args['implementation']));actions.append('implementation-replaced')
+        observed=read_object(*locate(project,aid,created_id))
+        if observed['contentHash']!=content_hash(args['declaration'],args['implementation']) or observed['parentId']!=parent_id:raise ValueError('Method write readback differs')
+        project=lifecycle_save_reopen(lifecycle);reopened=read_object(*locate(project,aid,created_id))
+        if reopened!=observed:raise ValueError('Method identity/parent/source differs after reopen')
+        parent2,names2,_=method_fb(project,parent_id,aid)
+        if content_hash(text(parent2.textual_declaration.text),text(parent2.textual_implementation.text))!=parent_hash:raise ValueError('Parent FB text changed during Method create')
+        return success(u'原生ST Method已创建、保存关闭重开并按父关系和全文核对',dict(reopened,name=args['name'],created=True,beforeParentHash=parent_hash,beforeSnapshot=before_snapshot,snapshot=snapshot(project),checkpoint=req['checkpointPath'],persistedToWorkingCopy=True,reopened=True,creationMethod='create_method(name, return_type, ImplementationLanguages.st)',factoryEvidence=factory,actions=actions)),project
+    except Exception as e:
+        partial=None
+        try:
+            if lifecycle['project'] is not None and created_id:partial=read_object(*locate(lifecycle['project'],aid,created_id))
+        except Exception:pass
+        return failure('unknown','PARTIAL_METHOD_CREATE',text(e),{'createdObjectId':created_id,'actions':actions,'partialContent':partial,'checkpoint':req['checkpointPath'],'primaryException':exception_evidence(e),'recovery':{'status':'not-attempted','reason':'Preserve evidence; no delete, retry or automatic rollback'}}),lifecycle['project']
 
 def snapshot(project):
     # 所有可读取文本对象，含其他 Application、GVL/DUT；文件哈希额外绑定非文本配置。
@@ -293,7 +398,7 @@ def library_inventory(project,args):
 
 def search_inventory(project,args):
     app,prefix,rows,errors = query_rows(project,args)
-    corpus,skipped,failed = [],[],[]
+    corpus,skipped,failed,unsupported_children = [],[],[],[]
     direct = set(text(x.guid).lower() for x,n,aid in rows if len(n)==len(prefix)+1)
     eligible = 0
     for item,names,aid in rows:
@@ -301,9 +406,17 @@ def search_inventory(project,args):
         try:
             native = text(item.type).lower()
             row["nativeTypeId"]=native
-            if native not in ("6f9dac99-8de1-4efc-8465-68ac443b7d08","ffbfa93a-b94d-45fc-a329-229860183b1d","2db5746d-d284-4425-9f7f-2663a34b0ebc"):
-                skipped.append(dict(row,stage="unsupported-type",reason="Not a supported POU/GVL/structure/enum/array native type"));continue
-            if native!="6f9dac99-8de1-4efc-8465-68ac443b7d08" and (aid is None or row["objectId"] not in direct):
+            if native=='f8a58466-d7f6-439f-bbb8-d4600e41d099':
+                if not editable(project,item,aid):
+                    gap=dict(row,stage='unsupported-method',reason='Only native PUBLIC ST void/DINT Methods under user ST FB are supported');skipped.append(gap);unsupported_children.append(gap);continue
+            elif native not in ("6f9dac99-8de1-4efc-8465-68ac443b7d08","ffbfa93a-b94d-45fc-a329-229860183b1d","2db5746d-d284-4425-9f7f-2663a34b0ebc"):
+                gap=dict(row,stage="unsupported-type",reason="Not a supported POU/GVL/DUT/Method native type");skipped.append(gap)
+                if getattr(item,'has_textual_declaration',False) or getattr(item,'has_textual_implementation',False):
+                    try:
+                        if function_block_name(text(item.parent.textual_declaration.text)):unsupported_children.append(gap)
+                    except Exception:pass
+                continue
+            if native not in ("6f9dac99-8de1-4efc-8465-68ac443b7d08","f8a58466-d7f6-439f-bbb8-d4600e41d099") and (aid is None or row["objectId"] not in direct):
                 skipped.append(dict(row,stage="unsupported-location",reason="Declaration object is not an exact Application root child"));continue
             eligible += 1
             if object_kind(item) is None:
@@ -312,10 +425,13 @@ def search_inventory(project,args):
         except Exception as error:failed.append(dict(row,stage="object-read",reason=text(error)))
     corpus.sort(key=lambda x:x["objectId"])
     for values in (skipped,failed):values.sort(key=lambda x:x["objectId"])
-    return {"projectId":args["projectId"],"applicationId":args["applicationId"],"targetKind":args.get("targetKind","application"),"projectPath":text(project.path),"corpus":corpus,
-      "scope":{"description":"Only currently supported readable ST POU and exact Application-root GVL/structure/enum/array; not all engineering objects or semantic references",
-      "applicationPath":prefix,"treeComplete":not errors,"eligibleObjects":eligible,"readObjects":len(corpus),"coverageComplete":not errors and not failed,
+    result={"projectId":args["projectId"],"applicationId":args["applicationId"],"targetKind":args.get("targetKind","application"),"projectPath":text(project.path),"corpus":corpus,
+      "scope":{"description":"Only currently supported readable ST POU, native PUBLIC ST void/DINT Methods and exact Application-root GVL/structure/enum/array; not all engineering objects or semantic references",
+      "applicationPath":prefix,"treeComplete":not errors,"eligibleObjects":eligible,"readObjects":len(corpus),"coverageComplete":not errors and not failed and not unsupported_children,
       "skippedObjects":skipped,"readFailures":failed,"enumerationFailures":errors}}
+    if unsupported_children:result['scope']['unsupportedChildren']=unsupported_children
+    if any(text(x.type).lower()=='f8a58466-d7f6-439f-bbb8-d4600e41d099' for x,n,a in rows):result['scope']['methodCoverageVersion']='fb-methods-v1'
+    return result
 
 def task_inventory(project,args):
     app,prefix,rows,errors = query_rows(project,args)
@@ -646,7 +762,7 @@ def creation_collisions(project, app_id, name):
     # Application 内所有对象及工程池中的文本定义均参与保守冲突检查；其他 Application 独立。
     return [{"objectId":text(item.guid).lower(),"applicationId":aid,"path":names}
             for item,names,aid in walk(project)
-            if text(item.get_name()).lower() == name.lower() and
+            if text(item.type).lower()!='f8a58466-d7f6-439f-bbb8-d4600e41d099' and text(item.get_name()).lower() == name.lower() and
                (aid == app_id or (aid is None and getattr(item,"has_textual_declaration",False)))]
 
 def lifecycle_state(project=None, project_path=None):
@@ -851,7 +967,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "create_method", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -861,7 +977,7 @@ def dispatch(req):
                 lifecycle_reject(lifecycle,failure("conflict","READ_DISK_CHANGED",u"正式读取前工程文件已变化，未打开或保存",{"beforeDiskHash":before_hash}))
         if projects.primary is not None:
             lifecycle_reject(lifecycle,failure("conflict", "UNOWNED_PROJECT", u"新启动实例已有工程；拒绝接管"))
-        if command in ("change", "create", "create_declaration") or req.get("fileGuard") and command=="save":
+        if command in ("change", "create", "create_declaration", "create_method") or req.get("fileGuard") and command=="save":
             shutil.copyfile(req["projectPath"], req["checkpointPath"])
         project = lifecycle_open(lifecycle,req["projectPath"])
         if direct_evidence and file_hash(req["projectPath"])!=direct_evidence["beforeDiskHash"]:
@@ -889,26 +1005,40 @@ def dispatch(req):
             elif command == "libraries":
                 response = success(u"已只读取得精确 Application 的库直接引用与原生解析信息",library_inventory(project,args))
             elif command == "list":
-                objects = []
+                objects,unsupported_children = [],[]
                 for item, names, aid in walk(project):
                     if aid == app_id and editable(project,item,aid):
-                        objects.append(dict({"objectId": text(item.guid).lower(), "path": names, "applicationId": aid, "language": "ST",
-                            "objectType":object_kind(item),"hasImplementation":bool(getattr(item,"has_textual_implementation",False)),"nativeTypeId":text(item.type).lower()},**pou_fields(item)))
+                        meta=dict({"objectId": text(item.guid).lower(), "path": names, "applicationId": aid, "language": "ST",
+                            "objectType":object_kind(item),"hasImplementation":bool(getattr(item,"has_textual_implementation",False)),"nativeTypeId":text(item.type).lower()},**pou_fields(item))
+                        if object_kind(item)=='method':
+                            full=read_object(item,names,aid)
+                            for key in ('parentId','parentPath','access','methodReturnType','methodMetadataSource'):meta[key]=full[key]
+                        objects.append(meta)
+                    elif aid==app_id and unsupported_fb_child(item):unsupported_children.append({'objectId':text(item.guid).lower(),'path':names,'nativeTypeId':text(item.type).lower(),'stage':'unsupported-method','reason':'Not a supported PUBLIC ST void/DINT Method under user FB'})
                 offset, limit = args["offset"], args["limit"]
                 response = success(u"已读取 ST 对象列表", {"objects": objects[offset:offset+limit], "total": len(objects),
                     "complete": offset+limit >= len(objects), "nextOffset": offset+limit if offset+limit < len(objects) else None})
+                if unsupported_children:response['data']['scope']={'enumerationComplete':True,'supportedSourceCoverageComplete':False,'unsupportedChildren':unsupported_children}
             elif command == "read":
                 response = success(u"已读取精确 ST 对象", read_object(*locate(project, app_id, args["objectId"])))
             elif command == "create":
                 response, project = create_pou(project,req,args,lifecycle)
             elif command == "create_declaration":
                 response, project = create_declaration(project,req,args,lifecycle)
+            elif command == "create_method":
+                response, project = create_method(project,req,args,lifecycle)
             elif command == "change":
                 item, names, aid = locate(project, app_id, args["objectId"])
                 before = read_object(item, names, aid)
                 kind = before["objectType"]
                 invalid_type = (args.get("objectType") is not None and args["objectType"]!=kind) or (kind in ("gvl","structure","enum","array") and
                     (args.get("implementation","")!="" or not declaration_matches(kind,text(item.get_name()),args["declaration"],True))) or (before["hasImplementation"] and "implementation" not in args)
+                if kind=='method':
+                    invalid_type=invalid_type or args.get('objectType')!='method' or args.get('parentId')!=before['parentId'] or not method_matches(text(item.get_name()),args['declaration'],before['methodReturnType'],before['access'])
+                    if not invalid_type:
+                        try:
+                            method_file_writable(req['projectPath']);method_write_permission(project,item);method_write_permission(project,item.parent)
+                        except Exception as e:lifecycle_reject(lifecycle,failure('unsupported','METHOD_PERMISSION',text(e)))
                 if invalid_type:
                     response = failure("unsupported","OBJECT_TYPE_MISMATCH",u"指定对象类型或声明形态不匹配；声明类无实现，POU 必须提供实现，未写入")
                 elif before["contentHash"] != args["expectedHash"]:
@@ -932,7 +1062,7 @@ def dispatch(req):
                         recovery = {"status": "unknown"}
                         detail = exception_evidence(e)
                         try:
-                            if req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
+                            if kind=='method' or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")
                             project = lifecycle["project"]
                             item, names, aid = locate(project, app_id, args["objectId"])

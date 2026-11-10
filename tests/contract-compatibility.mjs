@@ -1,6 +1,26 @@
 // Each release's additive object-kind extension is removed only for historical checks.
 // Every other property/default/required/limit/order remains part of the historical check.
+export function withoutMethodExtension(value){
+ if(Array.isArray(value))return value.map(withoutMethodExtension);
+ if(!value||typeof value!=='object')return value;
+ const out=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,withoutMethodExtension(v)]));
+ if(Array.isArray(out.enum))out.enum=out.enum.filter(x=>!['method','method-return'].includes(x));
+ if(out.properties?.methodMetadataSource){
+  for(const k of ['parentPath','access','methodReturnType','methodMetadataSource'])delete out.properties[k];
+  if(!out.properties.created)delete out.properties.parentId;
+  // Creation payload already had parentId after name. Preserve its historical
+  // insertion order as well as shape for pre-canonical schema hash fixtures.
+  else if(out.properties.name&&out.properties.parentId){
+   const parent=out.properties.parentId;delete out.properties.parentId;
+   out.properties=Object.fromEntries(Object.entries(out.properties).flatMap(([k,v])=>k==='name'?[[k,v],['parentId',parent]]:[[k,v]]));
+  }
+ }
+ if(out.properties?.expectedHash&&out.properties?.declaration)delete out.properties.parentId;
+ if(out.properties?.skippedObjects){delete out.properties.unsupportedChildren;delete out.properties.methodCoverageVersion;}
+ return out;
+}
 export function withoutDirectOriginExtension(value){
+ value=withoutMethodExtension(value);
  if(Array.isArray(value))return value.map(withoutDirectOriginExtension);
  if(!value||typeof value!=='object')return value;
  const out=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,withoutDirectOriginExtension(v)]));

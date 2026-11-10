@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { type Config, type Adapter, ROOT } from './adapter.js';
 import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
-import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclarationMatches, declarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema, type Reply } from './contracts.js';
+import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclarationMatches, declarationMatches,methodDeclarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema, type Reply } from './contracts.js';
 import {searchResult,taskResult,nativeInventoryResult,SEARCH_RESULT_VERSION} from './queries.js';
 import {singleIdentifier,IDENTIFIER_LEXER_VERSION,LEGACY_IDENTIFIER_LEXER_VERSION} from './st-lex.js';
 import {variableResult,VARIABLE_PARSER_VERSION} from './variables.js';
@@ -279,7 +279,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -319,6 +319,11 @@ export class EngineeringService {
         if((d!.hasImplementation===false || ['gvl','structure','enum','array'].includes(d!.objectType as string)) && !declared(d))invalid();
         if(command==='change' && ((args.objectType && d!.objectType!==args.objectType) || (args.implementation===undefined && !declared(d)) ||
           d!.contentHash!==codeHash(args.declaration,args.implementation ?? '') || !isHash(d!.snapshot) || !isHash(d!.diskHash) || !persisted() || d!.reopened!==true)) invalid();
+        if(d!.objectType==='method'&&(d!.nativeTypeId!=='f8a58466-d7f6-439f-bbb8-d4600e41d099'||d!.hasImplementation!==true||typeof d!.parentId!=='string'||canonical(d!.parentPath)!==canonical((d!.path as string[])?.slice(0,-1))||d!.methodMetadataSource!=='native-method-type-parent-and-declaration-header'||!methodDeclarationMatches((d!.path as string[])?.at(-1)??'',d!.declaration as string,d!.methodReturnType as string,d!.access as string)||command==='change'&&(args.objectType!=='method'||args.parentId!==d!.parentId)))invalid();
+      }
+      if(command==='create_method'){
+        const path_=d!.path as string[],factory=d!.factoryEvidence as any;
+        if(d!.objectType!=='method'||d!.nativeTypeId!=='f8a58466-d7f6-439f-bbb8-d4600e41d099'||d!.hasImplementation!==true||d!.applicationId!==args.applicationId||d!.parentId!==args.parentId||d!.beforeParentHash!==args.expectedParentHash||d!.name!==args.name||d!.created!==true||typeof d!.objectId!=='string'||d!.objectId===args.parentId||path_?.at(-1)!==args.name||canonical(path_?.slice(0,-1))!==canonical(d!.parentPath)||!isHash(d!.snapshot)||d!.beforeSnapshot!==args.expectedSnapshot||d!.snapshot===args.expectedSnapshot||!isHash(d!.diskHash)||!persisted()||d!.reopened!==true||d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project')||d!.methodMetadataSource!=='native-method-type-parent-and-declaration-header'||!methodDeclarationMatches(args.name,d!.declaration as string,args.returnType,args.access)||d!.methodReturnType!==args.returnType||d!.access!==args.access||d!.contentHash!==codeHash(args.declaration,args.implementation)||codeHash(d!.declaration as string,d!.implementation as string)!==d!.contentHash||d!.creationMethod!=='create_method(name, return_type, ImplementationLanguages.st)'||factory?.parentId!==args.parentId||factory?.objectId!==d!.objectId||factory?.nativeTypeId!==d!.nativeTypeId||!Array.isArray(factory?.embeddedObjectTypes)||!factory.embeddedObjectTypes.includes('3b83b776-fb25-43b8-99f2-3c507c9143fc')||canonical(factory?.arguments)!==canonical([args.name,args.returnType==='void'?'':args.returnType,'cc393387-a21c-4f68-a3e3-84c36951965d']))invalid();
       }
       if(command==='create_declaration') {
         const expectedPath=[...(session?.applications?.find(x=>x.applicationId===args.applicationId)?.path || []),args.name];
@@ -468,7 +473,11 @@ export class EngineeringService {
       if(!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(a.name) || !pouDeclarationMatches(a.pouType,a.name,a.declaration,a.returnType))
         throw new DomainError('failed','INVALID_POU_DECLARATION','ST POU 声明类型/名称必须匹配；FUNCTION 必须显式声明与参数一致的 DINT/BOOL/INT/REAL/TIME 返回类型');
     }
-    const commands:Record<string,string>={object_list:'list',object_read:'read',pou_create:'create',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save'};
+    if(op.tool==='method_create'){
+      if(!methodDeclarationMatches(a.name,a.declaration,a.returnType,a.access))throw new DomainError('failed','INVALID_METHOD_DECLARATION','Method同名完整首部须匹配显式PUBLIC及void/DINT返回类型；未派发IDE');
+      if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)throw new DomainError('conflict','METHOD_DISK_CHANGED','Method创建前磁盘版本不匹配；未派发IDE');
+    }
+    const commands:Record<string,string>={object_list:'list',object_read:'read',pou_create:'create',method_create:'create_method',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save'};
     const command=commands[op.tool];
     if(!command) throw new DomainError('unsupported','TOOL_UNSUPPORTED','不支持此工程操作');
     if(command==='save' && s.lastBuild?.snapshot===a.expectedSnapshot && s.lastBuild?.diskHash && digest(await fs.readFile(s.workingPath))!==s.lastBuild.diskHash)
@@ -499,6 +508,8 @@ export class EngineeringService {
       this.validateEvidence(original,verified,original.project);
       if(canonical(verified.data)!==canonical(original.response!.data))invalid();
     } catch {return invalid();}
+    if((raw.data?.scope as any)?.methodCoverageVersion===undefined&&(raw.data?.scope as any)?.skippedObjects?.some((o:any)=>o.nativeTypeId==='f8a58466-d7f6-439f-bbb8-d4600e41d099'))
+      throw new DomainError('conflict','METHOD_COVERAGE_UPGRADE','合法旧检索清单跳过了Method，覆盖范围已扩展；请重新首查，未派发IDE或冻结');
     if(original.response!.data!.diskHash!==currentHash||sa.query!==a.query||sa.caseSensitive!==a.caseSensitive||
       canonical([...sa.areas].sort())!==canonical([...a.areas].sort())||sa.maxResults!==a.maxResults||(sa.matchMode??'literal')!==(a.matchMode??'literal')||
       a.offset>(original.response!.data!.page as any).retainedMatches)conflict();
@@ -537,6 +548,11 @@ export class EngineeringService {
         this.validateEvidence(source,verified,source.project);
         if(canonical(verified.data)!==canonical(source.response!.data))invalid();
       }catch{return invalid();}
+    }
+    if(op.tool==='variable_inspect'&&(raw.data?.scope as any)?.methodCoverageVersion===undefined&&(raw.data?.scope as any)?.skippedObjects?.some((o:any)=>o.nativeTypeId==='f8a58466-d7f6-439f-bbb8-d4600e41d099')){
+      try{const verified=variableResult(raw,source.args);this.validateEvidence(source,verified,source.project);if(canonical(verified.data)!==canonical(source.response!.data))throw Error('Old published table differs');}
+      catch{throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','旧变量清单证据无法核实，保持冻结');}
+      throw new DomainError('conflict','METHOD_COVERAGE_UPGRADE','合法旧变量清单跳过了Method；请重新首查，未重新采集或冻结');
     }
     if(op.tool==='variable_inspect'&&source.response!.data!.parserVersion!==VARIABLE_PARSER_VERSION){
       // Verify the old native inventory before distinguishing a normal parser

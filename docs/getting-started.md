@@ -1,6 +1,8 @@
 # 安装、接入与日常离线试用
 
-main提供0.18.0候选、23项工具。从main获取，安装依赖并部署到独立固定入口；不要覆盖现有客户端构建。客户端须实际收到project_create、task_config_update及当前指令，保留的旧0.16入口仍是21项工具，不会因Git合并自动升级。下文0.16与旧客户端记录保留各自验证归属。
+S2a已合并，main为0.19.0候选版、24项工具，新增[原生ST Method](methods.md)。从main部署独立固定构建，客户端须实际收到method_create、方法修改参数及对应指令；不要覆盖已用构建。S2b尚未开始，后续先做只读属性Get；下列历史客户端按各自版本记录，不因Git合并自动升级。
+
+main提供0.19.0候选、24项工具。从main获取，安装依赖并部署到独立固定入口；不要覆盖现有客户端构建。客户端须实际收到method_create、相关Method类型/父关系/修改参数、project_create、task_config_update及当前指令，保留的旧0.16入口仍是21项工具，不会因Git合并自动升级。下文0.16与旧客户端记录保留各自验证归属。
 
 本文同时保留0.16.0直接编辑及固定客户端的历史接入记录；0.17.0新建能力和验证边界见[专门说明](project-create.md)。只适用于已有证据覆盖的本机离线场景，各次验收保留原版本归属；0.16.0直接编辑历史另见[原说明](direct-project-edit.md)。
 
@@ -14,7 +16,7 @@ main提供0.18.0候选、23项工具。从main获取，安装依赖并部署到�
 
 ## 获取与构建
 
-仓库已公开，当前 main 提供 0.18.0 候选版、二十三项工具。新增task_config_update，原二十二项Schema保持兼容；task_inspect保持只读，兼容增加任务版本证据；登记 v2 的旧二进制兼容限制见[工程与副本](#工程与副本)及[新建登记兼容说明](project-create.md#合并复核2026-11-09)。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，当前 main 提供 0.19.0 候选版、二十四项工具。新增method_create，原23项调用兼容，相关Schema增加Method类型、父关系和方法修改参数，并非逐字未变；task_inspect仍只读，保留任务版本证据；登记 v2 的旧二进制兼容限制见[工程与副本](#工程与副本)及[新建登记兼容说明](project-create.md#合并复核2026-11-09)。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
 git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
@@ -37,7 +39,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。加载当前候选应为0.18.0、二十三工具，实际收到task_config_update的任务/磁盘版本及可选intervalMs、priority参数，以及project_create的新路径参数及project_open的projectPath参数、project_compare的current-project来源及当前指令；variable_inspect保留includeInitializerMembers及maxInitializerMembers。显式提取后的memberExtraction.parserVersion为named-initializer-members-v1；未启用时仍declaration-variables-v2。project_search的matchMode=literal/identifier及st-identifier-v2不变，identifier必须显式指定不含name的源码areas。若仍为旧Schema，停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
+5. 新对话先让Agent查询环境、会话和工具集合。加载当前候选应为0.19.0、二十四工具，实际收到method_create的PUBLIC/void/DINT参数、code_apply_change的method/parentId参数及task_config_update的任务/磁盘版本及可选intervalMs、priority参数，以及project_create的新路径参数及project_open的projectPath参数、project_compare的current-project来源及当前指令；variable_inspect保留includeInitializerMembers及maxInitializerMembers。显式提取后的memberExtraction.parserVersion为named-initializer-members-v1；未启用时仍declaration-variables-v2。project_search的matchMode=literal/identifier及st-identifier-v2不变，identifier必须显式指定不含name的源码areas。若仍为旧Schema，停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 

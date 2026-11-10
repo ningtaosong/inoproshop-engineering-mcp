@@ -74,6 +74,7 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
       const left=bg.get(key)||[],right=tg.get(key)||[],before=left[0],after=right[0],row=before||after;
       const item:any={kind,relativePath:JSON.parse(key)[0],objectType:isObject?row.objectType:'task',
         ...(isObject&&row.pouType?{pouType:row.pouType,pouTypeSource:row.pouTypeSource,...(row.returnType!==undefined?{returnType:row.returnType}:{})}:{}),
+        ...(isObject&&row.objectType==='method'?{parentId:row.parentId,parentPath:row.parentPath,access:row.access,methodReturnType:row.methodReturnType}:{}),
         beforeIdentity:left.map((o:any)=>({objectId:o.objectId||o.taskId,path:o.path})),afterIdentity:right.map((o:any)=>({objectId:o.objectId||o.taskId,path:o.path})),category:'unchanged',changes:[],reasons:[]};
       const complete=isObject?b.scope.coverageComplete&&t.scope.coverageComplete:b.taskCoverage.complete&&t.taskCoverage.complete;
       if(left.length>1||right.length>1){item.category='incomparable';item.reasons.push('Ambiguous Application-relative path and object type; no name/GUID/rename guessing');}
@@ -81,11 +82,11 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
         // An older reader may have explicitly skipped a DUT now recognised as enum.
         // Keep the path+type match key unchanged; skipped text is not absence evidence.
         const missing=before?t:b;
-        const skippedEnum=isObject&&['enum','array'].includes(row.objectType)&&missing.scope.skippedObjects.some((o:any)=>
-          o.nativeTypeId==='2db5746d-d284-4425-9f7f-2663a34b0ebc'&&canonical(relative(o.path,missing.identity.applicationPath))===canonical(JSON.parse(key)[0]));
+        const skippedEnum=isObject&&['enum','array','method'].includes(row.objectType)&&missing.scope.skippedObjects.some((o:any)=>
+          o.nativeTypeId===(row.objectType==='method'?'f8a58466-d7f6-439f-bbb8-d4600e41d099':'2db5746d-d284-4425-9f7f-2663a34b0ebc')&&canonical(relative(o.path,missing.identity.applicationPath))===canonical(JSON.parse(key)[0]));
         item.category=complete&&!skippedEnum?before?'deleted':'added':'incomparable';
         if(skippedEnum){
-          item.coverageGap={path:JSON.parse(key)[0],stage:row.objectType+'-coverage',side:before?'target':'baseline',reason:'Known same-path DUT was skipped; '+row.objectType+' addition/deletion cannot be established'};
+          item.coverageGap={path:JSON.parse(key)[0],stage:row.objectType+'-coverage',side:before?'target':'baseline',reason:'Known same-path '+(row.objectType==='method'?'Method':'DUT')+' was skipped; '+row.objectType+' addition/deletion cannot be established'};
           item.reasons.push(item.coverageGap.reason);
         }
         else if(!complete)item.reasons.push('Incomplete coverage: absence cannot establish addition/deletion');
@@ -95,6 +96,7 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
         else item.changes.push({field:'task',before:before?taskFields(before):null,after:after?taskFields(after):null});
       }
       else if(isObject){
+        if(row.objectType==='method'&&(before.parentId!==after.parentId||canonical(before.parentPath)!==canonical(after.parentPath))){item.category='incomparable';item.reasons.push('Method parent identity changed; no short-name pairing');items.push(item);continue;}
         for(const region of ['declaration','implementation']){
           const change=textChange(before[region],after[region]);if(change)item.changes.push({region,...change});
         }
@@ -126,7 +128,7 @@ function preview(value:any):any {
 export function compareReply(b:Snapshot,t:Snapshot,a:any):Reply {
   const items=comparisonItems(b,t),enumGaps=items.filter(i=>i.coverageGap).map(i=>i.coverageGap);
   // Only changed enum-coverage conclusions invalidate an older comparison page token.
-  const version=digest(canonical(enumGaps.length?[b.version,t.version,enumGaps.some(g=>g.stage==='array-coverage')?'array-coverage-v1':'enum-coverage-v1']:[b.version,t.version]));
+  const version=digest(canonical(enumGaps.length?[b.version,t.version,enumGaps.some(g=>g.stage==='method-coverage')?'method-coverage-v1':enumGaps.some(g=>g.stage==='array-coverage')?'array-coverage-v1':'enum-coverage-v1']:[b.version,t.version]));
   if(a.expectedVersion&&a.expectedVersion!==version)throw new DomainError('conflict','COMPARE_VERSION_CHANGED','对比版本已变化，未混合页面');
   if((a.offset>0||a.detail)&&!a.expectedVersion)throw new DomainError('conflict','COMPARE_VERSION_REQUIRED','续页/详情必须携带本次对比版本');
   const counts=Object.fromEntries(['object','task'].map(kind=>[kind,Object.fromEntries(categories.map(c=>[c,items.filter(i=>i.kind===kind&&i.category===c).length]))]));
@@ -136,7 +138,8 @@ export function compareReply(b:Snapshot,t:Snapshot,a:any):Reply {
   const base={mode:'compare',version,baseline:snapshotSummary(b),target:snapshotSummary(t),counts,
     coverageComplete:b.scope.coverageComplete&&t.scope.coverageComplete&&b.taskCoverage.complete&&t.taskCoverage.complete&&!enumGaps.length,
     gaps:{count:issues.length,entries:preview(issues.slice(0,8)),entriesTruncated:issues.length>8,fullEvidence:'Original capture IPC sourceInventory/taskInventory'},
-    excluded,matching:'Exact case-sensitive Application-relative path + supported type; GUIDs are evidence only; no rename inference',
+    excluded,matching:'Exact case-sensitive Application-relative path + supported type; GUIDs are evidence only; no rename inference'+
+      (items.some(i=>i.objectType==='method')?'; Methods additionally require unchanged native parent GUID/path':'') ,
     normalization:'CRLF/CR -> LF only; all other whitespace/comments preserved',taskMeaning:'Configuration fields and call order only, not measured scan time'};
   let data:any;
   if(a.detail){

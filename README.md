@@ -2,9 +2,11 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，直接修改指定离线工程，编译并保存重开；工程比较按需使用。
 
-**main 提供 0.18.0 候选版、二十三项 MCP 工具，契约 1.0.0。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
+**main 提供 0.19.0 候选版、二十四项 MCP 工具，契约 1.0.0。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
 
 S1 新增 [已有周期任务的周期与优先级编辑](docs/task-config.md)：`task_config_update`，只改明确授权的整数毫秒周期和/或优先级，原 `task_inspect` 保持只读。原二十二项工具输入兼容，登记仍为 v2。客户端须加载候选构建及 Schema 才能使用；固定入口不会随分支开发自动更新。下文 0.17.0 及旧版本验收保留原归属。
+
+S2a增加[功能块原生ST Method](docs/methods.md)：PUBLIC、void/DINT，创建用method_create，读取/修改复用现有工具；不开放Property/Get/Set、继承、接口、重载、改名或删除。父FB不变不能替代方法核对；没有新增默认比较或运行验证。独立MCP及一次DSH CLI工程闭环通过，263项新跑通过，另复用同版未改15项隔离结果，合计覆盖278项（不是一次完整278项全绿运行）；CLI流程与简短展示未全部遵循，详见方法说明。
 
 ## 从这里开始
 
@@ -17,7 +19,7 @@ S1 新增 [已有周期任务的周期与优先级编辑](docs/task-config.md)�
 
 ## 直接编辑指定工程
 
-需要从新路径开始时，使用 [新建最小 AM610 工程](docs/project-create.md)的 `project_create`；仅固定预设，不复制既有用户工程。已有文件仍使用 `project_open`。当前部署应从main取得独立固定的0.18构建及工具定义，Git合并不会自动升级客户端入口；DSH实际部署状态见本机复核记录，Codex固定0.16入口须另行升级后才能使用新建或任务编辑工具。
+需要从新路径开始时，使用 [新建最小 AM610 工程](docs/project-create.md)的 `project_create`；仅固定预设，不复制既有用户工程。已有文件仍使用 `project_open`。当前部署应从main取得独立固定的0.19构建及工具定义，Git合并不会自动升级客户端入口；DSH实际部署状态见本机复核记录，Codex固定0.16入口须另行升级后才能使用新建、任务编辑或Method工具。
 
 0.17.0本轮完整回归245/245通过；真实MCP11项成功工程操作另含1项正常拒绝，DSH CLI模型21项工程操作成功，两套各两次编译均0错误/0警告。原失败、参数拒绝和答复勘误保留；简洁展示未完全遵循，详见[分支验收记录](docs/project-create.md#分支验收收尾2026-11-09)。
 
@@ -71,7 +73,7 @@ S1 新增 [已有周期任务的周期与优先级编辑](docs/task-config.md)�
 | 环境、状态和操作证据 | environment_inspect、session_status、operation_status |
 | 最小AM610新建、直接打开、登记和切换；显式旧副本 | project_create、project_open、project_list、project_activate、project_open_copy |
 | 对象与声明 | object_list、object_read、variable_inspect |
-| 限定修改与创建 | code_apply_change、pou_create、declaration_create |
+| 限定修改与创建 | code_apply_change、pou_create、declaration_create、method_create |
 | 已有周期任务的周期、优先级 | task_config_update（先 task_inspect 定位和读取版本） |
 | 编译和保存重开 | project_build、project_save |
 | 检索、结构和配置只读 | project_search、project_structure、task_inspect、device_inspect、library_inspect |
