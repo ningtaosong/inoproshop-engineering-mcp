@@ -2,11 +2,15 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，直接修改指定离线工程，编译并保存重开；工程比较按需使用。
 
-**main 提供 0.19.0 候选版、二十四项 MCP 工具，契约 1.0.0。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
+**本分支提供0.20.0候选版、25项MCP工具，契约1.0.0；尚未合并main（main为0.19.0/24工具）。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
 
 S1 新增 [已有周期任务的周期与优先级编辑](docs/task-config.md)：`task_config_update`，只改明确授权的整数毫秒周期和/或优先级，原 `task_inspect` 保持只读。原二十二项工具输入兼容，登记仍为 v2。客户端须加载候选构建及 Schema 才能使用；固定入口不会随分支开发自动更新。下文 0.17.0 及旧版本验收保留原归属。
 
 S2a增加[功能块原生ST Method](docs/methods.md)：PUBLIC、void/DINT，创建用method_create，读取/修改复用现有工具；不开放Property/Get/Set、继承、接口、重载、改名或删除。父FB不变不能替代方法核对；没有新增默认比较或运行验证。独立MCP及一次DSH CLI工程闭环通过，263项新跑通过，另复用同版未改15项隔离结果，合计覆盖278项（不是一次完整278项全绿运行）；CLI流程与简短展示未全部遵循，详见方法说明。
+
+S2b只读Get阶段新增[原生Property/Get](docs/properties.md)：用户普通ST FB下的PUBLIC DINT属性，只有Get；创建用property_create，读取及限定Get源码修改复用已有工具。工厂默认Set仅能在本请求刚创建且身份和空内容已核对后清理，不开放已有访问器删除或Set。原24项调用兼容扩展，旧客户端需正常加载新Schema。分阶段验证与限制见属性说明。
+
+S2b只读Get阶段新增[原生Property/Get](docs/properties.md)：用户普通ST FB下的PUBLIC DINT属性，只有Get；创建用property_create，读取及限定Get源码修改复用已有工具。工厂默认Set仅能在本请求刚创建且身份和空内容已核对后清理，不开放已有访问器删除或Set。原24项调用兼容扩展，旧客户端需正常加载新Schema。分阶段验证与限制见属性说明。
 
 ## 从这里开始
 

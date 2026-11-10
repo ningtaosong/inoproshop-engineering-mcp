@@ -6,6 +6,7 @@ import {lexSt,singleIdentifier,IDENTIFIER_LEXER_VERSION,LEGACY_IDENTIFIER_LEXER_
 import {libraryInventoryResult} from './libraries.js';
 import {isStringBoundary,stringEnd} from './native-output.js';
 import {taskConfigurationVersion,TASK_CONFIGURATION_SCHEME} from './task-config.js';
+import {propertyEvidence,propertyMetadata} from './properties.js';
 const areas=['name','declaration','implementation'];
 function cmp(a:string,b:string){return a<b?-1:a>b?1:0;}
 function position(source:string,index:number){const prefix=source.slice(0,index),line=prefix.split('\n').length;return {line,column:index-(prefix.lastIndexOf('\n')+1)+1};}
@@ -31,12 +32,13 @@ export function searchResult(raw:Reply,a:any,options:{legacy?:boolean,identifier
   if(!base.scope || base.scope.readObjects!==objects.length || base.scope.eligibleObjects<objects.length ||
     base.scope.treeComplete!==(base.scope.enumerationFailures.length===0) || base.scope.coverageComplete!==(base.scope.treeComplete&&base.scope.readFailures.length===0&&!(base.scope.unsupportedChildren?.length)))throw Error('Search coverage evidence inconsistent');
   for(const o of objects){
-    const prefix=base.scope.applicationPath,decl=['gvl','structure','enum','array'].includes(o.objectType);
+    const prefix=base.scope.applicationPath,decl=['gvl','structure','enum','array'].includes(o.objectType),declarationOnly=decl||o.objectType==='property';
     if(o.applicationId!==a.applicationId || canonical(o.path.slice(0,prefix.length))!==canonical(prefix) ||
-      !['st_pou','function_block','gvl','structure','enum','array','method'].includes(o.objectType) || o.hasImplementation===decl ||
+      !['st_pou','function_block','gvl','structure','enum','array','method','property','property_get'].includes(o.objectType) || o.hasImplementation===declarationOnly ||
       decl&&(o.path.length!==prefix.length+1||o.implementation!==''||a.targetKind==='pool'))throw Error('Search corpus identity/type/scope mismatch');
     if(decl && !declarationMatches(o.objectType,o.path.at(-1),o.declaration))throw Error('Declaration corpus kind/header mismatch');
     if(o.objectType==='method'&&(o.nativeTypeId!=='f8a58466-d7f6-439f-bbb8-d4600e41d099'||typeof o.parentId!=='string'||canonical(o.parentPath)!==canonical(o.path.slice(0,-1))||!methodDeclarationMatches(o.path.at(-1),o.declaration,o.methodReturnType,o.access)||o.methodMetadataSource!=='native-method-type-parent-and-declaration-header'))throw Error('Method source identity/header mismatch');
+    if(['property','property_get'].includes(o.objectType)&&!propertyEvidence(o))throw Error('Property/Get source identity/header/accessor structure mismatch');
     if(codeHash(o.declaration,o.implementation)!==o.contentHash)throw Error('Search corpus content hash mismatch');
   }
   const selected=areas.filter(x=>(a.areas || areas).includes(x));
@@ -75,6 +77,7 @@ export function searchResult(raw:Reply,a:any,options:{legacy?:boolean,identifier
       retained.push({objectId:o.objectId,path:o.path,objectType:o.objectType,contentHash:o.contentHash,region,
         ...(o.pouType?{pouType:o.pouType,pouTypeSource:o.pouTypeSource,...(o.returnType!==undefined?{returnType:o.returnType}:{})}:{}),
         ...(o.objectType==='method'?{parentId:o.parentId,parentPath:o.parentPath,access:o.access,methodReturnType:o.methodReturnType,methodMetadataSource:o.methodMetadataSource}:{}),
+        ...(['property','property_get'].includes(o.objectType)?propertyMetadata(o):{}),
         position:region==='name'?null:{startOffset:start,endOffset:end,...p,endLine:e.line,endColumn:e.column},...(region==='name'?{nameOffset:start}:{}),
         matchedText:source.slice(start,end),context:{text:source.slice(from,to),startOffset:from,endOffset:to},candidateReference:region!=='name'});
     }

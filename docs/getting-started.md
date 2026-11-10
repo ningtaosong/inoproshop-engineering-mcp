@@ -1,5 +1,9 @@
 # 安装、接入与日常离线试用
 
+S2b只读Get候选位于`codex/fb-property-edit`，0.20.0/25工具，详见[原生只读属性](properties.md)。需从该分支部署独立固定构建并确认客户端收到property_create及property/property_get身份、结构和Get修改参数。main仍为0.19.0/24工具，固定入口不会自动升级；Set未开放。
+
+S2b只读Get候选位于`codex/fb-property-edit`，0.20.0/25工具，详见[原生只读属性](properties.md)。需从该分支部署独立固定构建并确认客户端收到property_create及property/property_get身份、结构和Get修改参数。main仍为0.19.0/24工具，固定入口不会自动升级；Set未开放。
+
 S2a已合并，main为0.19.0候选版、24项工具，新增[原生ST Method](methods.md)。从main部署独立固定构建，客户端须实际收到method_create、方法修改参数及对应指令；不要覆盖已用构建。S2b尚未开始，后续先做只读属性Get；下列历史客户端按各自版本记录，不因Git合并自动升级。
 
 main提供0.19.0候选、24项工具。从main获取，安装依赖并部署到独立固定入口；不要覆盖现有客户端构建。客户端须实际收到method_create、相关Method类型/父关系/修改参数、project_create、task_config_update及当前指令，保留的旧0.16入口仍是21项工具，不会因Git合并自动升级。下文0.16与旧客户端记录保留各自验证归属。

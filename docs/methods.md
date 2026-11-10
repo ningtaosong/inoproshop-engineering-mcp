@@ -1,5 +1,7 @@
 # 功能块原生 ST Method（S2a）
 
+本文保留0.19.0的Method范围和验收归属。0.20.0候选新增的只读Property/Get见[属性说明](properties.md)，Set仍未开放。
+
 0.19.0候选版新增 `method_create`，共24项工具。读取、修改复用object_list、object_read、code_apply_change；不增加通用脚本执行通道。原23项调用继续兼容，相关输出增加Method元数据，code_apply_change增加显式method目标及parentId。登记仍为v2。
 
 ## 支持范围

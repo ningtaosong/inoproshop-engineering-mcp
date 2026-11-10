@@ -140,6 +140,14 @@ def declaration_matches(kind, name, declaration, writing=False):
     return bool(kind=="structure" and match and match.group(1).lower()==name.lower() and not re.search(r"\b(UNION|END_UNION|EXTENDS|VAR_GLOBAL)\b",source,re.I) and len(re.findall(r"\bSTRUCT\b",source,re.I))==1)
 
 def object_kind(item):
+    if text(item.type).lower() in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db'):
+        try:
+            prop=item if text(item.type).lower()=='5a3b8626-d3e9-4f37-98b5-66420063d91e' else item.parent
+            structure=property_structure(prop)
+            if not property_header(text(prop.textual_declaration.text),True) or not structure['readOnly']:return None
+            if item.guid==prop.guid:return 'property'
+            return 'property_get' if text(item.guid).lower()==structure['accessors'][0]['objectId'] and getter_declaration_matches(text(item.textual_declaration.text)) else None
+        except Exception:return None
     if text(item.type).lower()=="f8a58466-d7f6-439f-bbb8-d4600e41d099":
         return "method" if method_is_st(item) and getattr(item,"has_textual_declaration",False) and getattr(item,"has_textual_implementation",False) and method_header(text(item.textual_declaration.text),True) else None
     if st_object(item):return "function_block" if function_block_name(text(item.textual_declaration.text)) else "st_pou"
@@ -152,6 +160,9 @@ def object_kind(item):
 
 def editable(project,item,aid):
     kind = object_kind(item)
+    if kind in ('property','property_get'):
+        try:property_owner(project,item,aid);return True
+        except Exception:return False
     if kind=="method":
         try:method_owner(project,item,aid);return True
         except Exception:return False
@@ -170,9 +181,11 @@ def read_object(item, names, app_id):
     if object_kind(item)=="method":
         h=method_header(d,True)
         result.update(parentId=text(item.parent.guid).lower(),parentPath=names[:-1],access=h['access'],methodReturnType=h['returnType'],methodMetadataSource='native-method-type-parent-and-declaration-header')
+    if object_kind(item) in ('property','property_get'):result.update(property_metadata(item,names))
     return result
 
 def unsupported_fb_child(item):
+    if text(item.type).lower() in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db'):return True
     if text(item.type).lower()=='f8a58466-d7f6-439f-bbb8-d4600e41d099':return True
     try:return bool((getattr(item,'has_textual_declaration',False) or getattr(item,'has_textual_implementation',False)) and function_block_name(text(item.parent.textual_declaration.text)))
     except Exception:return False
@@ -269,6 +282,93 @@ def create_method(project,req,args,lifecycle):
         except Exception:pass
         return failure('unknown','PARTIAL_METHOD_CREATE',text(e),{'createdObjectId':created_id,'actions':actions,'partialContent':partial,'checkpoint':req['checkpointPath'],'primaryException':exception_evidence(e),'recovery':{'status':'not-attempted','reason':'Preserve evidence; no delete, retry or automatic rollback'}}),lifecycle['project']
 
+def property_header(declaration,explicit=False):
+    code=declaration_code(declaration)
+    if code is None:return None
+    m=re.match(r'^\s*PROPERTY\s+(?:(PUBLIC)\s+)?([A-Za-z_][A-Za-z0-9_]{0,62})\s*:\s*DINT\s*$',code,re.I)
+    if not m or explicit and not m.group(1) or m.group(2).upper() in ('PUBLIC','PRIVATE','PROTECTED','INTERNAL','FINAL','ABSTRACT','OVERRIDE'):return None
+    return {'name':m.group(2),'access':'PUBLIC','type':'DINT'}
+
+def getter_declaration_matches(declaration):
+    code=declaration_code(declaration)
+    return bool(code is not None and re.match(r'^(?:\s*VAR\b(?:(?!\b(?:VAR|VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR_TEMP|VAR_EXTERNAL|VAR_ACCESS|VAR_CONFIG|VAR_STAT|VAR_INST|METHOD|PROPERTY|FUNCTION_BLOCK|FUNCTION|PROGRAM|END_VAR)\b)[\s\S])*\bEND_VAR\b\s*)*$',code,re.I))
+
+def property_structure(prop):
+    if text(prop.type).lower()!='5a3b8626-d3e9-4f37-98b5-66420063d91e' or not prop.has_textual_declaration or prop.has_textual_implementation:raise ValueError('Not native declaration-only Property')
+    rows=[]
+    for child in native_children(prop):
+        rows.append({'objectId':text(child.guid).lower(),'parentId':text(child.parent.guid).lower(),'nativeTypeId':text(child.type).lower(),'name':text(child.get_name()),'hasDeclaration':bool(child.has_textual_declaration),'hasImplementation':bool(child.has_textual_implementation),'embeddedObjectTypes':sorted(text(t).lower() for t in child.embedded_object_types),'childIds':sorted(text(c.guid).lower() for c in native_children(child))})
+    rows.sort(key=lambda x:x['objectId'])
+    valid=len(rows)==1 and rows[0]['parentId']==text(prop.guid).lower() and rows[0]['nativeTypeId']=='792f2eb6-721e-4e64-ba20-bc98351056db' and rows[0]['name']=='Get' and rows[0]['hasDeclaration'] and rows[0]['hasImplementation'] and '3b83b776-fb25-43b8-99f2-3c507c9143fc' in rows[0]['embeddedObjectTypes'] and not rows[0]['childIds']
+    return {'scheme':'fb-property-accessors-v1','propertyId':text(prop.guid).lower(),'accessors':rows,'readOnly':bool(valid)}
+
+def property_owner(project,item,aid):
+    prop=item if text(item.type).lower()=='5a3b8626-d3e9-4f37-98b5-66420063d91e' else item.parent
+    parent=method_fb(project,text(prop.parent.guid).lower(),aid)[0]
+    # Exact tree membership, not a detached object or a name-only Get selection.
+    matches=[x for x,n,a in walk(project) if a==aid and text(x.guid).lower()==text(prop.guid).lower()]
+    if len(matches)!=1 or text(matches[0].parent.guid).lower()!=text(parent.guid).lower():raise ValueError('Property identity/parent not unique in Application')
+    structure=property_structure(prop);h=property_header(text(prop.textual_declaration.text),True)
+    if not h or h['name'].lower()!=text(prop.get_name()).lower() or not structure['readOnly']:raise ValueError('Only native PUBLIC DINT Get-only Property supported; existing Set is never removed')
+    getter=native_children(prop)[0]
+    if not getter_declaration_matches(text(getter.textual_declaration.text)) or item.guid not in (prop.guid,getter.guid):raise ValueError('Unsupported Get declaration or accessor identity')
+    return parent,prop,getter
+
+def property_metadata(item,names):
+    prop=item if text(item.type).lower()=='5a3b8626-d3e9-4f37-98b5-66420063d91e' else item.parent
+    structure=property_structure(prop);pnames=names if item.guid==prop.guid else names[:-1]
+    return {'parentId':text(item.parent.guid).lower(),'parentPath':names[:-1],'fbId':text(prop.parent.guid).lower(),'propertyId':text(prop.guid).lower(),'propertyPath':pnames,'propertyName':text(prop.get_name()),'propertyType':'DINT','access':'PUBLIC','readOnly':structure['readOnly'],'accessorStructure':structure,'accessorVersion':sha(encode(structure)),'propertyContentHash':content_hash(text(prop.textual_declaration.text),''),'propertyMetadataSource':'native-property-accessor-tree-and-declaration'}
+
+def create_property(project,req,args,lifecycle):
+    aid=args['applicationId'];created_id=None;actions=[]
+    h=property_header(args['declaration'],True)
+    if not h or h['name'].lower()!=args['name'].lower() or args['access']!='PUBLIC' or args['propertyType']!='DINT' or not getter_declaration_matches(args['getDeclaration']):return failure('failed','INVALID_PROPERTY_DECLARATION',u'只允许同名PUBLIC DINT属性及限定Get局部声明'),project
+    try:
+        parent,names,_=method_fb(project,args['parentId'],aid);method_file_writable(req['projectPath']);method_write_permission(project,parent,True)
+    except Exception as e:return failure('unsupported','PROPERTY_PARENT_OR_PERMISSION',text(e)),project
+    before_snapshot=snapshot(project);parent_hash=content_hash(text(parent.textual_declaration.text),text(parent.textual_implementation.text))
+    if before_snapshot!=args['expectedSnapshot'] or parent_hash!=args['expectedParentHash']:return failure('conflict','PROPERTY_PARENT_VERSION_CHANGED',u'父FB或相关子对象状态已变化，未创建'),project
+    if file_hash(req['projectPath'])!=args['expectedDiskHash']:return failure('conflict','PROPERTY_DISK_CHANGED',u'磁盘版本已变化，未创建'),project
+    if any(text(c.get_name()).lower()==args['name'].lower() for c in native_children(parent)):return failure('conflict','PROPERTY_EXISTS',u'同父命名空间已存在同名对象，未覆盖'),project
+    before_ids=set(text(x.guid).lower() for x,n,a in walk(project));directory=os.path.dirname(req['resultPath'])
+    publish(os.path.join(directory,'before.json'),{'parentId':args['parentId'],'parentHash':parent_hash,'snapshot':before_snapshot,'expectedAbsent':True,'objectIds':sorted(before_ids)})
+    try:
+        prop=parent.create_property(args['name'],'DINT',scriptengine.ImplementationLanguages.st);created_id=text(prop.guid).lower();actions.append('native-property-factory-returned')
+        structure=property_structure(prop)
+        factory={'factory':'create_property','arguments':[args['name'],'DINT',text(scriptengine.ImplementationLanguages.st)],'objectId':created_id,'parentId':text(prop.parent.guid).lower(),'nativeTypeId':text(prop.type).lower(),'defaultDeclaration':text(prop.textual_declaration.text),'defaultAccessors':structure,'accessParameter':'No access factory argument; explicit PUBLIC native declaration'}
+        publish(os.path.join(directory,'factory.json'),factory)
+        h=property_header(factory['defaultDeclaration'])
+        if created_id in before_ids or factory['parentId']!=args['parentId'] or not h or h['name'].lower()!=args['name'].lower() or text(prop.get_name())!=args['name']:raise ValueError('Native Property identity/header differs')
+        method_write_permission(project,prop,True)
+        children=list(native_children(prop));getters=[x for x in children if text(x.get_name())=='Get'];setters=[x for x in children if text(x.get_name())=='Set']
+        if len(getters)!=1 or len(setters)>1 or len(children)!=len(getters)+len(setters):raise ValueError('Unconfirmed factory accessors')
+        defaults=[]
+        for child in children:
+            row=next(r for r in structure['accessors'] if r['objectId']==text(child.guid).lower())
+            if row['objectId'] in before_ids or row['parentId']!=created_id or row['nativeTypeId']!='792f2eb6-721e-4e64-ba20-bc98351056db' or not row['hasDeclaration'] or not row['hasImplementation'] or row['childIds'] or not method_is_st(child):raise ValueError('Unconfirmed fresh accessor identity/language')
+            raw={'identity':row,'declaration':text(child.textual_declaration.text),'implementation':text(child.textual_implementation.text)};defaults.append(raw)
+            if normalize(raw['declaration'])!='VAR\nEND_VAR\n' or raw['implementation']!='':raise ValueError('Factory accessor is not verified default empty text; never remove user code')
+        cleanup={'scope':'Only this request newly-created empty default Set','defaults':defaults,'removedSetId':None,'before':structure}
+        publish(os.path.join(directory,'default-accessors.json'),cleanup)
+        if setters:
+            setter=setters[0];method_write_permission(project,setter);cleanup['removedSetId']=text(setter.guid).lower();setter.remove();actions.append('removed-only-new-empty-default-Set')
+        after_structure=property_structure(prop);cleanup['after']=after_structure
+        if not after_structure['readOnly'] or after_structure['accessors'][0]['objectId']!=text(getters[0].guid).lower() or cleanup['removedSetId'] in [text(x.guid).lower() for x,n,a in walk(project)]:raise ValueError('Default Set removal not confirmed')
+        publish(os.path.join(directory,'accessor-cleanup.json'),cleanup)
+        getter=getters[0];method_write_permission(project,getter)
+        prop.textual_declaration.replace(normalize(args['declaration']));actions.append('property-declaration-replaced')
+        getter.textual_declaration.replace(normalize(args['getDeclaration']));actions.append('get-declaration-replaced')
+        getter.textual_implementation.replace(normalize(args['getImplementation']));actions.append('get-implementation-replaced')
+        observed=read_object(*locate(project,aid,created_id));get_read=read_object(*locate(project,aid,text(getter.guid).lower()))
+        if observed['contentHash']!=content_hash(args['declaration'],'') or get_read['contentHash']!=content_hash(args['getDeclaration'],args['getImplementation']):raise ValueError('Property/Get readback differs')
+        project=lifecycle_save_reopen(lifecycle);reopened=read_object(*locate(project,aid,created_id));get_reopened=read_object(*locate(project,aid,get_read['objectId']))
+        if reopened!=observed or get_reopened!=get_read:raise ValueError('Property/Get identity/source/accessor structure differs after reopen')
+        parent2=method_fb(project,args['parentId'],aid)[0]
+        if content_hash(text(parent2.textual_declaration.text),text(parent2.textual_implementation.text))!=parent_hash:raise ValueError('Parent FB text changed')
+        return success(u'原生PUBLIC DINT只读Property/Get已创建、保存重开并核对无Set结构',dict(reopened,name=args['name'],created=True,getter=get_reopened,beforeParentHash=parent_hash,beforeSnapshot=before_snapshot,snapshot=snapshot(project),checkpoint=req['checkpointPath'],persistedToWorkingCopy=True,reopened=True,creationMethod='create_property(name, DINT, ImplementationLanguages.st); remove only new empty default Set',factoryEvidence=factory,accessorCleanup=cleanup,actions=actions)),project
+    except Exception as e:
+        return failure('unknown','PARTIAL_PROPERTY_CREATE',text(e),{'createdObjectId':created_id,'actions':actions,'checkpoint':req['checkpointPath'],'exception':exception_evidence(e),'recovery':{'status':'not-attempted','reason':'Preserve partial structure; no rollback, generic deletion or retry'}}),project
+
 def snapshot(project):
     # 所有可读取文本对象，含其他 Application、GVL/DUT；文件哈希额外绑定非文本配置。
     rows = []
@@ -278,6 +378,10 @@ def snapshot(project):
         # 编译器生成的非持久辅助节点不进入文本快照；完整工程另由 diskHash 绑定。
         if d is not None or i is not None:
             rows.append([text(item.guid).lower(), names, app_id, d, i])
+        # Text alone cannot establish absence of Set. Only affects projects that
+        # actually contain native Properties; old no-Property hashes stay exact.
+        if text(item.type).lower()=='5a3b8626-d3e9-4f37-98b5-66420063d91e':
+            rows.append([text(item.guid).lower()+':accessors-v1',names,app_id,property_structure(item)])
     rows.sort(key=lambda r: r[0])
     return sha(encode(rows))
 
@@ -406,7 +510,10 @@ def search_inventory(project,args):
         try:
             native = text(item.type).lower()
             row["nativeTypeId"]=native
-            if native=='f8a58466-d7f6-439f-bbb8-d4600e41d099':
+            if native in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db'):
+                if not editable(project,item,aid):
+                    gap=dict(row,stage='unsupported-property',reason='Only native PUBLIC DINT Get-only Property and its ST Get under user FB are supported; existing Set is never removed');skipped.append(gap);unsupported_children.append(gap);continue
+            elif native=='f8a58466-d7f6-439f-bbb8-d4600e41d099':
                 if not editable(project,item,aid):
                     gap=dict(row,stage='unsupported-method',reason='Only native PUBLIC ST void/DINT Methods under user ST FB are supported');skipped.append(gap);unsupported_children.append(gap);continue
             elif native not in ("6f9dac99-8de1-4efc-8465-68ac443b7d08","ffbfa93a-b94d-45fc-a329-229860183b1d","2db5746d-d284-4425-9f7f-2663a34b0ebc"):
@@ -416,7 +523,7 @@ def search_inventory(project,args):
                         if function_block_name(text(item.parent.textual_declaration.text)):unsupported_children.append(gap)
                     except Exception:pass
                 continue
-            if native not in ("6f9dac99-8de1-4efc-8465-68ac443b7d08","f8a58466-d7f6-439f-bbb8-d4600e41d099") and (aid is None or row["objectId"] not in direct):
+            if native not in ("6f9dac99-8de1-4efc-8465-68ac443b7d08","f8a58466-d7f6-439f-bbb8-d4600e41d099",'5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db') and (aid is None or row["objectId"] not in direct):
                 skipped.append(dict(row,stage="unsupported-location",reason="Declaration object is not an exact Application root child"));continue
             eligible += 1
             if object_kind(item) is None:
@@ -431,6 +538,8 @@ def search_inventory(project,args):
       "skippedObjects":skipped,"readFailures":failed,"enumerationFailures":errors}}
     if unsupported_children:result['scope']['unsupportedChildren']=unsupported_children
     if any(text(x.type).lower()=='f8a58466-d7f6-439f-bbb8-d4600e41d099' for x,n,a in rows):result['scope']['methodCoverageVersion']='fb-methods-v1'
+    if any(text(x.type).lower() in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db') for x,n,a in rows):
+        result['scope']['propertyCoverageVersion']='fb-properties-v1';result['scope']['description']+='; native PUBLIC DINT Get-only Property/Get with accessor structure evidence'
     return result
 
 def task_inventory(project,args):
@@ -967,7 +1076,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "create_method", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "create_method", "create_property", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -977,7 +1086,7 @@ def dispatch(req):
                 lifecycle_reject(lifecycle,failure("conflict","READ_DISK_CHANGED",u"正式读取前工程文件已变化，未打开或保存",{"beforeDiskHash":before_hash}))
         if projects.primary is not None:
             lifecycle_reject(lifecycle,failure("conflict", "UNOWNED_PROJECT", u"新启动实例已有工程；拒绝接管"))
-        if command in ("change", "create", "create_declaration", "create_method") or req.get("fileGuard") and command=="save":
+        if command in ("change", "create", "create_declaration", "create_method", "create_property") or req.get("fileGuard") and command=="save":
             shutil.copyfile(req["projectPath"], req["checkpointPath"])
         project = lifecycle_open(lifecycle,req["projectPath"])
         if direct_evidence and file_hash(req["projectPath"])!=direct_evidence["beforeDiskHash"]:
@@ -1013,6 +1122,7 @@ def dispatch(req):
                         if object_kind(item)=='method':
                             full=read_object(item,names,aid)
                             for key in ('parentId','parentPath','access','methodReturnType','methodMetadataSource'):meta[key]=full[key]
+                        if object_kind(item) in ('property','property_get'):meta.update(property_metadata(item,names))
                         objects.append(meta)
                     elif aid==app_id and unsupported_fb_child(item):unsupported_children.append({'objectId':text(item.guid).lower(),'path':names,'nativeTypeId':text(item.type).lower(),'stage':'unsupported-method','reason':'Not a supported PUBLIC ST void/DINT Method under user FB'})
                 offset, limit = args["offset"], args["limit"]
@@ -1027,12 +1137,24 @@ def dispatch(req):
                 response, project = create_declaration(project,req,args,lifecycle)
             elif command == "create_method":
                 response, project = create_method(project,req,args,lifecycle)
+            elif command == "create_property":
+                response, project = create_property(project,req,args,lifecycle)
             elif command == "change":
                 item, names, aid = locate(project, app_id, args["objectId"])
                 before = read_object(item, names, aid)
                 kind = before["objectType"]
                 invalid_type = (args.get("objectType") is not None and args["objectType"]!=kind) or (kind in ("gvl","structure","enum","array") and
                     (args.get("implementation","")!="" or not declaration_matches(kind,text(item.get_name()),args["declaration"],True))) or (before["hasImplementation"] and "implementation" not in args)
+                if kind=='property':invalid_type=True  # Property declaration/type/access/structure is never a generic text write target.
+                if kind=='property_get':
+                    invalid_type=invalid_type or args.get('objectType')!='property_get' or args.get('parentId')!=before['propertyId'] or args.get('fbId')!=before['fbId'] or not getter_declaration_matches(args['declaration'])
+                    if not invalid_type:
+                        if args.get('expectedPropertyHash')!=before['propertyContentHash'] or args.get('expectedAccessorVersion')!=before['accessorVersion'] or args.get('expectedSnapshot')!=snapshot(project) or args.get('expectedDiskHash')!=file_hash(req['projectPath']):
+                            lifecycle_reject(lifecycle,failure('conflict','PROPERTY_VERSION_CHANGED',u'Property/Get、访问器结构、相关子对象或磁盘版本已变化，未修改'))
+                        try:
+                            owner,prop,getter=property_owner(project,item,aid);method_file_writable(req['projectPath'])
+                            for obj in (owner,prop,getter):method_write_permission(project,obj)
+                        except Exception as e:lifecycle_reject(lifecycle,failure('unsupported','PROPERTY_PERMISSION',text(e)))
                 if kind=='method':
                     invalid_type=invalid_type or args.get('objectType')!='method' or args.get('parentId')!=before['parentId'] or not method_matches(text(item.get_name()),args['declaration'],before['methodReturnType'],before['access'])
                     if not invalid_type:
@@ -1055,6 +1177,8 @@ def dispatch(req):
                         reopened = read_object(*locate(project, app_id, args["objectId"]))
                         if reopened["objectType"]!=kind or reopened["contentHash"] != observed["contentHash"] or reopened["path"]!=before["path"]:
                             raise ValueError("Disk reopen does not match write readback")
+                        if kind=='property_get' and any(reopened[k]!=before[k] for k in ('parentId','fbId','propertyId','propertyPath','propertyContentHash','accessorVersion','accessorStructure','readOnly','access','propertyType')):
+                            raise ValueError('Property/Get owner, declaration or readonly accessor structure changed')
                         response = success(u"修改并读回一致，工作副本已持久化并重开核对", dict(reopened,
                             snapshot=snapshot(project), checkpoint=req["checkpointPath"], persistedToWorkingCopy=True, reopened=True))
                     except Exception as e:
@@ -1062,7 +1186,7 @@ def dispatch(req):
                         recovery = {"status": "unknown"}
                         detail = exception_evidence(e)
                         try:
-                            if kind=='method' or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
+                            if kind in ('method','property_get') or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")
                             project = lifecycle["project"]
                             item, names, aid = locate(project, app_id, args["objectId"])

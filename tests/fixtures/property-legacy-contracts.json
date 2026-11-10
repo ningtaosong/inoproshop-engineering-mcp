@@ -1,0 +1,126 @@
+{
+  "commit": "cb3b54f9dfaa06a3e4ef585735ef3aac61208f92",
+  "version": "0.19.0",
+  "tools": [
+    {
+      "name": "environment_inspect",
+      "inputHash": "71fc596a20f27da3dec80050e5d1f553eba34aea24c2853b853488a811e6b892",
+      "outputHash": "edf1740220a9866cd186ae571a53415113949dfd548b7c4b0a19feae6a7992d6"
+    },
+    {
+      "name": "session_status",
+      "inputHash": "71fc596a20f27da3dec80050e5d1f553eba34aea24c2853b853488a811e6b892",
+      "outputHash": "f696d5cbb735d6af53c4e636180099fcf40f102fafef4a39aa922c4c4b8d4f74"
+    },
+    {
+      "name": "project_list",
+      "inputHash": "71fc596a20f27da3dec80050e5d1f553eba34aea24c2853b853488a811e6b892",
+      "outputHash": "af32afc294b46331aa73b47408e427d4122ae54ad4b75113a9a0114a10585a67"
+    },
+    {
+      "name": "project_create",
+      "inputHash": "3eedae166ce83f4e0d1decec5d275de72b1ce6ade6d33a4f1ed2a18ee7984a1f",
+      "outputHash": "c598fd19bde4b7c868d7a9945d7796ccfa23dba63d1b6f31d5d5a92eb9cb78b0"
+    },
+    {
+      "name": "project_open",
+      "inputHash": "e5587a2693e8caea5bc92049bd9644607728fa08cd3d3ff22928cdf785279f98",
+      "outputHash": "87a9bbfb2c5fbd0fd291cee6f0c49f00ced7bc6feb870ab14f90730ce261ee02"
+    },
+    {
+      "name": "project_open_copy",
+      "inputHash": "02979263384f71ca589faba1ae938517a3f482adf0b198aa89297b7974c905bb",
+      "outputHash": "7cf6417a57c3b03c037947774cec67733bbe0eded2d71c68bdcd8723c5bfb0df"
+    },
+    {
+      "name": "project_activate",
+      "inputHash": "54432bc1eb79c841fcfe756017799b379528db8499955c5c4307b31f31f36f8b",
+      "outputHash": "2c6ae66cef230902123559ad51378ea5bb6dc8c3e3fb2ea84ddba7bd6e60bed9"
+    },
+    {
+      "name": "object_list",
+      "inputHash": "642b587375141a8130e880c0bce3213024774f5d02cb05c6d75cda3263fb9f21",
+      "outputHash": "a2dc49af774f44a94b07a5d64b31585a0ff2b5050e591122269551ea2efcb9b0"
+    },
+    {
+      "name": "object_read",
+      "inputHash": "b6697275b79f3003b7166e678cd544de9c26062cd5fc649cd8173cb1315312bd",
+      "outputHash": "1205464063aa212e9e7d3f1c81843f97fcd1fa92c33358230a889b268b28bec3"
+    },
+    {
+      "name": "project_search",
+      "inputHash": "a079eee1e18a7213fb69769674a026e4b5d640734971e51f93282bbd35159647",
+      "outputHash": "5c8c47af27d647a8c168839a76601e8deb3f7883617fc813072ad1f72031a54f"
+    },
+    {
+      "name": "variable_inspect",
+      "inputHash": "d4352e3852e9e413bd66fde1b26de7ba6ed29ce9532e0de881766334db173741",
+      "outputHash": "b800152282a5d842d7c91e8625c74593110826d45883f868e13ecf9e625a619b"
+    },
+    {
+      "name": "library_inspect",
+      "inputHash": "1f9d8e2b692dd2bf0551790b288e7e906a91897c95227c3f8bce31f4e070a484",
+      "outputHash": "c47621ad84b93bae3cc2d8028736ca715e01d7cc5c78aa73c9608986e62a4b27"
+    },
+    {
+      "name": "task_inspect",
+      "inputHash": "20178ea84151361c973404524a21f29c552914d2b6751dcf60e22067f2fb7e40",
+      "outputHash": "850c4520039c9909e50e773030f7f54da4d41b36c04995aa62d72ee9b609feca"
+    },
+    {
+      "name": "task_config_update",
+      "inputHash": "f3540878a4bfc2058308a947981eb9ed6ba5d6934c9e66f4d0faed132f88d1d6",
+      "outputHash": "bbca59b91e08cc254ff2c7a617f3e2ff420b5081d6580b790dcf76265892d1d4"
+    },
+    {
+      "name": "project_compare",
+      "inputHash": "9dfd317f0d19efd8b19870a6377c22ae45012305448b1515eeefdeccb8acb2d2",
+      "outputHash": "ebf6b0cefb757ff2403d1778a20871ccbd3f62828ca6e9354bb802011a32b16d"
+    },
+    {
+      "name": "project_structure",
+      "inputHash": "f05e8fe670ebc5a33fec6e0c076a444dbe93f495acb76f3e64f14de4e1699296",
+      "outputHash": "e59c3a24df001674e2bad4e66e438ed95ebc3e16c7c0d99f84dc4f7ff6991d50"
+    },
+    {
+      "name": "device_inspect",
+      "inputHash": "b08ac3830e7cd9afe4e1f6edb6c7a526a76bb1a2414e30bfd03fc70ac99fa29d",
+      "outputHash": "f38d7926fceaf09e4d0d19bfd251dbdb176c02534028f0347680bb6ccd945846"
+    },
+    {
+      "name": "pou_create",
+      "inputHash": "a41f0d2d5614662941af74e2352d1844cb57b0f87f0d379f1841cef6f14cd18e",
+      "outputHash": "4a22393b916a0c9a22b2972f8b32baf32beac8431243a0c70fdb9e74e896c280"
+    },
+    {
+      "name": "declaration_create",
+      "inputHash": "7a4db180f814bf933735ea114cd2b54e5fa440b172e3a4bfa9a7cf81f7ddcf1a",
+      "outputHash": "4a22393b916a0c9a22b2972f8b32baf32beac8431243a0c70fdb9e74e896c280"
+    },
+    {
+      "name": "method_create",
+      "inputHash": "da331578b89996a080b140e86e298ccb8f69879bcea259ca045db425a14d2bae",
+      "outputHash": "03a8e88c0e1472dffaa9f33b5fbf3a8d141289b9cc9a065055c05f390c8eeb03"
+    },
+    {
+      "name": "code_apply_change",
+      "inputHash": "76b266636ce573773a286bd3fc657616197f44f04535ca86f6db28cf289f83b7",
+      "outputHash": "44d8641b94aad8909834bea019d861c1cffeee1849ceaecf772f23437712c190"
+    },
+    {
+      "name": "project_build",
+      "inputHash": "f7be1fcfc83f1eb52d12917118a79a3d0eccf6fda712cb3d089df47952a6feda",
+      "outputHash": "c964bab8083edb32126357c4a8fa887ae408a8518ade349de4e58531d0e6bfcc"
+    },
+    {
+      "name": "project_save",
+      "inputHash": "d2a19c933421db130d69fe4000c7bd23d5b5044655866f09b6daf23bbaf793da",
+      "outputHash": "7f03c267f5f12fc8e1b29f3b78b79a8c7001508d2f4b932f359784a04a34e9b0"
+    },
+    {
+      "name": "operation_status",
+      "inputHash": "69e80cc00308280a4c95d0bcfa8db0ed74ce08e77e09fd8ace13f89b23c1d042",
+      "outputHash": "0548411f95850c27363ca45a9a70358ed87d2a5276132a23f01b7314582a6cac"
+    }
+  ]
+}

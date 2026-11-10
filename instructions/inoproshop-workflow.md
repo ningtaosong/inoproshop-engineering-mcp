@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.19.0 候选版的二十四项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.20.0 候选版的二十五项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -38,11 +38,13 @@
   unknown、冲突、依赖缺失等仍按下面的停止规则，不能为了减少追问绕过冻结。
 - 日常答复遵守下面的默认答复要求。需要澄清时只问影响业务结果的最少信息，不让用户凭内部编号才能继续使用。
 
-## 功能块原生 Method
+## 功能块原生 Method 与只读 Property/Get
 
 - method_create仅用于精确Application内用户ST FUNCTION_BLOCK的原生子方法；先按真实GUID用object_read读取父FB全文/contentHash；snapshot、diskHash取当前session_status会话或最新成功写响应，并核对当前文件，不假定object_read含snapshot，不凭同名猜父对象。显式access=PUBLIC、returnType=void或DINT，提交完整同名METHOD PUBLIC声明和实现；expectedParentHash、expectedSnapshot、expectedDiskHash均使用当前版本。同父重名拒绝，不覆盖；不同FB同名方法分别定位。
-- object_list/object_read返回method及parentId/parentPath。修改用code_apply_change，显式objectType=method、parentId、expectedHash和全文，保留名称、返回类型、PUBLIC及父关系；检查点、磁盘校验、去重和写后保存重开沿用。无独立访问/返回getter，不假称已读取；以实际工厂、原生Method类型/父对象及声明为依据。不开放Property/Get/Set、接口、继承、重载、改名或删除。
+- object_list/object_read返回method及parentId/parentPath。修改用code_apply_change，显式objectType=method、parentId、expectedHash和全文，保留名称、返回类型、PUBLIC及父关系；检查点、磁盘校验、去重和写后保存重开沿用。无独立访问/返回getter，不假称已读取；以实际工厂、原生Method类型/父对象及声明为依据。不开放Set、接口、继承、重载、改名或通用删除。
 - 从FB实例实际调用方法并接入被任务调用的程序后再编译；父FB文本未变不能代替子方法核对。方法变化使旧编译失效，最终读回方法、父FB及实际调用方。只读变量查询将Method返回声明单列，检索仍是源码词元；未支持子对象或声明缺口明确报告。默认不采集基线或比较；明确要求比较时按完整父路径和原生父身份核对方法，不按短名配对。源码调用和编译不是运行观测。
+- 只读属性仅支持同范围普通ST FB下的原生PUBLIC DINT Property及ST Get。先读取父FB全文/哈希、当前session快照/磁盘版本，property_create提交完整PROPERTY PUBLIC同名声明、getDeclaration(限定VAR局部声明)和getImplementation。工厂默认Get/Set；服务只清理本请求刚创建且身份/默认空内容已确认的Set，Agent不得自行删除已有访问器；空Set不等于只读，不将已有可写属性自动转换。读取返回Property与getter，各自GUID、parentId及fbId、propertyId、propertyContentHash、accessorVersion/结构须明确；不能只凭Get名称定位。访问/类型无独立getter时，说明依据为原生工厂、结构和声明。
+- 修改仅Get源码：code_apply_change显式objectType=property_get、objectId=Get、parentId=Property、fbId、expectedHash=Get全文哈希、expectedPropertyHash、expectedAccessorVersion及当前expectedSnapshot/expectedDiskHash，并提供Get声明/实现。保持属性名、PUBLIC、DINT、父链和无Set结构，不改Property声明；Get内部给属性名赋返回值是正常原生语法，不等于调用方可写属性。父FB或Property声明未变不能代替Get/结构核对，变化使旧编译失效。保存重开后读取Property和Get、核对仅一个Get且无Set；再读实际调用方，源码状态不说成运行值。变量查询把属性返回声明与Get局部变量分开；未支持类型/访问器及旧覆盖升级如实报告，正常升级冲突重新首查，损坏证据停止。默认仍不比较。
 
 ## 工程检索与任务只读查询
 
