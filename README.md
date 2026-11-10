@@ -6,11 +6,11 @@
 
 S1 新增 [已有周期任务的周期与优先级编辑](docs/task-config.md)：`task_config_update`，只改明确授权的整数毫秒周期和/或优先级，原 `task_inspect` 保持只读。原二十二项工具输入兼容，登记仍为 v2。客户端须加载候选构建及 Schema 才能使用；固定入口不会随分支开发自动更新。下文 0.17.0 及旧版本验收保留原归属。
 
-S2a增加[功能块原生ST Method](docs/methods.md)：PUBLIC、void/DINT，创建用method_create，读取/修改复用现有工具；不开放Property/Get/Set、继承、接口、重载、改名或删除。父FB不变不能替代方法核对；没有新增默认比较或运行验证。独立MCP及一次DSH CLI工程闭环通过，263项新跑通过，另复用同版未改15项隔离结果，合计覆盖278项（不是一次完整278项全绿运行）；CLI流程与简短展示未全部遵循，详见方法说明。
+S2a阶段实现[功能块原生ST Method](docs/methods.md)：PUBLIC、void/DINT，创建用method_create，读取/修改复用现有工具；该阶段不开放Property/Get/Set、继承、接口、重载、改名或删除。父FB不变不能替代方法核对；没有新增默认比较或运行验证。独立MCP及一次DSH CLI工程闭环通过，263项新跑通过，另复用同版未改15项隔离结果，合计覆盖278项（不是一次完整278项全绿运行）；CLI流程与简短展示未全部遵循，详见方法说明。
 
 S2b只读Get阶段新增[原生Property/Get](docs/properties.md)：用户普通ST FB下的PUBLIC DINT属性，只有Get；创建用property_create，读取及限定Get源码修改复用已有工具。工厂默认Set仅能在本请求刚创建且身份和空内容已核对后清理，不开放已有访问器删除或Set。原24项调用兼容扩展，旧客户端需正常加载新Schema。分阶段验证与限制见属性说明。
 
-S2b只读Get阶段新增[原生Property/Get](docs/properties.md)：用户普通ST FB下的PUBLIC DINT属性，只有Get；创建用property_create，读取及限定Get源码修改复用已有工具。工厂默认Set仅能在本请求刚创建且身份和空内容已核对后清理，不开放已有访问器删除或Set。原24项调用兼容扩展，旧客户端需正常加载新Schema。分阶段验证与限制见属性说明。
+S2b分支验证：构建与类型检查通过，最终非隔离278/278另复用本轮未变隔离15项，首败保留；真实MCP正向及独立只读负例、一次DSH CLI工程闭环通过。流程效率、辅助失败和路径展示勘误单列，不宣称全部指令遵循或运行验证通过，详见[验收归属](docs/properties.md#分支验收2026-11-10)。
 
 ## 从这里开始
 
