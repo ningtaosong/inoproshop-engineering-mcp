@@ -18,7 +18,7 @@ main提供0.21.0候选、25项工具。从main获取并部署到独立固定入�
 
 ## 获取与构建
 
-仓库已公开，当前 main 提供 0.21.0 候选版、二十五项工具。租约修复未新增工具；0.20.0新增property_create时的原24项调用兼容扩展继续保留，相关Schema包含Property/Get/Set类型、父关系、结构证据及修改参数；task_inspect仍只读，保留任务版本证据；登记 v2 的旧二进制兼容限制见[工程与副本](#工程与副本)及[新建登记兼容说明](project-create.md#合并复核2026-11-09)。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，当前 main 提供 0.21.0 候选版、二十五项工具。租约修复未新增工具；0.20.0新增property_create并兼容扩展原24项调用，0.21.0进一步扩展Property/Get/Set类型、父关系、结构证据及修改参数；task_inspect仍只读，保留任务版本证据；登记 v2 的旧二进制兼容限制见[工程与副本](#工程与副本)及[新建登记兼容说明](project-create.md#合并复核2026-11-09)。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
 git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
@@ -41,7 +41,7 @@ InoProShop、DSH、Node和厂商设备包/库自行安装，仓库不捆绑这�
 2. 参考 [配置模板](../config/dsh.example.patch.yml)，将条目加入已有顶层补丁数组。更改Node、仓库、IDE和Profile路径；保留客户端config层的 `maxInstructionBytes: 65536`，与serverName、transport同级，不放进env。不覆盖模型凭据或其他插件条目，不重复添加同名MCP。
 3. 新安装可使用模板的独立数据目录；已有部署升级沿用原目录，保留登记、操作、检查点和隔离，不通过换目录或复制故障工程绕过unknown。
 4. 空闲且没有活动任务/用户输入时正常重载MCP或重启DSH。新工具/Schema需要重载，普通新对话与工程切换不需要反复重载。
-5. 新对话先让Agent查询环境、会话和工具集合。加载当前候选应为0.20.0、二十五工具，实际收到property_create的PUBLIC/DINT、父FB与Get源码参数，以及code_apply_change的property_get、FB/Property身份及结构/内容/磁盘版本参数；原method_create及任务编辑参数保留，以及project_create的新路径参数及project_open的projectPath参数、project_compare的current-project来源及当前指令；variable_inspect保留includeInitializerMembers及maxInitializerMembers。显式提取后的memberExtraction.parserVersion为named-initializer-members-v1；未启用时仍declaration-variables-v2。project_search的matchMode=literal/identifier及st-identifier-v2不变，identifier必须显式指定不含name的源码areas。若仍为旧Schema，停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
+5. 新对话先让Agent查询环境、会话和工具集合。加载当前候选应为0.21.0、二十五工具，实际收到property_create的PUBLIC/DINT、父FB、Get源码、可选propertyMode和Set源码参数；旧调用仍默认只读，read-write必须显式提供Set源码。code_apply_change应包含property_get/property_set、FB/Property身份及结构/内容/磁盘版本参数；原method_create及任务编辑参数保留，以及project_create的新路径参数及project_open的projectPath参数、project_compare的current-project来源及当前指令；variable_inspect保留includeInitializerMembers及maxInitializerMembers。显式提取后的memberExtraction.parserVersion为named-initializer-members-v1；未启用时仍declaration-variables-v2。project_search的matchMode=literal/identifier及st-identifier-v2不变，identifier必须显式指定不含name的源码areas。若仍为旧Schema，停止需要新能力的任务，待空闲正常加载。初始化返回instructions不单独证明客户端收到或模型正确遵循，独立CLI不推定为桌面同会话或界面交互通过。
 
 DSH通过stdio启动Node。不要在同一数据目录被DSH占用时另行运行 `npm start` 或第二个客户端；命令行直接启动MCP只会等待协议输入。
 
