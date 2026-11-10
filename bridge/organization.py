@@ -3,6 +3,22 @@
 FOLDER_NATIVE='738bea1e-99bb-4f04-90bb-a7a567e74e3a'
 ORGANIZATION_SCHEME='application-organization-v1'
 
+def attach_organization_versions(project,data,native,args):
+    # Preserve the existing partial native-tree contract. A failed extra version
+    # read is its own gap, never evidence that an Application/object is absent.
+    versions,failures={},[]
+    for index in sorted(native):
+        row=data['nodes'][index]
+        if row['kind']!='application':continue
+        aid=row['objectId']
+        try:
+            if aid is None:raise ValueError('Native Application GUID unavailable')
+            versions[aid]=organization_inventory(project,aid,args['projectId'])['version']
+        except Exception as e:failures.append({'applicationId':aid,'path':row['path'],'stage':'organization-version-read','reason':text(e)})
+    data['organizationVersions']=versions;data['organizationScheme']=ORGANIZATION_SCHEME
+    if failures:data['organizationFailures']=failures
+    return data
+
 def organization_inventory(project,aid,project_id):
     app=application(project,aid);prefix=next(n for x,n,a in walk(project) if text(x.guid).lower()==aid)
     rows=[];seen=set()

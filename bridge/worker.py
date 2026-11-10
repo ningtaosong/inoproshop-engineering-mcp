@@ -1117,12 +1117,8 @@ def dispatch(req):
         if os.path.normcase(os.path.abspath(text(project.path))) != os.path.normcase(os.path.abspath(req["projectPath"])):
             lifecycle_reject(lifecycle,failure("conflict", "PROJECT_PATH_MISMATCH", u"IDE 实际工程路径不匹配"))
         if command == "structure":
-            response = success(u"已只读枚举原生工程结构",native_structure(project,args)[0])
-            versions={}
-            for app,n,a in walk(project):
-                if getattr(app,'is_application',False):versions[text(app.guid).lower()]=organization_inventory(project,text(app.guid).lower(),args['projectId'])['version']
-            response['data']['organizationVersions']=versions
-            response['data']['organizationScheme']=ORGANIZATION_SCHEME
+            tree,native=native_structure(project,args)
+            response = success(u"已只读枚举原生工程结构",attach_organization_versions(project,tree,native,args))
         elif command == "device":
             response = device_inventory(project,args)
         elif command == "inspect":

@@ -9,7 +9,7 @@
 
 ## 文件夹与原生移动
 
-用户要求组织对象时，用 project_structure 核对实际 GUID、父链、同级名称及 organizationVersions[applicationId]，并取得当前 diskHash；结构版本和分页 version 不是一回事。folder_create 仅建 Application 直接根文件夹。object_move 仅在同一 Application 根与直接原生文件夹之间移动已验证 ST PROGRAM/FUNCTION/FUNCTION_BLOCK；支持带已支持 Method、PUBLIC DINT Property/Get 或 Get/Set 的 FB 整体移动，未知子对象拒绝。GVL、DUT、任务、系统节点及文件夹整体不移动，不嵌套建目录、不复制删除、改名或跨应用。按真实身份传源父及目标父，结构/磁盘变化或重名时停止；同位置 noOp 不移动或保存。移动后用返回的实际路径重新定位，旧分页或位置不能沿用，核对 GUID、完整源码及子结构保持，再真实编译、保存重开及目标读回。结构写入保护不是事务或自动回滚；不确定时保留现场。比较仍只在用户明确要求时执行，按路径呈现删除/新增不等于复制对象；成功移动以 GUID 和父链为证。
+用户要求组织对象时，用 project_structure 核对实际 GUID、父链、同级名称及 organizationVersions[applicationId]，并取得当前 diskHash；结构版本和分页 version 不是一回事；对应版本缺失或organizationFailures有相关缺口时，停止结构写入，不猜测对象不存在。folder_create 仅建 Application 直接根文件夹。object_move 仅在同一 Application 根与直接原生文件夹之间移动已验证 ST PROGRAM/FUNCTION/FUNCTION_BLOCK；支持带已支持 Method、PUBLIC DINT Property/Get 或 Get/Set 的 FB 整体移动，未知子对象拒绝。GVL、DUT、任务、系统节点及文件夹整体不移动，不嵌套建目录、不复制删除、改名或跨应用。按真实身份传源父及目标父，结构/磁盘变化或重名时停止；同位置 noOp 不移动或保存。移动后用返回的实际路径重新定位，旧分页或位置不能沿用，核对 GUID、完整源码及子结构保持，再真实编译、保存重开及目标读回。结构写入保护不是事务或自动回滚；不确定时保留现场。比较仍只在用户明确要求时执行，按路径呈现删除/新增不等于复制对象；成功移动以 GUID 和父链为证。
 
 ## 自然语言日常入口
 
