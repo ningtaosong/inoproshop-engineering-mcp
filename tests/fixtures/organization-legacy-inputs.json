@@ -1,0 +1,1381 @@
+{
+  "environment_inspect": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "session_status": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "project_list": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "project_create": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectPath": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      }
+    },
+    "required": [
+      "requestId",
+      "projectPath"
+    ],
+    "additionalProperties": false
+  },
+  "project_open": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectPath": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      }
+    },
+    "required": [
+      "requestId",
+      "projectPath"
+    ],
+    "additionalProperties": false
+  },
+  "project_open_copy": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "sourcePath": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      }
+    },
+    "required": [
+      "requestId",
+      "sourcePath"
+    ],
+    "additionalProperties": false
+  },
+  "project_activate": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId"
+    ],
+    "additionalProperties": false
+  },
+  "object_list": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "enum": [
+          "application",
+          "pool"
+        ]
+      },
+      "applicationId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "offset": {
+        "default": 0,
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "default": 50,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200
+      }
+    },
+    "required": [
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "offset",
+      "limit"
+    ],
+    "additionalProperties": false
+  },
+  "object_read": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "enum": [
+          "application",
+          "pool"
+        ]
+      },
+      "applicationId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "objectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      }
+    },
+    "required": [
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "objectId"
+    ],
+    "additionalProperties": false
+  },
+  "project_search": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "enum": [
+          "application",
+          "pool"
+        ]
+      },
+      "applicationId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "query": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "caseSensitive": {
+        "default": false,
+        "type": "boolean"
+      },
+      "matchMode": {
+        "default": "literal",
+        "type": "string",
+        "enum": [
+          "literal",
+          "identifier"
+        ]
+      },
+      "areas": {
+        "default": [
+          "name",
+          "declaration",
+          "implementation"
+        ],
+        "minItems": 1,
+        "maxItems": 3,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "name",
+            "declaration",
+            "implementation"
+          ]
+        }
+      },
+      "offset": {
+        "default": 0,
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "default": 50,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "maxResults": {
+        "default": 200,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "expectedVersion": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "required": [
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "query",
+      "caseSensitive",
+      "matchMode",
+      "areas",
+      "offset",
+      "limit",
+      "maxResults"
+    ],
+    "additionalProperties": false
+  },
+  "variable_inspect": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "objectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "caseSensitive": {
+        "default": false,
+        "type": "boolean"
+      },
+      "includeInitializerMembers": {
+        "type": "boolean"
+      },
+      "maxInitializerMembers": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 2000
+      },
+      "offset": {
+        "default": 0,
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "default": 30,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "maxObjects": {
+        "default": 200,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 2000
+      },
+      "maxEntries": {
+        "default": 2000,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10000
+      },
+      "expectedVersion": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "sourceRead": {
+        "type": "object",
+        "properties": {
+          "objectId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "default": 512,
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 1024
+          }
+        },
+        "required": [
+          "objectId",
+          "offset",
+          "limit"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "caseSensitive",
+      "offset",
+      "limit",
+      "maxObjects",
+      "maxEntries"
+    ],
+    "additionalProperties": false
+  },
+  "library_inspect": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "offset": {
+        "default": 0,
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "default": 50,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "maxReferences": {
+        "default": 2000,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10000
+      },
+      "expectedVersion": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "fieldRead": {
+        "type": "object",
+        "properties": {
+          "referenceIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9999
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "id",
+              "name",
+              "namespace",
+              "placeholder_name",
+              "default_resolution",
+              "effective_resolution",
+              "resolution_info",
+              "resolver_guid"
+            ]
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "default": 1024,
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 2048
+          }
+        },
+        "required": [
+          "referenceIndex",
+          "field",
+          "offset",
+          "limit"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "offset",
+      "limit",
+      "maxReferences"
+    ],
+    "additionalProperties": false
+  },
+  "task_inspect": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      }
+    },
+    "required": [
+      "projectId",
+      "targetKind",
+      "applicationId"
+    ],
+    "additionalProperties": false
+  },
+  "task_config_update": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "taskId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "expectedTaskVersion": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expectedDiskHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "intervalMs": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 60000
+      },
+      "priority": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 31
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "taskId",
+      "expectedTaskVersion",
+      "expectedDiskHash"
+    ],
+    "additionalProperties": false
+  },
+  "project_compare": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "capture",
+          "compare"
+        ]
+      },
+      "origin": {
+        "default": "working-copy",
+        "type": "string",
+        "enum": [
+          "current-project",
+          "working-copy",
+          "registered-source"
+        ]
+      },
+      "baselineOperationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetOperationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "expectedVersion": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "offset": {
+        "default": 0,
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "default": 10,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50
+      },
+      "detail": {
+        "type": "object",
+        "properties": {
+          "itemIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "changeIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "before",
+              "after"
+            ]
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "default": 1024,
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 2048
+          }
+        },
+        "required": [
+          "itemIndex",
+          "changeIndex",
+          "side",
+          "offset",
+          "limit"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "mode",
+      "origin",
+      "offset",
+      "limit"
+    ],
+    "additionalProperties": false
+  },
+  "project_structure": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "offset": {
+        "default": 0,
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "default": 100,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "maxNodes": {
+        "default": 5000,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20000
+      },
+      "expectedVersion": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "required": [
+      "projectId",
+      "offset",
+      "limit",
+      "maxNodes"
+    ],
+    "additionalProperties": false
+  },
+  "device_inspect": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "deviceId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "offset": {
+        "default": 0,
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "default": 100,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "maxParameters": {
+        "default": 5000,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20000
+      },
+      "expectedVersion": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "valueRead": {
+        "type": "object",
+        "properties": {
+          "parameterIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 19999
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "default": 1024,
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 2048
+          }
+        },
+        "required": [
+          "parameterIndex",
+          "offset",
+          "limit"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "projectId",
+      "deviceId",
+      "offset",
+      "limit",
+      "maxParameters"
+    ],
+    "additionalProperties": false
+  },
+  "pou_create": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "parentId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "expectedSnapshot": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+      },
+      "pouType": {
+        "type": "string",
+        "enum": [
+          "function_block",
+          "program",
+          "function"
+        ]
+      },
+      "returnType": {
+        "type": "string",
+        "enum": [
+          "DINT",
+          "BOOL",
+          "INT",
+          "REAL",
+          "TIME"
+        ]
+      },
+      "declaration": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500000
+      },
+      "implementation": {
+        "type": "string",
+        "maxLength": 500000
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "parentId",
+      "expectedSnapshot",
+      "name",
+      "pouType",
+      "declaration",
+      "implementation"
+    ],
+    "additionalProperties": false
+  },
+  "declaration_create": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "parentId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "expectedSnapshot": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+      },
+      "objectType": {
+        "type": "string",
+        "enum": [
+          "gvl",
+          "structure",
+          "enum",
+          "array"
+        ]
+      },
+      "declaration": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500000
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "parentId",
+      "expectedSnapshot",
+      "name",
+      "objectType",
+      "declaration"
+    ],
+    "additionalProperties": false
+  },
+  "method_create": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "parentId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "expectedParentHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expectedSnapshot": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expectedDiskHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+      },
+      "access": {
+        "type": "string",
+        "const": "PUBLIC"
+      },
+      "returnType": {
+        "type": "string",
+        "enum": [
+          "void",
+          "DINT"
+        ]
+      },
+      "declaration": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500000
+      },
+      "implementation": {
+        "type": "string",
+        "maxLength": 500000
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "parentId",
+      "expectedParentHash",
+      "expectedSnapshot",
+      "expectedDiskHash",
+      "name",
+      "access",
+      "returnType",
+      "declaration",
+      "implementation"
+    ],
+    "additionalProperties": false
+  },
+  "property_create": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "const": "application"
+      },
+      "applicationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "parentId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "expectedParentHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expectedSnapshot": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expectedDiskHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+      },
+      "access": {
+        "type": "string",
+        "const": "PUBLIC"
+      },
+      "propertyType": {
+        "type": "string",
+        "const": "DINT"
+      },
+      "declaration": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500000
+      },
+      "getDeclaration": {
+        "type": "string",
+        "maxLength": 500000
+      },
+      "getImplementation": {
+        "type": "string",
+        "maxLength": 500000
+      },
+      "propertyMode": {
+        "type": "string",
+        "enum": [
+          "read-only",
+          "read-write"
+        ]
+      },
+      "setDeclaration": {
+        "type": "string",
+        "maxLength": 500000
+      },
+      "setImplementation": {
+        "type": "string",
+        "maxLength": 500000
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "parentId",
+      "expectedParentHash",
+      "expectedSnapshot",
+      "expectedDiskHash",
+      "name",
+      "access",
+      "propertyType",
+      "declaration",
+      "getDeclaration",
+      "getImplementation"
+    ],
+    "additionalProperties": false
+  },
+  "code_apply_change": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "enum": [
+          "application",
+          "pool"
+        ]
+      },
+      "applicationId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "objectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "expectedHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "declaration": {
+        "type": "string",
+        "maxLength": 500000
+      },
+      "implementation": {
+        "type": "string",
+        "maxLength": 500000
+      },
+      "objectType": {
+        "type": "string",
+        "enum": [
+          "gvl",
+          "structure",
+          "enum",
+          "array",
+          "method",
+          "property_get",
+          "property_set"
+        ]
+      },
+      "parentId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "fbId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "expectedPropertyHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expectedAccessorVersion": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expectedSnapshot": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "expectedDiskHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "objectId",
+      "expectedHash",
+      "declaration"
+    ],
+    "additionalProperties": false
+  },
+  "project_build": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "enum": [
+          "application",
+          "pool"
+        ]
+      },
+      "applicationId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId",
+      "targetKind",
+      "applicationId"
+    ],
+    "additionalProperties": false
+  },
+  "project_save": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "targetKind": {
+        "default": "application",
+        "type": "string",
+        "enum": [
+          "application",
+          "pool"
+        ]
+      },
+      "applicationId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "expectedSnapshot": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "required": [
+      "requestId",
+      "projectId",
+      "targetKind",
+      "applicationId",
+      "expectedSnapshot"
+    ],
+    "additionalProperties": false
+  },
+  "operation_status": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "operationId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+      },
+      "requestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "reconcile": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "reconcile"
+    ],
+    "additionalProperties": false
+  }
+}

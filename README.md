@@ -2,7 +2,7 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，直接修改指定离线工程，编译并保存重开；工程比较按需使用。
 
-**main为0.21.0候选版、25项MCP工具，契约1.0.0。S2b扩展原生PUBLIC DINT可读写Property/Get/Set，旧调用默认只读。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
+**本分支为0.22.0候选版、27项MCP工具，契约1.0.0；main当前仍为0.21.0/25工具。S3新增[原生文件夹与ST对象移动](docs/object-organize.md)，保留S2b原生PUBLIC DINT Property/Get/Set及旧调用默认只读。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
 
 0.20.1仅修复[租约进程实例身份](docs/startup-handoff.md#租约进程实例身份0201修复候选)：PID存活不等于原拥有者仍存活；新租约绑定系统进程创建标识和本次取得标识，身份不明时停止。工具Schema、登记v2及工程操作的unknown恢复规则不变。DSH日常入口已切到包含最终Linux补修的固定构建；实际握手与清理取证后重连的边界见[合并与部署记录](docs/startup-handoff.md#租约修复合并与日常部署2026-11-10)。未升级的旧入口仍保留原PID判断限制，Codex固定0.16不变。
 
@@ -27,7 +27,7 @@ S2b只读Get验收：构建与类型检查通过，278项新跑，另复用同�
 
 ## 直接编辑指定工程
 
-需要从新路径开始时，使用 [新建最小 AM610 工程](docs/project-create.md)的 `project_create`；仅固定预设，不复制既有用户工程。已有文件仍使用 `project_open`。当前部署应从main取得独立固定的0.21.0构建及工具定义，Git合并不会自动升级客户端入口；DSH本次加载以[Property/Get/Set合并记录](docs/properties.md#描述与规划整合及合并2026-11-10)的独立连接证据为准，Codex固定0.16入口须另行升级后才能使用新建、任务编辑、Method或Property/Get/Set工具。
+需要从新路径开始时，使用 [新建最小 AM610 工程](docs/project-create.md)的 `project_create`；仅固定预设，不复制既有用户工程。已有文件仍使用 `project_open`。日常0.21.0固定构建保留；使用S3须单独部署本分支独立固定0.22.0构建及27项工具定义，Git合并不会自动升级客户端入口；DSH本次加载以[Property/Get/Set合并记录](docs/properties.md#描述与规划整合及合并2026-11-10)的独立连接证据为准，Codex固定0.16入口须另行升级后才能使用新建、任务编辑、Method或Property/Get/Set工具。
 
 0.17.0本轮完整回归245/245通过；真实MCP11项成功工程操作另含1项正常拒绝，DSH CLI模型21项工程操作成功，两套各两次编译均0错误/0警告。原失败、参数拒绝和答复勘误保留；简洁展示未完全遵循，详见[分支验收记录](docs/project-create.md#分支验收收尾2026-11-09)。
 

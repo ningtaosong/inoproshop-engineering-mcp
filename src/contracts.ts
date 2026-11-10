@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.21.0';
+export const VERSION = '0.22.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -55,6 +55,10 @@ export const schemas = {
     'capture 仅采集当前工程；compare 必须引用两项真实 capture 操作'),
   project_structure:z.object({projectId:uuid,offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(200).default(100),
     maxNodes:z.number().int().min(1).max(20000).default(5000),expectedVersion:hash.optional()}).strict(),
+  folder_create:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,parentId:uuid,
+    name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/),expectedStructureVersion:hash,expectedDiskHash:hash}).strict(),
+  object_move:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,objectId:uuid,
+    sourceParentId:uuid,targetParentId:uuid,expectedStructureVersion:hash,expectedDiskHash:hash}).strict(),
   device_inspect:z.object({projectId:uuid,deviceId:uuid,offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(200).default(100),
     maxParameters:z.number().int().min(1).max(20000).default(5000),expectedVersion:hash.optional(),
     valueRead:z.object({parameterIndex:z.number().int().min(0).max(19999),offset:z.number().int().min(0).default(0),
@@ -135,7 +139,7 @@ const nativePath=z.array(z.string().nullable());
 const fieldIssue=z.object({field:z.string(),reason:z.string()});
 const nativeIssue=fieldIssue.extend({path:nativePath});
 export const nativeNodeSchema=z.object({index:z.number().int().min(0),parentIndex:z.number().int().min(0).nullable(),objectId:uuid.nullable(),parentId:uuid.nullable(),
-  name:z.string().nullable(),path:nativePath,pathComplete:z.boolean(),nativeTypeId:uuid.nullable(),kind:z.enum(['unknown','pou','gvl','dut','program-call','application','task','device']),
+  name:z.string().nullable(),path:nativePath,pathComplete:z.boolean(),nativeTypeId:uuid.nullable(),kind:z.enum(['unknown','pou','gvl','dut','program-call','application','task','device','folder']),
   typeBasis:z.string(),isDevice:z.boolean().nullable(),childrenRead:z.boolean(),unavailableFields:z.array(fieldIssue)});
 const treeScopeSchema=z.object({description:z.string(),maxNodes:z.number().int(),capturedNodes:z.number().int(),treeComplete:z.boolean(),coverageComplete:z.boolean(),truncated:z.boolean(),
   enumerationFailures:z.array(z.object({path:nativePath,stage:z.string(),reason:z.string()}))});
@@ -220,6 +224,8 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   library_inspect:libraryDataSchema.partial().passthrough(),
   project_compare:comparisonDataSchema.partial().passthrough(),
   project_structure:structureDataSchema.partial().passthrough(),
+  folder_create:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),structureVersion:hash.optional(),structuralEvidence:z.record(z.string(),z.unknown()).optional(),object:z.record(z.string(),z.unknown()).optional(),...snapshotFields}).passthrough(),
+  object_move:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),structureVersion:hash.optional(),structuralEvidence:z.record(z.string(),z.unknown()).optional(),object:z.record(z.string(),z.unknown()).optional(),...snapshotFields}).passthrough(),
   device_inspect:deviceDataSchema.partial().passthrough(),
   declaration_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),parentId:uuid.optional(),
     created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),

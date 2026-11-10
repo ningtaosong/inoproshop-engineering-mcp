@@ -2,6 +2,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import {fixtureOrganization,fixtureOrganize} from './fixture-organization.js';
 import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, type Reply } from './contracts.js';
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
@@ -46,7 +47,8 @@ export class FixtureAdapter implements Adapter {
       tasks:(p.tasks||[]).filter((t:any)=>t.applicationId===a.applicationId).map(({applicationId,...t}:any)=>structuredClone(t)),
       programs:objects.filter((o:any)=>!o.queryReadError&&/^\s*PROGRAM\b/i.test(o.declaration)).map((o:any)=>({objectId:o.objectId,path:o.path})),
       resolutionReadFailures:[],enumerationFailures:p.treeReadError?[{path:[],stage:'enumeration',reason:p.treeReadError}]:[],coverageComplete:!p.treeReadError});
-    if(req.command==='task_update') {
+    if(['create_folder','move_object'].includes(req.command))result=await fixtureOrganize(p,req,dir,snapshot,taskInventory);
+    else if(req.command==='task_update') {
       validateTaskPatch(a);const before=taskInventory(),version=taskConfigurationVersion(before),rows=before.tasks.filter((t:any)=>t.taskId===a.taskId);
       if(version!==a.expectedTaskVersion)result={...reply('conflict','任务配置版本已变'),error:{code:'TASK_VERSION_CHANGED',message:'not written'}};
       else if(digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash)result={...reply('conflict','任务磁盘版本已变'),error:{code:'TASK_DISK_CHANGED',message:'not written'}};
@@ -93,7 +95,7 @@ export class FixtureAdapter implements Adapter {
       const treeScope={description:'fixture native tree, not real IDE',maxNodes:cap,capturedNodes:nodes.length,treeComplete:!p.treeReadError&&nodes.length===all.length,
         coverageComplete:!p.treeReadError&&nodes.length===all.length&&!nodes.some((n:any)=>n.unavailableFields.length),truncated:nodes.length<all.length,
         enumerationFailures:p.treeReadError?[{path:[],stage:'children-enumeration',reason:p.treeReadError}]:[]};
-      if(req.command==='structure')result=reply('succeeded','测试原生结构替身',{projectId:a.projectId,projectPath:req.projectPath,nodes,scope:treeScope,identityLimitations:'fixture observed native GUIDs'});
+      if(req.command==='structure')result=reply('succeeded','测试原生结构替身',{projectId:a.projectId,projectPath:req.projectPath,nodes,scope:treeScope,identityLimitations:'fixture observed native GUIDs',organizationScheme:'application-organization-v1',organizationVersions:Object.fromEntries(p.applications.map((app:any)=>[app.applicationId,fixtureOrganization(p,app.applicationId).version]))});
       else {
         const found=nodes.filter((n:any)=>n.objectId===a.deviceId);
         if(found.length!==1)result={...reply('conflict','测试设备目标不唯一'),error:{code:'DEVICE_ID_NOT_UNIQUE',message:'No unique native device'}};

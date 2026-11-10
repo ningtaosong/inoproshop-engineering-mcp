@@ -694,7 +694,7 @@ def native_structure(project, args):
     limit=args.get("maxNodes",20000)
     state={"truncated":False}
     known={"6f9dac99-8de1-4efc-8465-68ac443b7d08":"pou", "ffbfa93a-b94d-45fc-a329-229860183b1d":"gvl",
-      "2db5746d-d284-4425-9f7f-2663a34b0ebc":"dut", "413e2a7d-adb1-4d2c-be29-6ae6e4fab820":"program-call"}
+      "2db5746d-d284-4425-9f7f-2663a34b0ebc":"dut", "413e2a7d-adb1-4d2c-be29-6ae6e4fab820":"program-call",'738bea1e-99bb-4f04-90bb-a7a567e74e3a':'folder'}
     def children(parent,parent_row,depth):
         prefix=parent_row["path"] if parent_row else []
         if depth>128:
@@ -1099,7 +1099,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "create_method", "create_property", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1118,6 +1118,11 @@ def dispatch(req):
             lifecycle_reject(lifecycle,failure("conflict", "PROJECT_PATH_MISMATCH", u"IDE 实际工程路径不匹配"))
         if command == "structure":
             response = success(u"已只读枚举原生工程结构",native_structure(project,args)[0])
+            versions={}
+            for app,n,a in walk(project):
+                if getattr(app,'is_application',False):versions[text(app.guid).lower()]=organization_inventory(project,text(app.guid).lower())['version']
+            response['data']['organizationVersions']=versions
+            response['data']['organizationScheme']=ORGANIZATION_SCHEME
         elif command == "device":
             response = device_inventory(project,args)
         elif command == "inspect":
@@ -1162,6 +1167,8 @@ def dispatch(req):
                 response, project = create_method(project,req,args,lifecycle)
             elif command == "create_property":
                 response, project = create_property(project,req,args,lifecycle)
+            elif command in ('create_folder','move_object'):
+                response,project=organize(project,req,args,lifecycle)
             elif command == "change":
                 item, names, aid = locate(project, app_id, args["objectId"])
                 before = read_object(item, names, aid)
@@ -1278,6 +1285,10 @@ def dispatch(req):
         if response["data"].pop("persistedToWorkingCopy",False):response["data"]["persistedToProject"]=True
         response["summary"]=response["summary"].replace(u"工作副本",u"指定工程")
     return response
+
+# Fixed helper code only; request text is never evaluated.
+with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'organization.py'),'r',encoding='utf-8') as organization_file:
+    exec(compile(organization_file.read(),'organization.py','exec'))
 
 request_path = os.environ.get("INOPRO_BRIDGE_REQUEST")
 if not request_path:
