@@ -53,7 +53,7 @@ export function parseDeclaration(source:string,kind:string,name:string){
   const h=propertyHeader(s,true);
   if(!h||h.name.toLowerCase()!==name.toLowerCase()){gap(0,s.length,'Unsupported Property header/access/type');return {rows,complete:false};}
   const ret=t[4];rows.push({category:'property-return',name,section:null,typeRaw:s.slice(ret.start,ret.end),typePosition:pos(ret.start,ret.end),position:pos(t[0].start,ret.end),source:s.slice(t[0].start,ret.end)});i=5;
- }else if(kind==='property_get'){
+ }else if(['property_get','property_set'].includes(kind)){
   if(!getterDeclarationMatches(s)){gap(0,s.length,'Unsupported Get local declaration');return {rows,complete:false};}
  }else if(kind==='method'){
   const h=methodHeader(s,true);
@@ -188,7 +188,7 @@ function variableInventory(raw:Reply,a:any,origin:{kind:string,inventoryOperatio
    parentDeclarationPosition:parent.position,parentInitializerPosition:parent.initializerPosition,section:parent.section,
    objectId:p.object.objectId,path:p.object.path,objectType:p.object.objectType,contentHash:p.object.contentHash});
  }
- const rows=parsed.flatMap(p=>p.rows.filter(row=>!['variable','type-field'].includes(row.category)||matched(row.name)).map(row=>({...row,objectId:p.object.objectId,path:p.object.path,objectType:p.object.objectType,contentHash:p.object.contentHash,...(p.object.objectType==='method'?{parentId:p.object.parentId,parentPath:p.object.parentPath,access:p.object.access,methodReturnType:p.object.methodReturnType,methodMetadataSource:p.object.methodMetadataSource}:{}),...(['property','property_get'].includes(p.object.objectType)?propertyMetadata(p.object):{})})));
+ const rows=parsed.flatMap(p=>p.rows.filter(row=>!['variable','type-field'].includes(row.category)||matched(row.name)).map(row=>({...row,objectId:p.object.objectId,path:p.object.path,objectType:p.object.objectType,contentHash:p.object.contentHash,...(p.object.objectType==='method'?{parentId:p.object.parentId,parentPath:p.object.parentPath,access:p.object.access,methodReturnType:p.object.methodReturnType,methodMetadataSource:p.object.methodMetadataSource}:{}),...(['property','property_get','property_set'].includes(p.object.objectType)?propertyMetadata(p.object):{})})));
  if(memberMode){rows.push(...memberRows);rows.sort((x,y)=>canonical(x.path).localeCompare(canonical(y.path))||x.objectId.localeCompare(y.objectId)||x.position.startOffset-y.position.startOffset||x.category.localeCompare(y.category)||String(x.parentName??'').localeCompare(String(y.parentName??'')));}
  if(a.objectId&&!selected.length)rows.push({category:'parse-gap',objectId:a.objectId,path:[],objectType:null,contentHash:null,section:null,reason:'Requested object unavailable in supported read inventory; inspect source failures/skips, not proof of variable absence',position:null,source:''});
  rows.forEach((r,i)=>r.index=i);
