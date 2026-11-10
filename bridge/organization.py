@@ -57,8 +57,19 @@ def organization_source(project,aid,object_id):
         method_write_permission(project,child)
     return item,names
 
+def organization_source_structure(project,aid,object_id):
+    # Text hashes alone cannot distinguish an empty ST implementation from a
+    # missing implementation, or prove that a Property still has its accessors.
+    item,names=organization_source(project,aid,object_id);rows=[]
+    for child,n,a in [(item,names,aid)]+list(walk(item,names,aid)):
+        row={'objectId':text(child.guid).lower(),'parentId':None if child.guid==item.guid else text(child.parent.guid).lower(),'nativeTypeId':text(child.type).lower(),'hasDeclaration':bool(child.has_textual_declaration),'hasImplementation':bool(child.has_textual_implementation),'embeddedObjectTypes':sorted(text(t).lower() for t in child.embedded_object_types)}
+        if row['nativeTypeId']=='5a3b8626-d3e9-4f37-98b5-66420063d91e':row['accessorStructure']=property_structure(child)
+        rows.append(row)
+    rows.sort(key=lambda r:r['objectId'])
+    return rows
+
 def organize(project,req,args,state):
-    aid=args['applicationId'];moving=req['command']=='move_object';actions=[]
+    aid=args['applicationId'];moving=req['command']=='move_object';actions=[];directory=os.path.dirname(req['resultPath'])
     try:
         before=organization_inventory(project,aid,args['projectId'])
         if before['version']!=args['expectedStructureVersion'] or file_hash(req['projectPath'])!=args['expectedDiskHash']:return failure('conflict','ORGANIZATION_VERSION_CHANGED',u'结构或磁盘版本已变化，未写入'),project
@@ -70,20 +81,23 @@ def organize(project,req,args,state):
             if old_parent!=aid and text(target.guid).lower()!=aid and old_parent!=text(target.guid).lower():return failure('unsupported','ROOT_FOLDER_ONLY',u'首版仅根节点与直接文件夹之间移动'),project
             if old_parent!=args['sourceParentId']:return failure('conflict','SOURCE_PARENT_CHANGED',u'源父节点与请求不一致，未移动'),project
             method_write_permission(project,source);method_write_permission(project,source.parent,True)
-            name=text(source.get_name())
+            name=text(source.get_name());source_structure=organization_source_structure(project,aid,source_id)
         else:name=args['name']
         collision=[x for x in native_children(target) if text(x.get_name()).lower()==name.lower() and (not moving or text(x.guid).lower()!=source_id)]
         if collision:return failure('conflict','ORGANIZATION_NAME_EXISTS',u'目标同级名称冲突，不覆盖或改名'),project
         task_before=task_inventory(project,args);old_snapshot=snapshot(project)
         if not task_before['coverageComplete']:return failure('unsupported','ORGANIZATION_TASK_COVERAGE',u'实际任务读取不完整，未写入'),project
         if moving and old_parent==text(target.guid).lower():
+            if organization_inventory(project,aid,args['projectId'])!=before or file_hash(req['projectPath'])!=args['expectedDiskHash'] or organization_source_structure(project,aid,source_id)!=source_structure:return failure('conflict','ORGANIZATION_VERSION_CHANGED',u'原位置核对期间结构或磁盘变化，未移动'),project
+            publish(os.path.join(directory,'organization-subobjects-noop.json'),{'before':source_structure,'after':organization_source_structure(project,aid,source_id)})
             return success(u'对象已在指定位置，未移动或保存',{'projectId':args['projectId'],'applicationId':aid,'changed':False,'noOp':True,'reopened':False,'object':read_object(source,names,aid),'beforeStructure':before,'afterStructure':before,'taskBefore':task_before,'taskAfter':task_before,'snapshot':old_snapshot,'actions':[]}),project
     except Exception as e:return failure('unsupported','ORGANIZATION_TARGET_OR_PERMISSION',text(e)),project
-    directory=os.path.dirname(req['resultPath'])
     shutil.copyfile(req['projectPath'],req['checkpointPath']);publish(os.path.join(directory,'organization-before.json'),{'structure':before,'task':task_before,'snapshot':old_snapshot})
+    if moving:publish(os.path.join(directory,'organization-subobjects-before.json'),source_structure)
     try:
         # Recheck after checkpoint and before invoking the native mutator.
         if organization_inventory(project,aid,args['projectId'])!=before or file_hash(req['projectPath'])!=args['expectedDiskHash']:return failure('conflict','ORGANIZATION_VERSION_CHANGED',u'检查点后结构或磁盘版本变化，未写入'),project
+        if moving and organization_source_structure(project,aid,source_id)!=source_structure:return failure('conflict','ORGANIZATION_VERSION_CHANGED',u'检查点后原生子结构变化，未移动'),project
         if moving:
             actions.append({'action':'move','objectId':source_id,'sourceParentId':old_parent,'targetParentId':text(target.guid).lower(),'status':'attempted'})
             source.move(target,-1);new_id=source_id
@@ -95,7 +109,13 @@ def organize(project,req,args,state):
             new_id=text(fresh[0].guid).lower()
         actions[-1]['status']='returned';after=organization_inventory(project,aid,args['projectId'])
         publish(os.path.join(directory,'organization-after-native.json'),after)
+        if moving:
+            actual_source_structure=organization_source_structure(project,aid,source_id);publish(os.path.join(directory,'organization-subobjects-after-native.json'),actual_source_structure)
+            if actual_source_structure!=source_structure:raise ValueError('Native ST/Method/Property/accessor structure changed during move')
         project=lifecycle_save_reopen(state);reopened=organization_inventory(project,aid,args['projectId']);task_after=task_inventory(project,args)
+        if moving:
+            actual_source_structure=organization_source_structure(project,aid,source_id);publish(os.path.join(directory,'organization-subobjects-after-reopen.json'),actual_source_structure)
+            if actual_source_structure!=source_structure:raise ValueError('Reopened ST/Method/Property/accessor structure differs')
         expected_task=json.loads(encode(task_before))
         if moving:
             new_path=next(r['path'] for r in reopened['nodes'] if r['objectId']==source_id)

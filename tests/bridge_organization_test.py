@@ -73,4 +73,18 @@ class NativeOrganization(unittest.TestCase):
  def test_checkpoint_race_rechecks_structure_before_native_call(self):
   def publish(f,v):Node('Race',FOLDER,self.app)
   self.e['publish']=publish;r=self.call();self.assertEqual(r['status'],'conflict');self.assertEqual(self.fb.calls,[])
+ def test_empty_accessor_losing_implementation_cannot_hide_behind_same_text_hash(self):
+  prop=Node('CurrentState','5a3b8626-d3e9-4f37-98b5-66420063d91e',self.fb,'PROPERTY PUBLIC CurrentState : DINT',None);getter=Node('Get','792f2eb6-721e-4e64-ba20-bc98351056db',prop,'VAR\nEND_VAR','');self.refresh()
+  def reopen(state):getter.has_textual_implementation=False;return self.p
+  self.e['lifecycle_save_reopen']=reopen;r=self.call();self.assertEqual(r['status'],'unknown',r);self.assertEqual(self.fb.parent,self.folder)
+ def test_empty_pou_losing_native_st_marker_is_not_a_successful_move(self):
+  def reopen(state):self.fb.embedded_object_types=[];return self.p
+  self.e['lifecycle_save_reopen']=reopen;r=self.call();self.assertEqual(r['status'],'unknown',r);self.assertEqual(self.fb.parent,self.folder)
+ def test_accessor_metadata_checkpoint_race_rejects_before_move(self):
+  prop=Node('CurrentState','5a3b8626-d3e9-4f37-98b5-66420063d91e',self.fb,'PROPERTY PUBLIC CurrentState : DINT',None);getter=Node('Get','792f2eb6-721e-4e64-ba20-bc98351056db',prop,'VAR\nEND_VAR','');self.refresh()
+  def publish(f,v):getter.embedded_object_types=[]
+  self.e['publish']=publish;r=self.call();self.assertNotEqual(r['status'],'succeeded');self.assertEqual(self.fb.calls,[]);self.assertEqual(self.saved,0)
+ def test_noop_records_actual_accessor_structure_without_save(self):
+  prop=Node('CurrentState','5a3b8626-d3e9-4f37-98b5-66420063d91e',self.fb,'PROPERTY PUBLIC CurrentState : DINT',None);Node('Get','792f2eb6-721e-4e64-ba20-bc98351056db',prop,'VAR\nEND_VAR','');self.refresh();r=self.call(targetParentId=self.app.guid);self.assertEqual(r['status'],'succeeded');self.assertEqual(self.saved,0)
+  evidence=next(v for f,v in self.records if f.endswith('organization-subobjects-noop.json'));self.assertEqual(evidence['before'],evidence['after']);self.assertTrue(next(x for x in evidence['after'] if x['objectId']==prop.guid)['accessorStructure']['readOnly'])
 if __name__=='__main__':unittest.main()
