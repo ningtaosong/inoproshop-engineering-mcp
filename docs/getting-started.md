@@ -1,10 +1,10 @@
 # 安装、接入与日常离线试用
 
-S2b只读Property/Get及租约身份修复已合并，main为0.20.1修复候选版、25项工具；本次修复保持工具Schema不变，见[租约兼容与停止条件](startup-handoff.md#租约进程实例身份0201修复候选)及[DSH部署边界](startup-handoff.md#租约修复合并与日常部署2026-11-10)。详见[原生只读属性](properties.md)。固定入口不会自动升级。本分支0.21.0扩展PUBLIC DINT可读写Get/Set，显式propertyMode=read-write才启用，旧调用默认只读；main已合并范围仍为只读Get，不转换已有属性或开放通用删除。
+S2b原生Property/Get/Set已合并，main为0.21.0候选版、25项工具。仅用户普通ST FB下PUBLIC DINT，显式propertyMode=read-write才创建可读写Get/Set，旧调用默认只读；不转换已有属性或补建Set，见[属性说明](properties.md)。租约身份与最终Linux异常补修保持，沿用[原停止条件](startup-handoff.md#租约进程实例身份0201修复候选)。固定入口须单独正常部署，Git合并不代表实际客户端生效；Codex0.16不自动升级。
 
-S2a合并时为0.19.0候选版、24项工具，新增[原生ST Method](methods.md)；当时S2b尚未开始。此段保留历史归属，当前只读Get状态见上文。下列历史客户端按各自版本记录，不因Git合并自动升级。
+S2a合并时为0.19.0候选版、24项工具，新增[原生ST Method](methods.md)；当时S2b尚未开始。此段保留历史归属，当前Get/Set范围见上文。下列历史客户端按各自版本记录，不因Git合并自动升级。
 
-main提供0.20.1修复候选、25项工具。从main获取并部署到独立固定入口；不要覆盖现有客户端构建。0.20.0曾对原24项调用兼容扩展，相关Schema增加Property/Get类型、父关系、结构证据和Get修改参数；0.20.1不再改变这些Schema。保留的Codex0.16入口仍是21项工具，不能自动使用新能力；下文旧客户端记录保留各自验证归属。
+main提供0.21.0候选、25项工具。从main获取并部署到独立固定入口，不覆盖现有客户端构建。0.20.0增加只读Property/Get，0.20.1修复租约身份，0.21.0为相关调用兼容扩展可写Set；不是Schema逐字不变。保留的Codex0.16入口仍是21项工具，不能自动使用新能力；下文旧客户端记录保留各自归属。
 
 本文同时保留0.16.0直接编辑及固定客户端的历史接入记录；0.17.0新建能力和验证边界见[专门说明](project-create.md)。只适用于已有证据覆盖的本机离线场景，各次验收保留原版本归属；0.16.0直接编辑历史另见[原说明](direct-project-edit.md)。
 
@@ -18,7 +18,7 @@ main提供0.20.1修复候选、25项工具。从main获取并部署到独立固�
 
 ## 获取与构建
 
-仓库已公开，当前 main 提供 0.20.1 修复候选版、二十五项工具。租约修复未新增工具；0.20.0新增property_create时的原24项调用兼容扩展继续保留，相关Schema包含Property/Get类型、父关系、结构证据及修改参数；task_inspect仍只读，保留任务版本证据；登记 v2 的旧二进制兼容限制见[工程与副本](#工程与副本)及[新建登记兼容说明](project-create.md#合并复核2026-11-09)。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
+仓库已公开，当前 main 提供 0.21.0 候选版、二十五项工具。租约修复未新增工具；0.20.0新增property_create时的原24项调用兼容扩展继续保留，相关Schema包含Property/Get/Set类型、父关系、结构证据及修改参数；task_inspect仍只读，保留任务版本证据；登记 v2 的旧二进制兼容限制见[工程与副本](#工程与副本)及[新建登记兼容说明](project-create.md#合并复核2026-11-09)。不是正式Release，设备/I/O、运行与链接点击等边界仍保留。以下假设检出到尚不存在的 `D:\InoPro`，已有目录不要覆盖：
 
 ```powershell
 git clone --branch main https://github.com/ningtaosong/inoproshop-engineering-mcp.git D:\InoPro
