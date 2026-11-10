@@ -13,11 +13,14 @@ class Properties(unittest.TestCase):
         methods.Methods.setUp(self)
         def factory(node,name,ret,language):
             self.control['factory_calls']+=1;self.control['property_args']=[name,ret,language]
+            if self.control.get('return_existing_property'):return node.children[0]
             prop=Node(node.project,name,declaration='PROPERTY '+name+' : '+ret,nativeType=PROPERTY);prop.parent=node;prop.embedded_object_types=[];node.children.append(prop)
             for n in (['Get'] if self.control.get('factory_get_only') else ['Set','Get']):
                 child=Node(node.project,n,declaration='VAR\nEND_VAR\n',implementation='',nativeType=ACCESSOR);child.parent=prop;child.embedded_object_types=[ST];prop.children.append(child)
                 if n=='Set' and self.control.get('nonempty_default_set'):child.textual_implementation.text='UserCode := 1;'
                 if n=='Set' and self.control.get('wrong_default_parent'):child.parent=node
+                if n=='Get' and self.control.get('wrong_accessor_type'):child.type=PROPERTY
+                if n=='Get' and self.control.get('wrong_accessor_language'):child.embedded_object_types=[]
             if self.control.get('wrong_property_type'):prop.type=ACCESSOR
             if self.control.get('factory_throw_after_create'):raise RuntimeError('factory did not return identity')
             return prop
@@ -46,8 +49,10 @@ class Properties(unittest.TestCase):
     def test_existing_same_name_is_never_converted_or_cleaned(self):
         existing=self.fb.create_property('CurrentState','DINT','ST');self.control['factory_calls']=0;self.args=self.request();r,p=self.create();self.assertEqual(r['error']['code'],'PROPERTY_EXISTS');self.assertEqual(self.control['factory_calls'],0);self.assertEqual(self.control['removed'],[]);self.assertEqual(len(existing.children),2)
     def test_nonempty_or_wrong_default_identity_preserved_unknown(self):
-        for flag in ('nonempty_default_set','wrong_default_parent','wrong_property_type','factory_throw_after_create'):
+        for flag in ('nonempty_default_set','wrong_default_parent','wrong_property_type','wrong_accessor_type','wrong_accessor_language','factory_throw_after_create'):
             self.setUp();self.control[flag]=True;r,p=self.create();self.assertEqual(r['status'],'unknown',r);self.assertEqual(self.state['saveAttempts'],0);self.assertEqual(self.control['removed'],[]);self.assertEqual(len(self.fb.children),1)
+    def test_factory_returning_existing_different_property_cannot_delete_its_set(self):
+        existing=self.fb.create_property('Keep','DINT','ST');before=[str(x.guid) for x in existing.children];self.control['return_existing_property']=True;self.args=self.request();r,p=self.create();self.assertEqual(r['status'],'unknown',r);self.assertEqual(self.control['removed'],[]);self.assertEqual([str(x.guid) for x in existing.children],before)
     def test_remove_partial_write_save_close_and_reopen_failures_unknown_no_rollback(self):
         for stage in ('remove','write','save','close','reopen'):
             self.setUp()
