@@ -63,6 +63,13 @@ class NativeOrganization(unittest.TestCase):
     else:self.tasks['tasks'][0]['rawCalls']=[['Other','']]
     return self.p
    self.e['lifecycle_save_reopen']=reopen;r=self.call();self.assertEqual(r['status'],'unknown');break
+ def test_program_catalog_order_not_task_call_order(self):
+  self.tasks['programs']=[{'objectId':'a','path':['Application','A']},{'objectId':'b','path':['Application','B']}]
+  def reopen(state):self.tasks['programs'].reverse();return self.p
+  self.e['lifecycle_save_reopen']=reopen;r=self.call();self.assertEqual(r['status'],'succeeded',r)
+ def test_reopen_task_calls_changed_unknown(self):
+  def reopen(state):self.tasks['tasks'][0]['rawCalls']=[['Other','']];return self.p
+  self.e['lifecycle_save_reopen']=reopen;r=self.call();self.assertEqual(r['status'],'unknown')
  def test_checkpoint_race_rechecks_structure_before_native_call(self):
   def publish(f,v):Node('Race',FOLDER,self.app)
   self.e['publish']=publish;r=self.call();self.assertEqual(r['status'],'conflict');self.assertEqual(self.fb.calls,[])
