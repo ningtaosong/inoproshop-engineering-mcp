@@ -76,7 +76,7 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
       const item:any={kind,relativePath:JSON.parse(key)[0],objectType:isObject?row.objectType:'task',
         ...(isObject&&row.pouType?{pouType:row.pouType,pouTypeSource:row.pouTypeSource,...(row.returnType!==undefined?{returnType:row.returnType}:{})}:{}),
         ...(isObject&&row.objectType==='method'?{parentId:row.parentId,parentPath:row.parentPath,access:row.access,methodReturnType:row.methodReturnType}:{}),
-        ...(isObject&&['property','property_get'].includes(row.objectType)?propertyMetadata(row):{}),
+        ...(isObject&&['property','property_get','property_set'].includes(row.objectType)?propertyMetadata(row):{}),
         beforeIdentity:left.map((o:any)=>({objectId:o.objectId||o.taskId,path:o.path})),afterIdentity:right.map((o:any)=>({objectId:o.objectId||o.taskId,path:o.path})),category:'unchanged',changes:[],reasons:[]};
       const complete=isObject?b.scope.coverageComplete&&t.scope.coverageComplete:b.taskCoverage.complete&&t.taskCoverage.complete;
       if(left.length>1||right.length>1){item.category='incomparable';item.reasons.push('Ambiguous Application-relative path and object type; no name/GUID/rename guessing');}
@@ -84,8 +84,8 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
         // An older reader may have explicitly skipped a DUT now recognised as enum.
         // Keep the path+type match key unchanged; skipped text is not absence evidence.
         const missing=before?t:b;
-        const skippedEnum=isObject&&['enum','array','method','property','property_get'].includes(row.objectType)&&missing.scope.skippedObjects.some((o:any)=>
-          o.nativeTypeId===(row.objectType==='property'?PROPERTY_NATIVE:row.objectType==='property_get'?ACCESSOR_NATIVE:row.objectType==='method'?'f8a58466-d7f6-439f-bbb8-d4600e41d099':'2db5746d-d284-4425-9f7f-2663a34b0ebc')&&canonical(relative(o.path,missing.identity.applicationPath))===canonical(JSON.parse(key)[0]));
+        const skippedEnum=isObject&&['enum','array','method','property','property_get','property_set'].includes(row.objectType)&&missing.scope.skippedObjects.some((o:any)=>
+          o.nativeTypeId===(row.objectType==='property'?PROPERTY_NATIVE:['property_get','property_set'].includes(row.objectType)?ACCESSOR_NATIVE:row.objectType==='method'?'f8a58466-d7f6-439f-bbb8-d4600e41d099':'2db5746d-d284-4425-9f7f-2663a34b0ebc')&&canonical(relative(o.path,missing.identity.applicationPath))===canonical(JSON.parse(key)[0]));
         item.category=complete&&!skippedEnum?before?'deleted':'added':'incomparable';
         if(skippedEnum){
           item.coverageGap={path:JSON.parse(key)[0],stage:row.objectType+'-coverage',side:before?'target':'baseline',reason:'Known same-path '+(row.objectType==='method'?'Method':'DUT')+' was skipped; '+row.objectType+' addition/deletion cannot be established'};
@@ -98,12 +98,12 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
         else item.changes.push({field:'task',before:before?taskFields(before):null,after:after?taskFields(after):null});
       }
       else if(isObject){
-        if(['property','property_get'].includes(row.objectType)&&(before.parentId!==after.parentId||before.fbId!==after.fbId||before.propertyId!==after.propertyId||canonical(before.parentPath)!==canonical(after.parentPath))){item.category='incomparable';item.reasons.push('Property/Get native parent chain changed; no short-name pairing');items.push(item);continue;}
+        if(['property','property_get','property_set'].includes(row.objectType)&&(before.parentId!==after.parentId||before.fbId!==after.fbId||before.propertyId!==after.propertyId||canonical(before.parentPath)!==canonical(after.parentPath))){item.category='incomparable';item.reasons.push('Property/Get native parent chain changed; no short-name pairing');items.push(item);continue;}
         if(row.objectType==='method'&&(before.parentId!==after.parentId||canonical(before.parentPath)!==canonical(after.parentPath))){item.category='incomparable';item.reasons.push('Method parent identity changed; no short-name pairing');items.push(item);continue;}
         for(const region of ['declaration','implementation']){
           const change=textChange(before[region],after[region]);if(change)item.changes.push({region,...change});
         }
-        if(['property','property_get'].includes(row.objectType)&&canonical(before.accessorStructure)!==canonical(after.accessorStructure))item.changes.push({field:'accessorStructure',before:before.accessorStructure,after:after.accessorStructure});
+        if(['property','property_get','property_set'].includes(row.objectType)&&canonical(before.accessorStructure)!==canonical(after.accessorStructure))item.changes.push({field:'accessorStructure',before:before.accessorStructure,after:after.accessorStructure});
         if(before.hasImplementation!==after.hasImplementation){item.category='incomparable';item.reasons.push('Inconsistent supported region kind');}
         else if(item.changes.length)item.category='modified';
       } else {
@@ -143,7 +143,7 @@ export function compareReply(b:Snapshot,t:Snapshot,a:any):Reply {
     coverageComplete:b.scope.coverageComplete&&t.scope.coverageComplete&&b.taskCoverage.complete&&t.taskCoverage.complete&&!enumGaps.length,
     gaps:{count:issues.length,entries:preview(issues.slice(0,8)),entriesTruncated:issues.length>8,fullEvidence:'Original capture IPC sourceInventory/taskInventory'},
     excluded,matching:'Exact case-sensitive Application-relative path + supported type; GUIDs are evidence only; no rename inference'+
-      (items.some(i=>i.objectType==='method')?'; Methods additionally require unchanged native parent GUID/path':'') + (items.some(i=>['property','property_get'].includes(i.objectType))?'; Property/Get require unchanged native parent chain and include accessor structure':'') ,
+      (items.some(i=>i.objectType==='method')?'; Methods additionally require unchanged native parent GUID/path':'') + (items.some(i=>['property','property_get','property_set'].includes(i.objectType))?'; Property/Get require unchanged native parent chain and include accessor structure':'') ,
     normalization:'CRLF/CR -> LF only; all other whitespace/comments preserved',taskMeaning:'Configuration fields and call order only, not measured scan time'};
   let data:any;
   if(a.detail){

@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.20.1",
+  "serverVersion": "0.21.0",
   "contractVersion": "1.0.0",
   "toolCount": 25,
   "tools": [
@@ -1098,7 +1098,8 @@
                         "array",
                         "method",
                         "property",
-                        "property_get"
+                        "property_get",
+                        "property_set"
                       ]
                     },
                     "hasImplementation": {
@@ -1184,8 +1185,7 @@
                       "const": "DINT"
                     },
                     "readOnly": {
-                      "type": "boolean",
-                      "const": true
+                      "type": "boolean"
                     },
                     "accessorVersion": {
                       "type": "string",
@@ -1196,7 +1196,10 @@
                       "properties": {
                         "scheme": {
                           "type": "string",
-                          "const": "fb-property-accessors-v1"
+                          "enum": [
+                            "fb-property-accessors-v1",
+                            "fb-property-accessors-v2"
+                          ]
                         },
                         "propertyId": {
                           "type": "string",
@@ -1447,7 +1450,8 @@
                   "array",
                   "method",
                   "property",
-                  "property_get"
+                  "property_get",
+                  "property_set"
                 ]
               },
               "hasImplementation": {
@@ -1533,8 +1537,7 @@
                 "const": "DINT"
               },
               "readOnly": {
-                "type": "boolean",
-                "const": true
+                "type": "boolean"
               },
               "accessorVersion": {
                 "type": "string",
@@ -1545,7 +1548,10 @@
                 "properties": {
                   "scheme": {
                     "type": "string",
-                    "const": "fb-property-accessors-v1"
+                    "enum": [
+                      "fb-property-accessors-v1",
+                      "fb-property-accessors-v2"
+                    ]
                   },
                   "propertyId": {
                     "type": "string",
@@ -2238,7 +2244,10 @@
                   },
                   "propertyCoverageVersion": {
                     "type": "string",
-                    "const": "fb-properties-v1"
+                    "enum": [
+                      "fb-properties-v1",
+                      "fb-properties-v2"
+                    ]
                   }
                 },
                 "required": [
@@ -2281,7 +2290,8 @@
                         "array",
                         "method",
                         "property",
-                        "property_get"
+                        "property_get",
+                        "property_set"
                       ]
                     },
                     "contentHash": {
@@ -2353,8 +2363,7 @@
                       "const": "DINT"
                     },
                     "readOnly": {
-                      "type": "boolean",
-                      "const": true
+                      "type": "boolean"
                     },
                     "accessorVersion": {
                       "type": "string",
@@ -2365,7 +2374,10 @@
                       "properties": {
                         "scheme": {
                           "type": "string",
-                          "const": "fb-property-accessors-v1"
+                          "enum": [
+                            "fb-property-accessors-v1",
+                            "fb-property-accessors-v2"
+                          ]
                         },
                         "propertyId": {
                           "type": "string",
@@ -3084,7 +3096,8 @@
                             "array",
                             "method",
                             "property",
-                            "property_get"
+                            "property_get",
+                            "property_set"
                           ]
                         },
                         {
@@ -3153,8 +3166,7 @@
                       "const": "DINT"
                     },
                     "readOnly": {
-                      "type": "boolean",
-                      "const": true
+                      "type": "boolean"
                     },
                     "accessorVersion": {
                       "type": "string",
@@ -3165,7 +3177,10 @@
                       "properties": {
                         "scheme": {
                           "type": "string",
-                          "const": "fb-property-accessors-v1"
+                          "enum": [
+                            "fb-property-accessors-v1",
+                            "fb-property-accessors-v2"
+                          ]
                         },
                         "propertyId": {
                           "type": "string",
@@ -3996,7 +4011,10 @@
                   },
                   "propertyCoverageVersion": {
                     "type": "string",
-                    "const": "fb-properties-v1"
+                    "enum": [
+                      "fb-properties-v1",
+                      "fb-properties-v2"
+                    ]
                   }
                 },
                 "required": [
@@ -6320,6 +6338,7 @@
                         "method",
                         "property",
                         "property_get",
+                        "property_set",
                         "task"
                       ]
                     },
@@ -6388,8 +6407,7 @@
                       "const": "DINT"
                     },
                     "readOnly": {
-                      "type": "boolean",
-                      "const": true
+                      "type": "boolean"
                     },
                     "accessorVersion": {
                       "type": "string",
@@ -6400,7 +6418,10 @@
                       "properties": {
                         "scheme": {
                           "type": "string",
-                          "const": "fb-property-accessors-v1"
+                          "enum": [
+                            "fb-property-accessors-v1",
+                            "fb-property-accessors-v2"
+                          ]
                         },
                         "propertyId": {
                           "type": "string",
@@ -8329,7 +8350,8 @@
                   "array",
                   "method",
                   "property",
-                  "property_get"
+                  "property_get",
+                  "property_set"
                 ]
               },
               "hasImplementation": {
@@ -8415,8 +8437,7 @@
                 "const": "DINT"
               },
               "readOnly": {
-                "type": "boolean",
-                "const": true
+                "type": "boolean"
               },
               "accessorVersion": {
                 "type": "string",
@@ -8427,7 +8448,10 @@
                 "properties": {
                   "scheme": {
                     "type": "string",
-                    "const": "fb-property-accessors-v1"
+                    "enum": [
+                      "fb-property-accessors-v1",
+                      "fb-property-accessors-v2"
+                    ]
                   },
                   "propertyId": {
                     "type": "string",
@@ -8723,7 +8747,8 @@
                   "array",
                   "method",
                   "property",
-                  "property_get"
+                  "property_get",
+                  "property_set"
                 ]
               },
               "hasImplementation": {
@@ -8809,8 +8834,7 @@
                 "const": "DINT"
               },
               "readOnly": {
-                "type": "boolean",
-                "const": true
+                "type": "boolean"
               },
               "accessorVersion": {
                 "type": "string",
@@ -8821,7 +8845,10 @@
                 "properties": {
                   "scheme": {
                     "type": "string",
-                    "const": "fb-property-accessors-v1"
+                    "enum": [
+                      "fb-property-accessors-v1",
+                      "fb-property-accessors-v2"
+                    ]
                   },
                   "propertyId": {
                     "type": "string",
@@ -9135,7 +9162,8 @@
                   "array",
                   "method",
                   "property",
-                  "property_get"
+                  "property_get",
+                  "property_set"
                 ]
               },
               "hasImplementation": {
@@ -9221,8 +9249,7 @@
                 "const": "DINT"
               },
               "readOnly": {
-                "type": "boolean",
-                "const": true
+                "type": "boolean"
               },
               "accessorVersion": {
                 "type": "string",
@@ -9233,7 +9260,10 @@
                 "properties": {
                   "scheme": {
                     "type": "string",
-                    "const": "fb-property-accessors-v1"
+                    "enum": [
+                      "fb-property-accessors-v1",
+                      "fb-property-accessors-v2"
+                    ]
                   },
                   "propertyId": {
                     "type": "string",
@@ -9441,6 +9471,21 @@
           "getImplementation": {
             "type": "string",
             "maxLength": 500000
+          },
+          "propertyMode": {
+            "type": "string",
+            "enum": [
+              "read-only",
+              "read-write"
+            ]
+          },
+          "setDeclaration": {
+            "type": "string",
+            "maxLength": 500000
+          },
+          "setImplementation": {
+            "type": "string",
+            "maxLength": 500000
           }
         },
         "required": [
@@ -9529,7 +9574,8 @@
                   "array",
                   "method",
                   "property",
-                  "property_get"
+                  "property_get",
+                  "property_set"
                 ]
               },
               "hasImplementation": {
@@ -9615,8 +9661,7 @@
                 "const": "DINT"
               },
               "readOnly": {
-                "type": "boolean",
-                "const": true
+                "type": "boolean"
               },
               "accessorVersion": {
                 "type": "string",
@@ -9627,7 +9672,10 @@
                 "properties": {
                   "scheme": {
                     "type": "string",
-                    "const": "fb-property-accessors-v1"
+                    "enum": [
+                      "fb-property-accessors-v1",
+                      "fb-property-accessors-v2"
+                    ]
                   },
                   "propertyId": {
                     "type": "string",
@@ -9762,7 +9810,8 @@
                       "array",
                       "method",
                       "property",
-                      "property_get"
+                      "property_get",
+                      "property_set"
                     ]
                   },
                   "hasImplementation": {
@@ -9848,8 +9897,7 @@
                     "const": "DINT"
                   },
                   "readOnly": {
-                    "type": "boolean",
-                    "const": true
+                    "type": "boolean"
                   },
                   "accessorVersion": {
                     "type": "string",
@@ -9860,7 +9908,241 @@
                     "properties": {
                       "scheme": {
                         "type": "string",
-                        "const": "fb-property-accessors-v1"
+                        "enum": [
+                          "fb-property-accessors-v1",
+                          "fb-property-accessors-v2"
+                        ]
+                      },
+                      "propertyId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "readOnly": {
+                        "type": "boolean"
+                      },
+                      "accessors": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "objectId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "parentId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "nativeTypeId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "hasDeclaration": {
+                              "type": "boolean"
+                            },
+                            "hasImplementation": {
+                              "type": "boolean"
+                            },
+                            "embeddedObjectTypes": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            },
+                            "childIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              }
+                            }
+                          },
+                          "required": [
+                            "objectId",
+                            "parentId",
+                            "nativeTypeId",
+                            "name",
+                            "hasDeclaration",
+                            "hasImplementation",
+                            "embeddedObjectTypes",
+                            "childIds"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "scheme",
+                      "propertyId",
+                      "readOnly",
+                      "accessors"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "propertyContentHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "propertyMetadataSource": {
+                    "type": "string",
+                    "const": "native-property-accessor-tree-and-declaration"
+                  }
+                },
+                "additionalProperties": {}
+              },
+              "setter": {
+                "type": "object",
+                "properties": {
+                  "objectId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "applicationId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "path": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "language": {
+                    "type": "string",
+                    "const": "ST"
+                  },
+                  "objectType": {
+                    "type": "string",
+                    "enum": [
+                      "st_pou",
+                      "function_block",
+                      "gvl",
+                      "structure",
+                      "enum",
+                      "array",
+                      "method",
+                      "property",
+                      "property_get",
+                      "property_set"
+                    ]
+                  },
+                  "hasImplementation": {
+                    "type": "boolean"
+                  },
+                  "nativeTypeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "declaration": {
+                    "type": "string"
+                  },
+                  "implementation": {
+                    "type": "string"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "pouType": {
+                    "type": "string",
+                    "enum": [
+                      "function_block",
+                      "program",
+                      "function"
+                    ]
+                  },
+                  "returnType": {
+                    "type": "string"
+                  },
+                  "pouTypeSource": {
+                    "type": "string",
+                    "const": "native-pou-type-id-and-declaration-header"
+                  },
+                  "parentId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "parentPath": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "access": {
+                    "type": "string",
+                    "const": "PUBLIC"
+                  },
+                  "methodReturnType": {
+                    "type": "string",
+                    "enum": [
+                      "void",
+                      "DINT"
+                    ]
+                  },
+                  "methodMetadataSource": {
+                    "type": "string",
+                    "const": "native-method-type-parent-and-declaration-header"
+                  },
+                  "fbId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "propertyId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "propertyPath": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "propertyName": {
+                    "type": "string"
+                  },
+                  "propertyType": {
+                    "type": "string",
+                    "const": "DINT"
+                  },
+                  "readOnly": {
+                    "type": "boolean"
+                  },
+                  "accessorVersion": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "accessorStructure": {
+                    "type": "object",
+                    "properties": {
+                      "scheme": {
+                        "type": "string",
+                        "enum": [
+                          "fb-property-accessors-v1",
+                          "fb-property-accessors-v2"
+                        ]
                       },
                       "propertyId": {
                         "type": "string",
@@ -10057,7 +10339,8 @@
               "enum",
               "array",
               "method",
-              "property_get"
+              "property_get",
+              "property_set"
             ]
           },
           "parentId": {
@@ -10166,7 +10449,8 @@
                   "array",
                   "method",
                   "property",
-                  "property_get"
+                  "property_get",
+                  "property_set"
                 ]
               },
               "hasImplementation": {
@@ -10252,8 +10536,7 @@
                 "const": "DINT"
               },
               "readOnly": {
-                "type": "boolean",
-                "const": true
+                "type": "boolean"
               },
               "accessorVersion": {
                 "type": "string",
@@ -10264,7 +10547,10 @@
                 "properties": {
                   "scheme": {
                     "type": "string",
-                    "const": "fb-property-accessors-v1"
+                    "enum": [
+                      "fb-property-accessors-v1",
+                      "fb-property-accessors-v2"
+                    ]
                   },
                   "propertyId": {
                     "type": "string",

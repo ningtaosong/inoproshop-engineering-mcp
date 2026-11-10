@@ -1,6 +1,6 @@
 # 安装、接入与日常离线试用
 
-S2b只读Property/Get及租约身份修复已合并，main为0.20.1修复候选版、25项工具；本次修复保持工具Schema不变，见[租约兼容与停止条件](startup-handoff.md#租约进程实例身份0201修复候选)及[DSH部署边界](startup-handoff.md#租约修复合并与日常部署2026-11-10)。详见[原生只读属性](properties.md)。固定入口不会自动升级。仅PUBLIC DINT、唯一Get，可写Set尚未实现和验收，不转换已有可写属性或开放通用删除。
+S2b只读Property/Get及租约身份修复已合并，main为0.20.1修复候选版、25项工具；本次修复保持工具Schema不变，见[租约兼容与停止条件](startup-handoff.md#租约进程实例身份0201修复候选)及[DSH部署边界](startup-handoff.md#租约修复合并与日常部署2026-11-10)。详见[原生只读属性](properties.md)。固定入口不会自动升级。本分支0.21.0扩展PUBLIC DINT可读写Get/Set，显式propertyMode=read-write才启用，旧调用默认只读；main已合并范围仍为只读Get，不转换已有属性或开放通用删除。
 
 S2a合并时为0.19.0候选版、24项工具，新增[原生ST Method](methods.md)；当时S2b尚未开始。此段保留历史归属，当前只读Get状态见上文。下列历史客户端按各自版本记录，不因Git合并自动升级。
 

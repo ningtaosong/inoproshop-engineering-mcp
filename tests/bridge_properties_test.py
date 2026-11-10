@@ -63,11 +63,11 @@ class Properties(unittest.TestCase):
             r,p=self.create();self.assertEqual(r['status'],'unknown',r);self.assertEqual(self.control['factory_calls'],1);self.assertEqual(r['data']['recovery']['status'],'not-attempted');self.assertEqual(len(self.control['removed']),1)
             if stage=='remove':
                 self.assertEqual(r['data']['accessorCleanup']['removalStatus'],'attempted');self.assertEqual(r['data']['accessorCleanup']['removedSetId'],self.control['removed'][0]);self.assertTrue(any(path.endswith('accessor-removal-intent.json') for path,data in self.published))
-    def test_existing_writable_or_wrong_parent_accessor_not_supported(self):
-        prop=self.fb.create_property('CurrentState','DINT','ST');prop.textual_declaration.replace(self.args['declaration']);self.assertIsNone(self.e['object_kind'](prop));self.assertTrue(all(self.e['object_kind'](x) is None for x in prop.children))
+    def test_existing_supported_writable_is_readable_but_wrong_parent_accessor_is_not(self):
+        prop=self.fb.create_property('CurrentState','DINT','ST');prop.textual_declaration.replace(self.args['declaration']);self.assertEqual(self.e['object_kind'](prop),'property');self.assertEqual(set(self.e['object_kind'](x) for x in prop.children),set(('property_get','property_set')))
         prop.children=[x for x in prop.children if x.name=='Get'];getter=prop.children[0];self.assertEqual(self.e['object_kind'](getter),'property_get');getter.parent=self.fb;self.assertIsNone(self.e['object_kind'](getter));self.assertEqual(self.control['removed'],[])
     def test_existing_writable_property_list_reports_property_gap_and_retains_set(self):
-        prop=self.fb.create_property('CurrentState','DINT','ST');prop.textual_declaration.replace(self.args['declaration']);self.p.save();self.manager.primary=None
+        prop=self.fb.create_property('CurrentState','DINT','ST');prop.textual_declaration.replace('PROPERTY PUBLIC CurrentState : BOOL');self.p.save();self.manager.primary=None
         result=self.e['dispatch'](dict(self.req,command='list',args=dict(applicationId=self.app.guid,offset=0,limit=200)))
         self.assertEqual(result['status'],'succeeded',result);gaps=result['data']['scope']['unsupportedChildren'];self.assertEqual(len(gaps),3);self.assertTrue(all(x['stage']=='unsupported-property' for x in gaps));self.assertFalse(any(x['objectId']==str(prop.guid) for x in result['data']['objects']));self.assertEqual(self.control['removed'],[])
     def test_get_and_structure_changes_invalidate_snapshot_with_parent_text_unchanged(self):

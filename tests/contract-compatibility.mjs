@@ -4,7 +4,7 @@ export function withoutPropertyExtension(value){
  if(Array.isArray(value))return value.map(withoutPropertyExtension);
  if(!value||typeof value!=='object')return value;
  const out=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,withoutPropertyExtension(v)]));
- if(Array.isArray(out.enum))out.enum=out.enum.filter(x=>!['property','property_get','property-return'].includes(x));
+ if(Array.isArray(out.enum))out.enum=out.enum.filter(x=>!['property','property_get','property_set','property-return'].includes(x));
  if(out.properties?.propertyMetadataSource)for(const k of ['fbId','propertyId','propertyPath','propertyName','propertyType','readOnly','accessorVersion','accessorStructure','propertyContentHash','propertyMetadataSource'])delete out.properties[k];
  if(out.properties?.expectedHash&&out.properties?.declaration)for(const k of ['fbId','expectedPropertyHash','expectedAccessorVersion','expectedSnapshot','expectedDiskHash'])delete out.properties[k];
  if(out.properties?.propertyCoverageVersion)delete out.properties.propertyCoverageVersion;

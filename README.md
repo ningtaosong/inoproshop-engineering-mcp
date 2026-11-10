@@ -2,7 +2,7 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，直接修改指定离线工程，编译并保存重开；工程比较按需使用。
 
-**main为0.20.1修复候选版、25项MCP工具，契约1.0.0。S2b仅只读Property/Get子阶段已合并，可写Set尚未实现或验收。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
+**本分支为0.21.0候选版、25项MCP工具，契约1.0.0；main仍为0.20.1。S2b扩展原生PUBLIC DINT可读写Property/Get/Set，旧调用默认只读。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
 
 0.20.1仅修复[租约进程实例身份](docs/startup-handoff.md#租约进程实例身份0201修复候选)：PID存活不等于原拥有者仍存活；新租约绑定系统进程创建标识和本次取得标识，身份不明时停止。工具Schema、登记v2及工程操作的unknown恢复规则不变。DSH日常入口已切到包含最终Linux补修的固定构建；实际握手与清理取证后重连的边界见[合并与部署记录](docs/startup-handoff.md#租约修复合并与日常部署2026-11-10)。未升级的旧入口仍保留原PID判断限制，Codex固定0.16不变。
 
@@ -10,7 +10,7 @@ S1 新增 [已有周期任务的周期与优先级编辑](docs/task-config.md)�
 
 S2a阶段实现[功能块原生ST Method](docs/methods.md)：PUBLIC、void/DINT，创建用method_create，读取/修改复用现有工具；该阶段不开放Property/Get/Set、继承、接口、重载、改名或删除。父FB不变不能替代方法核对；没有新增默认比较或运行验证。独立MCP及一次DSH CLI工程闭环通过，263项新跑通过，另复用同版未改15项隔离结果，合计覆盖278项（不是一次完整278项全绿运行）；CLI流程与简短展示未全部遵循，详见方法说明。
 
-S2b只读Get阶段新增[原生Property/Get](docs/properties.md)：用户普通ST FB下的PUBLIC DINT属性，只有Get；创建用property_create，读取及限定Get源码修改复用已有工具。工厂默认Set仅能在本请求刚创建且身份和空内容已核对后清理，不开放已有访问器删除或Set。原24项调用兼容扩展，旧客户端需正常加载新Schema。分阶段验证与限制见属性说明。
+S2b本分支扩展[原生Property/Get/Set](docs/properties.md)：用户普通ST FB下PUBLIC DINT，property_create仅在显式propertyMode=read-write时保留原生Get和Set；旧调用仍创建唯一Get的只读属性。读取和限定源码修改复用已有工具，不转换既有属性、不补建缺失Set、不开放通用删除。下面只读阶段验收保持原版本归属，新阶段结果另记。
 
 S2b只读Get验收：构建与类型检查通过，278项新跑，另复用同版15项隔离结果，共覆盖293项；不是一次完整293项全绿，首败保留；真实MCP正向及独立只读负例、一次DSH CLI工程闭环通过。流程效率、辅助失败和路径展示勘误单列，不宣称全部指令遵循或运行验证通过，详见[验收归属](docs/properties.md#分支验收2026-11-10)。
 
