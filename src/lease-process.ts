@@ -47,7 +47,9 @@ export const probeProcess:ProcessProbe=async pid=>{
       const fields=stat.slice(stat.lastIndexOf(')')+2).split(' '),start=fields[19];
       if(!/^\d+$/.test(start)||!/^[0-9a-f-]+$/.test(boot))throw Error('invalid-proc-identity');
       return {state:'running',identity:{version:1,platform:'linux',host:os.hostname().toLowerCase(),pid,startId:start+':'+boot}};
-    }catch(e:any){return e.code==='ENOENT'?{state:'exited'}:{state:'unconfirmed',reason:'proc-identity-query-failed'};}
+    // A missing identity file (including boot_id) is not process-exit evidence.
+    // Only the explicit OS ESRCH check above establishes absence on this path.
+    }catch{return {state:'unconfirmed',reason:'proc-identity-query-failed'};}
   }
   return {state:'unconfirmed',reason:'unsupported-process-identity-platform'};
 };
