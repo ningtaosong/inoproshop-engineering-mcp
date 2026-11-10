@@ -61,7 +61,7 @@ async function context(t,source='PROGRAM Main\nVAR Config : ST_Config := (A := 1
  const q={projectId:opened.data.session.projectId,applicationId:app,includeInitializerMembers:true,limit:1};const call=async a=>c.done(await c.call('variable_inspect',{...q,...a}));return {e,c,q,call,store:new Store(e.dataDir),working:opened.data.session.workingPath};
 }
 test('twenty-one tools, explicit opt-in; legacy contracts unchanged except additive compare origin',async t=>{
- const x=await context(t),tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,24);assert(tools.find(x=>x.name==='variable_inspect').inputSchema.properties.includeInitializerMembers);
+ const x=await context(t),tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,25);assert(tools.find(x=>x.name==='variable_inspect').inputSchema.properties.includeInitializerMembers);
  const old=JSON.parse(await readFile('tests/fixtures/initializer-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);
  // 0.16 adds current-project to compare origins; retain every pre-existing field/value.
  const legacyCompare=v=>{if(Array.isArray(v))return v.map(legacyCompare);if(v&&typeof v==='object')return Object.fromEntries(Object.entries(v).map(([k,x])=>[k,k==='enum'&&Array.isArray(x)?x.filter(e=>e!=='current-project'):legacyCompare(x)]));return v;};
