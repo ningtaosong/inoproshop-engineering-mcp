@@ -29,7 +29,7 @@ class NativeOrganization(unittest.TestCase):
    if self.readonly:raise ValueError('Native permission denied')
   self.e.update(method_file_writable=permission,method_write_permission=permission,file_hash=lambda p:self.disk,publish=lambda f,v:self.records.append((f,copy.deepcopy(v))),task_inventory=lambda p,a:copy.deepcopy(self.tasks),lifecycle_save_reopen=reopen)
   self.req=dict(projectPath=str(self.file),checkpointPath=str(Path(self.tmp.name)/'checkpoint.project'),resultPath=str(Path(self.tmp.name)/'result.json'),command='move_object');self.state={'project':self.p};self.a=dict(projectId='project',applicationId=self.app.guid,objectId=self.fb.guid,sourceParentId=self.app.guid,targetParentId=self.folder.guid,expectedDiskHash='disk');self.refresh()
- def refresh(self):self.a['expectedStructureVersion']=self.e['organization_inventory'](self.p,self.app.guid)['version']
+ def refresh(self):self.a['expectedStructureVersion']=self.e['organization_inventory'](self.p,self.app.guid,'project')['version']
  def call(self,**patch):return self.e['organize'](self.p,self.req,dict(self.a,**patch),self.state)[0]
  def test_native_move_guid_source_and_children_preserved(self):
   m=Node('Reset', 'f8a58466-d7f6-439f-bbb8-d4600e41d099',self.fb,'METHOD PUBLIC Reset\nVAR\nEND_VAR','State:=0;');self.refresh();r=self.call();self.assertEqual(r['status'],'succeeded',r);self.assertEqual(self.fb.parent,self.folder);self.assertEqual(m.parent,self.fb);self.assertEqual(r['data']['object']['objectId'],self.fb.guid);self.assertEqual(self.saved,1)

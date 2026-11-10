@@ -3,9 +3,9 @@ import {DomainError,type Reply} from './contracts.js';
 export const ORGANIZATION_SCHEME='application-organization-v1';
 export const FOLDER_NATIVE='738bea1e-99bb-4f04-90bb-a7a567e74e3a';
 const uuid=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/,hash=/^[a-f0-9]{64}$/;
-export function organizationVersion(v:any) {return digest(canonical([ORGANIZATION_SCHEME,v.applicationId,v.nodes]));}
+export function organizationVersion(v:any) {return digest(canonical([ORGANIZATION_SCHEME,v.projectId,v.applicationId,v.nodes]));}
 export function verifyOrganization(v:any) {
-  if(v?.scheme!==ORGANIZATION_SCHEME||!uuid.test(v.applicationId)||!Array.isArray(v.nodes)||!v.nodes.length||v.nodes.length>20000||v.version!==organizationVersion(v))throw Error('Invalid structure version');
+  if(v?.scheme!==ORGANIZATION_SCHEME||!uuid.test(v.projectId)||!uuid.test(v.applicationId)||!Array.isArray(v.nodes)||!v.nodes.length||v.nodes.length>20000||v.version!==organizationVersion(v))throw Error('Invalid structure version');
   const ids=new Set(v.nodes.map((n:any)=>n.objectId));
   if(ids.size!==v.nodes.length||canonical(v.nodes)!==canonical([...v.nodes].sort((a,b)=>a.objectId<b.objectId?-1:a.objectId>b.objectId?1:0)))throw Error('Duplicate/unsorted structure identity');
   for(const n of v.nodes){
@@ -20,7 +20,7 @@ export function organizationResult(raw:Reply,a:any,tool:string):Reply {
   if(raw.status!=='succeeded')return raw;
   try{
     const d=raw.data as any,b=d.beforeStructure,c=d.afterStructure;verifyOrganization(b);verifyOrganization(c);
-    if(b.applicationId!==a.applicationId||c.applicationId!==a.applicationId||b.version!==a.expectedStructureVersion||d.applicationId!==a.applicationId||d.projectId!==a.projectId||d.taskBefore?.coverageComplete!==true||d.taskBefore?.projectId!==a.projectId||d.taskBefore?.applicationId!==a.applicationId)throw Error('Bound evidence differs');
+    if(b.projectId!==a.projectId||c.projectId!==a.projectId||b.applicationId!==a.applicationId||c.applicationId!==a.applicationId||b.version!==a.expectedStructureVersion||d.applicationId!==a.applicationId||d.projectId!==a.projectId||d.taskBefore?.coverageComplete!==true||d.taskBefore?.projectId!==a.projectId||d.taskBefore?.applicationId!==a.applicationId)throw Error('Bound evidence differs');
     const expected=structuredClone(b.nodes),container=(id:string)=>{const r=expected.find((n:any)=>n.objectId===id);if(!r||!(id===a.applicationId||r.isFolder&&r.parentId===a.applicationId))throw Error('Unsupported container');return r;};
     let target:any,changed:boolean;
     if(tool==='folder_create'){

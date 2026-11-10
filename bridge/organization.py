@@ -3,7 +3,7 @@
 FOLDER_NATIVE='738bea1e-99bb-4f04-90bb-a7a567e74e3a'
 ORGANIZATION_SCHEME='application-organization-v1'
 
-def organization_inventory(project,aid):
+def organization_inventory(project,aid,project_id):
     app=application(project,aid);prefix=next(n for x,n,a in walk(project) if text(x.guid).lower()==aid)
     rows=[];seen=set()
     def visit(item,names,parent_id):
@@ -20,7 +20,7 @@ def organization_inventory(project,aid):
         if key==aid or folder or st_object(item) or native in ('f8a58466-d7f6-439f-bbb8-d4600e41d099','5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db'):
             for child in native_children(item):visit(child,names+[text(child.get_name())],key)
     visit(app,prefix,None);rows.sort(key=lambda r:r['objectId'])
-    return {'scheme':ORGANIZATION_SCHEME,'applicationId':aid,'nodes':rows,'version':sha(encode([ORGANIZATION_SCHEME,aid,rows]))}
+    return {'scheme':ORGANIZATION_SCHEME,'projectId':project_id,'applicationId':aid,'nodes':rows,'version':sha(encode([ORGANIZATION_SCHEME,project_id,aid,rows]))}
 
 def organization_container(project,aid,object_id):
     app=application(project,aid)
@@ -44,7 +44,7 @@ def organization_source(project,aid,object_id):
 def organize(project,req,args,state):
     aid=args['applicationId'];moving=req['command']=='move_object';actions=[]
     try:
-        before=organization_inventory(project,aid)
+        before=organization_inventory(project,aid,args['projectId'])
         if before['version']!=args['expectedStructureVersion'] or file_hash(req['projectPath'])!=args['expectedDiskHash']:return failure('conflict','ORGANIZATION_VERSION_CHANGED',u'结构或磁盘版本已变化，未写入'),project
         target=organization_container(project,aid,args['targetParentId'] if moving else args['parentId'])
         if not moving and args['parentId']!=aid:return failure('unsupported','FOLDER_ROOT_ONLY',u'仅允许Application根节点新建原生文件夹'),project
@@ -67,7 +67,7 @@ def organize(project,req,args,state):
     shutil.copyfile(req['projectPath'],req['checkpointPath']);publish(os.path.join(directory,'organization-before.json'),{'structure':before,'task':task_before,'snapshot':old_snapshot})
     try:
         # Recheck after checkpoint and before invoking the native mutator.
-        if organization_inventory(project,aid)!=before or file_hash(req['projectPath'])!=args['expectedDiskHash']:return failure('conflict','ORGANIZATION_VERSION_CHANGED',u'检查点后结构或磁盘版本变化，未写入'),project
+        if organization_inventory(project,aid,args['projectId'])!=before or file_hash(req['projectPath'])!=args['expectedDiskHash']:return failure('conflict','ORGANIZATION_VERSION_CHANGED',u'检查点后结构或磁盘版本变化，未写入'),project
         if moving:
             actions.append({'action':'move','objectId':source_id,'sourceParentId':old_parent,'targetParentId':text(target.guid).lower(),'status':'attempted'})
             source.move(target,-1);new_id=source_id
@@ -77,9 +77,9 @@ def organize(project,req,args,state):
             fresh=[x for x in native_children(target) if text(x.guid).lower() not in prior]
             if len(fresh)!=1 or text(fresh[0].get_name())!=name or text(fresh[0].type).lower()!=FOLDER_NATIVE or not fresh[0].is_folder:raise ValueError('Folder factory identity cannot be confirmed')
             new_id=text(fresh[0].guid).lower()
-        actions[-1]['status']='returned';after=organization_inventory(project,aid)
+        actions[-1]['status']='returned';after=organization_inventory(project,aid,args['projectId'])
         publish(os.path.join(directory,'organization-after-native.json'),after)
-        project=lifecycle_save_reopen(state);reopened=organization_inventory(project,aid);task_after=task_inventory(project,args)
+        project=lifecycle_save_reopen(state);reopened=organization_inventory(project,aid,args['projectId']);task_after=task_inventory(project,args)
         expected_task=json.loads(encode(task_before))
         if moving:
             new_path=next(r['path'] for r in reopened['nodes'] if r['objectId']==source_id)

@@ -1120,7 +1120,7 @@ def dispatch(req):
             response = success(u"已只读枚举原生工程结构",native_structure(project,args)[0])
             versions={}
             for app,n,a in walk(project):
-                if getattr(app,'is_application',False):versions[text(app.guid).lower()]=organization_inventory(project,text(app.guid).lower())['version']
+                if getattr(app,'is_application',False):versions[text(app.guid).lower()]=organization_inventory(project,text(app.guid).lower(),args['projectId'])['version']
             response['data']['organizationVersions']=versions
             response['data']['organizationScheme']=ORGANIZATION_SCHEME
         elif command == "device":

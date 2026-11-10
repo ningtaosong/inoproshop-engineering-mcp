@@ -95,7 +95,7 @@ export class FixtureAdapter implements Adapter {
       const treeScope={description:'fixture native tree, not real IDE',maxNodes:cap,capturedNodes:nodes.length,treeComplete:!p.treeReadError&&nodes.length===all.length,
         coverageComplete:!p.treeReadError&&nodes.length===all.length&&!nodes.some((n:any)=>n.unavailableFields.length),truncated:nodes.length<all.length,
         enumerationFailures:p.treeReadError?[{path:[],stage:'children-enumeration',reason:p.treeReadError}]:[]};
-      if(req.command==='structure')result=reply('succeeded','测试原生结构替身',{projectId:a.projectId,projectPath:req.projectPath,nodes,scope:treeScope,identityLimitations:'fixture observed native GUIDs',organizationScheme:'application-organization-v1',organizationVersions:Object.fromEntries(p.applications.map((app:any)=>[app.applicationId,fixtureOrganization(p,app.applicationId).version]))});
+      if(req.command==='structure')result=reply('succeeded','测试原生结构替身',{projectId:a.projectId,projectPath:req.projectPath,nodes,scope:treeScope,identityLimitations:'fixture observed native GUIDs',organizationScheme:'application-organization-v1',organizationVersions:Object.fromEntries(p.applications.map((app:any)=>[app.applicationId,fixtureOrganization(p,app.applicationId,a.projectId).version]))});
       else {
         const found=nodes.filter((n:any)=>n.objectId===a.deviceId);
         if(found.length!==1)result={...reply('conflict','测试设备目标不唯一'),error:{code:'DEVICE_ID_NOT_UNIQUE',message:'No unique native device'}};

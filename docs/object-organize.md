@@ -13,7 +13,7 @@
 
 ## 请求及结果
 
-先调用 `project_structure`，取得目标工程的实际GUID、路径和父节点。页面 `version` 用于续页；`organizationVersions[applicationId]`（`application-organization-v1`）用于结构写入，不能混用。该结构版本绑定Application、稳定原生节点的GUID/父链/名称/路径/类型及可读取源码哈希；系统非源码分支只保留根节点，原生任务调用包装节点不作为持久身份。可读任务配置另外在写前和保存重开后核对。它不代表完整设备/I/O配置。
+先调用 `project_structure`，取得目标工程的实际GUID、路径和父节点。页面 `version` 用于续页；`organizationVersions[applicationId]`（`application-organization-v1`）用于结构写入，不能混用。该结构版本绑定工程登记身份、Application、稳定原生节点的GUID/父链/名称/路径/类型及可读取源码哈希；系统非源码分支只保留根节点，原生任务调用包装节点不作为持久身份。可读任务配置另外在写前和保存重开后核对。它不代表完整设备/I/O配置。
 
 ```json
 {
