@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Store, canonical, digest, pathKey, readJson, atomicJson, type Operation, type Session } from './storage.js';
 import { DomainError } from './contracts.js';
+import {observeLeaseOwner} from './lease-process.js';
 
 export const maintenanceGate = path.join(os.tmpdir(),'inoproshop-mcp-locks','maintenance.gate');
 export const isolationDirectory = path.join(os.tmpdir(),'inoproshop-mcp-isolations');
@@ -174,7 +175,10 @@ export async function evaluateIsolation(root:string,operationId?:string) {
     await record(p,required);await record(p+'.reclaim');
     if(await exists(p+'.reclaim'))blockers.push('锁接管记录未确认：'+p+'.reclaim');
     const owner=await readJson(p);locks.push({path:p,owner:owner??null});
-    if(owner!==undefined){if(!Number.isInteger(owner.pid)||typeof owner.dataDir!=='string'||pathKey(owner.dataDir)!==pathKey(store.root))blockers.push('锁归属无法核实：'+p);else probe('锁持有者 '+p,owner.pid);}
+    if(owner!==undefined){if(typeof owner.dataDir!=='string'||pathKey(owner.dataDir)!==pathKey(store.root))blockers.push('锁归属无法核实：'+p);else {
+      const observation=await observeLeaseOwner(owner);processes.push({role:'锁持有者 '+p,pid:owner.pid??null,state:observation.state,leaseObservation:observation});
+      if(observation.state!=='stale')blockers.push('锁拥有者实例未确认退出：'+p+'（'+observation.reason+'）');
+    }}
   };
   try {
     await inspectLock(store.file('service.lock'));await record(maintenanceGate);
@@ -242,7 +246,7 @@ export async function evaluateIsolation(root:string,operationId?:string) {
           for(const s of foreignProjects.get(key)!)for(const q of [s.sourcePath,s.workingPath])
           {const i=await fileIdentity(q);if(aliases.some(a=>sameFile(a,i)))related=true;}
         }catch(e:any){if(direct)blockers.push('关联外部锁记录不完整：'+p);}
-        if(related){await record(p);locks.push({path:p,owner});if(processState(owner.pid)!=='exited')blockers.push('关联外部服务未确认退出：'+p);else blockers.push('关联工程在其他数据目录登记，不能确认唯一维护归属：'+p);}
+        if(related){await record(p);const observation=await observeLeaseOwner(owner);locks.push({path:p,owner,leaseObservation:observation});if(observation.state!=='stale')blockers.push('关联外部服务未确认退出：'+p);else blockers.push('关联工程在其他数据目录登记，不能确认唯一维护归属：'+p);}
       }
     }
   }catch(e:any){blockers.push('现场证据读取失败：'+e.message);}

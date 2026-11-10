@@ -43,7 +43,12 @@ test('客户端取消只取消等待，原请求继续发布持久化结果',asy
   const env=await setup({delayMs:250}); const c=await connect(env.dataDir,{INOPRO_RESPONSE_WAIT_MS:'5000'}); t.after(()=>c.client.close());
   const args={sourcePath:env.source,requestId:'cancelled',applicationId:app};
   const controller=new AbortController(); const pending=c.call('project_open_copy',args,{signal:controller.signal});
-  await new Promise(r=>setTimeout(r,80)); controller.abort(); await assert.rejects(pending);
+  // System birth-identity verification can precede admission. Cancel only
+  // after this exact request is persisted, so the test measures cancellation
+  // of a running request instead of racing an absent operation record.
+  const deadline=Date.now()+10000;let admitted=false;
+  while(Date.now()<deadline){const status=await c.call('session_status');if(status.data.pending.some(p=>p.requestId==='cancelled')){admitted=true;break;}await new Promise(r=>setTimeout(r,10));}
+  assert(admitted,'original request must be admitted before cancellation');controller.abort();await assert.rejects(pending);
   // Cancellation ends the client wait, not the engineering operation. Query
   // the original request to a bounded terminal result instead of assuming 320ms.
   const original=await c.done(await c.call('operation_status',{requestId:'cancelled'})); assert.equal(original.status,'succeeded');
