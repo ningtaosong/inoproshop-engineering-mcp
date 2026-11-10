@@ -98,7 +98,7 @@ export function comparisonItems(b:Snapshot,t:Snapshot) {
         else item.changes.push({field:'task',before:before?taskFields(before):null,after:after?taskFields(after):null});
       }
       else if(isObject){
-        if(['property','property_get','property_set'].includes(row.objectType)&&(before.parentId!==after.parentId||before.fbId!==after.fbId||before.propertyId!==after.propertyId||canonical(before.parentPath)!==canonical(after.parentPath))){item.category='incomparable';item.reasons.push('Property/Get native parent chain changed; no short-name pairing');items.push(item);continue;}
+        if(['property','property_get','property_set'].includes(row.objectType)&&(before.parentId!==after.parentId||before.fbId!==after.fbId||before.propertyId!==after.propertyId||canonical(before.parentPath)!==canonical(after.parentPath))){item.category='incomparable';item.reasons.push('Property/Get/Set native parent chain changed; no short-name pairing');items.push(item);continue;}
         if(row.objectType==='method'&&(before.parentId!==after.parentId||canonical(before.parentPath)!==canonical(after.parentPath))){item.category='incomparable';item.reasons.push('Method parent identity changed; no short-name pairing');items.push(item);continue;}
         for(const region of ['declaration','implementation']){
           const change=textChange(before[region],after[region]);if(change)item.changes.push({region,...change});
@@ -143,7 +143,7 @@ export function compareReply(b:Snapshot,t:Snapshot,a:any):Reply {
     coverageComplete:b.scope.coverageComplete&&t.scope.coverageComplete&&b.taskCoverage.complete&&t.taskCoverage.complete&&!enumGaps.length,
     gaps:{count:issues.length,entries:preview(issues.slice(0,8)),entriesTruncated:issues.length>8,fullEvidence:'Original capture IPC sourceInventory/taskInventory'},
     excluded,matching:'Exact case-sensitive Application-relative path + supported type; GUIDs are evidence only; no rename inference'+
-      (items.some(i=>i.objectType==='method')?'; Methods additionally require unchanged native parent GUID/path':'') + (items.some(i=>['property','property_get','property_set'].includes(i.objectType))?'; Property/Get require unchanged native parent chain and include accessor structure':'') ,
+      (items.some(i=>i.objectType==='method')?'; Methods additionally require unchanged native parent GUID/path':'') + (items.some(i=>['property','property_get','property_set'].includes(i.objectType))?'; Property/Get/Set require unchanged native parent chain and include accessor structure':'') ,
     normalization:'CRLF/CR -> LF only; all other whitespace/comments preserved',taskMeaning:'Configuration fields and call order only, not measured scan time'};
   let data:any;
   if(a.detail){

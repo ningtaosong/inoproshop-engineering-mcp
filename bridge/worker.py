@@ -535,7 +535,7 @@ def search_inventory(project,args):
             row["nativeTypeId"]=native
             if native in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db'):
                 if not editable(project,item,aid):
-                    gap=dict(row,stage='unsupported-property',reason='Only native PUBLIC DINT Get-only Property and its ST Get under user FB are supported; existing Set is never removed');skipped.append(gap);unsupported_children.append(gap);continue
+                    gap=dict(row,stage='unsupported-property',reason='Only native PUBLIC DINT read-only Property/Get or read-write Property/Get/Set under user ST FB are supported with native accessor structure evidence; existing accessors are never changed by queries');skipped.append(gap);unsupported_children.append(gap);continue
             elif native=='f8a58466-d7f6-439f-bbb8-d4600e41d099':
                 if not editable(project,item,aid):
                     gap=dict(row,stage='unsupported-method',reason='Only native PUBLIC ST void/DINT Methods under user ST FB are supported');skipped.append(gap);unsupported_children.append(gap);continue
@@ -562,7 +562,7 @@ def search_inventory(project,args):
     if unsupported_children:result['scope']['unsupportedChildren']=unsupported_children
     if any(text(x.type).lower()=='f8a58466-d7f6-439f-bbb8-d4600e41d099' for x,n,a in rows):result['scope']['methodCoverageVersion']='fb-methods-v1'
     if any(text(x.type).lower() in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db') for x,n,a in rows):
-        result['scope']['propertyCoverageVersion']='fb-properties-v2';result['scope']['description']+='; native PUBLIC DINT Get-only Property/Get with accessor structure evidence'
+        result['scope']['propertyCoverageVersion']='fb-properties-v2';result['scope']['description']+='; native PUBLIC DINT read-only Property/Get and read-write Property/Get/Set under user ST FB, with native accessor structure evidence'
     return result
 
 def task_inventory(project,args):
@@ -1173,7 +1173,7 @@ def dispatch(req):
                     invalid_type=invalid_type or args.get('objectType')!=kind or args.get('parentId')!=before['propertyId'] or args.get('fbId')!=before['fbId'] or not getter_declaration_matches(args['declaration'])
                     if not invalid_type:
                         if args.get('expectedPropertyHash')!=before['propertyContentHash'] or args.get('expectedAccessorVersion')!=before['accessorVersion'] or args.get('expectedSnapshot')!=snapshot(project) or args.get('expectedDiskHash')!=file_hash(req['projectPath']):
-                            lifecycle_reject(lifecycle,failure('conflict','PROPERTY_VERSION_CHANGED',u'Property/Get、访问器结构、相关子对象或磁盘版本已变化，未修改'))
+                            lifecycle_reject(lifecycle,failure('conflict','PROPERTY_VERSION_CHANGED',u'Property/Get/Set、访问器结构、相关子对象或磁盘版本已变化，未修改'))
                         try:
                             owner,prop,getter=property_owner(project,item,aid);method_file_writable(req['projectPath'])
                             for obj in (owner,prop,getter):method_write_permission(project,obj)
@@ -1204,7 +1204,7 @@ def dispatch(req):
                         if reopened["objectType"]!=kind or reopened["contentHash"] != observed["contentHash"] or reopened["path"]!=before["path"]:
                             raise ValueError("Disk reopen does not match write readback")
                         if kind in ('property_get','property_set') and any(reopened[k]!=before[k] for k in ('parentId','fbId','propertyId','propertyPath','propertyContentHash','accessorVersion','accessorStructure','readOnly','access','propertyType')):
-                            raise ValueError('Property/Get owner, declaration or readonly accessor structure changed')
+                            raise ValueError('Property/Get/Set owner, declaration or accessor structure changed')
                         related={}
                         if kind in ('property_get','property_set'):
                             related_after=[read_object(*locate(project,aid,x)) for x in related_ids]

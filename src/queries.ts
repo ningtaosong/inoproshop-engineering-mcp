@@ -38,7 +38,7 @@ export function searchResult(raw:Reply,a:any,options:{legacy?:boolean,identifier
       decl&&(o.path.length!==prefix.length+1||o.implementation!==''||a.targetKind==='pool'))throw Error('Search corpus identity/type/scope mismatch');
     if(decl && !declarationMatches(o.objectType,o.path.at(-1),o.declaration))throw Error('Declaration corpus kind/header mismatch');
     if(o.objectType==='method'&&(o.nativeTypeId!=='f8a58466-d7f6-439f-bbb8-d4600e41d099'||typeof o.parentId!=='string'||canonical(o.parentPath)!==canonical(o.path.slice(0,-1))||!methodDeclarationMatches(o.path.at(-1),o.declaration,o.methodReturnType,o.access)||o.methodMetadataSource!=='native-method-type-parent-and-declaration-header'))throw Error('Method source identity/header mismatch');
-    if(['property','property_get','property_set'].includes(o.objectType)&&!propertyEvidence(o))throw Error('Property/Get source identity/header/accessor structure mismatch');
+    if(['property','property_get','property_set'].includes(o.objectType)&&!propertyEvidence(o))throw Error('Property/Get/Set source identity/header/accessor structure mismatch');
     if(codeHash(o.declaration,o.implementation)!==o.contentHash)throw Error('Search corpus content hash mismatch');
   }
   const selected=areas.filter(x=>(a.areas || areas).includes(x));

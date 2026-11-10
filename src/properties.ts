@@ -1,4 +1,4 @@
-// Native Property/Get evidence validation; no IDE calls or semantic type analysis.
+// Native Property/Get/Set evidence validation; no IDE calls or semantic type analysis.
 import {canonical,digest,codeHash,normalize} from './storage.js';
 import {getterDeclarationMatches,propertyHeader} from './contracts.js';
 export const PROPERTY_NATIVE='5a3b8626-d3e9-4f37-98b5-66420063d91e';
