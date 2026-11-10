@@ -1,6 +1,6 @@
 # 原生只读 Property/Get（S2b Get阶段）
 
-0.20.0候选版、25项工具，新增property_create，尚未合并main。读取复用object_list/object_read，修改仅复用code_apply_change的显式property_get目标。原24项调用兼容，相关Schema增加对象类型、父链、属性返回分类及结构版本，不是逐字未变。
+main提供0.20.0候选版、25项工具，新增property_create；S2b仅只读Property/Get子阶段已合并，可写Set尚未实现和验收。读取复用object_list/object_read，修改仅复用code_apply_change的显式property_get目标。原24项调用兼容，相关Schema增加对象类型、父链、属性返回分类及结构版本，不是逐字未变。
 
 ## 范围和原生依据
 
@@ -60,3 +60,12 @@ Property为声明对象，Get为独立源码对象。检索含原路径/哈希/�
 CLI示例通过PLC_PRG依次读取`Demo.CurrentState`、调用`Demo.ResetState()`、再读取属性。State源码初值7、Reset赋值0，只是源码和编译依据，未运行。开发端MCP工程将Get最终改为`CurrentState := State + 1;`，专门验证修改持久化，不与CLI的`CurrentState := State;`混为同一版本。
 
 验收后原DSH0.19固定入口进程恢复，恢复后的握手/模型接收未另取证；Codex0.16不升级，Set尚未实施。原unknown、历史质量、CmpLog及脚本信任限制保持。完整证据和工程位置见本机复核包；公开Git只提交实现、测试和必要文档。
+
+
+## 只读Get合并收尾（2026-11-10）
+
+候选5e627d463a377efc9097aa06c8f50ae215110e90及固定受验产品c7340548f5113eb6418b8eb17744f12dd70988d5的只读Property/Get子阶段已合并。保持PUBLIC DINT、唯一Get边界；既有可写属性不自动转换，不开放通用删除，可写Set尚未实现和验收，不将整个属性阶段标为完成。
+
+本轮仅证据、静态、文档/Git及DSH固定入口加载检查，产品、桥接、解析器、Schema和初始化指令正文与已验版本一致；不重跑全量测试、模型或工程任务。原24项调用兼容扩展，不是Schema逐字不变。测试归属保持“278项新跑，另复用同版15项隔离结果，共覆盖293项”，不是一次完整293项全绿。原MCP正向3次、CLI2次0错误0警告分别保留；独立只读负例的1错误0警告是预期拒绝，不混入正向零错误结论。
+
+DSH部署、各连接握手及观察器移除后的进程边界见本机D:\InoPro\.local\fb-property-merge-deploy-20261110；Git合并不等于客户端加载。原0.19构建和私人配置备份保留，Codex固定0.16不升级。本轮没有模型业务任务；握手不是模型上下文或遵循证明。原unknown、旧锁、历史质量、CmpLog、脚本信任、参数拒绝、辅助失败和原答复勘误保留；桌面业务、点击、实际运行和完整设备/I/O仍未验证。
