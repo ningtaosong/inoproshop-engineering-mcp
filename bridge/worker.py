@@ -190,6 +190,10 @@ def unsupported_fb_child(item):
     try:return bool((getattr(item,'has_textual_declaration',False) or getattr(item,'has_textual_implementation',False)) and function_block_name(text(item.parent.textual_declaration.text)))
     except Exception:return False
 
+def unsupported_child_evidence(item,names):
+    native=text(item.type).lower();prop=native in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db')
+    return {'objectId':text(item.guid).lower(),'path':names,'nativeTypeId':native,'stage':'unsupported-property' if prop else 'unsupported-method','reason':'Not a supported PUBLIC DINT Get-only Property/accessor; existing Set retained' if prop else 'Not a supported PUBLIC ST void/DINT Method under user FB'}
+
 def method_is_st(item):
     # Documented embedded_object_types, verified against installed ST object's
     # TypeGuidAttribute (not the CLR auto-generated Type.GUID). Never infer ST
@@ -320,7 +324,7 @@ def property_metadata(item,names):
     return {'parentId':text(item.parent.guid).lower(),'parentPath':names[:-1],'fbId':text(prop.parent.guid).lower(),'propertyId':text(prop.guid).lower(),'propertyPath':pnames,'propertyName':text(prop.get_name()),'propertyType':'DINT','access':'PUBLIC','readOnly':structure['readOnly'],'accessorStructure':structure,'accessorVersion':sha(encode(structure)),'propertyContentHash':content_hash(text(prop.textual_declaration.text),''),'propertyMetadataSource':'native-property-accessor-tree-and-declaration'}
 
 def create_property(project,req,args,lifecycle):
-    aid=args['applicationId'];created_id=None;actions=[]
+    aid=args['applicationId'];created_id=None;actions=[];cleanup=None
     h=property_header(args['declaration'],True)
     if not h or h['name'].lower()!=args['name'].lower() or args['access']!='PUBLIC' or args['propertyType']!='DINT' or not getter_declaration_matches(args['getDeclaration']):return failure('failed','INVALID_PROPERTY_DECLARATION',u'只允许同名PUBLIC DINT属性及限定Get局部声明'),project
     try:
@@ -348,12 +352,15 @@ def create_property(project,req,args,lifecycle):
             if row['objectId'] in before_ids or row['parentId']!=created_id or row['nativeTypeId']!='792f2eb6-721e-4e64-ba20-bc98351056db' or not row['hasDeclaration'] or not row['hasImplementation'] or row['childIds'] or not method_is_st(child):raise ValueError('Unconfirmed fresh accessor identity/language')
             raw={'identity':row,'declaration':text(child.textual_declaration.text),'implementation':text(child.textual_implementation.text)};defaults.append(raw)
             if normalize(raw['declaration'])!='VAR\nEND_VAR\n' or raw['implementation']!='':raise ValueError('Factory accessor is not verified default empty text; never remove user code')
-        cleanup={'scope':'Only this request newly-created empty default Set','defaults':defaults,'removedSetId':None,'before':structure}
+        cleanup={'scope':'Only this request newly-created empty default Set','defaults':defaults,'removedSetId':None,'removalStatus':'not-needed','before':structure}
         publish(os.path.join(directory,'default-accessors.json'),cleanup)
         if setters:
-            setter=setters[0];method_write_permission(project,setter);cleanup['removedSetId']=text(setter.guid).lower();setter.remove();actions.append('removed-only-new-empty-default-Set')
+            setter=setters[0];method_write_permission(project,setter);cleanup['removedSetId']=text(setter.guid).lower();cleanup['removalStatus']='attempted'
+            publish(os.path.join(directory,'accessor-removal-intent.json'),cleanup);actions.append('new-default-Set-removal-started')
+            setter.remove();cleanup['removalStatus']='returned';actions.append('removed-only-new-empty-default-Set')
         after_structure=property_structure(prop);cleanup['after']=after_structure
         if not after_structure['readOnly'] or after_structure['accessors'][0]['objectId']!=text(getters[0].guid).lower() or cleanup['removedSetId'] in [text(x.guid).lower() for x,n,a in walk(project)]:raise ValueError('Default Set removal not confirmed')
+        if setters:cleanup['removalStatus']='confirmed-absent'
         publish(os.path.join(directory,'accessor-cleanup.json'),cleanup)
         getter=getters[0];method_write_permission(project,getter)
         prop.textual_declaration.replace(normalize(args['declaration']));actions.append('property-declaration-replaced')
@@ -367,7 +374,7 @@ def create_property(project,req,args,lifecycle):
         if content_hash(text(parent2.textual_declaration.text),text(parent2.textual_implementation.text))!=parent_hash:raise ValueError('Parent FB text changed')
         return success(u'原生PUBLIC DINT只读Property/Get已创建、保存重开并核对无Set结构',dict(reopened,name=args['name'],created=True,getter=get_reopened,beforeParentHash=parent_hash,beforeSnapshot=before_snapshot,snapshot=snapshot(project),checkpoint=req['checkpointPath'],persistedToWorkingCopy=True,reopened=True,creationMethod='create_property(name, DINT, ImplementationLanguages.st); remove only new empty default Set',factoryEvidence=factory,accessorCleanup=cleanup,actions=actions)),project
     except Exception as e:
-        return failure('unknown','PARTIAL_PROPERTY_CREATE',text(e),{'createdObjectId':created_id,'actions':actions,'checkpoint':req['checkpointPath'],'exception':exception_evidence(e),'recovery':{'status':'not-attempted','reason':'Preserve partial structure; no rollback, generic deletion or retry'}}),project
+        return failure('unknown','PARTIAL_PROPERTY_CREATE',text(e),{'createdObjectId':created_id,'actions':actions,'accessorCleanup':cleanup,'checkpoint':req['checkpointPath'],'exception':exception_evidence(e),'recovery':{'status':'not-attempted','reason':'Preserve partial structure; no rollback, generic deletion or retry'}}),project
 
 def snapshot(project):
     # 所有可读取文本对象，含其他 Application、GVL/DUT；文件哈希额外绑定非文本配置。
@@ -1124,7 +1131,7 @@ def dispatch(req):
                             for key in ('parentId','parentPath','access','methodReturnType','methodMetadataSource'):meta[key]=full[key]
                         if object_kind(item) in ('property','property_get'):meta.update(property_metadata(item,names))
                         objects.append(meta)
-                    elif aid==app_id and unsupported_fb_child(item):unsupported_children.append({'objectId':text(item.guid).lower(),'path':names,'nativeTypeId':text(item.type).lower(),'stage':'unsupported-method','reason':'Not a supported PUBLIC ST void/DINT Method under user FB'})
+                    elif aid==app_id and unsupported_fb_child(item):unsupported_children.append(unsupported_child_evidence(item,names))
                 offset, limit = args["offset"], args["limit"]
                 response = success(u"已读取 ST 对象列表", {"objects": objects[offset:offset+limit], "total": len(objects),
                     "complete": offset+limit >= len(objects), "nextOffset": offset+limit if offset+limit < len(objects) else None})

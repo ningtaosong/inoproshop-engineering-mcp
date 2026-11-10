@@ -56,9 +56,15 @@ class Properties(unittest.TestCase):
             elif stage=='reopen':self.control['fail_reopen']=True
             else:setattr(self.p,stage,lambda:(_ for _ in ()).throw(RuntimeError('uncertain lifecycle')))
             r,p=self.create();self.assertEqual(r['status'],'unknown',r);self.assertEqual(self.control['factory_calls'],1);self.assertEqual(r['data']['recovery']['status'],'not-attempted');self.assertEqual(len(self.control['removed']),1)
+            if stage=='remove':
+                self.assertEqual(r['data']['accessorCleanup']['removalStatus'],'attempted');self.assertEqual(r['data']['accessorCleanup']['removedSetId'],self.control['removed'][0]);self.assertTrue(any(path.endswith('accessor-removal-intent.json') for path,data in self.published))
     def test_existing_writable_or_wrong_parent_accessor_not_supported(self):
         prop=self.fb.create_property('CurrentState','DINT','ST');prop.textual_declaration.replace(self.args['declaration']);self.assertIsNone(self.e['object_kind'](prop));self.assertTrue(all(self.e['object_kind'](x) is None for x in prop.children))
         prop.children=[x for x in prop.children if x.name=='Get'];getter=prop.children[0];self.assertEqual(self.e['object_kind'](getter),'property_get');getter.parent=self.fb;self.assertIsNone(self.e['object_kind'](getter));self.assertEqual(self.control['removed'],[])
+    def test_existing_writable_property_list_reports_property_gap_and_retains_set(self):
+        prop=self.fb.create_property('CurrentState','DINT','ST');prop.textual_declaration.replace(self.args['declaration']);self.p.save();self.manager.primary=None
+        result=self.e['dispatch'](dict(self.req,command='list',args=dict(applicationId=self.app.guid,offset=0,limit=200)))
+        self.assertEqual(result['status'],'succeeded',result);gaps=result['data']['scope']['unsupportedChildren'];self.assertEqual(len(gaps),3);self.assertTrue(all(x['stage']=='unsupported-property' for x in gaps));self.assertFalse(any(x['objectId']==str(prop.guid) for x in result['data']['objects']));self.assertEqual(self.control['removed'],[])
     def test_get_and_structure_changes_invalidate_snapshot_with_parent_text_unchanged(self):
         r,p=self.create();prop=next(x for x,n,a in self.e['walk'](p) if str(x.guid)==r['data']['objectId']);getter=prop.children[0];before=self.e['snapshot'](p);parent=self.fb.textual_declaration.text;getter.textual_implementation.replace('CurrentState := State + 1;');changed=self.e['snapshot'](p);self.assertNotEqual(before,changed);self.assertEqual(self.fb.textual_declaration.text,parent)
         setter=Node(p,'Set',declaration='',implementation='',nativeType=ACCESSOR);setter.parent=prop;setter.embedded_object_types=[ST];prop.children.append(setter);self.assertNotEqual(changed,self.e['snapshot'](p));self.assertFalse(self.e['property_structure'](prop)['readOnly'])
