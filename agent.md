@@ -4,7 +4,7 @@
 
 S9补充时核对的 main 为 `4a0aba7abc1c88f6b00da84756322d46fc0284e1`，0.20.1 修复候选版、25 项工具。该段保留规划补充时的基线。S2b限定可读写Property/Get/Set已合并为0.21.0候选、25工具；S3限定组织能力已合并（0.22.0候选、27工具），日常入口部署与握手另行核对。S4a限定变量新增及显式初值修改已合并（0.23.0候选、28工具），包含两轮名称边界补修；S4b第一子阶段的已有聚合直接成员修改已合并为0.24.0候选、28工具，日常客户端加载另行核对。S4其余范围及S5–S8未开始，S9全部为后续规划，不连接PLC。当前功能总览与阶段状态见[README](README.md)，客户端部署和模型验收仍分别取证。
 
-S4b 第二子阶段在 `codex/fb-interface-variable-edit` 功能分支开发，预计 0.25.0 候选版、28 工具：仅普通 ST FUNCTION_BLOCK 已有且唯一的 VAR_INPUT／VAR_OUTPUT 块中，BOOL／DINT／TIME 单变量新增及已有显式初值修改。旧调用省略 section 时维持 VAR／VAR_GLOBAL 语义；聚合成员动作不接收 section。尚未合并 main，其他 S4b 扩展仍待后续单独验证。
+S4b 第二子阶段在 `codex/fb-interface-variable-edit` 功能分支完成限定实现与验收，0.25.0 候选版、28 工具：仅普通 ST FUNCTION_BLOCK 已有且唯一的 VAR_INPUT／VAR_OUTPUT 块中，BOOL／DINT／TIME 单变量新增及已有显式初值修改。旧调用省略 section 时维持 VAR／VAR_GLOBAL 语义；聚合成员动作不接收 section。开发端真实 MCP 核对两种声明区与三种类型，一次 DSH CLI 模型任务完成输入、输出新增和输入初值修改；两套工程的两次编译各为0错误、1条CmpLog警告，保存重开及目标读回通过。CLI有两次参数拒绝、一次辅助读取失败及多余辅助查询，工程闭环、流程遵循和答复展示应分别判断。尚未合并 main，日常 DSH 仍为0.24固定入口；其他 S4b 扩展仍待后续单独验证。
 
 ## 1. 当前基线与工作方式
 
