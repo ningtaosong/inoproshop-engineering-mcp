@@ -1,6 +1,6 @@
 # Application 内原生文件夹与 ST POU 移动（S3）
 
-0.22.0 候选分支扩展 `folder_create`、`object_move`，共27项工具。原25项输入保持兼容；结构查询输出增加 `folder` 类型、`organizationScheme` 和 `organizationVersions`，不是旧输出Schema逐字不变。登记仍为v2，租约身份及Linux异常分支补修不变。本分支尚未合并main，部署与Git状态分别核对。
+0.22.0 候选分支扩展 `folder_create`、`object_move`，共27项工具。原25项输入保持兼容；结构查询输出增加 `folder` 类型、`organizationScheme` 和 `organizationVersions`，不是旧输出Schema逐字不变。登记仍为v2，租约身份及Linux异常分支补修不变。S3已合并main；日常入口部署、握手和模型任务分别核对，不由Git合并推定客户端已加载。
 
 ## 支持范围
 
