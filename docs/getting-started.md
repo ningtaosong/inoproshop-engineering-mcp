@@ -1,3 +1,5 @@
+当前S3为0.22.0候选/27工具，支持[Application原生文件夹与限定ST POU移动](object-organize.md)。main已合并S3；日常入口的实际版本以部署握手为准。以下0.21.0说明保留原时间语境，历史客户端记录保留原归属。
+
 # 安装、接入与日常离线试用
 
 S2b原生Property/Get/Set已合并，main为0.21.0候选版、25项工具。仅用户普通ST FB下PUBLIC DINT，显式propertyMode=read-write才创建可读写Get/Set，旧调用默认只读；不转换已有属性或补建Set，见[属性说明](properties.md)。租约身份与最终Linux异常补修保持，沿用[原停止条件](startup-handoff.md#租约进程实例身份0201修复候选)。固定入口须单独正常部署，Git合并不代表实际客户端生效；Codex0.16不自动升级。

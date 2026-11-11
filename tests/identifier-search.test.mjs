@@ -35,7 +35,7 @@ test('unclosed/unsupported input reports a separate lexical gap and prevents def
  }
 });
 test('other nineteen tool schemas exactly preserve the frozen 0.13.0 contract',async()=>{
- const old=JSON.parse(await readFile('tests/fixtures/identifier-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);assert.equal(Object.keys(schemas).length,25);
+ const old=JSON.parse(await readFile('tests/fixtures/identifier-legacy-contracts.json','utf8'));assert.equal(old.tools.length,19);assert.equal(Object.keys(schemas).length,27);
  for(const t of old.tools){const strip=withoutInitializerMemberExtension;assert.deepEqual(strip(z.toJSONSchema(schemas[t.name],{io:'input'})),t.inputSchema,t.name+' input');assert.deepEqual(strip(z.toJSONSchema(outputSchemas[t.name])),t.outputSchema,t.name+' output');}
 });
 test('Unicode neighbours, supplementary letters, normalized newlines and UTF-16 spans stay original',()=>{

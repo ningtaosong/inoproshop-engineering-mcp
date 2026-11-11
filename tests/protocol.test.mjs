@@ -7,7 +7,7 @@ import { Store,codeHash } from '../dist/storage.js';
 
 test('真实 stdio 协议：初始化、十七工具、中文同名对象、冲突、重复请求、错误再修复及重开',async t=> {
   const env=await setup(); const c=await connect(env.dataDir); t.after(()=>c.client.close());
-  const tools=await c.client.listTools(); assert.equal(tools.tools.length,25);
+  const tools=await c.client.listTools(); assert.equal(tools.tools.length,27);
   assert.ok(tools.tools.every(x=>x.inputSchema && x.outputSchema));
   const initial=await c.call('session_status'); assert.equal(initial.data.session,null);
   const inspect=await c.call('environment_inspect'); assert.equal(inspect.data.mode,'fixture-test-only');

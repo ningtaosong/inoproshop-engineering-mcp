@@ -16,6 +16,7 @@ import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js'
 import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
+import {organizationResult} from './organization.js';
 
 export class EngineeringService {
   readonly store: Store;
@@ -273,6 +274,7 @@ export class EngineeringService {
       throw new DomainError('unknown','DIRECT_EVIDENCE_INVALID','直接工程的版本/原生占用检查证据无法确认，保持冻结');
   }
   private prepareResult(op:Operation,result:Reply):Reply {
+    if(['folder_create','object_move'].includes(op.tool))return organizationResult(result,op.args,op.tool);
     if(op.tool==='variable_inspect')return variableResult(result,op.args);
     if(op.tool==='project_compare')return captureReply(result,op.args,op.project!);
     return op.tool==='project_search'?searchResult(result,op.args):op.tool==='task_inspect'?taskResult(result,op.args):
@@ -295,6 +297,12 @@ export class EngineeringService {
           declarationMatches(v.objectType,v.path?.at(-1) || '',v.declaration);
       };
       if(!d) invalid();
+      if(['folder_create','object_move'].includes(op.tool)){
+        if(d!.structuralEvidence===undefined||!isHash(d!.structureVersion)||!isHash(d!.snapshot)||!isHash(d!.diskHash)||
+          d!.changed===true&&(!persisted()||d!.reopened!==true||d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project'))||
+          d!.changed===false&&(d!.noOp!==true||d!.diskHash!==args.expectedDiskHash))invalid();
+        d!.buildApplicable=d!.changed===true?false:buildApplies(session,d);
+      }
       if(op.tool==='project_compare') {
         if(args.mode!=='capture'||!session||d!.mode!=='capture'||(d!.snapshot as any)?.evidence?.operationId!==op.operationId)invalid();
         return;
@@ -441,6 +449,12 @@ export class EngineeringService {
     await this.store.acquire(s.sourcePath);
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
+    if(['folder_create','object_move'].includes(op.tool)){
+      if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
+        throw new DomainError('conflict','ORGANIZATION_DISK_CHANGED','结构写入前磁盘版本与登记/请求不一致，未派发IDE');
+      if(op.tool==='folder_create'&&a.parentId!==a.applicationId)throw new DomainError('unsupported','FOLDER_ROOT_ONLY','仅在Application直接根节点创建文件夹');
+      return this.bridge(op,op.tool==='folder_create'?'create_folder':'move_object',s,a);
+    }
     if(op.tool==='task_config_update') {
       validateTaskPatch(a);
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
