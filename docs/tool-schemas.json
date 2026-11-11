@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.24.0",
+  "serverVersion": "0.25.0",
   "contractVersion": "1.0.0",
   "toolCount": 28,
   "tools": [
@@ -11256,6 +11256,13 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 80
+          },
+          "section": {
+            "type": "string",
+            "enum": [
+              "VAR_INPUT",
+              "VAR_OUTPUT"
+            ]
           },
           "expectedOldInitializer": {
             "type": "string",

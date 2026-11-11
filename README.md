@@ -6,6 +6,8 @@
 
 S4b 第一子阶段已合并：`variable_edit` 显式增加根 GVL 具名聚合直接成员修改。其余 S4b 范围仍未完成；本机 DSH 实际加载版本须依据固定入口与连接证据核对，仓库合并本身不等于客户端已加载。范围及验收归属见[变量编辑说明](docs/variable-edit.md)。
 
+`codex/fb-interface-variable-edit` 正在验证 S4b 第二子阶段：0.25.0 候选版在普通 ST 功能块已有的 `VAR_INPUT`／`VAR_OUTPUT` 块中，显式选择声明区后新增或修改普通 BOOL／DINT／TIME 变量初值。此项尚未合并 main；日常 DSH 入口仍按实际固定构建核对。
+
 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备。仓库合并、客户端加载、模型实际调用和运行验证是不同状态，固定客户端入口不会随 main 自动升级。
 
 ## 已完成功能（main）

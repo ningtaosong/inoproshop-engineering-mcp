@@ -1,4 +1,10 @@
-# 变量级编辑：S4a 与 S4b 第一子阶段
+# 变量级编辑：S4a 与 S4b 限定子阶段
+
+## S4b 第二子阶段：功能块输入／输出（0.25.0 功能分支候选）
+
+`variable_edit` 的 `add`、`set-initializer` 可显式传 `section: VAR_INPUT` 或 `section: VAR_OUTPUT`，仅处理普通用户 ST FUNCTION_BLOCK 中已存在且唯一的相应声明块。新增普通 BOOL／DINT／TIME 单变量必须给出类型和受限字面初值；修改仅替换已有单变量的显式初值。服务重读实际源码和磁盘版本，检查同一功能块其他声明区的变量重名，新增前还核对直接 Method／Property 的名称和原生子对象身份。写前检查点、去重、写后读回、保存重开及结果不确定冻结沿用旧机制。省略 `section` 的旧调用仍定位普通 POU 的 VAR 或根 GVL 的 VAR_GLOBAL；`set-member-initializer` 拒绝 `section`。
+
+缺失或重复声明块、联合声明、地址绑定、RETAIN／PERSISTENT 等特殊声明、解析缺口以及类型、名称、方向变更均不在本子阶段。VAR_IN_OUT、Method／Property 内声明、数组和结构体变量及运行值写入也不支持。功能块 VAR_INPUT 的源码初值发生于实例初始化；显式调用实参会对该次调用赋值。不能把修改初值说成调用方显式传入的时间已改变，也不能据此推断运行当前值。
 
 `variable_edit` 以 `add` 或 `set-initializer` 为动作，服务在受管理队列内重新读取目标声明，再生成插入单条声明或替换显式初始化值的最小源码差异。它沿用完整对象哈希、工程快照、磁盘哈希、写前检查点、请求去重、保存关闭重开及读回。调用者提供精确 Application 和对象身份；用户只需说明工程和目标。
 

@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.24.0 候选版的二十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.25.0 候选版的二十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -10,6 +10,8 @@
 ## S4a 变量级限定编辑
 
 普通 ST POU 的 VAR 局部变量及 Application 根 GVL 的 VAR_GLOBAL 普通变量，在新建单变量或替换已有显式单变量初值时，优先使用 variable_edit。先按需查询变量、读取目标完整源码，取得当前 objectId、contentHash、工程 snapshot 和 diskHash；目标、旧值、作用域或解析覆盖不明时停止。服务会重新读取原生声明、计算最小差异；不要传旧变量表行号，也不要用 code_apply_change 冒充变量级编辑成功。仅 BOOL、DINT、TIME 的限定字面量；不处理联合声明、属性/AT/RETAIN等特殊区或无显式初值变量。修改后读回目标并真实编译、保存重开；比较仍只在明确要求时执行。其他已授权的源码修改仍可用现有工具；变量级能力不代表运行值写入或自动回滚。
+
+普通 ST FUNCTION_BLOCK 已有且唯一的 VAR_INPUT 或 VAR_OUTPUT 声明块，也可对普通 BOOL／DINT／TIME 单变量使用 variable_edit 的 add 或 set-initializer；必须显式给出 section。新增前核对同一 FB 其他声明区及直接 Method／Property 名称，不凭同名或旧偏移推断目标区。缺失、重复、联合、特殊或解析不全时停止。输入初值在实例初始化时生效；调用显式传参会为该次调用赋值，不能把源码初值当作该调用或运行时实测值。省略 section 时继续使用旧 VAR／VAR_GLOBAL 范围；set-member-initializer 不接收 section。
 
 用户明确要求修改根 GVL 单变量的已有具名聚合直接成员时，先用 variable_inspect 定位父变量和成员，再独立读取 GVL 与同 Application 根的结构体 DUT 原文和哈希。仅在类型名及字段唯一、成员显式值为已支持字面量、当前工程和磁盘版本一致时，用 variable_edit 的 set-member-initializer，分别传父变量 name、memberName、typeObjectId、expectedTypeHash 及原值。服务会在队列内重读父变量、完整类型和当前成员位置；类型、成员、归属或原值有歧义便停止。不得补缺失成员、改结构体字段初值或把源码设定说成运行值；旧成员分页位置不作写入依据。其余编译、保存重开和目标读回沿用上段流程。
 
