@@ -185,6 +185,19 @@ def read_object(item, names, app_id):
     if object_kind(item) in ('property','property_get','property_set'):result.update(property_metadata(item,names))
     return result
 
+def variable_type_guard(project, app_id, guard):
+    # Recheck the exact local DUT at the native write boundary, not merely in
+    # the service preflight. An unsaved IDE change need not alter diskHash.
+    try:
+        item,names,aid=locate(project,app_id,guard['objectId'])
+        actual=read_object(item,names,aid)
+        if (actual['objectType']!='structure' or actual['nativeTypeId']!='2db5746d-d284-4425-9f7f-2663a34b0ebc' or
+            actual['hasImplementation'] or actual['implementation']!='' or actual['applicationId']!=guard['applicationId'] or
+            actual['contentHash']!=guard['contentHash'] or actual['path']!=guard['path']):return None
+        return {'objectId':actual['objectId'],'applicationId':actual['applicationId'],'path':actual['path'],
+                'contentHash':actual['contentHash']}
+    except Exception:return None
+
 def unsupported_fb_child(item):
     if text(item.type).lower() in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db'):return True
     if text(item.type).lower()=='f8a58466-d7f6-439f-bbb8-d4600e41d099':return True
@@ -1169,6 +1182,7 @@ def dispatch(req):
                 item, names, aid = locate(project, app_id, args["objectId"])
                 before = read_object(item, names, aid)
                 kind = before["objectType"]
+                guarded_type=variable_type_guard(project,app_id,args['variableTypeGuard']) if args.get('variableTypeGuard') else None
                 invalid_type = (args.get("objectType") is not None and args["objectType"]!=kind) or (kind in ("gvl","structure","enum","array") and
                     (args.get("implementation","")!="" or not declaration_matches(kind,text(item.get_name()),args["declaration"],True))) or (before["hasImplementation"] and "implementation" not in args)
                 if kind=='property':invalid_type=True  # Property declaration/type/access/structure is never a generic text write target.
@@ -1196,6 +1210,10 @@ def dispatch(req):
                     response = failure("conflict", "HASH_CONFLICT", u"实际内容已改变，未写入", {"actual": before})
                 elif args.get('variableEdit') and (args.get('expectedSnapshot')!=snapshot(project) or args.get('expectedDiskHash')!=file_hash(req['projectPath'])):
                     response = failure('conflict','VARIABLE_VERSION_CHANGED',u'变量修改前工程或磁盘版本已变化，未写入')
+                elif args.get('action')=='set-member-initializer' and not args.get('variableTypeGuard'):
+                    response = failure('conflict','MEMBER_TYPE_GUARD_MISSING',u'成员修改缺少结构体原版本保护，未写入')
+                elif args.get('variableTypeGuard') and guarded_type is None:
+                    response = failure('conflict','MEMBER_TYPE_CHANGED',u'结构体身份、源码或原生类型已变化，未写入')
                 else:
                     publish(os.path.join(os.path.dirname(req["resultPath"]), "before.json"), before)
                     try:
@@ -1208,6 +1226,11 @@ def dispatch(req):
                         reopened = read_object(*locate(project, app_id, args["objectId"]))
                         if reopened["objectType"]!=kind or reopened["contentHash"] != observed["contentHash"] or reopened["path"]!=before["path"]:
                             raise ValueError("Disk reopen does not match write readback")
+                        type_evidence={}
+                        if guarded_type:
+                            after_type=variable_type_guard(project,app_id,args['variableTypeGuard'])
+                            if after_type is None:raise ValueError('Structure type changed across member write/save/reopen')
+                            type_evidence={'variableTypeEvidence':dict(guarded_type,beforeContentHash=guarded_type['contentHash'],afterContentHash=after_type['contentHash'])}
                         if kind in ('property_get','property_set') and any(reopened[k]!=before[k] for k in ('parentId','fbId','propertyId','propertyPath','propertyContentHash','accessorVersion','accessorStructure','readOnly','access','propertyType')):
                             raise ValueError('Property/Get/Set owner, declaration or accessor structure changed')
                         related={}
@@ -1215,14 +1238,14 @@ def dispatch(req):
                             related_after=[read_object(*locate(project,aid,x)) for x in related_ids]
                             if related_after!=related_before:raise ValueError('Sibling accessor, Property or FB source changed')
                             related={'relatedSourceEvidence':{'before':related_before,'after':related_after}}
-                        response = success(u"修改并读回一致，工作副本已持久化并重开核对", dict(reopened,**dict(related,
-                            snapshot=snapshot(project), checkpoint=req["checkpointPath"], persistedToWorkingCopy=True, reopened=True)))
+                        response = success(u"修改并读回一致，工作副本已持久化并重开核对", dict(reopened,**dict(related,**dict(type_evidence,
+                            snapshot=snapshot(project), checkpoint=req["checkpointPath"], persistedToWorkingCopy=True, reopened=True))))
                     except Exception as e:
                         observed = None
                         recovery = {"status": "unknown"}
                         detail = exception_evidence(e)
                         try:
-                            if kind in ('method','property_get','property_set') or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
+                            if kind in ('method','property_get','property_set') or args.get('action')=='set-member-initializer' or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")
                             project = lifecycle["project"]
                             item, names, aid = locate(project, app_id, args["objectId"])
