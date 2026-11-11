@@ -2,7 +2,7 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop，直接修改指定离线工程，编译并保存重开；工程比较按需使用。
 
-**开发分支候选为0.23.0、28项MCP工具，契约1.0.0。S4a限定[变量级新增与显式初值修改](docs/variable-edit.md)已在独立工程经真实MCP及一次DSH CLI模型任务验证，尚未合并或部署日常入口；S3新增[原生文件夹与ST对象移动](docs/object-organize.md)，保留S2b原生PUBLIC DINT Property/Get/Set及旧调用默认只读。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
+**当前main为0.23.0候选版、28项MCP工具，契约1.0.0。S4a限定[变量级新增与显式初值修改](docs/variable-edit.md)已合并；原真实MCP及一次DSH CLI模型任务属于名称边界补修前的候选，最终补修后的离线相关回归另列。日常入口的实际加载以部署连接证据为准。S3提供[原生文件夹与ST对象移动](docs/object-organize.md)，保留S2b原生PUBLIC DINT Property/Get/Set及旧调用默认只读。适用于本机、限定范围的日常离线试用，不是正式 v1.0 或生产使用认证。** 已验环境为 Windows、InoProShop 1.9.1.6；Node.js 要求 22 或以上。IDE、客户端、设备包和库需自行准备，其他电脑和安装组合未完成部署验收。
 
 0.20.1仅修复[租约进程实例身份](docs/startup-handoff.md#租约进程实例身份0201修复候选)：PID存活不等于原拥有者仍存活；新租约绑定系统进程创建标识和本次取得标识，身份不明时停止。工具Schema、登记v2及工程操作的unknown恢复规则不变。DSH日常入口已切到包含最终Linux补修的固定构建；实际握手与清理取证后重连的边界见[合并与部署记录](docs/startup-handoff.md#租约修复合并与日常部署2026-11-10)。未升级的旧入口仍保留原PID判断限制，Codex固定0.16不变。
 
