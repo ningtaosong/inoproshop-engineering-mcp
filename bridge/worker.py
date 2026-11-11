@@ -1194,6 +1194,8 @@ def dispatch(req):
                     response = failure("unsupported","OBJECT_TYPE_MISMATCH",u"指定对象类型或声明形态不匹配；声明类无实现，POU 必须提供实现，未写入")
                 elif before["contentHash"] != args["expectedHash"]:
                     response = failure("conflict", "HASH_CONFLICT", u"实际内容已改变，未写入", {"actual": before})
+                elif args.get('variableEdit') and (args.get('expectedSnapshot')!=snapshot(project) or args.get('expectedDiskHash')!=file_hash(req['projectPath'])):
+                    response = failure('conflict','VARIABLE_VERSION_CHANGED',u'变量修改前工程或磁盘版本已变化，未写入')
                 else:
                     publish(os.path.join(os.path.dirname(req["resultPath"]), "before.json"), before)
                     try:

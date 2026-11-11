@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.22.0';
+export const VERSION = '0.23.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -89,6 +89,11 @@ export const schemas = {
     .refine(a=>['method','property_get','property_set'].includes(a.objectType??'')?a.parentId!==undefined:a.parentId===undefined,'子对象修改须显式类型和精确parentId')
     .refine(a=>['property_get','property_set'].includes(a.objectType??'')?[a.fbId,a.expectedPropertyHash,a.expectedAccessorVersion,a.expectedSnapshot,a.expectedDiskHash,a.implementation].every(x=>x!==undefined):[a.fbId,a.expectedPropertyHash,a.expectedAccessorVersion,a.expectedSnapshot,a.expectedDiskHash].every(x=>x===undefined),'Get/Set修改须绑定FB、Property声明、访问器结构、工程和磁盘版本；其他类型不接收访问器专用参数'),
   project_build: z.object({ ...request, ...target }).strict(),
+  variable_edit:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    objectId:uuid,expectedHash:hash,expectedSnapshot:hash,expectedDiskHash:hash,action:z.enum(['add','set-initializer']),
+    name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/),type:z.enum(['BOOL','DINT','TIME']).optional(),initializer:z.string().min(1).max(80),
+    expectedOldInitializer:z.string().max(80).optional()}).strict()
+    .refine(a=>a.action==='add'?a.type!==undefined&&a.expectedOldInitializer===undefined:a.type===undefined,'新增须指定类型；修改不得改变类型'),
   project_save: z.object({ ...request, ...target, expectedSnapshot: hash }).strict(),
   operation_status: z.object({ operationId: uuid.optional(), requestId: id.optional(), reconcile: z.boolean().default(false) })
     .strict().refine(x => !!x.operationId !== !!x.requestId, '必须且只能指定 operationId 或 requestId'),
@@ -236,6 +241,7 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   method_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),reopened:z.boolean().optional(),creationMethod:z.string().optional()}).passthrough(),
   property_create:z.object({...objectFields,...snapshotFields,getter:z.object({...objectFields}).passthrough().optional(),setter:z.object({...objectFields}).passthrough().optional(),name:z.string().optional(),created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),reopened:z.boolean().optional(),creationMethod:z.string().optional()}).passthrough(),
   code_apply_change:z.object({...objectFields,...snapshotFields,checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),recovery:z.object({status:stateSchema}).passthrough().optional()}).passthrough(),
+  variable_edit:z.object({...objectFields,...snapshotFields,checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),noOp:z.boolean().optional(),editEvidence:z.record(z.string(),z.unknown()).optional()}).passthrough(),
   project_build:z.object({...snapshotFields,applicationId:uuid.nullable().optional(),targetKind:z.enum(['application','pool']).optional(),completed:z.boolean().optional(),diagnosticsComplete:z.boolean().optional(),diagnostics:z.array(z.object({severity:z.string(),text:z.string()}).passthrough()).optional(),buildPassed:z.boolean().nullable().optional()}).passthrough(),
   project_save:z.object({...snapshotFields,saved:z.boolean().optional(),reopened:z.boolean().optional(),buildApplicable:z.boolean().optional()}).passthrough(),
   operation_status:z.record(z.string(),z.unknown())

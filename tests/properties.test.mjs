@@ -15,7 +15,7 @@ test('Property/Get exact declarations and explicit protected Schema; Set and oth
  const a={...target({projectId:randomUUID()}),requestId:'x',objectId:randomUUID(),objectType:'property_get',parentId:randomUUID(),expectedHash:'a'.repeat(64),declaration:'VAR\nEND_VAR',implementation:'CurrentState := 7;'};assert(!schemas.code_apply_change.safeParse(a).success);assert(!schemas.property_create.safeParse({}).success);
 });
 test('All24 prior tool contracts retain exact structure after documented additive Property fields only',async()=>{
- const old=JSON.parse(await readFile('tests/fixtures/property-legacy-contracts.json','utf8'));assert.equal(Object.keys(schemas).length,27);assert.equal(old.tools.length,24);
+ const old=JSON.parse(await readFile('tests/fixtures/property-legacy-contracts.json','utf8'));assert.equal(Object.keys(schemas).length,28);assert.equal(old.tools.length,24);
  for(const row of old.tools){assert.equal(digest(canonical(withoutPropertyExtension(z.toJSONSchema(schemas[row.name],{io:'input'})))),row.inputHash,row.name+' input');assert.equal(digest(canonical(withoutPropertyExtension(z.toJSONSchema(outputSchemas[row.name])))),row.outputHash,row.name+' output');}
 });
 test('Get-only native lifecycle substitute: creation cleanup, same-parent conflict, two owners and dedup',async t=>{
