@@ -9,7 +9,7 @@ import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclara
 import {propertyEvidence,propertyCreationEvidence,propertyPreservationEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE,PROPERTY_COVERAGE_VERSION} from './properties.js';
 import {searchResult,taskResult,nativeInventoryResult,SEARCH_RESULT_VERSION} from './queries.js';
 import {singleIdentifier,IDENTIFIER_LEXER_VERSION,LEGACY_IDENTIFIER_LEXER_VERSION} from './st-lex.js';
-import {variableResult,VARIABLE_PARSER_VERSION} from './variables.js';
+import {variableResult,VARIABLE_PARSER_VERSION,parseDeclaration} from './variables.js';
 import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
@@ -17,6 +17,7 @@ import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
 import {organizationResult} from './organization.js';
+import {planVariableEdit} from './variable-edit.js';
 
 export class EngineeringService {
   readonly store: Store;
@@ -274,6 +275,11 @@ export class EngineeringService {
       throw new DomainError('unknown','DIRECT_EVIDENCE_INVALID','直接工程的版本/原生占用检查证据无法确认，保持冻结');
   }
   private prepareResult(op:Operation,result:Reply):Reply {
+    if(op.tool==='variable_edit'&&result.status==='succeeded'&&(op as any).variableOriginal){
+      const before=(op as any).variableOriginal;
+      const plan=planVariableEdit(before.declaration,before.objectType,before.path.at(-1),op.args);
+      return {...result,data:{...result.data,editEvidence:{action:op.args.action,name:op.args.name,range:plan.range,before:plan.before,after:plan.after}}};
+    }
     if(['folder_create','object_move'].includes(op.tool))return organizationResult(result,op.args,op.tool);
     if(op.tool==='variable_inspect')return variableResult(result,op.args);
     if(op.tool==='project_compare')return captureReply(result,op.args,op.project!);
@@ -281,8 +287,8 @@ export class EngineeringService {
       ['project_structure','device_inspect','library_inspect'].includes(op.tool)?nativeInventoryResult(result,op.args,op.tool):result;
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
-    const args=op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const args=op.tool==='variable_edit'?(op as any).effectiveArgs??op.args:op.args;
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -330,6 +336,18 @@ export class EngineeringService {
           d!.contentHash!==codeHash(args.declaration,args.implementation ?? '') || !isHash(d!.snapshot) || !isHash(d!.diskHash) || !persisted() || d!.reopened!==true)) invalid();
         if(d!.objectType==='method'&&(d!.nativeTypeId!=='f8a58466-d7f6-439f-bbb8-d4600e41d099'||d!.hasImplementation!==true||typeof d!.parentId!=='string'||canonical(d!.parentPath)!==canonical((d!.path as string[])?.slice(0,-1))||d!.methodMetadataSource!=='native-method-type-parent-and-declaration-header'||!methodDeclarationMatches((d!.path as string[])?.at(-1)??'',d!.declaration as string,d!.methodReturnType as string,d!.access as string)||command==='change'&&(args.objectType!=='method'||args.parentId!==d!.parentId)))invalid();
         if(['property','property_get','property_set'].includes(d!.objectType as string)&&(!propertyEvidence(d)||command==='change'&&(!['property_get','property_set'].includes(d!.objectType as string)||args.objectType!==d!.objectType||args.parentId!==d!.propertyId||args.fbId!==d!.fbId||args.expectedPropertyHash!==d!.propertyContentHash||args.expectedAccessorVersion!==d!.accessorVersion||d!.readOnly===false&&!propertyPreservationEvidence(d))))invalid();
+        if(op.tool==='variable_edit'){
+          const original=(op as any).variableOriginal;
+          if(!original||typeof original.declaration!=='string'||typeof original.implementation!=='string'||original.contentHash!==op.args.expectedHash||
+            original.objectType!==d!.objectType||original.objectId!==d!.objectId||original.applicationId!==d!.applicationId||
+            original.implementation!==d!.implementation)invalid();
+          let plan;
+          try {plan=planVariableEdit(original.declaration,original.objectType,original.path.at(-1),op.args);}catch{return invalid();}
+          if(plan.declaration!==args.declaration||d!.declaration!==plan.declaration||d!.implementation!==original.implementation)invalid();
+          const parsed=parseDeclaration(d!.declaration as string,d!.objectType as string,(d!.path as string[]).at(-1)!);
+          const target=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===(d!.objectType==='gvl'?'VAR_GLOBAL':'VAR')&&r.name.toLowerCase()===op.args.name.toLowerCase());
+          if(!parsed.complete||target.length!==1||target[0].initializerRaw!==op.args.initializer)invalid();
+        }
       }
       if(command==='create_method'){
         const path_=d!.path as string[],factory=d!.factoryEvidence as any;
@@ -449,6 +467,7 @@ export class EngineeringService {
     await this.store.acquire(s.sourcePath);
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
+    if(op.tool==='variable_edit')return this.variableEdit(op,s);
     if(['folder_create','object_move'].includes(op.tool)){
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
         throw new DomainError('conflict','ORGANIZATION_DISK_CHANGED','结构写入前磁盘版本与登记/请求不一致，未派发IDE');
@@ -511,6 +530,35 @@ export class EngineeringService {
     if(command==='save' && s.lastBuild?.snapshot===a.expectedSnapshot && s.lastBuild?.diskHash && digest(await fs.readFile(s.workingPath))!==s.lastBuild.diskHash)
       throw new DomainError('conflict','BUILD_SNAPSHOT_STALE','编译后磁盘工程内容发生变化，需要重新读取并编译');
     return this.bridge(op,command,s,a);
+  }
+  private async variableEdit(op:Operation,s:Session):Promise<Reply> {
+    const a=op.args;
+    if(a.expectedSnapshot!==s.snapshot||a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
+      throw new DomainError('conflict','VARIABLE_VERSION_CHANGED','工程或磁盘版本变化，未修改');
+    await maintenanceGuard();await assertNotIsolated(this.store,s.projectId,[s.sourcePath,s.workingPath]);
+    if(s.editMode==='direct')await guardDirect(this.store,s);
+    const dir=this.store.file('ipc/'+op.operationId),pre=path.join(dir,'preflight');
+    op.bridge={directory:pre};await this.store.saveOp(op);
+    const raw=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'read',projectPath:s.workingPath,
+      args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.objectId},
+      ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pre,
+      async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
+    if(raw.status!=='succeeded')return raw;
+    this.validateDirect(raw,s);
+    const before=raw.data as any;
+    if(before.objectId!==a.objectId||before.applicationId!==a.applicationId||before.contentHash!==a.expectedHash||
+      !['gvl','st_pou','function_block'].includes(before.objectType)||typeof before.declaration!=='string'||typeof before.implementation!=='string'||
+      codeHash(before.declaration,before.implementation)!==before.contentHash||
+      (before.objectType==='gvl'?!Array.isArray(before.path)||before.path.length!==(s.applications?.find(x=>x.applicationId===a.applicationId)?.path.length??-2)+1:before.hasImplementation!==true))
+      throw new DomainError('conflict','VARIABLE_TARGET_CHANGED','目标身份或原内容不匹配，未修改');
+    let plan;
+    try {plan=planVariableEdit(before.declaration,before.objectType,before.path.at(-1),a);}
+    catch(e:any){throw new DomainError('unsupported','VARIABLE_DECLARATION_UNSUPPORTED',e.message);}
+    if(plan.declaration===before.declaration)return reply('succeeded','目标原值已相同，未修改或保存',{...before,snapshot:s.snapshot,diskHash:s.diskHash,noOp:true});
+    if(digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)throw new DomainError('conflict','VARIABLE_DISK_CHANGED','定位后磁盘版本改变，未修改');
+    const effective={...a,declaration:plan.declaration,implementation:before.implementation,objectType:before.objectType,variableEdit:true};
+    (op as any).effectiveArgs=effective;(op as any).variableOriginal=before;op.bridge={directory:dir};await this.store.saveOp(op);
+    return this.bridge(op,'change',s,effective);
   }
   private async searchPage(op:Operation,s:Session,currentHash:string):Promise<Reply> {
     const a=op.args;

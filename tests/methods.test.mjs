@@ -30,7 +30,7 @@ test('Method schema/header: explicit PUBLIC, void/DINT; no rename or extra decla
  assert(!schemas.method_create.safeParse({}).success);assert(!schemas.code_apply_change.safeParse({requestId:'x',...target({projectId:randomUUID()}),objectId:randomUUID(),expectedHash:'a'.repeat(64),declaration:header('M'),implementation:'',objectType:'method'}).success);
 });
 test('All 23 old tool contracts remain exact after removing only documented additive Method fields',async()=>{
- const old=JSON.parse(await readFile('tests/fixtures/method-legacy-contracts.json','utf8'));assert.equal(Object.keys(schemas).length,27);
+ const old=JSON.parse(await readFile('tests/fixtures/method-legacy-contracts.json','utf8'));assert.equal(Object.keys(schemas).length,28);
  for(const row of old.tools){assert.equal(digest(canonical(withoutMethodExtension(z.toJSONSchema(schemas[row.name],{io:'input'})))),row.inputHash,row.name+' input');assert.equal(digest(canonical(withoutMethodExtension(z.toJSONSchema(outputSchemas[row.name])))),row.outputHash,row.name+' output');}
 });
 test('Native-method lifecycle substitute: two return kinds, independent parents, same-parent conflict and original-request dedup',async t=>{
