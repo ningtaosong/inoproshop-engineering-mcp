@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.23.0';
+export const VERSION = '0.24.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -90,10 +90,14 @@ export const schemas = {
     .refine(a=>['property_get','property_set'].includes(a.objectType??'')?[a.fbId,a.expectedPropertyHash,a.expectedAccessorVersion,a.expectedSnapshot,a.expectedDiskHash,a.implementation].every(x=>x!==undefined):[a.fbId,a.expectedPropertyHash,a.expectedAccessorVersion,a.expectedSnapshot,a.expectedDiskHash].every(x=>x===undefined),'Get/Set修改须绑定FB、Property声明、访问器结构、工程和磁盘版本；其他类型不接收访问器专用参数'),
   project_build: z.object({ ...request, ...target }).strict(),
   variable_edit:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
-    objectId:uuid,expectedHash:hash,expectedSnapshot:hash,expectedDiskHash:hash,action:z.enum(['add','set-initializer']),
+    objectId:uuid,expectedHash:hash,expectedSnapshot:hash,expectedDiskHash:hash,action:z.enum(['add','set-initializer','set-member-initializer']),
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/),type:z.enum(['BOOL','DINT','TIME']).optional(),initializer:z.string().min(1).max(80),
-    expectedOldInitializer:z.string().max(80).optional()}).strict()
-    .refine(a=>a.action==='add'?a.type!==undefined&&a.expectedOldInitializer===undefined:a.type===undefined,'新增须指定类型；修改不得改变类型'),
+    expectedOldInitializer:z.string().max(80).optional(),memberName:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/).optional(),
+    typeObjectId:uuid.optional(),expectedTypeHash:hash.optional()}).strict()
+    .refine(a=>a.action==='add'?a.type!==undefined&&a.expectedOldInitializer===undefined&&a.memberName===undefined&&a.typeObjectId===undefined&&a.expectedTypeHash===undefined:
+      a.action==='set-initializer'?a.type===undefined&&a.memberName===undefined&&a.typeObjectId===undefined&&a.expectedTypeHash===undefined:
+      a.type===undefined&&a.memberName!==undefined&&a.typeObjectId!==undefined&&a.expectedTypeHash!==undefined&&a.expectedOldInitializer!==undefined,
+      '新增须指定类型；普通修改不得传成员参数；成员修改须绑定成员名、结构体身份/哈希及原值，且不得指定类型'),
   project_save: z.object({ ...request, ...target, expectedSnapshot: hash }).strict(),
   operation_status: z.object({ operationId: uuid.optional(), requestId: id.optional(), reconcile: z.boolean().default(false) })
     .strict().refine(x => !!x.operationId !== !!x.requestId, '必须且只能指定 operationId 或 requestId'),

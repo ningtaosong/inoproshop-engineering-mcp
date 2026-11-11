@@ -17,7 +17,7 @@ import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
 import {organizationResult} from './organization.js';
-import {planVariableEdit} from './variable-edit.js';
+import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
 
 export class EngineeringService {
   readonly store: Store;
@@ -277,8 +277,13 @@ export class EngineeringService {
   private prepareResult(op:Operation,result:Reply):Reply {
     if(op.tool==='variable_edit'&&result.status==='succeeded'&&(op as any).variableOriginal){
       const before=(op as any).variableOriginal;
-      const plan=planVariableEdit(before.declaration,before.objectType,before.path.at(-1),op.args);
-      return {...result,data:{...result.data,editEvidence:{action:op.args.action,name:op.args.name,range:plan.range,before:plan.before,after:plan.after}}};
+      const type=(op as any).variableTypeOriginal;
+      const plan=op.args.action==='set-member-initializer'?
+        planMemberInitializerEdit(before.declaration,type.declaration,before.path.at(-1),type.path.at(-1),op.args):
+        planVariableEdit(before.declaration,before.objectType,before.path.at(-1),op.args);
+      return {...result,data:{...result.data,editEvidence:{action:op.args.action,name:op.args.name,
+        ...(type?{memberName:op.args.memberName,typeObjectId:type.objectId,typeContentHash:type.contentHash,fieldType:(plan as ReturnType<typeof planMemberInitializerEdit>).fieldType}:{}),
+        range:plan.range,before:plan.before,after:plan.after}}};
     }
     if(['folder_create','object_move'].includes(op.tool))return organizationResult(result,op.args,op.tool);
     if(op.tool==='variable_inspect')return variableResult(result,op.args);
@@ -342,11 +347,17 @@ export class EngineeringService {
             original.objectType!==d!.objectType||original.objectId!==d!.objectId||original.applicationId!==d!.applicationId||
             original.implementation!==d!.implementation)invalid();
           let plan;
-          try {plan=planVariableEdit(original.declaration,original.objectType,original.path.at(-1),op.args);}catch{return invalid();}
+          const type=(op as any).variableTypeOriginal;
+          try {plan=op.args.action==='set-member-initializer'?
+            planMemberInitializerEdit(original.declaration,type.declaration,original.path.at(-1),type.path.at(-1),op.args):
+            planVariableEdit(original.declaration,original.objectType,original.path.at(-1),op.args);}catch{return invalid();}
           if(plan.declaration!==args.declaration||d!.declaration!==plan.declaration||d!.implementation!==original.implementation)invalid();
+          if(type){const e=d!.variableTypeEvidence as any;
+            if(!e||e.objectId!==type.objectId||e.applicationId!==type.applicationId||e.contentHash!==type.contentHash||
+              e.beforeContentHash!==type.contentHash||e.afterContentHash!==type.contentHash||canonical(e.path)!==canonical(type.path))invalid();}
           const parsed=parseDeclaration(d!.declaration as string,d!.objectType as string,(d!.path as string[]).at(-1)!);
           const target=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===(d!.objectType==='gvl'?'VAR_GLOBAL':'VAR')&&r.name.toLowerCase()===op.args.name.toLowerCase());
-          if(!parsed.complete||target.length!==1||target[0].initializerRaw!==op.args.initializer)invalid();
+          if(!parsed.complete||target.length!==1||op.args.action!=='set-member-initializer'&&target[0].initializerRaw!==op.args.initializer)invalid();
         }
       }
       if(command==='create_method'){
@@ -551,12 +562,69 @@ export class EngineeringService {
       codeHash(before.declaration,before.implementation)!==before.contentHash||
       (before.objectType==='gvl'?!Array.isArray(before.path)||before.path.length!==(s.applications?.find(x=>x.applicationId===a.applicationId)?.path.length??-2)+1:before.hasImplementation!==true))
       throw new DomainError('conflict','VARIABLE_TARGET_CHANGED','目标身份或原内容不匹配，未修改');
+    let typeOriginal:any;
+    if(a.action==='set-member-initializer'){
+      if(before.objectType!=='gvl')throw new DomainError('unsupported','MEMBER_SCOPE_UNSUPPORTED','成员初值修改仅支持Application根GVL，未修改');
+      const parents=parseDeclaration(before.declaration,'gvl',before.path.at(-1));
+      const rows=parents.rows.filter((r:any)=>r.category==='variable'&&r.section==='VAR_GLOBAL'&&r.name.toLowerCase()===a.name.toLowerCase());
+      if(!parents.complete||rows.length!==1||!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(rows[0].typeRaw))
+        throw new DomainError('unsupported','MEMBER_TYPE_UNCERTAIN','父变量或无修饰的本地结构体类型无法唯一确认，未修改');
+      const typeName=rows[0].typeRaw.toLowerCase();
+      const appPath=s.applications?.find(x=>x.applicationId===a.applicationId)?.path;
+      if(!appPath)throw new DomainError('conflict','MEMBER_APPLICATION_CHANGED','Application身份无法确认，未修改');
+      const inventory:any[]=[];let offset=0,total:number|undefined;
+      do {
+        const pageDir=path.join(dir,'type-list-'+offset);op.bridge={directory:pageDir};await this.store.saveOp(op);
+        const listed=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'list',projectPath:s.workingPath,
+          args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,offset,limit:200},
+          ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pageDir,
+          async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
+        if(listed.status!=='succeeded')return listed;
+        this.validateDirect(listed,s);
+        const d=listed.data as any;
+        if(Number.isSafeInteger(d?.total)&&d.total>5000)
+          throw new DomainError('unsupported','MEMBER_TYPE_LIST_LIMIT','Application对象超过本轮完整核对上限，未修改');
+        if(!Array.isArray(d?.objects)||!Number.isSafeInteger(d.total)||d.total<0||
+          typeof d.complete!=='boolean'||total!==undefined&&d.total!==total||
+          d.objects.length===0&&!d.complete||d.objects.length>200||
+          d.complete&&offset+d.objects.length!==d.total||!d.complete&&d.nextOffset!==offset+d.objects.length)
+          throw new DomainError('unknown','MEMBER_TYPE_LIST_INVALID','结构体对象清单不完整或身份无法核对，保持冻结');
+        total=d.total;inventory.push(...d.objects);offset+=d.objects.length;
+        if(d.complete)break;
+      }while(offset<5000);
+      if(inventory.length!==total||new Set(inventory.map(o=>o.objectId)).size!==inventory.length)
+        throw new DomainError('unknown','MEMBER_TYPE_LIST_INVALID','结构体清单重复或未完整取得，保持冻结');
+      const matches=inventory.filter(o=>o.path?.at(-1)?.toLowerCase()===typeName);
+      if(matches.length!==1||matches[0].objectId!==a.typeObjectId||matches[0].objectType!=='structure'||
+        matches[0].nativeTypeId!=='2db5746d-d284-4425-9f7f-2663a34b0ebc'||
+        canonical(matches[0].path?.slice(0,-1))!==canonical(appPath))
+        throw new DomainError('unsupported','MEMBER_TYPE_NOT_UNIQUE','类型名未唯一绑定同一Application根节点的原生结构体，未修改');
+      const typeDir=path.join(dir,'type-read');op.bridge={directory:typeDir};await this.store.saveOp(op);
+      const typed=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'read',projectPath:s.workingPath,
+        args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.typeObjectId},
+        ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},typeDir,
+        async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
+      if(typed.status!=='succeeded')return typed;
+      this.validateDirect(typed,s);typeOriginal=typed.data;
+      if(typeOriginal?.objectId!==a.typeObjectId||typeOriginal.applicationId!==a.applicationId||typeOriginal.objectType!=='structure'||
+        typeOriginal.nativeTypeId!=='2db5746d-d284-4425-9f7f-2663a34b0ebc'||typeOriginal.hasImplementation!==false||
+        typeOriginal.implementation!==''||typeof typeOriginal.declaration!=='string'||
+        typeOriginal.contentHash!==a.expectedTypeHash||codeHash(typeOriginal.declaration,'')!==typeOriginal.contentHash||
+        canonical(typeOriginal.path)!==canonical(matches[0].path))
+        throw new DomainError('conflict','MEMBER_TYPE_CHANGED','结构体身份、原文或版本变化，未修改');
+      (op as any).variableTypeOriginal=typeOriginal;
+    }
     let plan;
-    try {plan=planVariableEdit(before.declaration,before.objectType,before.path.at(-1),a);}
+    try {plan=typeOriginal?planMemberInitializerEdit(before.declaration,typeOriginal.declaration,before.path.at(-1),typeOriginal.path.at(-1),a):
+      planVariableEdit(before.declaration,before.objectType,before.path.at(-1),a);}
     catch(e:any){throw new DomainError('unsupported','VARIABLE_DECLARATION_UNSUPPORTED',e.message);}
-    if(plan.declaration===before.declaration)return reply('succeeded','目标原值已相同，未修改或保存',{...before,snapshot:s.snapshot,diskHash:s.diskHash,noOp:true});
+    if(plan.declaration===before.declaration)return reply('succeeded','目标原值已相同，未修改或保存',{...before,snapshot:s.snapshot,diskHash:s.diskHash,noOp:true,
+      ...(typeOriginal?{editEvidence:{action:a.action,name:a.name,memberName:a.memberName,typeObjectId:typeOriginal.objectId,typeContentHash:typeOriginal.contentHash,
+        fieldType:(plan as ReturnType<typeof planMemberInitializerEdit>).fieldType,range:plan.range,before:plan.before,after:plan.after}}:{})});
     if(digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)throw new DomainError('conflict','VARIABLE_DISK_CHANGED','定位后磁盘版本改变，未修改');
-    const effective={...a,declaration:plan.declaration,implementation:before.implementation,objectType:before.objectType,variableEdit:true};
+    const effective={...a,declaration:plan.declaration,implementation:before.implementation,objectType:before.objectType,variableEdit:true,
+      ...(typeOriginal?{variableTypeGuard:{objectId:typeOriginal.objectId,applicationId:typeOriginal.applicationId,
+        contentHash:typeOriginal.contentHash,path:typeOriginal.path}}:{})};
     (op as any).effectiveArgs=effective;(op as any).variableOriginal=before;op.bridge={directory:dir};await this.store.saveOp(op);
     return this.bridge(op,'change',s,effective);
   }

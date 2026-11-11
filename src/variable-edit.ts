@@ -3,9 +3,11 @@
 import {normalize} from './storage.js';
 import {lexSt} from './st-lex.js';
 import {parseDeclaration} from './variables.js';
+import {parseInitializerMembers} from './initializer-members.js';
 
 export type VariableType='BOOL'|'DINT'|'TIME';
 export type VariableEdit={action:'add'|'set-initializer';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string};
+export type MemberInitializerEdit={action:'set-member-initializer';name:string;memberName:string;initializer:string;expectedOldInitializer:string};
 const ident=/^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
 // CODESYS ST keywords and reserved IEC names are not plain variable identifiers.
 // Match whole tokens only; a name such as IfEnabled remains a valid identifier.
@@ -120,4 +122,44 @@ export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'functio
   const value=checkedInitializer(row.typeRaw.toUpperCase() as VariableType,edit.initializer);
   const start=row.initializerPosition.startOffset,end=row.initializerPosition.endOffset;
   return {declaration:source.slice(0,start)+value+source.slice(end),range:{startOffset:start,endOffset:end},before:old,after:value};
+}
+
+// A member-table row is a locator, never a type assertion or a write offset.
+// Resolve the actual root DUT field and the current aggregate again from the
+// untouched LF source. Comments surrounding the single literal stay in place.
+export function planMemberInitializerEdit(declaration:string,typeDeclaration:string,objectName:string,typeName:string,edit:MemberInitializerEdit){
+  const source=normalize(declaration),typeSource=normalize(typeDeclaration);
+  checkVariableName(edit.name);checkVariableName(edit.memberName);
+  if(!ident.test(typeName))throw new Error('Qualified or uncertain structure type');
+  const parsed=parseDeclaration(source,'gvl',objectName);
+  if(!parsed.complete||parsed.rows.some((r:any)=>r.category==='parse-gap'))throw new Error('Parent declaration boundary incomplete');
+  const parents=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section==='VAR_GLOBAL'&&r.name.toLowerCase()===edit.name.toLowerCase());
+  if(parents.length!==1)throw new Error('Parent variable not unique');
+  const parent=parents[0];
+  if(parent.modifiers?.length||parent.addressRaw||!parent.hasExplicitInitializer||!parent.initializerPosition||
+     parsed.rows.filter((r:any)=>r.category==='variable'&&r.position.startOffset===parent.position.startOffset).length!==1)
+    throw new Error('Unsupported shared or special parent declaration');
+  if(parent.typeRaw.toLowerCase()!==typeName.toLowerCase()||!ident.test(parent.typeRaw))
+    throw new Error('Parent type does not uniquely name the local structure');
+  const fields=parseDeclaration(typeSource,'structure',typeName);
+  if(!fields.complete||fields.rows.some((r:any)=>r.category==='parse-gap'))throw new Error('Structure declaration boundary incomplete');
+  const matches=fields.rows.filter((r:any)=>r.category==='type-field'&&r.name.toLowerCase()===edit.memberName.toLowerCase());
+  if(matches.length!==1)throw new Error('Structure member missing or ambiguous');
+  const field=matches[0];
+  if(field.modifiers?.length||field.addressRaw||fields.rows.filter((r:any)=>r.category==='type-field'&&r.position.startOffset===field.position.startOffset).length!==1||
+     !['BOOL','DINT','TIME'].includes(field.typeRaw.toUpperCase()))throw new Error('Unsupported structure field declaration or type');
+  const members=parseInitializerMembers(source,parent.initializerPosition.startOffset,parent.initializerPosition.endOffset,2000);
+  if(members.status!=='parsed'||!members.complete||members.gaps.length)throw new Error('Named aggregate initializer boundary incomplete or unsupported');
+  const hits=members.rows.filter((r:any)=>r.name.toLowerCase()===edit.memberName.toLowerCase());
+  if(hits.length!==1)throw new Error('Explicit member initializer missing or ambiguous');
+  const member=hits[0],raw=member.valueRaw as string,scan=lexSt(raw);
+  if(scan.error||!scan.tokens.length)throw new Error('Member literal boundary incomplete');
+  const start=member.valuePosition.startOffset+scan.tokens[0].start;
+  const end=member.valuePosition.startOffset+scan.tokens.at(-1)!.end;
+  const old=source.slice(start,end);
+  checkedInitializer(field.typeRaw.toUpperCase() as VariableType,old);
+  if(old!==edit.expectedOldInitializer)throw new Error('Old member initializer mismatch');
+  const value=checkedInitializer(field.typeRaw.toUpperCase() as VariableType,edit.initializer);
+  return {declaration:source.slice(0,start)+value+source.slice(end),range:{startOffset:start,endOffset:end},before:old,after:value,
+    parentName:parent.name,memberName:member.name,fieldType:field.typeRaw.toUpperCase() as VariableType,typeName};
 }

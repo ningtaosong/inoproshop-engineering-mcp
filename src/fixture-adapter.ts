@@ -216,6 +216,11 @@ export class FixtureAdapter implements Adapter {
     } else if(req.command==='change') {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','对象不在选定 Application');
       const old={...object};
+      const guard=a.variableTypeGuard;
+      const typeObject=guard?p.objects.find((o:any)=>o.objectId===guard.objectId&&o.applicationId===a.applicationId):undefined;
+      const typeValid=!!typeObject&&typeObject.objectType==='structure'&&typeObject.nativeTypeId==='2db5746d-d284-4425-9f7f-2663a34b0ebc'&&
+        typeObject.hasImplementation===false&&canonical(typeObject.path)===canonical(guard.path)&&
+        codeHash(typeObject.declaration,typeObject.implementation??'')===guard.contentHash;
       const relatedIds=['property_get','property_set'].includes(object.objectType)?[object.fbId,object.propertyId,...object.accessorStructure.accessors.filter((o:any)=>o.objectId!==object.objectId).map((o:any)=>o.objectId)]:[];
       const related=(rows:any[])=>structuredClone(rows.filter((o:any)=>relatedIds.includes(o.objectId)).map((o:any)=>({...o,contentHash:codeHash(o.declaration,o.implementation)})).sort((a:any,b:any)=>a.objectId.localeCompare(b.objectId)));const relatedBefore=related(p.objects);
       const decl=['gvl','structure','enum','array'].includes(object.objectType);
@@ -225,11 +230,13 @@ export class FixtureAdapter implements Adapter {
       else if(['property_get','property_set'].includes(object.objectType)&&(p.propertyPermissionDenied||object.fileReadOnly))result={...reply('unsupported','Get权限拒绝'),error:{code:'PROPERTY_PERMISSION',message:'Permission denied'}};
       else if(['property_get','property_set'].includes(object.objectType)&&(a.expectedPropertyHash!==object.propertyContentHash||a.expectedAccessorVersion!==object.accessorVersion||a.expectedSnapshot!==snapshot()))result={...reply('conflict','Get结构或内容版本冲突'),error:{code:'PROPERTY_VERSION_CHANGED',message:'Not written'}};
       else if(codeHash(old.declaration,old.implementation)!==a.expectedHash) result=reply('conflict','旧哈希不一致',{actualHash:codeHash(old.declaration,old.implementation)});
+      else if(a.variableEdit&&(a.expectedSnapshot!==snapshot()||a.expectedDiskHash!==digest(await fs.readFile(req.projectPath))))result={...reply('conflict','变量工程或磁盘版本变化'),error:{code:'VARIABLE_VERSION_CHANGED',message:'Not written'}};
+      else if(a.action==='set-member-initializer'&&!guard||guard&&!typeValid)result={...reply('conflict','结构体版本变化'),error:{code:'MEMBER_TYPE_CHANGED',message:'Not written'}};
       else {
         await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(path.join(dir,'before.json'),old);
         object.declaration=normalize(a.declaration);
-        if(p.failImplementation && (req.fileGuard||['method','property_get','property_set'].includes(object.objectType))) {
+        if(p.failImplementation && (req.fileGuard||a.action==='set-member-initializer'||['method','property_get','property_set'].includes(object.objectType))) {
           await atomicJson(req.projectPath,p);
           result={...reply('unknown','直接编辑部分失败，未自动回滚',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_WRITE',message:'Injected failure; preserve state'}};
         } else if(p.failImplementation) {
@@ -240,7 +247,9 @@ export class FixtureAdapter implements Adapter {
           object.implementation=normalize(a.implementation ?? ''); await atomicJson(req.projectPath,p);
           const persisted=await readJson(req.projectPath);
           const observed=persisted.objects.find((o:any)=>o.objectId===a.objectId);
-          result=reply('succeeded','测试写后读回一致',{...observed,contentHash:codeHash(observed.declaration,observed.implementation),snapshot:snapshot(),checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true,reopened:true,...(relatedIds.length?{relatedSourceEvidence:{before:relatedBefore,after:related(persisted.objects)}}:{}),testMode:true});
+          result=reply('succeeded','测试写后读回一致',{...observed,contentHash:codeHash(observed.declaration,observed.implementation),snapshot:snapshot(),checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true,reopened:true,
+            ...(guard?{variableTypeEvidence:{objectId:guard.objectId,applicationId:guard.applicationId,path:guard.path,contentHash:guard.contentHash,beforeContentHash:guard.contentHash,afterContentHash:guard.contentHash}}:{}),
+            ...(relatedIds.length?{relatedSourceEvidence:{before:relatedBefore,after:related(persisted.objects)}}:{}),testMode:true});
         }
       }
     } else if(req.command==='build') {
