@@ -27,6 +27,14 @@ test('variable_edit adds once, then changes only its initializer in direct fixtu
  assert.deepEqual(commands.slice(beforeCommands),['read']);
  assert.equal(await hash(),beforeHash);
  const afterKeyword=await service.store.session();assert.notEqual(afterKeyword?.status,'unknown');assert.notEqual(afterKeyword?.frozen,true);
+ const beforeOperatorCommands=commands.length;
+ const operator=await call('variable_edit',{...target,requestId:randomUUID(),expectedHash:o.contentHash,expectedSnapshot:s.snapshot,expectedDiskHash:s.diskHash,
+  action:'add',name:'ADD',type:'DINT',initializer:'1'});
+ assert.equal(operator.status,'unsupported',JSON.stringify(operator));
+ assert.match(JSON.stringify(operator),/reserved|keyword/i);
+ assert.deepEqual(commands.slice(beforeOperatorCommands),['read']);
+ assert.equal(await hash(),beforeHash);
+ const afterOperator=await service.store.session();assert.notEqual(afterOperator?.status,'unknown');assert.notEqual(afterOperator?.frozen,true);
  const bad=await call('variable_edit',{...target,requestId:randomUUID(),expectedHash:o.contentHash,expectedSnapshot:s.snapshot,expectedDiskHash:s.diskHash,
   action:'add',name:'Injected',type:'DINT',initializer:'1; Evil : DINT := 2'});
  assert.equal(bad.status,'unsupported');assert.equal(JSON.parse(await readFile(s.workingPath,'utf8')).objects[0].declaration,o.declaration);

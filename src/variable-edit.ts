@@ -22,19 +22,44 @@ const reserved=new Set(`
  AND OR XOR NOT MOD DIV MUL AND_THEN OR_ELSE
  TRUE FALSE NULL THIS SUPER REF REFERENCE POINTER
  BOOL BYTE WORD DWORD LWORD SINT INT DINT LINT USINT UINT UDINT ULINT
- REAL LREAL TIME LTIME DATE LDATE TIME_OF_DAY TOD LTOD DATE_AND_TIME DT LDT
+ REAL LREAL T TIME LTIME DATE LDATE TIME_OF_DAY TOD LTOD DATE_AND_TIME DT LDT
  STRING WSTRING CHAR WCHAR BIT
  ANY ANY_BIT ANY_INT ANY_NUM ANY_REAL ANY_STRING ANY_DATE ANY_DERIVED
  ANY_ELEMENTARY ANY_MAGNITUDE ANY_SIGNED ANY_DURATION ANY_CHARS
  CHAR_TO TO_CHAR WCHAR_TO TO_WCHAR ATAN2 USING CLASS
  READ_ONLY READ_WRITE PARAMS
 `.trim().split(/\s+/));
-const builtInTypes=['BOOL','BYTE','WORD','DWORD','LWORD','SINT','INT','DINT','LINT','USINT','UINT','UDINT','ULINT','REAL','LREAL','TIME','LTIME','DATE','LDATE','TOD','LTOD','DT','LDT','STRING','WSTRING','CHAR','WCHAR'];
+// CODESYS Development System, Operators reference: implicit IEC/native
+// operators are distinct from ordinary library functions (e.g. CONCAT).
+// https://content.helpme-codesys.com/en/CODESYS%20Development%20System/_cds_struct_reference_operators.html
+const nativeOperators=new Set(`
+ ADD SUB MUL DIV MOD MOVE INDEXOF SIZEOF XSIZEOF
+ AND OR XOR NOT AND_THEN OR_ELSE SHL SHR ROL ROR
+ SEL MAX MIN LIMIT MUX GT LT LE GE EQ NE ADR BITADR CAL
+ TRUNC TRUNC_INT ABS SQRT LN LOG EXP EXPT SIN ASIN COS ACOS TAN ATAN
+ TEST_AND_SET INI
+`.trim().split(/\s+/));
+// The same reference defines typed SOURCE_TO_TARGET and overloaded TO_TARGET
+// conversions. DATE_AND_TIME/TIME_OF_DAY are overloaded target aliases, not
+// typed conversion commands. Vendor-only conversions are not inferred here.
+const typedConversionTypes=new Set(`
+ BIT BOOL BYTE WORD DWORD LWORD SINT INT DINT LINT USINT UINT UDINT ULINT
+ REAL LREAL TIME LTIME DATE LDATE TOD LTOD DT LDT STRING WSTRING
+`.trim().split(/\s+/));
+const overloadedConversionTypes=new Set([...typedConversionTypes,'DATE_AND_TIME','TIME_OF_DAY']);
+
+function isNativeConversion(name:string):boolean {
+  if(name.startsWith('TO_')&&overloadedConversionTypes.has(name.slice(3)))return true;
+  for(const source of typedConversionTypes){
+    if(name.startsWith(source+'_TO_')&&typedConversionTypes.has(name.slice(source.length+4)))return true;
+  }
+  return false;
+}
 
 function checkVariableName(name:string):void {
   if(!ident.test(name)||name.includes('__'))throw new Error('Invalid plain ST variable identifier');
   const upper=name.toUpperCase();
-  if(reserved.has(upper)||builtInTypes.some(type=>upper.startsWith(type+'_TO_')&&builtInTypes.includes(upper.slice(type.length+4))))
+  if(reserved.has(upper)||nativeOperators.has(upper)||isNativeConversion(upper))
     throw new Error(`Reserved ST keyword cannot be a variable name: ${name}`);
 }
 

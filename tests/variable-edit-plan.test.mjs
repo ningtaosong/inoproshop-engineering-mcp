@@ -53,7 +53,7 @@ test('function return name and special empty block cannot become a new ordinary 
 
 test('new variable rejects ST reserved words before planning a declaration',()=>{
  const source='PROGRAM Main\nVAR\n  Existing : BOOL := TRUE;\nEND_VAR\n';
- for(const name of ['IF','if','If','END_IF','end_if','CASE','AND','FOR','ELSIF','END_CASE','VAR_INPUT','BOOL','DINT','TIME','READ_ONLY','BOOL_TO_INT']){
+ for(const name of ['IF','if','If','END_IF','end_if','CASE','AND','FOR','ELSIF','END_CASE','VAR_INPUT','BOOL','DINT','TIME','T','READ_ONLY','BOOL_TO_INT']){
   assert.throws(()=>plan(source,'st_pou','Main',{action:'add',name,type:'BOOL',initializer:'TRUE'}),/reserved|keyword/i,name);
  }
  for(const name of ['A__B','1Start','Bad Name','A;B','A.B']){
@@ -63,4 +63,23 @@ test('new variable rejects ST reserved words before planning a declaration',()=>
   const result=plan(source,'st_pou','Main',{action:'add',name,type:'BOOL',initializer:'TRUE'});
   assert.match(result.declaration,new RegExp(`\\b${name} : BOOL := TRUE;`));
  }
+});
+
+test('operator and conversion names are rejected as whole case-insensitive ST names',()=>{
+ const source='PROGRAM Main\nVAR\n  Existing : DINT := 0;\nEND_VAR\n';
+ const edit=name=>({action:'add',name,type:'DINT',initializer:'1'});
+ // Independent expectations from the documented CODESYS operator families.
+ const groups={
+  arithmetic:['ADD','SUB','SIZEOF','XSIZEOF','MOVE','INDEXOF'],
+  bitshift:['SHL','SHR','ROL','ROR'],
+  selection:['SEL','MAX','MIN','LIMIT','MUX'],
+  comparison:['GT','LT','LE','GE','EQ','NE'],
+  numeric:['ABS','SQRT','LN','LOG','EXP','EXPT','SIN','ASIN','COS','ACOS','TAN','ATAN'],
+  other:['ADR','BITADR','CAL','TRUNC','TRUNC_INT'],
+  conversion:['TO_BOOL','to_bool','TO_DATE_AND_TIME','DINT_TO_BOOL','BOOL_TO_DINT','STRING_TO_BOOL','INT_TO_STRING']
+ };
+ for(const [family,names] of Object.entries(groups))for(const name of names)
+  assert.throws(()=>plan(source,'st_pou','Main',edit(name)),/reserved|keyword/i,`${family}: ${name}`);
+ for(const name of ['AddCount','SizeOfBuffer','ToBoolFlag','IfEnabled','Concat'])
+  assert.match(plan(source,'st_pou','Main',edit(name)).declaration,new RegExp(`\\b${name} : DINT := 1;`),name);
 });
