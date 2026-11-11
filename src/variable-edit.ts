@@ -7,7 +7,36 @@ import {parseDeclaration} from './variables.js';
 export type VariableType='BOOL'|'DINT'|'TIME';
 export type VariableEdit={action:'add'|'set-initializer';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string};
 const ident=/^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
-const reserved=new Set(['VAR','END_VAR','VAR_GLOBAL','PROGRAM','FUNCTION','FUNCTION_BLOCK','TRUE','FALSE','AT','RETAIN','PERSISTENT','CONSTANT']);
+// CODESYS ST keywords and reserved IEC names are not plain variable identifiers.
+// Match whole tokens only; a name such as IfEnabled remains a valid identifier.
+// Backtick-escaped identifiers and vendor extensions are outside S4a.
+const reserved=new Set(`
+ ACTION END_ACTION PROGRAM END_PROGRAM FUNCTION END_FUNCTION FUNCTION_BLOCK END_FUNCTION_BLOCK
+ METHOD PROPERTY GET SET INTERFACE NAMESPACE END_NAMESPACE EXTENDS IMPLEMENTS
+ PUBLIC PRIVATE PROTECTED INTERNAL ABSTRACT FINAL OVERRIDE
+ VAR END_VAR VAR_INPUT VAR_OUTPUT VAR_IN_OUT VAR_INOUT VAR_GLOBAL VAR_EXTERNAL VAR_ACCESS
+ VAR_TEMP VAR_STAT VAR_INST VAR_CONFIG CONSTANT RETAIN PERSISTENT NON_RETAIN AT
+ TYPE END_TYPE STRUCT END_STRUCT UNION END_UNION ARRAY OF ENUM
+ IF THEN ELSIF ELSE END_IF CASE END_CASE FOR FROM TO BY DO END_FOR
+ WHILE END_WHILE REPEAT UNTIL END_REPEAT EXIT CONTINUE RETURN WITH
+ AND OR XOR NOT MOD DIV MUL AND_THEN OR_ELSE
+ TRUE FALSE NULL THIS SUPER REF REFERENCE POINTER
+ BOOL BYTE WORD DWORD LWORD SINT INT DINT LINT USINT UINT UDINT ULINT
+ REAL LREAL TIME LTIME DATE LDATE TIME_OF_DAY TOD LTOD DATE_AND_TIME DT LDT
+ STRING WSTRING CHAR WCHAR BIT
+ ANY ANY_BIT ANY_INT ANY_NUM ANY_REAL ANY_STRING ANY_DATE ANY_DERIVED
+ ANY_ELEMENTARY ANY_MAGNITUDE ANY_SIGNED ANY_DURATION ANY_CHARS
+ CHAR_TO TO_CHAR WCHAR_TO TO_WCHAR ATAN2 USING CLASS
+ READ_ONLY READ_WRITE PARAMS
+`.trim().split(/\s+/));
+const builtInTypes=['BOOL','BYTE','WORD','DWORD','LWORD','SINT','INT','DINT','LINT','USINT','UINT','UDINT','ULINT','REAL','LREAL','TIME','LTIME','DATE','LDATE','TOD','LTOD','DT','LDT','STRING','WSTRING','CHAR','WCHAR'];
+
+function checkVariableName(name:string):void {
+  if(!ident.test(name)||name.includes('__'))throw new Error('Invalid plain ST variable identifier');
+  const upper=name.toUpperCase();
+  if(reserved.has(upper)||builtInTypes.some(type=>upper.startsWith(type+'_TO_')&&builtInTypes.includes(upper.slice(type.length+4))))
+    throw new Error(`Reserved ST keyword cannot be a variable name: ${name}`);
+}
 
 export function checkedInitializer(type:VariableType,raw:string):string {
   if(type==='BOOL'&&/^(TRUE|FALSE)$/i.test(raw))return raw;
@@ -26,7 +55,7 @@ export function checkedInitializer(type:VariableType,raw:string):string {
 
 export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'function_block',objectName:string,edit:VariableEdit){
   const source=normalize(declaration);
-  if(!ident.test(edit.name)||reserved.has(edit.name.toUpperCase()))throw new Error('Unsupported variable name');
+  checkVariableName(edit.name);
   const parsed=parseDeclaration(source,kind,objectName);
   if(!parsed.complete||parsed.rows.some((r:any)=>r.category==='parse-gap'))throw new Error('Declaration boundary incomplete');
   const section=kind==='gvl'?'VAR_GLOBAL':'VAR';

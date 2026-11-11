@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import {readFile,realpath} from 'node:fs/promises';
 import path from 'node:path';
 import {setup,app,obj} from './helpers.mjs';
@@ -9,15 +9,24 @@ import {FixtureAdapter} from '../dist/fixture-adapter.js';
 import {schemas} from '../dist/contracts.js';
 
 test('variable_edit adds once, then changes only its initializer in direct fixture',async t=>{
- const e=await setup(),adapter=new FixtureAdapter();let dispatched=0;
+ const e=await setup(),adapter=new FixtureAdapter();let dispatched=0;const commands=[];
  const service=new EngineeringService({dataDir:e.dataDir,executable:'fixture',profile:'fixture',testMode:true,noUI:false,timeoutMs:1000,responseWaitMs:1000},
-  {execute:(...args)=>{dispatched++;return adapter.execute(...args)},reconcile:d=>adapter.reconcile(d)});
+  {execute:(...args)=>{dispatched++;commands.push(args[0].command);return adapter.execute(...args)},reconcile:d=>adapter.reconcile(d)});
  t.after(()=>service.store.release());
  const call=async(name,args)=>{let r=await service.call(name,schemas[name].parse(args));while(r.status==='running')r=await service.call('operation_status',{operationId:r.operationId});return r;};
  const created=await call('project_create',{requestId:randomUUID(),projectPath:path.join(await realpath(e.dir),'VariableEdit.project')});
  assert.equal(created.status,'succeeded',JSON.stringify(created));
  const s=created.data.session,p=JSON.parse(await readFile(s.workingPath,'utf8')),o=p.objects[0];
  const target={projectId:s.projectId,applicationId:s.applicationId,objectId:o.objectId};
+ const hash=async()=>createHash('sha256').update(await readFile(s.workingPath)).digest('hex');
+ const beforeHash=await hash(),beforeCommands=commands.length;
+ const keyword=await call('variable_edit',{...target,requestId:randomUUID(),expectedHash:o.contentHash,expectedSnapshot:s.snapshot,expectedDiskHash:s.diskHash,
+  action:'add',name:'IF',type:'BOOL',initializer:'TRUE'});
+ assert.equal(keyword.status,'unsupported',JSON.stringify(keyword));
+ assert.match(JSON.stringify(keyword),/reserved|keyword/i);
+ assert.deepEqual(commands.slice(beforeCommands),['read']);
+ assert.equal(await hash(),beforeHash);
+ const afterKeyword=await service.store.session();assert.notEqual(afterKeyword?.status,'unknown');assert.notEqual(afterKeyword?.frozen,true);
  const bad=await call('variable_edit',{...target,requestId:randomUUID(),expectedHash:o.contentHash,expectedSnapshot:s.snapshot,expectedDiskHash:s.diskHash,
   action:'add',name:'Injected',type:'DINT',initializer:'1; Evil : DINT := 2'});
  assert.equal(bad.status,'unsupported');assert.equal(JSON.parse(await readFile(s.workingPath,'utf8')).objects[0].declaration,o.declaration);

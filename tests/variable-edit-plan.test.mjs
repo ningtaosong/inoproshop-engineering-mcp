@@ -50,3 +50,17 @@ test('function return name and special empty block cannot become a new ordinary 
   assert.throws(()=>plan(`PROGRAM Main\nVAR ${modifier}\nEND_VAR`,'st_pou','Main',{...e,name:'NewVar'}));
  }
 });
+
+test('new variable rejects ST reserved words before planning a declaration',()=>{
+ const source='PROGRAM Main\nVAR\n  Existing : BOOL := TRUE;\nEND_VAR\n';
+ for(const name of ['IF','if','If','END_IF','end_if','CASE','AND','FOR','ELSIF','END_CASE','VAR_INPUT','BOOL','DINT','TIME','READ_ONLY','BOOL_TO_INT']){
+  assert.throws(()=>plan(source,'st_pou','Main',{action:'add',name,type:'BOOL',initializer:'TRUE'}),/reserved|keyword/i,name);
+ }
+ for(const name of ['A__B','1Start','Bad Name','A;B','A.B']){
+  assert.throws(()=>plan(source,'st_pou','Main',{action:'add',name,type:'BOOL',initializer:'TRUE'}),/invalid/i,name);
+ }
+ for(const name of ['IfEnabled','CaseCount','ForDelay']){
+  const result=plan(source,'st_pou','Main',{action:'add',name,type:'BOOL',initializer:'TRUE'});
+  assert.match(result.declaration,new RegExp(`\\b${name} : BOOL := TRUE;`));
+ }
+});
