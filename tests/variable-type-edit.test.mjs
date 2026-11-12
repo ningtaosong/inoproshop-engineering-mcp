@@ -125,3 +125,47 @@ test('service rejects stale and invalid edits before change, then writes once an
  assert.equal(commands.slice(count).includes('save'),false);
  assert.equal(JSON.parse(await readFile(s.workingPath)).objects[0].declaration,first.data.declaration);
 });
+
+test('set-type partial write freezes direct and old-copy sessions without recovery or replay',async()=>{
+ for(const mode of ['direct','copy']){
+  const declaration=source('PROGRAM Demo','DINT','5000');
+  const e=await setup({failImplementation:true,objects:[{objectId:obj,applicationId:app,path:['设备','应用一','Demo'],
+   objectType:'st_pou',nativeTypeId:'6f9dac99-8de1-4efc-8465-68ac443b7d08',
+   pouType:'program',pouTypeSource:'native-pou-type-id-and-declaration-header',
+   hasImplementation:true,declaration,implementation:'// preserved\n'}]});
+  const adapter=new FixtureAdapter(),commands=[];
+  const service=new EngineeringService({dataDir:e.dataDir,executable:'fixture',profile:'fixture',
+   testMode:true,noUI:false,timeoutMs:1000,responseWaitMs:1000},
+   {execute:(...args)=>{commands.push(args[0].command);return adapter.execute(...args)},reconcile:d=>adapter.reconcile(d)});
+  try{
+   const call=async(name,args)=>{let r=await service.call(name,schemas[name].parse(args));
+    while(r.status==='running')r=await service.call('operation_status',{operationId:r.operationId});return r;};
+   const opened=await call(mode==='direct'?'project_open':'project_open_copy',mode==='direct'?
+    {requestId:randomUUID(),projectPath:e.source,applicationId:app}:
+    {requestId:randomUUID(),sourcePath:e.source,applicationId:app});
+   assert.equal(opened.status,'succeeded',JSON.stringify(opened));
+   const s=opened.data.session,read=await call('object_read',{projectId:s.projectId,applicationId:app,objectId:obj});
+   const request={requestId:randomUUID(),projectId:s.projectId,applicationId:app,objectId:obj,
+    expectedHash:read.data.contentHash,expectedSnapshot:s.snapshot,expectedDiskHash:s.diskHash,
+    action:'set-type',name:'Target',type:'TIME',initializer:'T#5s',
+    expectedOldType:'DINT',expectedOldInitializer:'5000'};
+   const original=await readFile(s.workingPath),before=createHash('sha256').update(original).digest('hex');
+   const failed=await call('variable_edit',request);
+   assert.equal(failed.status,'unknown',JSON.stringify({mode,failed}));
+   assert.equal(failed.error.code,'PARTIAL_WRITE');
+   assert.deepEqual(await readFile(failed.data.checkpoint),original);
+   assert.equal((await service.status()).data.writeFrozen,true);
+   const after=await readFile(s.workingPath,'utf8');
+   assert.notEqual(createHash('sha256').update(after).digest('hex'),before);
+   assert.match(JSON.parse(after).objects[0].declaration,/Target : TIME := T#5s;/);
+   assert.equal(JSON.parse(after).objects[0].implementation,'// preserved\n');
+   const writes=commands.filter(x=>x==='change').length;
+   assert.equal(writes,1);
+   assert.equal(commands.filter(x=>x==='save').length,0);
+   assert.equal((await call('operation_status',{operationId:failed.operationId})).status,'unknown');
+   assert.equal((await call('variable_edit',request)).operationId,failed.operationId);
+   await assert.rejects(call('variable_edit',{...request,requestId:randomUUID()}),x=>x.code==='PENDING_UNKNOWN');
+   assert.equal(commands.filter(x=>x==='change').length,writes);
+  }finally{await service.store.release();}
+ }
+});

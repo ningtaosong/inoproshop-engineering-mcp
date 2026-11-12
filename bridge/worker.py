@@ -1270,6 +1270,8 @@ def dispatch(req):
                         recovery = {"status": "unknown"}
                         detail = exception_evidence(e)
                         try:
+                            if args.get('action')=='set-type':
+                                raise ValueError("Set-type partial write is uncertain; preserve checkpoint and freeze without rollback writes or another open")
                             if kind in ('method','property_get','property_set') or args.get('action')=='set-member-initializer' or args.get('section') or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")
                             project = lifecycle["project"]
