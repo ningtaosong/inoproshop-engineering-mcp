@@ -93,15 +93,23 @@ export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'functio
   const hits=rows.filter((r:any)=>r.name.toLowerCase()===edit.name.toLowerCase());
   const tokens=lexSt(source);
   if(tokens.error)throw new Error('Lexical boundary incomplete');
-  const blocks=[] as {head:number;body:number;end:number}[];
+  const blocks=[] as {head:number;body:number;end:number;unsupportedHeader:boolean}[];
+  const blockHead=new Set(['VAR','VAR_INPUT','VAR_OUTPUT','VAR_IN_OUT','VAR_INOUT','VAR_GLOBAL','VAR_EXTERNAL',
+    'VAR_ACCESS','VAR_TEMP','VAR_STAT','VAR_INST','VAR_CONFIG']);
+  const unsupportedHeader=new Set(['RETAIN','NON_RETAIN','PERSISTENT','CONSTANT','{']);
   for(let i=0;i<tokens.tokens.length;i++){
     const t=tokens.tokens[i];if(t.text.toUpperCase()!==section)continue;
-    // A modifier or attribute after the block head is outside S4a.
-    if(['RETAIN','NON_RETAIN','PERSISTENT','CONSTANT','{'].includes(tokens.tokens[i+1]?.text.toUpperCase()??''))continue;
-    const stop=tokens.tokens.find((v,j)=>j>i&&v.text.toUpperCase()==='END_VAR');
-    if(stop)blocks.push({head:t.start,body:t.end,end:stop.start});
+    const modified=unsupportedHeader.has(tokens.tokens[i+1]?.text.toUpperCase()??'');
+    // An explicit interface section must count every matching block, including
+    // empty and modified ones. Otherwise a later unsupported block can hide a
+    // duplicate while the first ordinary block is still writable.
+    if(!edit.section&&modified)continue;
+    const stop=tokens.tokens.find((v,j)=>j>i&&(v.text.toUpperCase()==='END_VAR'||blockHead.has(v.text.toUpperCase())));
+    if(edit.section&&(!stop||stop.text.toUpperCase()!=='END_VAR'))throw new Error('Declaration block boundary incomplete');
+    if(stop?.text.toUpperCase()==='END_VAR')blocks.push({head:t.start,body:t.end,end:stop.start,unsupportedHeader:modified});
   }
   if(edit.section&&blocks.length!==1)throw new Error('Ambiguous or missing declaration block');
+  if(edit.section&&blocks[0].unsupportedHeader)throw new Error('Unsupported declaration block modifier or attribute');
   if(edit.action==='add'){
     if(!edit.type)throw new Error('Type required');
     const value=checkedInitializer(edit.type,edit.initializer);

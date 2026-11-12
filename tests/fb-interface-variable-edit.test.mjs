@@ -40,12 +40,76 @@ test('planner rejects uncertain interface locations, conflicts and unsupported d
  assert.throws(()=>planVariableEdit(declaration.replace('VAR_OUTPUT','VAR_INPUT'),'function_block','FB_DelayAlarm',
   {action:'set-initializer',section:'VAR_INPUT',name:'DelayTime',initializer:'T#4s',expectedOldInitializer:'T#3s'}),/ambiguous/i);
  assert.throws(()=>add(declaration.replace('VAR_INPUT','VAR_IN_OUT'),'VAR_INPUT','NewName'),/boundary|missing/i);
- assert.throws(()=>add(declaration.replace('VAR_INPUT','VAR_INPUT RETAIN'),'VAR_INPUT','NewName'),/boundary|missing/i);
+ assert.throws(()=>add(declaration.replace('VAR_INPUT','VAR_INPUT RETAIN'),'VAR_INPUT','NewName'),/boundary|missing|unsupported/i);
  assert.throws(()=>add(declaration.replace('DelayTime : TIME','DelayTime AT %IX0.0 : TIME'),'VAR_INPUT','NewName'),/special|boundary/i);
  for(const name of ['IF','ADD','TO_BOOL'])assert.throws(()=>add(declaration,'VAR_INPUT',name),/reserved/i);
  for(const name of ['IfEnabled','AddCount','ToBoolFlag'])assert.doesNotThrow(()=>add(declaration,'VAR_OUTPUT',name));
  assert.throws(()=>planVariableEdit(declaration,'st_pou','FB_DelayAlarm',{action:'add',section:'VAR_INPUT',name:'A',type:'BOOL',initializer:'TRUE'},[]),/FUNCTION_BLOCK/i);
  assert.throws(()=>planVariableEdit('VAR_GLOBAL\n A:BOOL:=TRUE;\nEND_VAR','gvl','GVL',{action:'add',section:'VAR_OUTPUT',name:'B',type:'BOOL',initializer:'TRUE'},[]),/FUNCTION_BLOCK/i);
+});
+
+test('planner counts every explicit interface block before accepting either edit action',()=>{
+ const add=(source,section)=>planVariableEdit(source,'function_block','FB_DelayAlarm',
+  {action:'add',section,name:'DemoPermit',type:'BOOL',initializer:'TRUE'},[]);
+ const set=(source,section)=>planVariableEdit(source,'function_block','FB_DelayAlarm',
+  {action:'set-initializer',section,name:section==='VAR_INPUT'?'DelayTime':'Alarm',
+   initializer:section==='VAR_INPUT'?'T#4s':'TRUE',expectedOldInitializer:section==='VAR_INPUT'?'T#3s':'FALSE'});
+ for(const section of ['VAR_INPUT','VAR_OUTPUT']){
+  for(const modifier of ['RETAIN','NON_RETAIN','PERSISTENT','CONSTANT']){
+   for(const body of ['', ' Extra : BOOL := TRUE;']){
+    const extra=`\n${section} ${modifier}\n${body}\nEND_VAR`;
+    const source=declaration+extra;
+    for(const run of [add,set])assert.throws(()=>run(source,section),/ambiguous|unsupported|boundary/i,`${section} ${modifier} ${body} ${run.name}`);
+   }
+  }
+  const doubled=declaration+`\n${section}\nEND_VAR`;
+  for(const run of [add,set])assert.throws(()=>run(doubled,section),/ambiguous|boundary/i);
+  const modifiedOnly=declaration.replace(section,`${section} RETAIN`);
+  for(const run of [add,set])assert.throws(()=>run(modifiedOnly,section),/unsupported|boundary|ambiguous/i);
+  const missing=declaration.replace(section,section==='VAR_INPUT'?'VAR_IN_OUT':'VAR_IN_OUT');
+  for(const run of [add,set])assert.throws(()=>run(missing,section),/missing|boundary|unique/i);
+  const commented=declaration+`\n// ${section} RETAIN\n(* ${section} CONSTANT *)`;
+  assert.match(add(commented,section).declaration,/DemoPermit : BOOL := TRUE;/);
+  assert.match(set(commented,section).declaration,section==='VAR_INPUT'?/DelayTime : TIME := T#4s;/:/Alarm : BOOL := TRUE;/);
+  const mixed=declaration+`\n${section.toLowerCase()}  (* header note *)  retain\nEND_VAR`;
+  for(const run of [add,set])assert.throws(()=>run(mixed,section),/ambiguous|unsupported|boundary/i);
+ }
+});
+
+test('service rejects an extra modified interface block before change or save, then accepts a valid request',async t=>{
+ for(const section of ['VAR_INPUT','VAR_OUTPUT'])for(const action of ['add','set-initializer'])for(const body of ['', ' Extra : BOOL := TRUE;']){
+  const malformed=declaration+`\n${section} RETAIN\n${body}\nEND_VAR`;
+  const e=await setup({objects:[{objectId:obj,applicationId:app,path:['设备','应用一','FB_DelayAlarm'],objectType:'function_block',nativeTypeId:native,
+   pouType:'function_block',pouTypeSource:'native-pou-type-id-and-declaration-header',hasImplementation:true,declaration:malformed,implementation}]});
+  const adapter=new FixtureAdapter(),commands=[];
+  const service=new EngineeringService({dataDir:e.dataDir,executable:'fixture',profile:'fixture',testMode:true,noUI:false,timeoutMs:1000,responseWaitMs:1000},
+   {execute:(...args)=>{commands.push(args[0].command);return adapter.execute(...args)},reconcile:d=>adapter.reconcile(d)});
+  t.after(()=>service.store.release());
+  const call=async(name,args)=>{let r=await service.call(name,schemas[name].parse(args));while(r.status==='running')r=await service.call('operation_status',{operationId:r.operationId});return r;};
+  const opened=await call('project_open_copy',{requestId:randomUUID(),sourcePath:e.source,applicationId:app});assert.equal(opened.status,'succeeded');
+  const s=opened.data.session,read=await call('object_read',{projectId:s.projectId,applicationId:app,objectId:obj});
+  const base={requestId:randomUUID(),projectId:s.projectId,applicationId:app,objectId:obj,
+   expectedHash:read.data.contentHash,expectedSnapshot:s.snapshot,expectedDiskHash:s.diskHash,action,section,
+   name:action==='add'?'DemoPermit':section==='VAR_INPUT'?'DelayTime':'Alarm',initializer:action==='add'?'TRUE':section==='VAR_INPUT'?'T#4s':'TRUE'};
+  if(action==='add')base.type='BOOL';else base.expectedOldInitializer=section==='VAR_INPUT'?'T#3s':'FALSE';
+  const hash=async()=>createHash('sha256').update(await readFile(s.workingPath)).digest('hex');
+  const before=await hash(),start=commands.length;
+  const rejected=await call('variable_edit',base);
+  assert.equal(rejected.status,'unsupported',JSON.stringify({section,action,rejected}));
+  assert.match(rejected.summary,/ambiguous|unsupported|boundary/i);
+  assert.equal(await hash(),before);
+  assert.equal(commands.slice(start).includes('change'),false);
+  assert.equal(commands.slice(start).includes('save'),false);
+  assert.equal(commands.slice(start).includes('reopen'),false);
+  const corrected=await setup({objects:[{objectId:obj,applicationId:app,path:['设备','应用一','FB_DelayAlarm'],objectType:'function_block',nativeTypeId:native,
+   pouType:'function_block',pouTypeSource:'native-pou-type-id-and-declaration-header',hasImplementation:true,declaration,implementation}]});
+  const good=await call('project_open_copy',{requestId:randomUUID(),sourcePath:corrected.source,applicationId:app});
+  assert.equal(good.status,'succeeded');
+  const g=good.data.session,gr=await call('object_read',{projectId:g.projectId,applicationId:app,objectId:obj});
+  const valid=await call('variable_edit',{...base,requestId:randomUUID(),projectId:g.projectId,expectedHash:gr.data.contentHash,
+   expectedSnapshot:g.snapshot,expectedDiskHash:g.diskHash});
+  assert.equal(valid.status,'succeeded',JSON.stringify({section,action,valid}));
+ }
 });
 
 test('service rejects interface ambiguity before change; valid add, set and duplicate stay isolated',async t=>{
