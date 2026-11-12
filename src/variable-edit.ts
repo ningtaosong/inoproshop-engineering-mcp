@@ -7,7 +7,7 @@ import {parseInitializerMembers} from './initializer-members.js';
 
 export type VariableType='BOOL'|'DINT'|'TIME';
 export type VariableSection='VAR_INPUT'|'VAR_OUTPUT';
-export type VariableEdit={action:'add'|'set-initializer';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string;section?:VariableSection};
+export type VariableEdit={action:'add'|'set-initializer'|'set-type';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string;expectedOldType?:VariableType;section?:VariableSection};
 export type MemberInitializerEdit={action:'set-member-initializer';name:string;memberName:string;initializer:string;expectedOldInitializer:string};
 const ident=/^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
 // CODESYS ST keywords and reserved IEC names are not plain variable identifiers.
@@ -103,13 +103,20 @@ export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'functio
     // An explicit interface section must count every matching block, including
     // empty and modified ones. Otherwise a later unsupported block can hide a
     // duplicate while the first ordinary block is still writable.
-    if(!edit.section&&modified)continue;
+    if(!edit.section&&edit.action!=='set-type'&&modified)continue;
     const stop=tokens.tokens.find((v,j)=>j>i&&(v.text.toUpperCase()==='END_VAR'||blockHead.has(v.text.toUpperCase())));
     if(edit.section&&(!stop||stop.text.toUpperCase()!=='END_VAR'))throw new Error('Declaration block boundary incomplete');
     if(stop?.text.toUpperCase()==='END_VAR')blocks.push({head:t.start,body:t.end,end:stop.start,unsupportedHeader:modified});
   }
   if(edit.section&&blocks.length!==1)throw new Error('Ambiguous or missing declaration block');
   if(edit.section&&blocks[0].unsupportedHeader)throw new Error('Unsupported declaration block modifier or attribute');
+  if(edit.action==='set-type'){
+    if(edit.section||kind==='gvl'&&section!=='VAR_GLOBAL'||kind!=='gvl'&&section!=='VAR')
+      throw new Error('Type edit requires an ordinary VAR or root VAR_GLOBAL');
+    if(blocks.length!==1||blocks[0].unsupportedHeader)throw new Error('Ambiguous, modified or missing declaration block');
+    if(!edit.type||!edit.expectedOldType||edit.expectedOldInitializer===undefined)
+      throw new Error('Type edit requires target type, old type and old initializer');
+  }
   if(edit.action==='add'){
     if(!edit.type)throw new Error('Type required');
     const value=checkedInitializer(edit.type,edit.initializer);
@@ -131,12 +138,28 @@ export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'functio
   if(edit.section&&parsed.rows.some((r:any)=>r.category==='variable'&&r.section!==section&&r.name.toLowerCase()===edit.name.toLowerCase()))
     throw new Error('Variable name ambiguous across FB sections');
   const row=hits[0];
+  if(edit.action==='set-type'&&parsed.rows.some((r:any)=>r!==row&&r.category!=='comment'&&
+      r.name?.toLowerCase()===edit.name.toLowerCase()))
+    throw new Error('Variable name ambiguous across declaration scopes or function return');
   if(row.modifiers?.length||row.addressRaw||!row.hasExplicitInitializer||!row.initializerPosition)throw new Error('Unsupported existing declaration');
   if(parsed.rows.filter((r:any)=>r.category==='variable'&&r.position.startOffset===row.position.startOffset).length!==1)throw new Error('Shared declaration');
   if(!['BOOL','DINT','TIME'].includes(row.typeRaw.toUpperCase())||row.typeRaw!==row.typeRaw.trim())throw new Error('Unsupported variable type');
   const old=source.slice(row.initializerPosition.startOffset,row.initializerPosition.endOffset);
   checkedInitializer(row.typeRaw.toUpperCase() as VariableType,old);
   if(edit.expectedOldInitializer!==undefined&&old!==edit.expectedOldInitializer)throw new Error('Old initializer mismatch');
+  if(edit.action==='set-type'){
+    if(row.typeRaw.toUpperCase()!==edit.expectedOldType)throw new Error('Old variable type mismatch');
+    if(old!==edit.expectedOldInitializer)throw new Error('Old initializer mismatch');
+    const typeStart=row.typePosition.startOffset,typeEnd=row.typePosition.endOffset;
+    const start=row.initializerPosition.startOffset,end=row.initializerPosition.endOffset;
+    if(typeStart<row.position.startOffset||typeEnd>=start||end>row.position.endOffset)
+      throw new Error('Type and initializer positions overlap or escape the declaration');
+    const value=checkedInitializer(edit.type!,edit.initializer);
+    const targetTypeText=row.typeRaw.toUpperCase()===edit.type?row.typeRaw:edit.type;
+    return {declaration:source.slice(0,typeStart)+targetTypeText+source.slice(typeEnd,start)+value+source.slice(end),
+      range:{startOffset:start,endOffset:end},typeRange:{startOffset:typeStart,endOffset:typeEnd},
+      before:old,after:value,beforeType:row.typeRaw,afterType:targetTypeText};
+  }
   const value=checkedInitializer(row.typeRaw.toUpperCase() as VariableType,edit.initializer);
   const start=row.initializerPosition.startOffset,end=row.initializerPosition.endOffset;
   return {declaration:source.slice(0,start)+value+source.slice(end),range:{startOffset:start,endOffset:end},before:old,after:value};

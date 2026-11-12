@@ -1,4 +1,12 @@
 # 变量级编辑：S4a 与 S4b 限定子阶段
+## S4b 第三子阶段：基础类型与显式初值同步修改（0.26.0 功能分支候选）
+
+variable_edit 的 set-type 只用于普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的普通 VAR，或 Application 根 GVL 的普通 VAR_GLOBAL 中已存在、唯一的单变量声明。原类型和目标类型均限 BOOL、DINT、TIME；原声明必须已有符合本服务规则的显式字面初值。调用时同时提交目标 type 与 initializer，并用 expectedOldType、expectedOldInitializer 绑定当前原文，外加已有对象哈希、工程 snapshot 与磁盘哈希。用户只需说明工程和需求，内部身份由 Agent 读取。
+
+服务在队列内重读完整声明，确认普通且唯一的目标块、变量、原类型及初值，仅替换类型和初值两个 UTF-16 原文片段。其他声明、注释、空白和实现区保留；同类型同值返回 noOp，不伪造保存证据。新动作拒绝 section 及成员专用参数；旧 add、set-initializer、set-member-initializer 的参数语义不变。VAR_INPUT／VAR_OUTPUT、联合/特殊声明、结构体与聚合成员、数组、函数返回值、Method／Property 内声明和运行值均不在本阶段。
+
+类型修改可能影响调用和表达式。Agent 仅在用户授权范围内按需定位并修改相关使用位置，词元检索不等于语义交叉引用；真实编译失败时报告已写入内容与诊断，不自动回滚或扩大需求。默认不采集工程比较基线；编译、保存关闭重开、必要复编和目标读回仍按日常流程执行。源码初值不是运行观测值。此前 0.25.0 的正向验收不属于本候选的真实工程验证。
+
 
 ## S4b 第二子阶段：功能块输入／输出（0.25.0 限定范围已合并）
 

@@ -284,7 +284,8 @@ export class EngineeringService {
       return {...result,data:{...result.data,editEvidence:{action:op.args.action,name:op.args.name,
         ...(op.args.section?{section:op.args.section}:{}),
         ...(type?{memberName:op.args.memberName,typeObjectId:type.objectId,typeContentHash:type.contentHash,fieldType:(plan as ReturnType<typeof planMemberInitializerEdit>).fieldType}:{}),
-        range:plan.range,before:plan.before,after:plan.after}}};
+        range:plan.range,before:plan.before,after:plan.after,
+        ...('typeRange' in plan?{typeRange:plan.typeRange,beforeType:plan.beforeType,afterType:plan.afterType}:{})}}};
     }
     if(['folder_create','object_move'].includes(op.tool))return organizationResult(result,op.args,op.tool);
     if(op.tool==='variable_inspect')return variableResult(result,op.args);
@@ -361,7 +362,8 @@ export class EngineeringService {
             if(!e||canonical(e.before)!==canonical(childGuard)||canonical(e.after)!==canonical(childGuard))invalid();}
           const parsed=parseDeclaration(d!.declaration as string,d!.objectType as string,(d!.path as string[]).at(-1)!);
           const target=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===(op.args.section??(d!.objectType==='gvl'?'VAR_GLOBAL':'VAR'))&&r.name.toLowerCase()===op.args.name.toLowerCase());
-          if(!parsed.complete||target.length!==1||op.args.action!=='set-member-initializer'&&target[0].initializerRaw!==op.args.initializer)invalid();
+          if(!parsed.complete||target.length!==1||op.args.action!=='set-member-initializer'&&target[0].initializerRaw!==op.args.initializer||
+            op.args.action==='set-type'&&target[0].typeRaw.toUpperCase()!==op.args.type)invalid();
         }
       }
       if(command==='create_method'){
@@ -566,6 +568,11 @@ export class EngineeringService {
       codeHash(before.declaration,before.implementation)!==before.contentHash||
       (before.objectType==='gvl'?!Array.isArray(before.path)||before.path.length!==(s.applications?.find(x=>x.applicationId===a.applicationId)?.path.length??-2)+1:before.hasImplementation!==true))
       throw new DomainError('conflict','VARIABLE_TARGET_CHANGED','目标身份或原内容不匹配，未修改');
+    if(a.action==='set-type'&&before.objectType!=='gvl'&&
+      (before.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||
+        before.pouTypeSource!=='native-pou-type-id-and-declaration-header'||
+        !['program','function','function_block'].includes(before.pouType)))
+      throw new DomainError('unsupported','VARIABLE_TYPE_SCOPE','类型修改仅支持原生普通 ST POU 的 VAR 或Application根GVL，未修改');
     let childGuard:any;
     if(a.section){
       if(before.objectType!=='function_block'||before.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||
@@ -662,7 +669,8 @@ export class EngineeringService {
     if(plan.declaration===before.declaration)return reply('succeeded','目标原值已相同，未修改或保存',{...before,snapshot:s.snapshot,diskHash:s.diskHash,noOp:true,
       editEvidence:{action:a.action,name:a.name,...(a.section?{section:a.section}:{}),
         ...(typeOriginal?{memberName:a.memberName,typeObjectId:typeOriginal.objectId,typeContentHash:typeOriginal.contentHash,
-          fieldType:(plan as ReturnType<typeof planMemberInitializerEdit>).fieldType}:{}),range:plan.range,before:plan.before,after:plan.after}});
+          fieldType:(plan as ReturnType<typeof planMemberInitializerEdit>).fieldType}:{}),range:plan.range,before:plan.before,after:plan.after,
+        ...('typeRange' in plan?{typeRange:plan.typeRange,beforeType:plan.beforeType,afterType:plan.afterType}:{})}});
     if(digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)throw new DomainError('conflict','VARIABLE_DISK_CHANGED','定位后磁盘版本改变，未修改');
     const effective={...a,declaration:plan.declaration,implementation:before.implementation,objectType:before.objectType,variableEdit:true,
       ...(childGuard?{variableChildGuard:childGuard}:{}),
