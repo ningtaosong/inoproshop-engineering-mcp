@@ -280,8 +280,9 @@ export class EngineeringService {
       const type=(op as any).variableTypeOriginal;
       const plan=op.args.action==='set-member-initializer'?
         planMemberInitializerEdit(before.declaration,type.declaration,before.path.at(-1),type.path.at(-1),op.args):
-        planVariableEdit(before.declaration,before.objectType,before.path.at(-1),op.args);
+        planVariableEdit(before.declaration,before.objectType,before.path.at(-1),op.args,(op as any).variableDirectChildNames);
       return {...result,data:{...result.data,editEvidence:{action:op.args.action,name:op.args.name,
+        ...(op.args.section?{section:op.args.section}:{}),
         ...(type?{memberName:op.args.memberName,typeObjectId:type.objectId,typeContentHash:type.contentHash,fieldType:(plan as ReturnType<typeof planMemberInitializerEdit>).fieldType}:{}),
         range:plan.range,before:plan.before,after:plan.after}}};
     }
@@ -350,13 +351,16 @@ export class EngineeringService {
           const type=(op as any).variableTypeOriginal;
           try {plan=op.args.action==='set-member-initializer'?
             planMemberInitializerEdit(original.declaration,type.declaration,original.path.at(-1),type.path.at(-1),op.args):
-            planVariableEdit(original.declaration,original.objectType,original.path.at(-1),op.args);}catch{return invalid();}
+            planVariableEdit(original.declaration,original.objectType,original.path.at(-1),op.args,(op as any).variableDirectChildNames);}catch{return invalid();}
           if(plan.declaration!==args.declaration||d!.declaration!==plan.declaration||d!.implementation!==original.implementation)invalid();
           if(type){const e=d!.variableTypeEvidence as any;
             if(!e||e.objectId!==type.objectId||e.applicationId!==type.applicationId||e.contentHash!==type.contentHash||
               e.beforeContentHash!==type.contentHash||e.afterContentHash!==type.contentHash||canonical(e.path)!==canonical(type.path))invalid();}
+          const childGuard=(op as any).variableChildGuard;
+          if(childGuard){const e=d!.variableChildEvidence as any;
+            if(!e||canonical(e.before)!==canonical(childGuard)||canonical(e.after)!==canonical(childGuard))invalid();}
           const parsed=parseDeclaration(d!.declaration as string,d!.objectType as string,(d!.path as string[]).at(-1)!);
-          const target=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===(d!.objectType==='gvl'?'VAR_GLOBAL':'VAR')&&r.name.toLowerCase()===op.args.name.toLowerCase());
+          const target=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===(op.args.section??(d!.objectType==='gvl'?'VAR_GLOBAL':'VAR'))&&r.name.toLowerCase()===op.args.name.toLowerCase());
           if(!parsed.complete||target.length!==1||op.args.action!=='set-member-initializer'&&target[0].initializerRaw!==op.args.initializer)invalid();
         }
       }
@@ -562,6 +566,43 @@ export class EngineeringService {
       codeHash(before.declaration,before.implementation)!==before.contentHash||
       (before.objectType==='gvl'?!Array.isArray(before.path)||before.path.length!==(s.applications?.find(x=>x.applicationId===a.applicationId)?.path.length??-2)+1:before.hasImplementation!==true))
       throw new DomainError('conflict','VARIABLE_TARGET_CHANGED','目标身份或原内容不匹配，未修改');
+    let childGuard:any;
+    if(a.section){
+      if(before.objectType!=='function_block'||before.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||
+        before.pouType!=='function_block'||before.pouTypeSource!=='native-pou-type-id-and-declaration-header')
+        throw new DomainError('unsupported','VARIABLE_INTERFACE_SCOPE','输入/输出区仅支持原生普通 ST FUNCTION_BLOCK，未修改');
+      if(a.action==='add'){
+        const children:any[]=[];let offset=0,total:number|undefined;
+        do {
+          const pageDir=path.join(dir,'interface-list-'+offset);op.bridge={directory:pageDir};await this.store.saveOp(op);
+          const listed=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'list',projectPath:s.workingPath,
+            args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,offset,limit:200},
+            ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pageDir,
+            async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
+          if(listed.status!=='succeeded')return listed;
+          this.validateDirect(listed,s);const d=listed.data as any;
+          if(!Array.isArray(d?.objects)||!Number.isSafeInteger(d.total)||d.total<0||d.total>5000||
+            total!==undefined&&total!==d.total||d.objects.length>200||!d.complete&&!d.objects.length||
+            d.complete&&offset+d.objects.length!==d.total||!d.complete&&d.nextOffset!==offset+d.objects.length)
+            throw new DomainError('unknown','VARIABLE_CHILD_LIST_INVALID','功能块子对象清单不完整，保持冻结');
+          if(d.scope?.unsupportedChildren?.some((x:any)=>!Array.isArray(x.path)||canonical(x.path.slice(0,before.path.length))===canonical(before.path)))
+            throw new DomainError('unsupported','VARIABLE_CHILD_UNSUPPORTED','功能块存在无法核对的直接子对象，未修改');
+          total=d.total;children.push(...d.objects);offset+=d.objects.length;
+          if(d.complete)break;
+        }while(offset<5000);
+        if(children.length!==total||new Set(children.map(x=>x.objectId)).size!==children.length||
+          !children.some(x=>x.objectId===a.objectId&&canonical(x.path)===canonical(before.path)))
+          throw new DomainError('unknown','VARIABLE_CHILD_LIST_INVALID','功能块及子对象清单身份无法核对，保持冻结');
+        const direct=children.filter(x=>x.parentId===a.objectId||
+          Array.isArray(x.path)&&x.path.length===before.path.length+1&&canonical(x.path.slice(0,-1))===canonical(before.path));
+        if(direct.some(x=>x.parentId!==a.objectId||!['method','property'].includes(x.objectType)||
+          canonical(x.path.slice(0,-1))!==canonical(before.path)||typeof x.path.at(-1)!=='string'))
+          throw new DomainError('unsupported','VARIABLE_CHILD_UNSUPPORTED','直接子对象类型或父关系无法确认，未修改');
+        childGuard={fbId:a.objectId,children:direct.map(x=>({objectId:x.objectId,name:x.path.at(-1),nativeTypeId:x.nativeTypeId})).sort((x,y)=>x.objectId.localeCompare(y.objectId))};
+        (op as any).variableDirectChildNames=childGuard.children.map((x:any)=>x.name);
+        (op as any).variableChildGuard=childGuard;
+      }
+    }
     let typeOriginal:any;
     if(a.action==='set-member-initializer'){
       if(before.objectType!=='gvl')throw new DomainError('unsupported','MEMBER_SCOPE_UNSUPPORTED','成员初值修改仅支持Application根GVL，未修改');
@@ -616,13 +657,15 @@ export class EngineeringService {
     }
     let plan;
     try {plan=typeOriginal?planMemberInitializerEdit(before.declaration,typeOriginal.declaration,before.path.at(-1),typeOriginal.path.at(-1),a):
-      planVariableEdit(before.declaration,before.objectType,before.path.at(-1),a);}
+      planVariableEdit(before.declaration,before.objectType,before.path.at(-1),a,(op as any).variableDirectChildNames);}
     catch(e:any){throw new DomainError('unsupported','VARIABLE_DECLARATION_UNSUPPORTED',e.message);}
     if(plan.declaration===before.declaration)return reply('succeeded','目标原值已相同，未修改或保存',{...before,snapshot:s.snapshot,diskHash:s.diskHash,noOp:true,
-      ...(typeOriginal?{editEvidence:{action:a.action,name:a.name,memberName:a.memberName,typeObjectId:typeOriginal.objectId,typeContentHash:typeOriginal.contentHash,
-        fieldType:(plan as ReturnType<typeof planMemberInitializerEdit>).fieldType,range:plan.range,before:plan.before,after:plan.after}}:{})});
+      editEvidence:{action:a.action,name:a.name,...(a.section?{section:a.section}:{}),
+        ...(typeOriginal?{memberName:a.memberName,typeObjectId:typeOriginal.objectId,typeContentHash:typeOriginal.contentHash,
+          fieldType:(plan as ReturnType<typeof planMemberInitializerEdit>).fieldType}:{}),range:plan.range,before:plan.before,after:plan.after}});
     if(digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)throw new DomainError('conflict','VARIABLE_DISK_CHANGED','定位后磁盘版本改变，未修改');
     const effective={...a,declaration:plan.declaration,implementation:before.implementation,objectType:before.objectType,variableEdit:true,
+      ...(childGuard?{variableChildGuard:childGuard}:{}),
       ...(typeOriginal?{variableTypeGuard:{objectId:typeOriginal.objectId,applicationId:typeOriginal.applicationId,
         contentHash:typeOriginal.contentHash,path:typeOriginal.path}}:{})};
     (op as any).effectiveArgs=effective;(op as any).variableOriginal=before;op.bridge={directory:dir};await this.store.saveOp(op);

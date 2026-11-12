@@ -217,6 +217,10 @@ export class FixtureAdapter implements Adapter {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','对象不在选定 Application');
       const old={...object};
       const guard=a.variableTypeGuard;
+      const childGuard=a.variableChildGuard;
+      const directChildren=()=>p.objects.filter((o:any)=>o.parentId===object.objectId).map((o:any)=>({objectId:o.objectId,name:o.path.at(-1),nativeTypeId:o.nativeTypeId})).sort((x:any,y:any)=>x.objectId.localeCompare(y.objectId));
+      const childValid=!!childGuard&&childGuard.fbId===object.objectId&&object.objectType==='function_block'&&
+        canonical(directChildren())===canonical(childGuard.children)&&p.objects.filter((o:any)=>o.parentId===object.objectId).every((o:any)=>['method','property'].includes(o.objectType));
       const typeObject=guard?p.objects.find((o:any)=>o.objectId===guard.objectId&&o.applicationId===a.applicationId):undefined;
       const typeValid=!!typeObject&&typeObject.objectType==='structure'&&typeObject.nativeTypeId==='2db5746d-d284-4425-9f7f-2663a34b0ebc'&&
         typeObject.hasImplementation===false&&canonical(typeObject.path)===canonical(guard.path)&&
@@ -232,6 +236,8 @@ export class FixtureAdapter implements Adapter {
       else if(codeHash(old.declaration,old.implementation)!==a.expectedHash) result=reply('conflict','旧哈希不一致',{actualHash:codeHash(old.declaration,old.implementation)});
       else if(a.variableEdit&&(a.expectedSnapshot!==snapshot()||a.expectedDiskHash!==digest(await fs.readFile(req.projectPath))))result={...reply('conflict','变量工程或磁盘版本变化'),error:{code:'VARIABLE_VERSION_CHANGED',message:'Not written'}};
       else if(a.action==='set-member-initializer'&&!guard||guard&&!typeValid)result={...reply('conflict','结构体版本变化'),error:{code:'MEMBER_TYPE_CHANGED',message:'Not written'}};
+      else if(a.section&&(object.objectType!=='function_block'||a.action==='add'&&!childGuard))result={...reply('unsupported','输入输出区对象不支持'),error:{code:'VARIABLE_INTERFACE_SCOPE',message:'Not written'}};
+      else if(childGuard&&!childValid)result={...reply('conflict','子对象结构变化'),error:{code:'VARIABLE_CHILD_CHANGED',message:'Not written'}};
       else {
         await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(path.join(dir,'before.json'),old);
@@ -249,6 +255,7 @@ export class FixtureAdapter implements Adapter {
           const observed=persisted.objects.find((o:any)=>o.objectId===a.objectId);
           result=reply('succeeded','测试写后读回一致',{...observed,contentHash:codeHash(observed.declaration,observed.implementation),snapshot:snapshot(),checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true,reopened:true,
             ...(guard?{variableTypeEvidence:{objectId:guard.objectId,applicationId:guard.applicationId,path:guard.path,contentHash:guard.contentHash,beforeContentHash:guard.contentHash,afterContentHash:guard.contentHash}}:{}),
+            ...(childGuard?{variableChildEvidence:{before:childGuard,after:childGuard}}:{}),
             ...(relatedIds.length?{relatedSourceEvidence:{before:relatedBefore,after:related(persisted.objects)}}:{}),testMode:true});
         }
       }

@@ -198,6 +198,21 @@ def variable_type_guard(project, app_id, guard):
                 'contentHash':actual['contentHash']}
     except Exception:return None
 
+def variable_child_guard(project, app_id, guard):
+    # A declaration hash cannot detect an unsaved Method/Property name change.
+    # The native direct-child identities are checked before writing and after reopen.
+    try:
+        item,names,aid=locate(project,app_id,guard['fbId'])
+        if object_kind(item)!='function_block' or text(item.type).lower()!='6f9dac99-8de1-4efc-8465-68ac443b7d08':return None
+        found=[]
+        for child in item.get_children(False):
+            if object_kind(child) not in ('method','property'):return None
+            found.append({'objectId':text(child.guid).lower(),'name':text(child.get_name()),'nativeTypeId':text(child.type).lower()})
+        found.sort(key=lambda x:x['objectId'])
+        if found!=guard['children']:return None
+        return {'fbId':guard['fbId'],'children':found}
+    except Exception:return None
+
 def unsupported_fb_child(item):
     if text(item.type).lower() in ('5a3b8626-d3e9-4f37-98b5-66420063d91e','792f2eb6-721e-4e64-ba20-bc98351056db'):return True
     if text(item.type).lower()=='f8a58466-d7f6-439f-bbb8-d4600e41d099':return True
@@ -1183,6 +1198,7 @@ def dispatch(req):
                 before = read_object(item, names, aid)
                 kind = before["objectType"]
                 guarded_type=variable_type_guard(project,app_id,args['variableTypeGuard']) if args.get('variableTypeGuard') else None
+                guarded_children=variable_child_guard(project,app_id,args['variableChildGuard']) if args.get('variableChildGuard') else None
                 invalid_type = (args.get("objectType") is not None and args["objectType"]!=kind) or (kind in ("gvl","structure","enum","array") and
                     (args.get("implementation","")!="" or not declaration_matches(kind,text(item.get_name()),args["declaration"],True))) or (before["hasImplementation"] and "implementation" not in args)
                 if kind=='property':invalid_type=True  # Property declaration/type/access/structure is never a generic text write target.
@@ -1214,6 +1230,10 @@ def dispatch(req):
                     response = failure('conflict','MEMBER_TYPE_GUARD_MISSING',u'成员修改缺少结构体原版本保护，未写入')
                 elif args.get('variableTypeGuard') and guarded_type is None:
                     response = failure('conflict','MEMBER_TYPE_CHANGED',u'结构体身份、源码或原生类型已变化，未写入')
+                elif args.get('section') and (kind!='function_block' or args.get('action')=='add' and not args.get('variableChildGuard')):
+                    response = failure('unsupported','VARIABLE_INTERFACE_SCOPE',u'输入/输出区需要普通功能块及直接子对象保护，未写入')
+                elif args.get('variableChildGuard') and guarded_children is None:
+                    response = failure('conflict','VARIABLE_CHILD_CHANGED',u'功能块直接子对象身份或名称已变化，未写入')
                 else:
                     publish(os.path.join(os.path.dirname(req["resultPath"]), "before.json"), before)
                     try:
@@ -1231,6 +1251,11 @@ def dispatch(req):
                             after_type=variable_type_guard(project,app_id,args['variableTypeGuard'])
                             if after_type is None:raise ValueError('Structure type changed across member write/save/reopen')
                             type_evidence={'variableTypeEvidence':dict(guarded_type,beforeContentHash=guarded_type['contentHash'],afterContentHash=after_type['contentHash'])}
+                        child_evidence={}
+                        if guarded_children:
+                            after_children=variable_child_guard(project,app_id,args['variableChildGuard'])
+                            if after_children is None:raise ValueError('Function block direct child structure changed across variable write/save/reopen')
+                            child_evidence={'variableChildEvidence':{'before':guarded_children,'after':after_children}}
                         if kind in ('property_get','property_set') and any(reopened[k]!=before[k] for k in ('parentId','fbId','propertyId','propertyPath','propertyContentHash','accessorVersion','accessorStructure','readOnly','access','propertyType')):
                             raise ValueError('Property/Get/Set owner, declaration or accessor structure changed')
                         related={}
@@ -1238,14 +1263,14 @@ def dispatch(req):
                             related_after=[read_object(*locate(project,aid,x)) for x in related_ids]
                             if related_after!=related_before:raise ValueError('Sibling accessor, Property or FB source changed')
                             related={'relatedSourceEvidence':{'before':related_before,'after':related_after}}
-                        response = success(u"修改并读回一致，工作副本已持久化并重开核对", dict(reopened,**dict(related,**dict(type_evidence,
-                            snapshot=snapshot(project), checkpoint=req["checkpointPath"], persistedToWorkingCopy=True, reopened=True))))
+                        response = success(u"修改并读回一致，工作副本已持久化并重开核对", dict(reopened,**dict(related,**dict(child_evidence,**dict(type_evidence,
+                            snapshot=snapshot(project), checkpoint=req["checkpointPath"], persistedToWorkingCopy=True, reopened=True)))))
                     except Exception as e:
                         observed = None
                         recovery = {"status": "unknown"}
                         detail = exception_evidence(e)
                         try:
-                            if kind in ('method','property_get','property_set') or args.get('action')=='set-member-initializer' or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
+                            if kind in ('method','property_get','property_set') or args.get('action')=='set-member-initializer' or args.get('section') or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")
                             project = lifecycle["project"]
                             item, names, aid = locate(project, app_id, args["objectId"])

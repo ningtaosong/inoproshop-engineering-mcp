@@ -6,7 +6,8 @@ import {parseDeclaration} from './variables.js';
 import {parseInitializerMembers} from './initializer-members.js';
 
 export type VariableType='BOOL'|'DINT'|'TIME';
-export type VariableEdit={action:'add'|'set-initializer';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string};
+export type VariableSection='VAR_INPUT'|'VAR_OUTPUT';
+export type VariableEdit={action:'add'|'set-initializer';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string;section?:VariableSection};
 export type MemberInitializerEdit={action:'set-member-initializer';name:string;memberName:string;initializer:string;expectedOldInitializer:string};
 const ident=/^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
 // CODESYS ST keywords and reserved IEC names are not plain variable identifiers.
@@ -80,31 +81,46 @@ export function checkedInitializer(type:VariableType,raw:string):string {
   throw new Error('Unsupported or out-of-range literal');
 }
 
-export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'function_block',objectName:string,edit:VariableEdit){
+export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'function_block',objectName:string,edit:VariableEdit,directChildNames?:string[]){
   const source=normalize(declaration);
   checkVariableName(edit.name);
+  if(edit.section&&(kind!=='function_block'||!['VAR_INPUT','VAR_OUTPUT'].includes(edit.section)))
+    throw new Error('Interface section requires a plain ST FUNCTION_BLOCK');
   const parsed=parseDeclaration(source,kind,objectName);
   if(!parsed.complete||parsed.rows.some((r:any)=>r.category==='parse-gap'))throw new Error('Declaration boundary incomplete');
-  const section=kind==='gvl'?'VAR_GLOBAL':'VAR';
+  const section=edit.section??(kind==='gvl'?'VAR_GLOBAL':'VAR');
   const rows=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===section);
   const hits=rows.filter((r:any)=>r.name.toLowerCase()===edit.name.toLowerCase());
   const tokens=lexSt(source);
   if(tokens.error)throw new Error('Lexical boundary incomplete');
-  const blocks=[] as {head:number;body:number;end:number}[];
+  const blocks=[] as {head:number;body:number;end:number;unsupportedHeader:boolean}[];
+  const blockHead=new Set(['VAR','VAR_INPUT','VAR_OUTPUT','VAR_IN_OUT','VAR_INOUT','VAR_GLOBAL','VAR_EXTERNAL',
+    'VAR_ACCESS','VAR_TEMP','VAR_STAT','VAR_INST','VAR_CONFIG']);
+  const unsupportedHeader=new Set(['RETAIN','NON_RETAIN','PERSISTENT','CONSTANT','{']);
   for(let i=0;i<tokens.tokens.length;i++){
     const t=tokens.tokens[i];if(t.text.toUpperCase()!==section)continue;
-    // A modifier or attribute after the block head is outside S4a.
-    if(['RETAIN','NON_RETAIN','PERSISTENT','CONSTANT','{'].includes(tokens.tokens[i+1]?.text.toUpperCase()??''))continue;
-    const stop=tokens.tokens.find((v,j)=>j>i&&v.text.toUpperCase()==='END_VAR');
-    if(stop)blocks.push({head:t.start,body:t.end,end:stop.start});
+    const modified=unsupportedHeader.has(tokens.tokens[i+1]?.text.toUpperCase()??'');
+    // An explicit interface section must count every matching block, including
+    // empty and modified ones. Otherwise a later unsupported block can hide a
+    // duplicate while the first ordinary block is still writable.
+    if(!edit.section&&modified)continue;
+    const stop=tokens.tokens.find((v,j)=>j>i&&(v.text.toUpperCase()==='END_VAR'||blockHead.has(v.text.toUpperCase())));
+    if(edit.section&&(!stop||stop.text.toUpperCase()!=='END_VAR'))throw new Error('Declaration block boundary incomplete');
+    if(stop?.text.toUpperCase()==='END_VAR')blocks.push({head:t.start,body:t.end,end:stop.start,unsupportedHeader:modified});
   }
+  if(edit.section&&blocks.length!==1)throw new Error('Ambiguous or missing declaration block');
+  if(edit.section&&blocks[0].unsupportedHeader)throw new Error('Unsupported declaration block modifier or attribute');
   if(edit.action==='add'){
     if(!edit.type)throw new Error('Type required');
     const value=checkedInitializer(edit.type,edit.initializer);
     if(parsed.rows.some((r:any)=>r.name?.toLowerCase()===edit.name.toLowerCase()&&r.category!=='comment'))throw new Error('Variable name conflict');
+    if(edit.section){
+      if(!directChildNames)throw new Error('Direct Method/Property inventory required');
+      if(directChildNames.some(name=>name.toLowerCase()===edit.name.toLowerCase()))throw new Error('Direct Method/Property name conflict');
+    }
     if(blocks.length!==1)throw new Error('Ambiguous or missing declaration block');
     const b=blocks[0];
-    if(parsed.rows.some((r:any)=>r.category==='variable'&&r.section===section&&r.modifiers?.length))throw new Error('Special declarations in target block');
+    if(parsed.rows.some((r:any)=>r.category==='variable'&&r.section===section&&(r.modifiers?.length||r.addressRaw)))throw new Error('Special declarations in target block');
     const indent=/\n([ \t]+)[A-Za-z_]/.exec(source.slice(b.body,b.end))?.[1]??'    ';
     const insert=`${indent}${edit.name} : ${edit.type} := ${value};\n`;
     const at=source.lastIndexOf('\n',b.end-1)+1;
@@ -112,6 +128,8 @@ export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'functio
     return {declaration:source.slice(0,at)+insert+source.slice(at),range:{startOffset:at,endOffset:at},before:'',after:insert};
   }
   if(hits.length!==1)throw new Error('Target variable not unique');
+  if(edit.section&&parsed.rows.some((r:any)=>r.category==='variable'&&r.section!==section&&r.name.toLowerCase()===edit.name.toLowerCase()))
+    throw new Error('Variable name ambiguous across FB sections');
   const row=hits[0];
   if(row.modifiers?.length||row.addressRaw||!row.hasExplicitInitializer||!row.initializerPosition)throw new Error('Unsupported existing declaration');
   if(parsed.rows.filter((r:any)=>r.category==='variable'&&r.position.startOffset===row.position.startOffset).length!==1)throw new Error('Shared declaration');
