@@ -242,9 +242,9 @@ export class FixtureAdapter implements Adapter {
         await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(path.join(dir,'before.json'),old);
         object.declaration=normalize(a.declaration);
-        if(p.failImplementation && (req.fileGuard||a.action==='set-member-initializer'||['method','property_get','property_set'].includes(object.objectType))) {
+        if(p.failImplementation && (req.fileGuard||a.action==='set-member-initializer'||a.action==='set-type'||['method','property_get','property_set'].includes(object.objectType))) {
           await atomicJson(req.projectPath,p);
-          result={...reply('unknown','直接编辑部分失败，未自动回滚',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_WRITE',message:'Injected failure; preserve state'}};
+          result={...reply('unknown',a.action==='set-type'?'变量类型修改部分失败，未自动回滚':'直接编辑部分失败，未自动回滚',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_WRITE',message:'Injected failure; preserve state'}};
         } else if(p.failImplementation) {
           const observed={...object}; Object.assign(object,old);
           await atomicJson(req.projectPath,p);

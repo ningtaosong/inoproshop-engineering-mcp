@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.25.0",
+  "serverVersion": "0.26.0",
   "contractVersion": "1.0.0",
   "toolCount": 28,
   "tools": [
@@ -11237,7 +11237,8 @@
             "enum": [
               "add",
               "set-initializer",
-              "set-member-initializer"
+              "set-member-initializer",
+              "set-type"
             ]
           },
           "name": {
@@ -11267,6 +11268,14 @@
           "expectedOldInitializer": {
             "type": "string",
             "maxLength": 80
+          },
+          "expectedOldType": {
+            "type": "string",
+            "enum": [
+              "BOOL",
+              "DINT",
+              "TIME"
+            ]
           },
           "memberName": {
             "type": "string",
