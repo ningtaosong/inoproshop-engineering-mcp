@@ -538,7 +538,7 @@ def library_inventory(project,args):
             else:manager["enumerationComplete"]=True
         except Exception as e:manager["unavailableFields"].append({"field":"references","reason":text(e)})
     enumeration_complete=not errors and not truncated and all(m["enumerationComplete"] for m in managers)
-    return {"projectId":args["projectId"],"applicationId":args["applicationId"],"targetKind":"application",
+    result = {"projectId":args["projectId"],"applicationId":args["applicationId"],"targetKind":"application",
       "projectPath":text(project.path),"applicationPath":prefix,"managers":managers,"references":entries,
       "scope":{"description":"Direct references of each native library manager in the exact Application; no recursive dependencies or installed repository query",
         "maxReferences":args["maxReferences"],"capturedReferences":len(entries),"enumerationComplete":enumeration_complete,
@@ -549,6 +549,9 @@ def library_inventory(project,args):
         "Non-placeholder references have no verified placeholder resolution getters; status remains unknown"],
       "limitations":["Not a complete transitive dependency tree","Installed, referenced and resolved are different facts",
         "No active resolve/repair/install/download/build/save call","Absence of CmpLog from direct references does not rule out indirect dependencies or resolve a historical compiler warning"]}
+    result['referenceVersionScheme']=LIB_CONFIG_SCHEME
+    result['configurationVersion']=library_configuration_version(result)
+    return result
 
 
 def search_inventory(project,args):
@@ -1120,6 +1123,10 @@ def dispatch(req):
         sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
         from project_create import create_minimal
         return create_minimal(req,dict(globals(),projects=projects))
+    if req['command']=='catalog':
+        if projects.primary is not None:return failure('conflict','UNOWNED_PROJECT',u'新启动实例已有工程；未读取库目录')
+        inventory,_=installed_inventory()
+        return success(u'已读取本机原生已安装库目录；未打开工程或修改库',inventory)
     project = None
     lifecycle = lifecycle_state(project_path=req["projectPath"])
     response = None
@@ -1127,7 +1134,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "add_library", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1137,7 +1144,7 @@ def dispatch(req):
                 lifecycle_reject(lifecycle,failure("conflict","READ_DISK_CHANGED",u"正式读取前工程文件已变化，未打开或保存",{"beforeDiskHash":before_hash}))
         if projects.primary is not None:
             lifecycle_reject(lifecycle,failure("conflict", "UNOWNED_PROJECT", u"新启动实例已有工程；拒绝接管"))
-        if command in ("change", "create", "create_declaration", "create_method", "create_property") or req.get("fileGuard") and command=="save":
+        if command in ("change", "create", "create_declaration", "create_method", "create_property", "add_library") or req.get("fileGuard") and command=="save":
             shutil.copyfile(req["projectPath"], req["checkpointPath"])
         project = lifecycle_open(lifecycle,req["projectPath"])
         if direct_evidence and file_hash(req["projectPath"])!=direct_evidence["beforeDiskHash"]:
@@ -1165,6 +1172,8 @@ def dispatch(req):
                 response,project=task_config_update(project,req,args,lifecycle)
             elif command == "libraries":
                 response = success(u"已只读取得精确 Application 的库直接引用与原生解析信息",library_inventory(project,args))
+            elif command == "add_library":
+                response,project=library_reference_add(project,req,args,lifecycle)
             elif command == "list":
                 objects,unsupported_children = [],[]
                 for item, names, aid in walk(project):
@@ -1337,6 +1346,8 @@ def dispatch(req):
 # Fixed helper code only; request text is never evaluated.
 with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'organization.py'),'r',encoding='utf-8') as organization_file:
     exec(compile(organization_file.read(),'organization.py','exec'))
+with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'library_reference.py'),'r',encoding='utf-8') as library_reference_file:
+    exec(compile(library_reference_file.read(),'library_reference.py','exec'))
 
 request_path = os.environ.get("INOPRO_BRIDGE_REQUEST")
 if not request_path:

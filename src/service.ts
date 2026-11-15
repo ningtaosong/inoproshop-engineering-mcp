@@ -17,6 +17,7 @@ import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
 import {organizationResult} from './organization.js';
+import {catalogResult,catalogVersion,libraryConfigurationVersion,LIB_CONFIG_SCHEME} from './libraries.js';
 import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
 
 export class EngineeringService {
@@ -88,6 +89,14 @@ export class EngineeringService {
     if(args.reconcile && (op.status==='running'||op.status==='unknown')) {
       if(op.status==='running' && alive(op.ownerPid) && !this.persistencePoison) return this.operationReply(op,'running','原服务仍在执行，查询不会中断或重放');
       await this.store.acquire();
+      if(op.tool==='library_catalog') {
+        if(op.bridge?.pid&&alive(op.bridge.pid))return this.operationReply(op,'unknown','原目录探测进程仍存在；不重放');
+        if(op.bridge){
+          const observed=await this.adapter.reconcile(op.bridge.directory);
+          if(observed){const parsed=this.prepareResult(op,replySchema.parse(observed));this.validateEvidence(op,parsed);await this.finish(op,boundNativeReply(parsed));return op.response!;}
+        }
+        return this.operationReply(op,'unknown','本机库目录原操作缺少可确认终态；不重放');
+      }
       if(op.tool==='project_create') {
         if(!op.creation) return this.operationReply(op,'unknown','缺少原新建路径预留证据，保留现场，不能重放');
         await this.store.acquire(op.creation.projectPath);
@@ -157,17 +166,18 @@ export class EngineeringService {
     }
     if(ops.some(o=>!isolatedIds.has(o.operationId)&&(o.status==='unknown'||(o.status==='running'&&!alive(o.ownerPid)))))
       throw new DomainError('unknown','PENDING_UNKNOWN','存在未决操作；请先查询并核对 operation_status，禁止派发后续工程操作');
+    const globalQuery=tool==='library_catalog';
     const switching=['project_create','project_open','project_open_copy','project_activate'].includes(tool);
     if(switching && ops.some(o=>o.status==='running'&&!isolatedIds.has(o.operationId)))throw new DomainError('conflict','PENDING_OPERATION','存在运行中或排队操作，不能切换；请先查询原操作');
     let registry;
     try {registry=await this.store.ensureRegistry();}
     catch(e:any) {this.persistencePoison=e.message;throw new DomainError('unknown','REGISTRY_UNAVAILABLE','登记无法确认，保持冻结：'+e.message);}
     const current=registry.projects.find(s=>s.projectId===registry.activeProjectId);
-    await assertNotIsolated(this.store,args.projectId,[args.sourcePath,args.projectPath].filter(Boolean));
-    if(!switching && (!current || current.projectId!==args.projectId))
+    if(!globalQuery)await assertNotIsolated(this.store,args.projectId,[args.sourcePath,args.projectPath].filter(Boolean));
+    if(!switching&&!globalQuery && (!current || current.projectId!==args.projectId))
       throw new DomainError('conflict','PROJECT_NOT_ACTIVE','请求工程不是活动工程；请先明确激活目标，再使用其真实身份');
     const op:Operation={schemaVersion:1,registryVersion:1,operationId:randomUUID(),requestId,tool,args,fingerprint,status:'running',ownerPid:process.pid,startedAt:new Date().toISOString(),
-      ...(switching?{activation:{previousActiveProjectId:registry.activeProjectId,revision:registry.revision}}:{project:current})};
+      ...(switching?{activation:{previousActiveProjectId:registry.activeProjectId,revision:registry.revision}}:globalQuery?{}:{project:current})};
     try {await this.store.saveOp(op);} // 持久化先于队列派发和工程修改。
     catch(e:any) {
       this.persistencePoison=e.message || String(e);
@@ -275,6 +285,7 @@ export class EngineeringService {
       throw new DomainError('unknown','DIRECT_EVIDENCE_INVALID','直接工程的版本/原生占用检查证据无法确认，保持冻结');
   }
   private prepareResult(op:Operation,result:Reply):Reply {
+    if(op.tool==='library_catalog')return catalogResult(result,op.args);
     if(op.tool==='variable_edit'&&result.status==='succeeded'&&(op as any).variableOriginal){
       const before=(op as any).variableOriginal;
       const type=(op as any).variableTypeOriginal;
@@ -295,7 +306,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.tool==='variable_edit'?(op as any).effectiveArgs??op.args:op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',library_catalog:'catalog',library_reference_add:'add_library',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -310,6 +321,36 @@ export class EngineeringService {
           declarationMatches(v.objectType,v.path?.at(-1) || '',v.declaration);
       };
       if(!d) invalid();
+      if(command==='catalog'){
+        if(!isHash(d!.catalogVersion)||d!.identityScheme!=='installed-libraries-v1'||!Array.isArray(d!.entries)||!d!.page||!d!.scope)invalid();
+        return;
+      }
+      if(command==='add_library'){
+        const before=d!.before as any,after=d!.after as any;
+        if(d!.projectId!==args.projectId||d!.applicationId!==args.applicationId||d!.managerId!==args.managerId||
+          d!.installedIdentity!==args.installedIdentity||d!.catalogVersion!==args.expectedCatalogVersion||
+          d!.beforeReferenceVersion!==args.expectedReferenceVersion||!before||!after||
+          before.referenceVersionScheme!==LIB_CONFIG_SCHEME||after.referenceVersionScheme!==LIB_CONFIG_SCHEME||
+          libraryConfigurationVersion(before)!==args.expectedReferenceVersion||
+          libraryConfigurationVersion(after)!==d!.referenceVersion||!isHash(d!.diskHash)||!isHash(d!.snapshot))invalid();
+        if(d!.changed===true){
+          const added=(d!.addedReference as any),old=(before.references as any[]),now=(after.references as any[]);
+          const installed=d!.installed as any,nativeIdentity=installed&&Object.fromEntries(
+            ['displayName','company','title','version','defaultNamespace','repositoryFile'].map(k=>[k,installed[k]]));
+          if(!added||!d!.reopened||!persisted()||d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project')||
+            installed?.identity!==args.installedIdentity||canonical(d!.nativeBeforeSave)!==canonical(nativeIdentity)||
+            canonical(d!.nativeAfterReopen)!==canonical(nativeIdentity)||
+            now.length!==old.length+1||now.filter((r:any)=>r.managerId===args.managerId&&r.rawFields.name===(d!.installed as any)?.displayName).length!==1||
+            added.rawFields.namespace!==args.expectedNamespace||added.rawFields.is_managed!==true||added.rawFields.is_placeholder!==false||
+            canonical(now.filter((r:any)=>r.index!==added.index).map((r:any)=>r.rawFields))!==canonical(old.map((r:any)=>r.rawFields))||
+            d!.diskHash===args.expectedDiskHash)invalid();
+          d!.buildApplicable=false;
+        } else if(d!.changed===false){
+          if(d!.noOp!==true||d!.reopened!==false||d!.diskHash!==args.expectedDiskHash||
+            d!.referenceVersion!==args.expectedReferenceVersion||canonical(before)!==canonical(after))invalid();
+          d!.buildApplicable=buildApplies(session,d)===true;
+        } else invalid();
+      }
       if(['folder_create','object_move'].includes(op.tool)){
         if(d!.structuralEvidence===undefined||!isHash(d!.structureVersion)||!isHash(d!.snapshot)||!isHash(d!.diskHash)||
           d!.changed===true&&(!persisted()||d!.reopened!==true||d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project'))||
@@ -430,6 +471,14 @@ export class EngineeringService {
   }
   private async execute(op:Operation):Promise<Reply> {
     const a=op.args;
+    if(op.tool==='library_catalog'){
+      await maintenanceGuard();
+      op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
+      const raw=await this.adapter.execute({operationId:op.operationId,command:'catalog',projectPath:'',args:a},op.bridge.directory,
+        async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);});
+      const parsed=this.prepareResult(op,replySchema.parse(raw));this.validateEvidence(op,parsed);
+      return boundNativeReply(parsed);
+    }
     if(op.activation) {
       const registry=await this.store.registry();
       if(registry.activeProjectId!==op.activation.previousActiveProjectId || registry.revision!==op.activation.revision)
@@ -485,6 +534,24 @@ export class EngineeringService {
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
     if(op.tool==='variable_edit')return this.variableEdit(op,s);
+    if(op.tool==='library_reference_add'){
+      if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
+        throw new DomainError('conflict','LIBRARY_DISK_CHANGED','直接库引用写入前磁盘版本已变化，未派发IDE');
+      const refOp=await this.store.operation(a.referenceOperationId),catOp=await this.store.operation(a.catalogOperationId);
+      const ref=refOp?.response?.data as any,cat=catOp?.response?.data as any;
+      if(refOp?.tool!=='library_inspect'||refOp.status!=='succeeded'||refOp.args.projectId!==a.projectId||
+        refOp.args.applicationId!==a.applicationId||ref?.configurationVersion!==a.expectedReferenceVersion||
+        ref?.diskHash!==a.expectedDiskHash||ref?.readOnlyEvidence?.unchanged!==true||
+        ref?.readOnlyEvidence?.beforeDiskHash!==a.expectedDiskHash||
+        ref?.scope?.enumerationComplete!==true||ref?.scope?.fieldReadComplete!==true||
+        !ref.managers?.some((m:any)=>m.managerId===a.managerId))
+        throw new DomainError('conflict','LIBRARY_REFERENCE_EVIDENCE','缺少同一工程完整且当前的直接引用查询证据，未派发IDE');
+      if(catOp?.tool!=='library_catalog'||catOp.status!=='succeeded'||cat?.catalogVersion!==a.expectedCatalogVersion||
+        cat?.scope?.enumerationComplete!==true||!cat.entries?.some((x:any)=>x.identity===a.installedIdentity&&x.defaultNamespace===a.expectedNamespace))
+        throw new DomainError('conflict','INSTALLED_LIBRARY_EVIDENCE','缺少完整且精确的本机已安装库查询证据，未派发IDE');
+      // The bridge must re-enumerate the same bounded direct-reference scope.
+      return this.bridge(op,'add_library',s,{...a,maxReferences:refOp.args.maxReferences});
+    }
     if(['folder_create','object_move'].includes(op.tool)){
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
         throw new DomainError('conflict','ORGANIZATION_DISK_CHANGED','结构写入前磁盘版本与登记/请求不一致，未派发IDE');

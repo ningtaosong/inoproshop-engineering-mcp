@@ -8,6 +8,7 @@ import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDec
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
 import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs} from './task-config.js';
+import {catalogVersion,libraryConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME} from './libraries.js';
 
 export class FixtureAdapter implements Adapter {
   async reconcile(directory:string) { return readJson(path.join(directory,'result.json')); }
@@ -29,6 +30,13 @@ export class FixtureAdapter implements Adapter {
           task:{objectId:tid,kind:'Cyclic',interval:'t#20ms',calls:[['PLC_PRG','']]}}}),operationId:req.operationId};
       await atomicJson(path.join(dir,'result.json'),result);return result;
     }
+    if(req.command==='catalog') {
+      const values=['Fixture Mathematics, 1.0.0 (Fixture Vendor)','Fixture Vendor','Fixture Mathematics','1.0.0','FMATH','fixture://installed/FixtureMath.library'];
+      const entries=[{identity:digest(JSON.stringify(values)),displayName:values[0],company:values[1],title:values[2],version:values[3],defaultNamespace:values[4],repositoryFile:values[5]}];
+      const data={identityScheme:LIB_CATALOG_SCHEME,entries,repositories:[],failures:[],enumerationComplete:true,total:entries.length};
+      const result={...reply('succeeded','Fixture-only installed catalog',{...data,catalogVersion:catalogVersion(data)}),operationId:req.operationId};
+      await atomicJson(path.join(dir,'result.json'),result);return result;
+    }
     const p=await readJson(req.projectPath);
     if(!p?.testFixture) throw new DomainError('failed','FIXTURE_ONLY','测试模式只接受显式 testFixture JSON');
     if(p.delayMs) await new Promise(r=>setTimeout(r,p.delayMs));
@@ -47,6 +55,22 @@ export class FixtureAdapter implements Adapter {
       tasks:(p.tasks||[]).filter((t:any)=>t.applicationId===a.applicationId).map(({applicationId,...t}:any)=>structuredClone(t)),
       programs:objects.filter((o:any)=>!o.queryReadError&&/^\s*PROGRAM\b/i.test(o.declaration)).map((o:any)=>({objectId:o.objectId,path:o.path})),
       resolutionReadFailures:[],enumerationFailures:p.treeReadError?[{path:[],stage:'enumeration',reason:p.treeReadError}]:[],coverageComplete:!p.treeReadError});
+    const libraryInventory=()=>{
+      const managers=(p.libraryManagers || []).filter((m:any)=>m.applicationId===a.applicationId).map(({applicationId,references,...m}:any)=>({...m,enumerationComplete:true,capturedReferences:0}));
+      const references:any[]=[];let truncated=false;
+      for(const m of managers){const original=p.libraryManagers.find((x:any)=>x.managerId===m.managerId&&x.applicationId===a.applicationId);
+        for(const r of original.references){if(references.length>=a.maxReferences){truncated=true;m.enumerationComplete=false;break;}references.push({...r,index:references.length});m.capturedReferences++;}
+        if(original.enumerationError){m.enumerationComplete=false;m.unavailableFields.push({field:'references',reason:original.enumerationError});}
+      }
+      const failures=p.treeReadError?[{path:[],stage:'enumeration',reason:p.treeReadError}]:[];
+      const data:any={projectId:a.projectId,applicationId:a.applicationId,targetKind:'application',projectPath:req.projectPath,
+        applicationPath:p.applications.find((x:any)=>x.applicationId===a.applicationId).path,managers,references,
+        scope:{description:'Fixture direct references; not installed repository or transitive dependencies',maxReferences:a.maxReferences,capturedReferences:references.length,truncated,
+          enumerationComplete:!failures.length&&!truncated&&managers.every((m:any)=>m.enumerationComplete),fieldReadComplete:!managers.some((m:any)=>m.unavailableFields.length)&&!references.some(r=>r.unavailableFields.length),enumerationFailures:failures},
+        unavailableMetadata:['Independent version/vendor getters not verified'],limitations:['No recursive dependencies; installed state not queried'],
+        referenceVersionScheme:LIB_CONFIG_SCHEME};
+      data.configurationVersion=libraryConfigurationVersion(data);return data;
+    };
     if(['create_folder','move_object'].includes(req.command))result=await fixtureOrganize(p,req,dir,snapshot,taskInventory);
     else if(req.command==='task_update') {
       validateTaskPatch(a);const before=taskInventory(),version=taskConfigurationVersion(before),rows=before.tasks.filter((t:any)=>t.taskId===a.taskId);
@@ -73,22 +97,36 @@ export class FixtureAdapter implements Adapter {
     }
     else if(req.command==='inspect') result=reply('succeeded','测试工程副本已打开',{applications:p.applications,poolBuildAvailable:p.applications.length===0&&p.objects.length>0,projectPath:req.projectPath,snapshot:snapshot(),testMode:true});
     else if(req.command==='libraries') {
-      const managers=(p.libraryManagers || []).filter((m:any)=>m.applicationId===a.applicationId).map(({applicationId,references,...m}:any)=>({...m,enumerationComplete:true,capturedReferences:0}));
-      const references:any[]=[];let truncated=false;
-      for(const m of managers){const original=p.libraryManagers.find((x:any)=>x.managerId===m.managerId&&x.applicationId===a.applicationId);
-        for(const r of original.references){if(references.length>=a.maxReferences){truncated=true;m.enumerationComplete=false;break;}references.push({...r,index:references.length});m.capturedReferences++;}
-        if(original.enumerationError){m.enumerationComplete=false;m.unavailableFields.push({field:'references',reason:original.enumerationError});}
-      }
-      const failures=p.treeReadError?[{path:[],stage:'enumeration',reason:p.treeReadError}]:[];
-      result=reply('succeeded','库引用替身，非真实 IDE',{projectId:a.projectId,applicationId:a.applicationId,targetKind:'application',projectPath:req.projectPath,
-        applicationPath:p.applications.find((x:any)=>x.applicationId===a.applicationId).path,managers,references,
-        scope:{description:'Fixture direct references; not installed repository or transitive dependencies',maxReferences:a.maxReferences,capturedReferences:references.length,truncated,
-          enumerationComplete:!failures.length&&!truncated&&managers.every((m:any)=>m.enumerationComplete),fieldReadComplete:!managers.some((m:any)=>m.unavailableFields.length)&&!references.some(r=>r.unavailableFields.length),enumerationFailures:failures},
-        unavailableMetadata:['Independent version/vendor getters not verified'],limitations:['No recursive dependencies; installed state not queried']});
+      result=reply('succeeded','库引用替身，非真实 IDE',libraryInventory());
       if(p.readMutatesFile)await fs.appendFile(req.projectPath,' ');
       const after=digest(await fs.readFile(req.projectPath));
       result.data!.readOnlyEvidence={beforeDiskHash:a.readDiskHash,afterCloseDiskHash:after,postExitDiskHash:after,unchanged:after===a.readDiskHash};
       if(after!==a.readDiskHash)result={...reply('unknown','测试只读工程文件变化',{priorResult:result}),error:{code:'READ_ONLY_FILE_CHANGED',message:'File changed'}};
+    }
+    else if(req.command==='add_library') {
+      const before=libraryInventory(),catalogValues=['Fixture Mathematics, 1.0.0 (Fixture Vendor)','Fixture Vendor','Fixture Mathematics','1.0.0','FMATH','fixture://installed/FixtureMath.library'];
+      const identity=digest(JSON.stringify(catalogValues)),manager=p.libraryManagers?.find((m:any)=>m.applicationId===a.applicationId&&m.managerId===a.managerId);
+      if(before.configurationVersion!==a.expectedReferenceVersion||!before.scope.enumerationComplete||!before.scope.fieldReadComplete||!manager)
+        result={...reply('conflict','Fixture reference version or manager mismatch'),error:{code:'LIBRARY_REFERENCES_CHANGED',message:'not written'}};
+      else if(a.installedIdentity!==identity||a.expectedNamespace!=='FMATH')
+        result={...reply('conflict','Fixture installed identity mismatch'),error:{code:'INSTALLED_LIBRARY_AMBIGUOUS',message:'not written'}};
+      else {
+        const existing=before.references.find((r:any)=>r.rawFields.name===catalogValues[0]),changed=!existing;
+        if(changed){
+          await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
+          const order=manager.references.length,rawFields={id:String(order+1),name:catalogValues[0],namespace:'FMATH',is_placeholder:false,is_managed:true,system_library:false,optional:false,qualified_only:false};
+          manager.references.push({index:order,parentIndex:null,managerId:a.managerId,managerPath:manager.path,order,path:[...manager.path,'references',String(order)],rawFields,unavailableFields:[],resolutionStatus:'unknown',resolutionBasis:'Native effective_resolution string only',installedStatus:'not-queried'});
+          await atomicJson(req.projectPath,p);
+        }
+        const after=libraryInventory(),addedReference=after.references.find((r:any)=>r.rawFields.name===catalogValues[0]);
+        result=p.failLibraryAdd&&changed?{...reply('unknown','Fixture injected partial library add',{checkpoint:path.join(dir,'checkpoint.project'),writeStarted:true}),error:{code:'PARTIAL_LIBRARY_ADD',message:'Injected failure; no automatic recovery'}}:
+          reply('succeeded','Fixture-only precise direct reference',{projectId:a.projectId,applicationId:a.applicationId,managerId:a.managerId,installedIdentity:identity,
+            installed:{identity,displayName:catalogValues[0],company:catalogValues[1],title:catalogValues[2],version:catalogValues[3],defaultNamespace:'FMATH',repositoryFile:catalogValues[5]},
+            ...(changed?{nativeBeforeSave:{displayName:catalogValues[0],company:catalogValues[1],title:catalogValues[2],version:catalogValues[3],defaultNamespace:'FMATH',repositoryFile:catalogValues[5]},
+              nativeAfterReopen:{displayName:catalogValues[0],company:catalogValues[1],title:catalogValues[2],version:catalogValues[3],defaultNamespace:'FMATH',repositoryFile:catalogValues[5]}}:{}),
+            addedReference,before,after,beforeReferenceVersion:before.configurationVersion,referenceVersion:after.configurationVersion,catalogVersion:a.expectedCatalogVersion,
+            changed,noOp:!changed,reopened:changed,...(changed?{checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true}:{}),snapshot:snapshot(),diskHash:digest(await fs.readFile(req.projectPath)),testMode:true});
+      }
     }
     else if(req.command==='structure'||req.command==='device') {
       const all=p.nativeNodes || [],cap=req.command==='structure'?a.maxNodes:20000,nodes=all.slice(0,cap);

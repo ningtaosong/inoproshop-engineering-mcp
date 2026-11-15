@@ -14,8 +14,8 @@ function manager(id=mid,applicationId=app,tail='库管理器',values){const pref
 async function ctx(t,extra={}){const e=await setup({libraryManagers:[manager(),manager(mid,app2)],...extra}),c=await connect(e.dataDir);t.after(()=>c.client.close());const r=await c.done(await c.call('project_open_copy',{sourcePath:e.source,applicationId:app,requestId:'open'}));assert.equal(r.status,'succeeded');const s=r.data.session;
  return {e,c,s,invoke:async(a={})=>c.done(await c.call('library_inspect',{projectId:s.projectId,applicationId:app,...a}))};}
 
-test('十九工具、只读Schema；十八个原输入输出Schema逐项兼容',async t=>{
- const x=await ctx(t),tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,28);const tool=tools.find(t=>t.name==='library_inspect');assert.equal(tool.annotations.readOnlyHint,true);assert(tool.outputSchema);
+test('三十项工具、只读Schema；原库工具输入输出Schema逐项兼容',async t=>{
+ const x=await ctx(t),tools=(await x.c.client.listTools()).tools;assert.equal(tools.length,30);const tool=tools.find(t=>t.name==='library_inspect');assert.equal(tool.annotations.readOnlyHint,true);assert(tool.outputSchema);
  const old=JSON.parse(await readFile('tests/fixtures/library-legacy-contracts.json','utf8'));
  for(const expected of old.tools){const actual=tools.find(t=>t.name===expected.name);assert(actual);assert.equal(digest(JSON.stringify(withoutEnumExtension(z.toJSONSchema(schemas[expected.name],{io:'input'})))),expected.inputHash,expected.name+' input');assert.equal(digest(JSON.stringify(withoutEnumExtension(z.toJSONSchema(outputSchemas[expected.name])))),expected.outputHash,expected.name+' output');}
  for(const args of [{applicationId:null},{targetKind:'pool'},{save:true},{limit:201},{maxReferences:0},{fieldRead:{referenceIndex:0,field:'install'}}])assert.equal(schemas.library_inspect.safeParse({projectId:app,applicationId:app,...args}).success,false);
