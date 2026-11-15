@@ -19,6 +19,13 @@
 
 独立真实 MCP 工程 `D:\InoPro.local\library-reference-add-20261113\AM610_LibraryMCP.project` 直接打开指定文件，调用两个新工具添加同一精确库，再通过既有源码工具接入上述最小调用。真实编译及保存版复编均为 0 错误、1 条 CmpLog 警告；保存关闭重开及最终源码读回成功。首次目录查询的空工程路径处理错误、首次添加缺少桥接读取上限参数的写前失败，已保留原始记录并修正；前者原操作已按 IPC 终态核对，后者未写工程。
 
-上述只证明本机离线库引用、编译和持久化。设备完整 I/O、传递依赖、PLC 连接、运行加载及实际行为没有验证；原 unknown、历史质量、脚本信任和 CmpLog 限制保持。DSH CLI 模型验收及最终服务恢复须另列证据，不能以开发端 MCP 调用代替。
+最终产品提交 `d109da06fc652118199bbb162b151e4ccb6cdf39` 的自动化回归为 409/409；同版库相关定向测试为 19/19，属于完整回归的子集。之前两轮回归中的固定工具数量断言、测试维护门冲突，以及新加的过期证据和 no-op 测试首败均保留在交付记录中，不累加为最终通过数。最终代码又在独立的 `AM610_LibraryMCPFinal.project` 完成原生身份添加、示例调用、编译、保存重开和保存版复编；两次编译各为 0 错误、1 条 CmpLog 警告。最终直接引用清单已按页读完 19 条，精确目标引用 1 条；交付文件哈希与保存版编译证据相符。
+
+DSH CLI 临时 profile 的第一次命令在参数解析前拒绝，纠正后默认模型路由缺少 API 密钥。仅切换账户路由仍无法启动，因为 headless profile 默认禁用本机凭据服务；依据 DSH 官方 headless 说明在本轮临时 profile 启用已有凭据服务后，模型才实际运行。前述失败均发生在 MCP 工程操作前，原始记录保留。日常 DSH 固定入口和私人配置未调整。
+
+唯一一次进入模型的 DSH CLI 任务在独立 `AM610_LibraryDSH.project` 上完成直接引用及最小调用：16 项成功工程操作，另有 2 次写前 `LIBRARY_REFERENCE_EVIDENCE` 冲突（模型先误用库清单分页版本，随后改用直接引用配置版本）。两次编译各为 0 错误、1 条 CmpLog 警告；保存关闭重开后复编的磁盘哈希与交付文件一致；最终直接引用 19 条按两页取完，精确目标 1 条。没有调用 `project_compare`，没有生成业务副本。工程闭环通过；必要定位、编译与保存流程基本遵循，存在额外辅助读取和两次无写入冲突。PowerShell 向 CLI 传入中文任务时发生编码损坏，模型实际收到的文字及原答复均有乱码，因此**原文送达和答复展示未通过**；保留原始任务文件、实际会话文本与单独勘误，不重放已成功的业务任务。退出候选 CLI 后，原 DSH 0.26 桌面及服务进程已正常恢复；该最终连接的握手和模型接收未另行取证。
+
+上述只证明本机离线库引用、编译和持久化。设备完整 I/O、传递依赖、PLC 连接、运行加载及实际行为没有验证；原 unknown、历史质量、脚本信任和 CmpLog 限制保持。
 
 原生接口参考：[CODESYS ScriptingEngine 库管理对象](https://content.helpme-codesys.com/en/ScriptingEngine/ScriptLibManObject.html)。调用语法参考：[CAA Mathematics 的 sgn](https://content.helpme-codesys.com/en/libs/CAA%20Mathematics/Current/CAA-Mathematics/Functions/analog-monitors/sgn.html)；在线页面为 Current，实际本机编译针对上述已安装 3.5.11.0。
+DSH headless 凭据配置参考：[官方 headless 说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/bundle/headless/README.md)；本轮仅使用临时 profile，不提交凭据或私人配置。
