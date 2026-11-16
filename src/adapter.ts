@@ -54,7 +54,7 @@ export class IdeAdapter implements Adapter {
       })]);
       const result=await this.reconcile(directory);
       if(!result) throw new DomainError('unknown','RESULT_MISSING',`IDE 已退出 (${code})，缺少完整结果，禁止重放`);
-      if(result.data && (request.command!=='new_project'||await fs.access(request.projectPath).then(()=>true,()=>false))) {
+      if(result.data && request.command!=='catalog' && (request.command!=='new_project'||await fs.access(request.projectPath).then(()=>true,()=>false))) {
         if(result.data.diskHash!==undefined)result.data.workerDiskHash ??= result.data.diskHash;
         result.data.diskHash=digest(await fs.readFile(request.projectPath));
         result.data.postExitDiskHashObserved=true;

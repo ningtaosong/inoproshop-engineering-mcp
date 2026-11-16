@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.26.0 候选版的二十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.27.0 候选版的三十项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -15,6 +15,10 @@
 普通 ST FUNCTION_BLOCK 已有且唯一的 VAR_INPUT 或 VAR_OUTPUT 声明块，也可对普通 BOOL／DINT／TIME 单变量使用 variable_edit 的 add 或 set-initializer；必须显式给出 section。新增前核对同一 FB 其他声明区及直接 Method／Property 名称，不凭同名或旧偏移推断目标区。缺失、重复、联合、特殊或解析不全时停止。输入初值在实例初始化时生效；调用显式传参会为该次调用赋值，不能把源码初值当作该调用或运行时实测值。省略 section 时继续使用旧 VAR／VAR_GLOBAL 范围；set-member-initializer 不接收 section。
 
 用户明确要求修改根 GVL 单变量的已有具名聚合直接成员时，先用 variable_inspect 定位父变量和成员，再独立读取 GVL 与同 Application 根的结构体 DUT 原文和哈希。仅在类型名及字段唯一、成员显式值为已支持字面量、当前工程和磁盘版本一致时，用 variable_edit 的 set-member-initializer，分别传父变量 name、memberName、typeObjectId、expectedTypeHash 及原值。服务会在队列内重读父变量、完整类型和当前成员位置；类型、成员、归属或原值有歧义便停止。不得补缺失成员、改结构体字段初值或把源码设定说成运行值；旧成员分页位置不作写入依据。其余编译、保存重开和目标读回沿用上段流程。
+
+## S5a 本机库目录与精确直接引用
+
+用户明确要求添加库时，先用 `library_catalog` 查询本机已安装库的原生完整身份与版本，再用 `library_inspect` 核对指定 Application 的原生库管理器、完整直接引用和配置版本。仅在库身份唯一、当前未直接引用且命名空间、占位符和其他版本没有冲突时，用 `library_reference_add` 添加该精确引用；请求内部绑定两个成功查询、当前磁盘版本及库管理器身份。不要从显示字符串猜厂商或版本，不自动选最新版、下载、安装、升级、删除或调整占位符，也不为消除 CmpLog 警告自行加库。添加后读取实际引用及可获得的解析原文、真实编译、保存关闭重开，并按保存结果判断是否需复编；已安装、已直接引用、解析信息和运行加载是不同证据。部分结果不确定或 `unknown` 时保留现场，查询原操作，不自动移除新引用或回滚。仅查询库目录不需要虚构工程身份。未要求比较时不调用 `project_compare`；它目前不覆盖完整库配置。
 
 ## 文件夹与原生移动
 

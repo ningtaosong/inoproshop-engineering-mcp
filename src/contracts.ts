@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.26.0';
+export const VERSION = '0.27.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -40,6 +40,14 @@ export const schemas = {
     maxReferences:z.number().int().min(1).max(10000).default(2000),expectedVersion:hash.optional(),
     fieldRead:z.object({referenceIndex:z.number().int().min(0).max(9999),field:z.enum(['id','name','namespace','placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid']),
       offset:z.number().int().min(0).default(0),limit:z.number().int().min(2).max(2048).default(1024)}).strict().optional()}).strict(),
+  library_catalog:z.object({offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(100).default(50),
+    maxEntries:z.number().int().min(1).max(5000).default(2000),expectedVersion:hash.optional(),
+    query:z.string().min(1).max(160).optional(),detailIdentity:hash.optional()}).strict()
+    .refine(a=>!a.query||!a.detailIdentity,'过滤词与精确身份详情不能同时指定'),
+  library_reference_add:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    managerId:uuid,expectedDiskHash:hash,expectedReferenceVersion:hash,referenceOperationId:uuid,
+    installedIdentity:hash,expectedCatalogVersion:hash,catalogOperationId:uuid,
+    expectedNamespace:z.string().min(1).max(256)}).strict(),
   task_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid}).strict(),
   task_config_update:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     taskId:uuid,expectedTaskVersion:hash,expectedDiskHash:hash,
@@ -234,6 +242,13 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
     before:z.record(z.string(),z.unknown()).optional(),after:z.record(z.string(),z.unknown()).optional(),
     checkpoint:z.string().optional(),...snapshotFields}).passthrough(),
   library_inspect:libraryDataSchema.partial().passthrough(),
+  library_catalog:z.object({catalogVersion:hash.optional(),identityScheme:z.string().optional(),entries:z.array(z.record(z.string(),z.unknown())).optional(),
+    repositories:z.array(z.array(z.string())).optional(),failures:z.array(z.record(z.string(),z.unknown())).optional(),
+    enumerationComplete:z.boolean().optional(),total:z.number().int().optional(),page:z.record(z.string(),z.unknown()).optional()}).passthrough(),
+  library_reference_add:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),managerId:uuid.optional(),
+    installedIdentity:hash.optional(),beforeReferenceVersion:hash.optional(),referenceVersion:hash.optional(),
+    changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),
+    checkpoint:z.string().optional(),...snapshotFields}).passthrough(),
   project_compare:comparisonDataSchema.partial().passthrough(),
   project_structure:structureDataSchema.partial().passthrough(),
   folder_create:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),structureVersion:hash.optional(),structuralEvidence:z.record(z.string(),z.unknown()).optional(),object:z.record(z.string(),z.unknown()).optional(),...snapshotFields}).passthrough(),
