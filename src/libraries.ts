@@ -3,6 +3,7 @@ import {reply,DomainError,type Reply} from './contracts.js';
 import {isStringBoundary,stringEnd} from './native-output.js';
 
 export const LIB_CONFIG_SCHEME='direct-library-references-v1';
+export const LIB_PLACEHOLDER_SCHEME='application-placeholder-resolution-v1';
 export const LIB_CATALOG_SCHEME='installed-libraries-v1';
 const LIB_FIELDS=['id','name','namespace','is_placeholder','is_managed','system_library','optional','qualified_only',
   'placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid','is_redirected'];
@@ -35,12 +36,25 @@ export function completeLibraryInventory(d:any,paged=false):boolean {
     typeof r.rawFields.namespace==='string'&&r.rawFields.namespace.length>0&&
     requiredFlags.every(key=>typeof r.rawFields[key]==='boolean'));
 }
+export function completePlaceholderInventory(d:any,paged=false):boolean {
+  return completeLibraryInventory(d,paged)&&d.references.every((r:any)=>
+    r.rawFields.is_placeholder!==true||
+    Object.prototype.hasOwnProperty.call(r.rawFields,'explicit_redirection')&&
+    (r.rawFields.explicit_redirection===null||
+      typeof r.rawFields.explicit_redirection==='string'&&r.rawFields.explicit_redirection.length>0));
+}
 export function libraryConfigurationVersion(d:any):string {
   const managers=[...d.managers].sort((a:any,b:any)=>a.managerId.localeCompare(b.managerId)).map((m:any)=>{
     const refs=d.references.filter((r:any)=>r.managerId===m.managerId).sort((a:any,b:any)=>a.order-b.order);
     return [m.managerId,m.path,m.nativeTypeId,refs.map((r:any)=>[r.order,...LIB_FIELDS.map(k=>r.rawFields[k]??null)])];
   });
   return digest(JSON.stringify([LIB_CONFIG_SCHEME,d.applicationId,managers,d.scope.truncated,d.scope.enumerationFailures]));
+}
+export function placeholderConfigurationVersion(d:any):string {
+  const refs=[...d.references].sort((a:any,b:any)=>a.managerId.localeCompare(b.managerId)||a.order-b.order);
+  return digest(JSON.stringify([LIB_PLACEHOLDER_SCHEME,libraryConfigurationVersion(d),
+    refs.filter((r:any)=>r.rawFields.is_placeholder===true).map((r:any)=>
+      [r.managerId,r.order,r.rawFields.explicit_redirection??null])]));
 }
 export function catalogVersion(d:any):string {
   return digest(JSON.stringify([LIB_CATALOG_SCHEME,d.entries.map((r:any)=>
@@ -99,6 +113,9 @@ export function libraryInventoryResult(raw:Reply,a:any,origin:any):Reply {
     scope.fieldReadComplete!==(!managers.some((m:any)=>m.unavailableFields.length)&&!rows.some((r:any)=>r.unavailableFields.length)))throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','库引用覆盖证据不一致，保持现场');
   if(inventory.referenceVersionScheme!==LIB_CONFIG_SCHEME||inventory.configurationVersion!==libraryConfigurationVersion(inventory))
     throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','库引用配置版本无法从完整原生清单复核，保持现场');
+  if(inventory.placeholderVersionScheme!==LIB_PLACEHOLDER_SCHEME||
+    inventory.placeholderConfigurationVersion!==placeholderConfigurationVersion(inventory))
+    throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','占位符解析配置版本无法从原生清单复核，保持现场');
   const version=digest(canonical({tool:'library_inspect',inventory}));
   const reject=(code:string,message:string)=>({...reply('conflict',message),operationId:raw.operationId,error:{code,message}});
   if(a.maxReferences!==scope.maxReferences||a.expectedVersion&&a.expectedVersion!==version)return reject('NATIVE_VERSION_CHANGED','库清单版本或范围已改变，未混合页面');

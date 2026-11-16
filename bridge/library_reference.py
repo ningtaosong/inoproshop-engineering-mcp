@@ -7,6 +7,7 @@ executed. Native ManagedLib objects are always reacquired from the IDE catalog.
 
 LIB_CATALOG_SCHEME = 'installed-libraries-v1'
 LIB_CONFIG_SCHEME = 'direct-library-references-v1'
+LIB_PLACEHOLDER_SCHEME = 'application-placeholder-resolution-v1'
 LIB_MANAGER_TYPE = 'adb5cb65-8e1d-4a00-b70a-375ea27582f3'
 LIB_FIELDS = ('id','name','namespace','is_placeholder','is_managed','system_library',
               'optional','qualified_only','placeholder_name','default_resolution',
@@ -59,6 +60,12 @@ def library_configuration_version(inventory):
     return sha(encode([LIB_CONFIG_SCHEME,inventory['applicationId'],managers,
                        inventory['scope']['truncated'], inventory['scope']['enumerationFailures']]))
 
+def placeholder_configuration_version(inventory):
+    refs = sorted(inventory['references'],key=lambda r:(r['managerId'],r['order']))
+    return sha(encode([LIB_PLACEHOLDER_SCHEME,library_configuration_version(inventory),
+        [[r['managerId'],r['order'],r['rawFields'].get('explicit_redirection')]
+         for r in refs if r['rawFields'].get('is_placeholder') is True]]))
+
 def complete_library_inventory(inventory):
     """A configuration hash is not evidence that native enumeration completed."""
     try:
@@ -82,6 +89,115 @@ def complete_library_inventory(inventory):
                 return False
         return True
     except (KeyError,TypeError,ValueError,AttributeError):return False
+
+def complete_placeholder_inventory(inventory):
+    if not complete_library_inventory(inventory):return False
+    for ref in inventory['references']:
+        fields=ref['rawFields']
+        if fields.get('is_placeholder') is not True:continue
+        if ('explicit_redirection' not in fields or
+            fields['explicit_redirection'] is not None and
+            (not isinstance(fields['explicit_redirection'],type(u'')) or not fields['explicit_redirection'])):
+            return False
+    return True
+
+def unresolved_native_resolution(value):
+    # InoProShop 1.9.1.6 reports an unresolved placeholder as the literal
+    # native string "None"; it is not an application override or a library.
+    return value is None or value==u'' or value==u'None'
+
+def library_placeholder_resolve(project,req,args,lifecycle):
+    """Set one application-owned native placeholder override, never a direct reference."""
+    if file_hash(req['projectPath'])!=args['expectedDiskHash']:
+        lifecycle_reject(lifecycle,failure('conflict','LIBRARY_DISK_CHANGED',u'工程磁盘版本已变化，未设置占位符'))
+    before=library_inventory(project,args)
+    if not complete_placeholder_inventory(before):
+        lifecycle_reject(lifecycle,failure('unsupported','LIBRARY_CONFIGURATION_INCOMPLETE',u'写前库清单不完整'))
+    if (before['configurationVersion']!=args['expectedReferenceVersion'] or
+        before['placeholderConfigurationVersion']!=args['expectedPlaceholderVersion']):
+        lifecycle_reject(lifecycle,failure('conflict','LIBRARY_PLACEHOLDER_CHANGED',u'库或占位符配置版本已变化'))
+    found=[(item,names) for item,names,aid in walk(project) if aid==args['applicationId'] and
+           text(item.guid).lower()==args['managerId'] and text(item.type).lower()==LIB_MANAGER_TYPE and
+           getattr(item,'is_libman',False)]
+    if len(found)!=1 or len(before['managers'])!=1 or before['managers'][0]['managerId']!=args['managerId']:
+        lifecycle_reject(lifecycle,failure('conflict','LIBRARY_MANAGER_CHANGED',u'库管理器身份或数量已变化'))
+    manager,_=found[0]
+    targets=[r for r in before['references'] if r['managerId']==args['managerId'] and
+             r['rawFields'].get('id')==args['placeholderReferenceId']]
+    if len(targets)!=1:
+        lifecycle_reject(lifecycle,failure('conflict','PLACEHOLDER_NOT_UNIQUE',u'指定占位符身份不存在或不唯一'))
+    target=targets[0];fields=target['rawFields']
+    if (fields.get('is_placeholder') is not True or fields.get('is_managed') is not False or
+        fields.get('system_library') is not False or not fields.get('placeholder_name') or
+        fields.get('explicit_redirection')!=args['expectedExplicitRedirection'] or
+        bool(fields.get('explicit_redirection'))!=fields.get('is_redirected') or
+        (fields.get('explicit_redirection') and fields.get('effective_resolution')!=fields.get('explicit_redirection')) or
+        (not fields.get('explicit_redirection') and
+         (not unresolved_native_resolution(fields.get('effective_resolution')) or
+          not unresolved_native_resolution(fields.get('resolution_info'))))):
+        lifecycle_reject(lifecycle,failure('unsupported','PLACEHOLDER_OWNERSHIP_UNCONFIRMED',u'目标并非可确认的应用级普通占位符，或解析来源不明'))
+    native=[r for r in manager.references if text(r.id)==args['placeholderReferenceId']]
+    if len(native)!=1 or not native[0].is_placeholder or native[0].system_library:
+        lifecycle_reject(lifecycle,failure('conflict','PLACEHOLDER_NATIVE_CHANGED',u'原生占位符身份已变化'))
+    catalog,installed=installed_inventory()
+    if not catalog['enumerationComplete'] or catalog['catalogVersion']!=args['expectedCatalogVersion']:
+        lifecycle_reject(lifecycle,failure('conflict','INSTALLED_CATALOG_CHANGED',u'已安装库目录版本或完整性已变化'))
+    rows=[r for r in catalog['entries'] if r['identity']==args['installedIdentity']]
+    if len(rows)!=1 or len(installed.get(args['installedIdentity'],[]))!=1:
+        lifecycle_reject(lifecycle,failure('conflict','INSTALLED_LIBRARY_AMBIGUOUS',u'目标已安装库身份不唯一'))
+    selected=rows[0];display=selected['displayName']
+    if not display or selected['defaultNamespace']!=fields['namespace']:
+        lifecycle_reject(lifecycle,failure('conflict','LIBRARY_NAMESPACE_CHANGED',u'占位符和目标库命名空间不一致'))
+    if fields.get('explicit_redirection')==display:
+        return success(u'显式应用级覆盖已精确存在；未保存',dict(projectId=args['projectId'],
+            applicationId=args['applicationId'],managerId=args['managerId'],placeholderReferenceId=args['placeholderReferenceId'],
+            installedIdentity=args['installedIdentity'],installed=selected,catalogVersion=catalog['catalogVersion'],
+            before=before,after=before,targetBefore=target,targetAfter=target,
+            beforePlaceholderVersion=before['placeholderConfigurationVersion'],
+            placeholderVersion=before['placeholderConfigurationVersion'],changed=False,noOp=True,reopened=False,
+            snapshot=snapshot(project),diskHash=file_hash(req['projectPath']))),project
+    source_snapshot=snapshot(project)
+    def check_after(owner,previous):
+        inventory=library_inventory(owner,args)
+        if not complete_placeholder_inventory(inventory):raise ValueError('Placeholder inventory incomplete')
+        refs=inventory['references']
+        if len(refs)!=len(previous['references']) or inventory['managers']!=previous['managers']:
+            raise ValueError('Library manager or reference enumeration changed')
+        changed=[]
+        for old,new in zip(previous['references'],refs):
+            if old['managerId']!=new['managerId'] or old['order']!=new['order'] or old['rawFields'].get('id')!=new['rawFields'].get('id'):
+                raise ValueError('Reference identity/order changed')
+            if old['rawFields'].get('id')==args['placeholderReferenceId']:
+                allowed=('explicit_redirection','is_redirected','effective_resolution','resolution_info')
+                if any(old['rawFields'].get(k)!=new['rawFields'].get(k) for k in old['rawFields'] if k not in allowed):
+                    raise ValueError('Target placeholder declaration changed')
+                if (new['rawFields'].get('explicit_redirection')!=display or
+                    new['rawFields'].get('is_redirected') is not True or
+                    new['rawFields'].get('effective_resolution')!=display):
+                    raise ValueError('Explicit/effective resolution readback mismatch')
+                changed.append(new)
+            elif old!=new:raise ValueError('Other library reference or override changed')
+        if len(changed)!=1 or snapshot(owner)!=source_snapshot:raise ValueError('Placeholder/source evidence changed')
+        return inventory,changed[0]
+    try:
+        native[0].set_redirection(display)
+        immediate,changed=check_after(project,before)
+        project=lifecycle_save_reopen(lifecycle)
+        reopened,changed_reopened=check_after(project,before)
+        if reopened['references']!=immediate['references'] or reopened['managers']!=immediate['managers']:
+            raise ValueError('Placeholder resolution changed after save/reopen')
+        return success(u'原生应用级占位符显式覆盖已设置并保存重开核对',dict(projectId=args['projectId'],
+            applicationId=args['applicationId'],managerId=args['managerId'],placeholderReferenceId=args['placeholderReferenceId'],
+            installedIdentity=args['installedIdentity'],installed=selected,catalogVersion=catalog['catalogVersion'],
+            before=before,after=reopened,targetBefore=target,targetAfter=changed_reopened,
+            beforePlaceholderVersion=before['placeholderConfigurationVersion'],
+            placeholderVersion=reopened['placeholderConfigurationVersion'],changed=True,reopened=True,
+            checkpoint=req['checkpointPath'],persistedToWorkingCopy=True,snapshot=snapshot(project),
+            diskHash=file_hash(req['projectPath']))),project
+    except Exception as error:
+        return failure('unknown','PARTIAL_PLACEHOLDER_RESOLVE',u'占位符设置或保存读回不确定；保留工程、检查点和原始异常',
+            {'primaryException':exception_evidence(error),'checkpoint':req['checkpointPath'],
+             'writeStarted':True,'saveAttempts':lifecycle['saveAttempts']}),project
 
 def library_reference_add(project,req,args,lifecycle):
     if file_hash(req['projectPath']) != args['expectedDiskHash']:

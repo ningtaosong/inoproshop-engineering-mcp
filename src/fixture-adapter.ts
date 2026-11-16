@@ -8,7 +8,7 @@ import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDec
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
 import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs} from './task-config.js';
-import {catalogVersion,libraryConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME} from './libraries.js';
+import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
 export class FixtureAdapter implements Adapter {
   async reconcile(directory:string) { return readJson(path.join(directory,'result.json')); }
@@ -59,7 +59,7 @@ export class FixtureAdapter implements Adapter {
       const managers=(p.libraryManagers || []).filter((m:any)=>m.applicationId===a.applicationId).map(({applicationId,references,...m}:any)=>({...m,enumerationComplete:true,capturedReferences:0}));
       const references:any[]=[];let truncated=false;
       for(const m of managers){const original=p.libraryManagers.find((x:any)=>x.managerId===m.managerId&&x.applicationId===a.applicationId);
-        for(const r of original.references){if(references.length>=a.maxReferences){truncated=true;m.enumerationComplete=false;break;}references.push({...r,index:references.length});m.capturedReferences++;}
+        for(const r of original.references){if(references.length>=a.maxReferences){truncated=true;m.enumerationComplete=false;break;}references.push({...structuredClone(r),index:references.length});m.capturedReferences++;}
         if(original.enumerationError){m.enumerationComplete=false;m.unavailableFields.push({field:'references',reason:original.enumerationError});}
       }
       const failures=p.treeReadError?[{path:[],stage:'enumeration',reason:p.treeReadError}]:[];
@@ -68,8 +68,9 @@ export class FixtureAdapter implements Adapter {
         scope:{description:'Fixture direct references; not installed repository or transitive dependencies',maxReferences:a.maxReferences,capturedReferences:references.length,truncated,
           enumerationComplete:!failures.length&&!truncated&&managers.every((m:any)=>m.enumerationComplete),fieldReadComplete:!managers.some((m:any)=>m.unavailableFields.length)&&!references.some(r=>r.unavailableFields.length),enumerationFailures:failures},
         unavailableMetadata:['Independent version/vendor getters not verified'],limitations:['No recursive dependencies; installed state not queried'],
-        referenceVersionScheme:LIB_CONFIG_SCHEME};
-      data.configurationVersion=libraryConfigurationVersion(data);return data;
+        referenceVersionScheme:LIB_CONFIG_SCHEME,placeholderVersionScheme:LIB_PLACEHOLDER_SCHEME};
+      data.configurationVersion=libraryConfigurationVersion(data);
+      data.placeholderConfigurationVersion=placeholderConfigurationVersion(data);return data;
     };
     if(['create_folder','move_object'].includes(req.command))result=await fixtureOrganize(p,req,dir,snapshot,taskInventory);
     else if(req.command==='task_update') {
@@ -102,6 +103,49 @@ export class FixtureAdapter implements Adapter {
       const after=digest(await fs.readFile(req.projectPath));
       result.data!.readOnlyEvidence={beforeDiskHash:a.readDiskHash,afterCloseDiskHash:after,postExitDiskHash:after,unchanged:after===a.readDiskHash};
       if(after!==a.readDiskHash)result={...reply('unknown','测试只读工程文件变化',{priorResult:result}),error:{code:'READ_ONLY_FILE_CHANGED',message:'File changed'}};
+    }
+    else if(req.command==='resolve_placeholder') {
+      const before=libraryInventory(),values=['Fixture Mathematics, 1.0.0 (Fixture Vendor)','Fixture Vendor','Fixture Mathematics','1.0.0','FMATH','fixture://installed/FixtureMath.library'];
+      const identity=digest(JSON.stringify(values)),manager=p.libraryManagers?.find((m:any)=>m.applicationId===a.applicationId&&m.managerId===a.managerId);
+      const old=before.references.filter((r:any)=>r.managerId===a.managerId&&r.rawFields.id===a.placeholderReferenceId);
+      if(!manager||before.configurationVersion!==a.expectedReferenceVersion||before.placeholderConfigurationVersion!==a.expectedPlaceholderVersion||
+        !before.scope.enumerationComplete||!before.scope.fieldReadComplete||old.length!==1||
+        old[0].rawFields.is_placeholder!==true||old[0].rawFields.system_library!==false||
+        old[0].rawFields.explicit_redirection!==a.expectedExplicitRedirection||a.installedIdentity!==identity||
+        old[0].rawFields.namespace!=='FMATH')
+        result={...reply('conflict','Fixture placeholder evidence mismatch'),error:{code:'PLACEHOLDER_REFERENCE_EVIDENCE',message:'not written'}};
+      else {
+        const changed=old[0].rawFields.explicit_redirection!==values[0];
+        if(changed){
+          await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
+          const target=manager.references.find((r:any)=>r.rawFields.id===a.placeholderReferenceId);
+          target.rawFields.explicit_redirection=values[0];target.rawFields.is_redirected=true;
+          target.rawFields.effective_resolution=values[0];target.rawFields.resolution_info='Native application override';
+          target.resolutionStatus='effective-resolution-reported';
+          await atomicJson(req.projectPath,p);
+        }
+        const after=libraryInventory(),next=after.references.find((r:any)=>r.rawFields.id===a.placeholderReferenceId);
+        if(changed&&p.placeholderEvidenceFault){
+          if(p.placeholderEvidenceFault==='reopen-enumeration'){
+            after.scope.enumerationComplete=false;after.scope.enumerationFailures.push({stage:'enumeration',reason:'Injected failure'});
+          }else if(p.placeholderEvidenceFault==='reopen-field'){
+            next.unavailableFields.push({field:'explicit_redirection',reason:'Injected getter failure'});
+            after.scope.fieldReadComplete=false;
+          }else if(p.placeholderEvidenceFault==='reopen-truncated'){
+            after.scope.truncated=true;after.scope.enumerationComplete=false;
+          }else if(p.placeholderEvidenceFault==='reopen-missing'){
+            delete next.rawFields.explicit_redirection;
+          }
+        }
+        result=p.failPlaceholderResolve&&changed?{...reply('unknown','Fixture injected partial placeholder setting',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_PLACEHOLDER_RESOLVE',message:'No automatic recovery'}}:
+          reply('succeeded','Fixture-only native placeholder override',{projectId:a.projectId,applicationId:a.applicationId,managerId:a.managerId,
+            placeholderReferenceId:a.placeholderReferenceId,installedIdentity:identity,
+            installed:{identity,displayName:values[0],company:values[1],title:values[2],version:values[3],defaultNamespace:values[4],repositoryFile:values[5]},
+            catalogVersion:a.expectedCatalogVersion,before,after,targetBefore:old[0],targetAfter:next,
+            beforePlaceholderVersion:before.placeholderConfigurationVersion,placeholderVersion:after.placeholderConfigurationVersion,
+            changed,noOp:!changed,reopened:changed,
+            ...(changed?{checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true}:{}),snapshot:snapshot(),testMode:true});
+      }
     }
     else if(req.command==='add_library') {
       const before=libraryInventory(),catalogValues=['Fixture Mathematics, 1.0.0 (Fixture Vendor)','Fixture Vendor','Fixture Mathematics','1.0.0','FMATH','fixture://installed/FixtureMath.library'];

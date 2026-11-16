@@ -529,6 +529,12 @@ def library_inventory(project,args):
                 if fields["is_placeholder"] is True:
                     for key in ("placeholder_name","default_resolution","effective_resolution","resolution_info","resolver_guid"):field(key)
                     field("is_redirected",True)
+                    try:
+                        value=ref.get_redirection()
+                        fields["explicit_redirection"]=None if value is None else text(value)
+                    except Exception as e:
+                        fields["explicit_redirection"]=None
+                        issues.append({"field":"explicit_redirection","reason":text(e)})
                 entries.append({"index":len(entries),"parentIndex":None,"managerId":manager["managerId"],"managerPath":names,
                   "order":order,"path":names+["references",text(order)],"rawFields":fields,"unavailableFields":issues,
                   "resolutionStatus":"effective-resolution-reported" if fields.get("effective_resolution") else "unknown",
@@ -551,6 +557,8 @@ def library_inventory(project,args):
         "No active resolve/repair/install/download/build/save call","Absence of CmpLog from direct references does not rule out indirect dependencies or resolve a historical compiler warning"]}
     result['referenceVersionScheme']=LIB_CONFIG_SCHEME
     result['configurationVersion']=library_configuration_version(result)
+    result['placeholderVersionScheme']=LIB_PLACEHOLDER_SCHEME
+    result['placeholderConfigurationVersion']=placeholder_configuration_version(result)
     return result
 
 
@@ -1134,7 +1142,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "add_library", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1144,7 +1152,7 @@ def dispatch(req):
                 lifecycle_reject(lifecycle,failure("conflict","READ_DISK_CHANGED",u"正式读取前工程文件已变化，未打开或保存",{"beforeDiskHash":before_hash}))
         if projects.primary is not None:
             lifecycle_reject(lifecycle,failure("conflict", "UNOWNED_PROJECT", u"新启动实例已有工程；拒绝接管"))
-        if command in ("change", "create", "create_declaration", "create_method", "create_property", "add_library") or req.get("fileGuard") and command=="save":
+        if command in ("change", "create", "create_declaration", "create_method", "create_property", "add_library", "resolve_placeholder") or req.get("fileGuard") and command=="save":
             shutil.copyfile(req["projectPath"], req["checkpointPath"])
         project = lifecycle_open(lifecycle,req["projectPath"])
         if direct_evidence and file_hash(req["projectPath"])!=direct_evidence["beforeDiskHash"]:
@@ -1174,6 +1182,8 @@ def dispatch(req):
                 response = success(u"已只读取得精确 Application 的库直接引用与原生解析信息",library_inventory(project,args))
             elif command == "add_library":
                 response,project=library_reference_add(project,req,args,lifecycle)
+            elif command == "resolve_placeholder":
+                response,project=library_placeholder_resolve(project,req,args,lifecycle)
             elif command == "list":
                 objects,unsupported_children = [],[]
                 for item, names, aid in walk(project):

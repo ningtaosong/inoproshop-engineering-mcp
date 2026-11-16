@@ -22,15 +22,16 @@ class Ref:
 class Placeholder(Ref):
     is_placeholder=True;placeholder_name='配置';default_resolution='库, * (厂商)'
     effective_resolution='库, 2.0 (厂商)';resolution_info='设备解析';resolver_guid=str(uuid.uuid4());is_redirected=False
+    def get_redirection(self):return None
 
 class Native(unittest.TestCase):
     def setUp(self):
         tree=ast.parse(Path('bridge/worker.py').read_text(encoding='utf8'))
         self.env=dict(unicode=str,hashlib=hashlib,json=json,os=os,re=re,CONTRACT='1.0.0')
         exec(compile(ast.Module(body=[x for x in tree.body if isinstance(x,ast.FunctionDef)],type_ignores=[]),'worker.py','exec'),self.env)
-        self.env.update(LIB_CONFIG_SCHEME='direct-library-references-v1',LIB_FIELDS=('id','name','namespace','is_placeholder','is_managed','system_library','optional','qualified_only','placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid','is_redirected'))
+        self.env.update(LIB_CONFIG_SCHEME='direct-library-references-v1',LIB_PLACEHOLDER_SCHEME='application-placeholder-resolution-v1',LIB_FIELDS=('id','name','namespace','is_placeholder','is_managed','system_library','optional','qualified_only','placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid','is_redirected'))
         helpers=ast.parse(Path('bridge/library_reference.py').read_text(encoding='utf8'))
-        exec(compile(ast.Module(body=[x for x in helpers.body if isinstance(x,ast.FunctionDef) and x.name=='library_configuration_version'],type_ignores=[]),'library_reference.py','exec'),self.env)
+        exec(compile(ast.Module(body=[x for x in helpers.body if isinstance(x,ast.FunctionDef) and x.name in ('library_configuration_version','placeholder_configuration_version')],type_ignores=[]),'library_reference.py','exec'),self.env)
         self.manager=Node('任意管理器名称');self.manager.type='adb5cb65-8e1d-4a00-b70a-375ea27582f3'
         self.manager.is_libman=True;self.manager.references=[Ref(),Placeholder()]
         self.app=Node('Application',[self.manager]);self.app.is_application=True

@@ -17,7 +17,7 @@ import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
 import {organizationResult} from './organization.js';
-import {catalogResult,catalogVersion,libraryConfigurationVersion,completeLibraryInventory,LIB_CONFIG_SCHEME} from './libraries.js';
+import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
 
 export class EngineeringService {
@@ -306,7 +306,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.tool==='variable_edit'?(op as any).effectiveArgs??op.args:op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',library_catalog:'catalog',library_reference_add:'add_library',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',library_catalog:'catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -354,6 +354,46 @@ export class EngineeringService {
         } else if(d!.changed===false){
           if(d!.noOp!==true||d!.reopened!==false||d!.diskHash!==args.expectedDiskHash||
             d!.referenceVersion!==args.expectedReferenceVersion||canonical(before)!==canonical(after))invalid();
+          d!.buildApplicable=buildApplies(session,d)===true;
+        } else invalid();
+      }
+      if(command==='resolve_placeholder'){
+        const before=d!.before as any,after=d!.after as any;
+        const complete=(v:any)=>completePlaceholderInventory(v)&&v.referenceVersionScheme===LIB_CONFIG_SCHEME&&
+          v.configurationVersion===libraryConfigurationVersion(v)&&v.placeholderVersionScheme===LIB_PLACEHOLDER_SCHEME&&
+          v.placeholderConfigurationVersion===placeholderConfigurationVersion(v);
+        if(d!.projectId!==args.projectId||d!.applicationId!==args.applicationId||d!.managerId!==args.managerId||
+          d!.placeholderReferenceId!==args.placeholderReferenceId||d!.installedIdentity!==args.installedIdentity||
+          d!.catalogVersion!==args.expectedCatalogVersion||!complete(before)||!complete(after)||
+          before.configurationVersion!==args.expectedReferenceVersion||
+          before.placeholderConfigurationVersion!==args.expectedPlaceholderVersion||
+          d!.beforePlaceholderVersion!==args.expectedPlaceholderVersion||
+          d!.placeholderVersion!==after.placeholderConfigurationVersion||
+          !isHash(d!.snapshot)||!isHash(d!.diskHash))invalid();
+        const old=(before.references as any[]),now=(after.references as any[]);
+        const target=old.filter(r=>r.managerId===args.managerId&&r.rawFields.id===args.placeholderReferenceId);
+        const next=now.filter(r=>r.managerId===args.managerId&&r.rawFields.id===args.placeholderReferenceId);
+        if(target.length!==1||next.length!==1||old.length!==now.length||
+          canonical(before.managers)!==canonical(after.managers)||
+          old.some((r,i)=>r.rawFields.id!==now[i].rawFields.id||r.managerId!==now[i].managerId||r.order!==now[i].order||
+            (r!==target[0]&&canonical(r)!==canonical(now[i]))))invalid();
+        const allowed=new Set(['explicit_redirection','is_redirected','effective_resolution','resolution_info']);
+        if(target[0].rawFields.is_placeholder!==true||target[0].rawFields.is_managed!==false||
+          target[0].rawFields.system_library!==false||
+          target[0].rawFields.explicit_redirection!==args.expectedExplicitRedirection||
+          Object.keys(target[0].rawFields).some(k=>!allowed.has(k)&&target[0].rawFields[k]!==next[0].rawFields[k]))invalid();
+        if(d!.changed===true){
+          if(!d!.reopened||!persisted()||d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project')||
+            d!.diskHash===args.expectedDiskHash||d!.placeholderVersion===args.expectedPlaceholderVersion||
+            next[0].rawFields.explicit_redirection!==(d!.installed as any)?.displayName||
+            next[0].rawFields.is_redirected!==true||next[0].rawFields.effective_resolution!==(d!.installed as any)?.displayName||
+            canonical(d!.targetBefore)!==canonical(target[0])||canonical(d!.targetAfter)!==canonical(next[0]))invalid();
+          d!.buildApplicable=false;
+        } else if(d!.changed===false){
+          if(d!.noOp!==true||d!.reopened!==false||d!.diskHash!==args.expectedDiskHash||
+            canonical(before)!==canonical(after)||
+            target[0].rawFields.explicit_redirection!==(d!.installed as any)?.displayName||
+            target[0].rawFields.effective_resolution!==(d!.installed as any)?.displayName)invalid();
           d!.buildApplicable=buildApplies(session,d)===true;
         } else invalid();
       }
@@ -540,7 +580,7 @@ export class EngineeringService {
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
     if(op.tool==='variable_edit')return this.variableEdit(op,s);
-    if(op.tool==='library_reference_add'){
+    if(op.tool==='library_reference_add'||op.tool==='library_placeholder_resolve'){
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
         throw new DomainError('conflict','LIBRARY_DISK_CHANGED','直接库引用写入前磁盘版本已变化，未派发IDE');
       const refOp=await this.store.operation(a.referenceOperationId),catOp=await this.store.operation(a.catalogOperationId);
@@ -552,11 +592,25 @@ export class EngineeringService {
         !completeLibraryInventory(ref,true)||
         !ref.managers?.some((m:any)=>m.managerId===a.managerId))
         throw new DomainError('conflict','LIBRARY_REFERENCE_EVIDENCE','缺少同一工程完整且当前的直接引用查询证据，未派发IDE');
+      if(op.tool==='library_placeholder_resolve' &&
+        (!completePlaceholderInventory(ref,true)||ref?.placeholderVersionScheme!==LIB_PLACEHOLDER_SCHEME||
+         ref?.placeholderConfigurationVersion!==a.expectedPlaceholderVersion||
+         !Array.isArray(ref?.references)||
+         ref.references.filter((r:any)=>r.managerId===a.managerId&&r.rawFields.id===a.placeholderReferenceId&&
+           r.rawFields.is_placeholder===true&&r.rawFields.is_managed===false&&r.rawFields.system_library===false&&
+           r.rawFields.explicit_redirection===a.expectedExplicitRedirection&&r.unavailableFields.length===0&&
+           (a.expectedExplicitRedirection===null||r.rawFields.effective_resolution===a.expectedExplicitRedirection)&&
+           (a.expectedExplicitRedirection!==null||
+             [r.rawFields.effective_resolution,r.rawFields.resolution_info].every((v:unknown)=>
+               v===null||v===undefined||v===''||v==='None'))).length!==1))
+        throw new DomainError('conflict','PLACEHOLDER_REFERENCE_EVIDENCE','缺少当前且完整的应用级占位符查询证据，未派发IDE');
       if(catOp?.tool!=='library_catalog'||catOp.status!=='succeeded'||cat?.catalogVersion!==a.expectedCatalogVersion||
-        cat?.scope?.enumerationComplete!==true||!cat.entries?.some((x:any)=>x.identity===a.installedIdentity&&x.defaultNamespace===a.expectedNamespace))
+        cat?.scope?.enumerationComplete!==true||!cat.entries?.some((x:any)=>x.identity===a.installedIdentity&&
+          (op.tool==='library_placeholder_resolve'||x.defaultNamespace===a.expectedNamespace)))
         throw new DomainError('conflict','INSTALLED_LIBRARY_EVIDENCE','缺少完整且精确的本机已安装库查询证据，未派发IDE');
       // The bridge must re-enumerate the same bounded direct-reference scope.
-      return this.bridge(op,'add_library',s,{...a,maxReferences:refOp.args.maxReferences});
+      return this.bridge(op,op.tool==='library_placeholder_resolve'?'resolve_placeholder':'add_library',s,
+        {...a,maxReferences:refOp.args.maxReferences});
     }
     if(['folder_create','object_move'].includes(op.tool)){
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
