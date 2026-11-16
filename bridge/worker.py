@@ -8,6 +8,7 @@ import hashlib
 import shutil
 import traceback
 import re
+import datetime
 import scriptengine
 
 CONTRACT = "1.0.0"
@@ -45,6 +46,23 @@ def publish(file_path, value):
     finally:
         stream.Dispose()
     File.Move(temp, file_path)
+
+def phase_event(stage, status):
+    """Best-effort durable progress evidence, never a substitute for result.json."""
+    directory = globals().get("_phase_directory")
+    if not directory:
+        return
+    number = globals().get("_phase_number", 0) + 1
+    globals()["_phase_number"] = number
+    event = {"operationId": globals().get("_phase_operation_id"),
+             "stage": stage, "status": status,
+             "utc": datetime.datetime.utcnow().isoformat() + "Z"}
+    try:
+        publish(os.path.join(directory, "phase-%06d.json" % number), event)
+    except Exception as error:
+        # Evidence failure cannot change the native operation's result or trigger a replay.
+        try:sys.stderr.write("phase evidence unavailable: " + text(error) + "\n")
+        except Exception:pass
 
 def success(summary, data):
     return {"contractVersion": CONTRACT, "status": "succeeded", "summary": summary, "data": data}
@@ -946,12 +964,15 @@ def native_marker_evidence(state):
 def lifecycle_call(state, stage, action):
     event={"stage":stage,"status":"started","markerBefore":native_marker_evidence(state)}
     state["events"].append(event)
+    phase_event(stage,"started")
     try:
         result=action()
         event["status"]="succeeded"
+        phase_event(stage,"succeeded")
         return result
     except Exception as error:
         event.update(status="failed",error=exception_evidence(error))
+        phase_event(stage,"failed")
         raise
     finally:event["markerAfter"]=native_marker_evidence(state)
 
@@ -1157,7 +1178,7 @@ def dispatch(req):
         elif command == "device":
             response = device_inventory(project,args)
         elif command == "inspect":
-            response = success(u"工作副本已打开并读取", metadata(project))
+            response = success(u"工作副本已打开并读取", lifecycle_call(lifecycle,"inspect-metadata",lambda:metadata(project)))
         else:
             app_id = args["applicationId"].lower() if args["applicationId"] is not None else None
             target_kind = args.get("targetKind", "application")
@@ -1356,6 +1377,9 @@ if not request_path:
     request_path = sys.argv[1]
 with io.open(request_path, "r", encoding="utf-8") as f:
     request = json.load(f)
+_phase_directory = os.path.dirname(request_path)
+_phase_operation_id = request["operationId"]
+_phase_number = 0
 # 一个发布目录仅执行一次。重启发现 dispatch 存在但无结果时不重放。
 dispatch_path = os.path.join(os.path.dirname(request_path), "dispatched.json")
 if os.path.exists(request["resultPath"]):
@@ -1366,16 +1390,24 @@ else:
     publish(dispatch_path, {"operationId": request["operationId"], "pid": os.getpid(), "python": sys.version})
     holder = []
     def execute():
+        phase_event("primary-thread","entered")
         holder.append(dispatch(request))
+        phase_event("primary-thread","returned")
     try:
         # OEM 保存/工程对象要求真正的 IDE 主线程。noUI 不能建立其 UI 主线程状态。
+        phase_event("primary-thread","scheduled")
         system.execute_on_primary_thread(execute)
+        phase_event("primary-thread","completed")
         result = holder[0]
     except Exception as e:
+        phase_event("primary-thread","failed")
         result = failure("unknown", "PRIMARY_THREAD_ERROR", text(e), {"detail": traceback.format_exc()})
     result["operationId"] = request["operationId"]
+    phase_event("result-finalization","started")
     if result.get("data") is not None and os.path.exists(request["projectPath"]):
         result["data"]["diskHash"] = file_hash(request["projectPath"])
+    phase_event("result-publish","started")
     publish(request["resultPath"], result)
+    phase_event("result-publish","succeeded")
 # 只退出由服务以 --runscript 启动的新实例。
 system.exit()
