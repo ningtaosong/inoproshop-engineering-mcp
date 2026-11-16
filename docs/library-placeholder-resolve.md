@@ -25,4 +25,14 @@ InoProShop 1.9.1.6 的 `IScriptPlaceholderReference` 提供 `get_redirection()`�
 
 2026-11-16 的真实 MCP 验收使用独立固定 0.28.0 构建及 DSH 当前配置的数据目录 `D:\InoPro\.local\dsh-phase4-repair-20261028-A1`。`project_open` 原操作 `7ca58d12-737e-4534-a21f-8178a4c2b580` 在 IDE 超时后终态为 `unknown`；服务与桥接进程随后退出，目标工程主文件 SHA-256 仍等于准备时的值。文件哈希不变不能证明 IDE 操作的完整终态，因此未重放原请求，也未继续调用 `library_placeholder_resolve`、编译、保存或 DSH CLI 模型业务任务。原锁和操作记录保持原样。真实 MCP 写入闭环和 DSH CLI 验收仍待完成；原生探测及离线测试不得写成这两项验收通过。
 
-日常 DSH 0.27 入口和 Codex 0.16 入口均未因本分支永久变更。尝试正常启动 DSH Desktop 恢复日常客户端时，应用在插件配置组合阶段报 `cannot resolve package "@deepseek-ai/dsh-experimental-agent-team-profile"`，停留在恢复界面；没有改动配置、禁用插件或取得本次日常连接握手。进程启动尝试、服务实际连接、模型接收分别保留，不能称为日常服务已恢复。
+日常 DSH 0.27 入口和 Codex 0.16 入口均未因本分支永久变更。首次恢复 DSH Desktop 时，应用在插件配置组合阶段报 `cannot resolve package "@deepseek-ai/dsh-experimental-agent-team-profile"`；当时未改动配置或取得日常连接握手。后续只读核对、最小修复及恢复结果见下节；首次失败记录仍保留。
+
+## 2026-11-16 阻断复核与 DSH Desktop 恢复
+
+原 `project_open` 的 IPC 保留 `request.json`、`dispatched.json`、`stdout.txt` 和 `stderr.txt`，没有 `result.json` 或 `observed-after-exit.json`。派发标记和 `AddedToUI` 证明请求已进入 IDE，不能按未派发重试。原服务和桥接进程均已退出；工程主文件哈希未变，但 `.~u` 和备份附属文件发生变化，仍不足以确认原操作终态。对应时段 IDE 错误日志记录临时文件删除权限异常，信息日志随后仍有工程和库加载活动；没有证据证明先前探测中的库加载提示导致本次超时。操作继续为 `unknown`，没有重放、改写状态或打开故障工程。
+
+现有只读隔离评估返回 `eligible=false`、`ISOLATION_OWNERSHIP`：该直接打开请求在登记前超时，暂定工程身份未写入登记，现有归属判断无法唯一绑定已登记工程。本轮未提交隔离，未删锁或解除冻结。若后续处理，需要为登记前的直接打开补齐可信归属和文件身份核对，并验证维护流程；不能套用旧副本工程的归属规则。
+
+DSH Desktop 2.0.2 内置的 DSH 核心为 `0.1.1-rc.2`、Cordis 为 `4.0.1`。Desktop profile 的 bundle 清单引用了两个未安装、未在该 profile 依赖清单声明的包：`@deepseek-ai/dsh-experimental-agent-team-profile` 和 `@deepseek-ai/dsh-experimental-auto-review`。前者不在 InoProShop 的 `cordis.patch.yml` 或 `cordis.yml` 中；未找到可核实匹配当前核心与 Cordis 的安装版本。经用户分别授权，先备份再各移除一条缺失 bundle 引用，保留其余插件与 InoProShop 配置；没有安装未经核实的新包、重置配置或清除会话。恢复窗口先后报告这两个包缺失，第二次调整后 DSH 正常进入主界面，缺失功能目前不加载。
+
+最终可观察到 DSH Desktop 进程及其子进程从原日常固定 `0.27.0` 路径启动 `dist/server.js`，仍使用原配置的 `D:\InoPro\.local\dsh-phase4-repair-20261028-A1`。这与 `D:\InoPro.local\dsh-phase4-repair-20261028-A1` 是不同目录；按用户决定保持实际 DSH 配置，不迁移历史记录。此次没有取得最终连接的初始化握手、30 项工具接收或模型遵循证据；主界面恢复与子进程存在不能代替这些检查。原 `unknown` 及工程派发冻结仍保持，S5b 真实 MCP 写入闭环和 DSH CLI 业务验收未完成。
