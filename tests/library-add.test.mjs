@@ -59,6 +59,39 @@ test('部分添加结果未知时不自动移除；冻结后续写入',async t=>
  const follow=await x.c.call('project_build',{requestId:randomUUID(),...x.scope});assert.equal(follow.status,'unknown');
  const same=await x.c.call('operation_status',{operationId:r.operationId});assert.equal(same.status,'unknown');
 });
+for(const copy of [false,true])for(const fault of ['reopen-enumeration','reopen-truncated','reopen-field','reopen-missing-field','reopen-contradiction','reopen-missing-coverage'])
+test(`保存重开后证据不完整，服务独立冻结 ${copy?'copy':'direct'} ${fault}`,async t=>{
+ const x=await context(t,copy,{libraryAddEvidenceFault:fault}),before=await readFile(x.s.workingPath);
+ const result=await x.c.done(await x.c.call('library_reference_add',x.args));
+ assert.equal(result.status,'unknown',JSON.stringify(result));
+ assert.notDeepEqual(await readFile(x.s.workingPath),before);
+ const status=await x.c.call('session_status');assert.equal(status.data.globalFrozen,true);
+ const same=await x.c.call('operation_status',{operationId:result.operationId});assert.equal(same.status,'unknown');
+ const retry=await x.c.call('library_reference_add',x.args);assert.equal(retry.operationId,result.operationId);
+ const follow=await x.c.call('project_build',{requestId:randomUUID(),...x.scope});assert.equal(follow.status,'unknown');
+});
+test('写前库清单不完整时拒绝派发，文件不变',async t=>{
+ const m=manager();m.enumerationError='Injected native enumeration failure';
+ const x=await context(t,false,{libraryManagers:[m]}),before=await readFile(x.s.workingPath);
+ assert.equal(x.refs.data.scope.enumerationComplete,false);
+ const rejected=await x.c.done(await x.c.call('library_reference_add',x.args));
+ assert.equal(rejected.status,'conflict');assert.equal(rejected.error.code,'LIBRARY_REFERENCE_EVIDENCE');
+ assert.deepEqual(await readFile(x.s.workingPath),before);
+});
+test('正常分页仍可提供完整原生采集的写前证据',async t=>{
+ const m=manager();
+ for(let i=0;i<2;i++)m.references.push({index:i,parentIndex:null,managerId,managerPath:m.path,order:i,path:[...m.path,'references',String(i)],
+   rawFields:{id:String(i+1),name:`Existing Library ${i}`,namespace:`OLD${i}`,is_placeholder:false,is_managed:true,
+     system_library:false,optional:false,qualified_only:false},unavailableFields:[],resolutionStatus:'unknown',
+   resolutionBasis:'Native effective_resolution string only',installedStatus:'not-queried'});
+ const x=await context(t,false,{libraryManagers:[m]});
+ const page=await x.c.done(await x.c.call('library_inspect',{...x.scope,limit:1}));
+ assert.equal(page.status,'succeeded');assert.equal(page.data.page.hasMore,true);
+ assert.equal(page.data.scope.enumerationComplete,true);
+ const add=await x.c.done(await x.c.call('library_reference_add',{...x.args,requestId:randomUUID(),
+   expectedReferenceVersion:page.data.configurationVersion,referenceOperationId:page.operationId}));
+ assert.equal(add.status,'succeeded',JSON.stringify(add));assert.equal(add.data.after.references.length,3);
+});
 test('生产桥接：直接与旧副本的部分添加均不反向写入或恢复保存（原生接口替身）',()=>{
  const r=spawnSync('python',['tests/bridge_library_add_test.py'],{encoding:'utf8'});assert.equal(r.status,0,r.stdout+r.stderr);
 });

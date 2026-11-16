@@ -59,12 +59,36 @@ def library_configuration_version(inventory):
     return sha(encode([LIB_CONFIG_SCHEME,inventory['applicationId'],managers,
                        inventory['scope']['truncated'], inventory['scope']['enumerationFailures']]))
 
+def complete_library_inventory(inventory):
+    """A configuration hash is not evidence that native enumeration completed."""
+    try:
+        scope=inventory['scope'];managers=inventory['managers'];refs=inventory['references']
+        if (scope['enumerationComplete'] is not True or scope['fieldReadComplete'] is not True or
+            scope['truncated'] is not False or scope['enumerationFailures'] != [] or
+            not isinstance(scope['maxReferences'],int) or scope['maxReferences']<1 or
+            not isinstance(scope['capturedReferences'],int) or scope['capturedReferences']!=len(refs) or
+            scope['capturedReferences']>scope['maxReferences'] or
+            not isinstance(managers,list) or not isinstance(refs,list)):
+            return False
+        ids=[m['managerId'] for m in managers]
+        if len(ids)!=len(set(ids)) or sum(m['capturedReferences'] for m in managers)!=len(refs):return False
+        if any(m['enumerationComplete'] is not True or m['unavailableFields'] != [] for m in managers):return False
+        for index,ref in enumerate(refs):
+            fields=ref['rawFields']
+            if (ref['index']!=index or ref['managerId'] not in ids or ref['unavailableFields'] != [] or
+                not fields.get('id') or not fields.get('name') or not fields.get('namespace') or
+                any(fields.get(key) is not True and fields.get(key) is not False for key in
+                    ('is_placeholder','is_managed','system_library','optional','qualified_only'))):
+                return False
+        return True
+    except (KeyError,TypeError,ValueError,AttributeError):return False
+
 def library_reference_add(project,req,args,lifecycle):
     if file_hash(req['projectPath']) != args['expectedDiskHash']:
         lifecycle_reject(lifecycle,failure('conflict','LIBRARY_DISK_CHANGED',
             u'工程磁盘版本已变化，未添加直接库引用'))
     before = library_inventory(project,args)
-    if not before['scope']['enumerationComplete'] or not before['scope']['fieldReadComplete']:
+    if not complete_library_inventory(before):
         lifecycle_reject(lifecycle,failure('unsupported','LIBRARY_CONFIGURATION_INCOMPLETE',
             u'库管理器或直接引用字段读取不完整，写入前停止'))
     before_version = library_configuration_version(before)
@@ -143,7 +167,7 @@ def library_reference_add(project,req,args,lifecycle):
         manager.add_library(lib)
         native_before_save=confirmed_native_reference(manager)
         after_set=library_inventory(project,args)
-        if not after_set['scope']['enumerationComplete'] or not after_set['scope']['fieldReadComplete']:
+        if not complete_library_inventory(after_set):
             raise ValueError('Direct reference readback incomplete')
         added=[r for r in after_set['references'] if r['managerId']==args['managerId'] and
                r['rawFields'].get('name','').lower()==row['displayName'].lower()]
@@ -160,6 +184,7 @@ def library_reference_add(project,req,args,lifecycle):
         if len(reopened_manager)!=1:raise ValueError('Library manager identity changed on reopen')
         native_after_reopen=confirmed_native_reference(reopened_manager[0])
         after=library_inventory(project,args)
+        if not complete_library_inventory(after):raise ValueError('Reopened direct reference inventory incomplete')
         if after['references']!=after_set['references'] or after['managers']!=after_set['managers'] or snapshot(project)!=before_snapshot:
             raise ValueError('Library configuration/source changed on save and reopen')
         return success(u'精确已安装库已加入直接引用并保存重开核对',dict(projectId=args['projectId'],

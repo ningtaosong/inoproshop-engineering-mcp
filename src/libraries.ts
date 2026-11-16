@@ -6,6 +6,30 @@ export const LIB_CONFIG_SCHEME='direct-library-references-v1';
 export const LIB_CATALOG_SCHEME='installed-libraries-v1';
 const LIB_FIELDS=['id','name','namespace','is_placeholder','is_managed','system_library','optional','qualified_only',
   'placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid','is_redirected'];
+const requiredFlags=['is_placeholder','is_managed','system_library','optional','qualified_only'];
+// Validate coverage separately from the configuration hash. A partial native read
+// can have exactly the same rows (and even a self-consistent version) as a full one.
+export function completeLibraryInventory(d:any,paged=false):boolean {
+  const scope=d?.scope,managers=d?.managers,refs=d?.references;
+  if(!scope||!Array.isArray(managers)||!Array.isArray(refs)||scope.enumerationComplete!==true||
+    scope.fieldReadComplete!==true||scope.truncated!==false||!Array.isArray(scope.enumerationFailures)||
+    scope.enumerationFailures.length!==0||!Number.isInteger(scope.capturedReferences)||
+    !Number.isInteger(scope.maxReferences)||scope.capturedReferences>scope.maxReferences)return false;
+  if(new Set(managers.map((m:any)=>m.managerId)).size!==managers.length||
+    managers.some((m:any)=>m.enumerationComplete!==true||!Array.isArray(m.unavailableFields)||m.unavailableFields.length!==0||
+      !Number.isInteger(m.capturedReferences)||m.capturedReferences<0)||
+    managers.reduce((n:number,m:any)=>n+m.capturedReferences,0)!==scope.capturedReferences)return false;
+  if(paged){
+    if(!d.page||d.page.retained!==scope.capturedReferences||d.page.total!==scope.capturedReferences||
+      d.page.returned!==refs.length)return false;
+  }else if(refs.length!==scope.capturedReferences)return false;
+  return refs.every((r:any)=>r&&managers.some((m:any)=>m.managerId===r.managerId)&&
+    Array.isArray(r.unavailableFields)&&r.unavailableFields.length===0&&r.rawFields&&
+    typeof r.rawFields.id==='string'&&r.rawFields.id.length>0&&
+    typeof r.rawFields.name==='string'&&r.rawFields.name.length>0&&
+    typeof r.rawFields.namespace==='string'&&r.rawFields.namespace.length>0&&
+    requiredFlags.every(key=>typeof r.rawFields[key]==='boolean'));
+}
 export function libraryConfigurationVersion(d:any):string {
   const managers=[...d.managers].sort((a:any,b:any)=>a.managerId.localeCompare(b.managerId)).map((m:any)=>{
     const refs=d.references.filter((r:any)=>r.managerId===m.managerId).sort((a:any,b:any)=>a.order-b.order);

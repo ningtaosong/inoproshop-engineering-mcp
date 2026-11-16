@@ -119,6 +119,24 @@ export class FixtureAdapter implements Adapter {
           await atomicJson(req.projectPath,p);
         }
         const after=libraryInventory(),addedReference=after.references.find((r:any)=>r.rawFields.name===catalogValues[0]);
+        // Deliberately false success evidence from a native bridge double.
+        if(changed&&p.libraryAddEvidenceFault){
+          switch(p.libraryAddEvidenceFault){
+            case 'reopen-enumeration':
+              after.scope.enumerationComplete=false;
+              after.scope.enumerationFailures.push({path:[],stage:'enumeration',reason:'Injected post-reopen failure'});
+              break;
+            case 'reopen-truncated':after.scope.truncated=true;after.scope.enumerationComplete=false;break;
+            case 'reopen-field':
+              after.references[0].unavailableFields.push({field:'name',reason:'Injected native field failure'});
+              after.scope.fieldReadComplete=false;break;
+            case 'reopen-missing-field':delete after.references[0].rawFields.name;break;
+            case 'reopen-contradiction':
+              after.scope.enumerationFailures.push({path:[],stage:'enumeration',reason:'Contradicts true completion flag'});break;
+            case 'reopen-missing-coverage':delete after.scope.enumerationComplete;break;
+          }
+          after.configurationVersion=libraryConfigurationVersion(after);
+        }
         result=p.failLibraryAdd&&changed?{...reply('unknown','Fixture injected partial library add',{checkpoint:path.join(dir,'checkpoint.project'),writeStarted:true}),error:{code:'PARTIAL_LIBRARY_ADD',message:'Injected failure; no automatic recovery'}}:
           reply('succeeded','Fixture-only precise direct reference',{projectId:a.projectId,applicationId:a.applicationId,managerId:a.managerId,installedIdentity:identity,
             installed:{identity,displayName:catalogValues[0],company:catalogValues[1],title:catalogValues[2],version:catalogValues[3],defaultNamespace:'FMATH',repositoryFile:catalogValues[5]},

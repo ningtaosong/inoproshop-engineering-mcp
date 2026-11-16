@@ -17,7 +17,7 @@ import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
 import {organizationResult} from './organization.js';
-import {catalogResult,catalogVersion,libraryConfigurationVersion,LIB_CONFIG_SCHEME} from './libraries.js';
+import {catalogResult,catalogVersion,libraryConfigurationVersion,completeLibraryInventory,LIB_CONFIG_SCHEME} from './libraries.js';
 import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
 
 export class EngineeringService {
@@ -330,6 +330,9 @@ export class EngineeringService {
         if(d!.projectId!==args.projectId||d!.applicationId!==args.applicationId||d!.managerId!==args.managerId||
           d!.installedIdentity!==args.installedIdentity||d!.catalogVersion!==args.expectedCatalogVersion||
           d!.beforeReferenceVersion!==args.expectedReferenceVersion||!before||!after||
+          before.projectId!==args.projectId||after.projectId!==args.projectId||
+          before.applicationId!==args.applicationId||after.applicationId!==args.applicationId||
+          !completeLibraryInventory(before)||!completeLibraryInventory(after)||
           before.referenceVersionScheme!==LIB_CONFIG_SCHEME||after.referenceVersionScheme!==LIB_CONFIG_SCHEME||
           libraryConfigurationVersion(before)!==args.expectedReferenceVersion||
           libraryConfigurationVersion(after)!==d!.referenceVersion||!isHash(d!.diskHash)||!isHash(d!.snapshot))invalid();
@@ -340,9 +343,12 @@ export class EngineeringService {
           if(!added||!d!.reopened||!persisted()||d!.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project')||
             installed?.identity!==args.installedIdentity||canonical(d!.nativeBeforeSave)!==canonical(nativeIdentity)||
             canonical(d!.nativeAfterReopen)!==canonical(nativeIdentity)||
+            canonical(before.managers.map((m:any)=>({managerId:m.managerId,path:m.path,nativeTypeId:m.nativeTypeId})))!==
+              canonical(after.managers.map((m:any)=>({managerId:m.managerId,path:m.path,nativeTypeId:m.nativeTypeId})))||
             now.length!==old.length+1||now.filter((r:any)=>r.managerId===args.managerId&&r.rawFields.name===(d!.installed as any)?.displayName).length!==1||
             added.rawFields.namespace!==args.expectedNamespace||added.rawFields.is_managed!==true||added.rawFields.is_placeholder!==false||
-            canonical(now.filter((r:any)=>r.index!==added.index).map((r:any)=>r.rawFields))!==canonical(old.map((r:any)=>r.rawFields))||
+            canonical(now.filter((r:any)=>r.index!==added.index))!==canonical(old)||
+            canonical(now.find((r:any)=>r.index===added.index))!==canonical(added)||
             d!.diskHash===args.expectedDiskHash)invalid();
           d!.buildApplicable=false;
         } else if(d!.changed===false){
@@ -543,7 +549,7 @@ export class EngineeringService {
         refOp.args.applicationId!==a.applicationId||ref?.configurationVersion!==a.expectedReferenceVersion||
         ref?.diskHash!==a.expectedDiskHash||ref?.readOnlyEvidence?.unchanged!==true||
         ref?.readOnlyEvidence?.beforeDiskHash!==a.expectedDiskHash||
-        ref?.scope?.enumerationComplete!==true||ref?.scope?.fieldReadComplete!==true||
+        !completeLibraryInventory(ref,true)||
         !ref.managers?.some((m:any)=>m.managerId===a.managerId))
         throw new DomainError('conflict','LIBRARY_REFERENCE_EVIDENCE','缺少同一工程完整且当前的直接引用查询证据，未派发IDE');
       if(catOp?.tool!=='library_catalog'||catOp.status!=='succeeded'||cat?.catalogVersion!==a.expectedCatalogVersion||
