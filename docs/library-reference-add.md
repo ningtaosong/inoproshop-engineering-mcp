@@ -1,4 +1,4 @@
-# S5a：本机已安装库与精确直接引用（分支候选）
+# S5a：本机已安装库与精确直接引用（已合并）
 
 `codex/library-reference-add` 提供 0.27.0 候选版、30 项工具。`library_catalog` 只读本机原生库目录，不需要工程身份；`library_reference_add` 是独立写工具。原 28 项工具输入保持兼容，`library_inspect` 仍只读当前 Application 的直接引用及可取得的原生解析原文。
 
@@ -39,3 +39,7 @@ DSH CLI 临时 profile 的第一次命令在参数解析前拒绝，纠正后默
 
 原生接口参考：[CODESYS ScriptingEngine 库管理对象](https://content.helpme-codesys.com/en/ScriptingEngine/ScriptLibManObject.html)。调用语法参考：[CAA Mathematics 的 sgn](https://content.helpme-codesys.com/en/libs/CAA%20Mathematics/Current/CAA-Mathematics/Functions/analog-monitors/sgn.html)；在线页面为 Current，实际本机编译针对上述已安装 3.5.11.0。
 DSH headless 凭据配置参考：[官方 headless 说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/bundle/headless/README.md)；本轮仅使用临时 profile，不提交凭据或私人配置。
+
+## 合并与日常部署（2026-11-16）
+
+S5a 以正常合并提交纳入 main，保持 0.27.0 候选版、30 工具。源产品与最终受验提交相同；从合并提交重新构建独立固定入口，不复制旧 dist。旧 28 项输入 Schema 逐项相同；library_catalog、library_reference_add 为新增工具。日常 DSH 私人配置仅替换 MCP 启动路径和工作目录，原登记目录、IDE 路径、隔离和 unknown 不迁移。旧应用及服务正常退出后，新的 DSH 应用与固定服务进程启动；最终连接的 initialize、工具接收及模型遵循没有独立证据，不能由进程存在推断。此节记录当前状态；上文分支验收和原 0.26 恢复记录保留历史时间语境。本轮没有重跑模型或工程任务。
