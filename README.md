@@ -2,7 +2,9 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop：指定工程和需求，直接编辑该文件，编译并保存重开。工程比较仅在用户明确要求时执行。
 
-**main 已合并 S5a，当前为 0.27.0 候选版、30 项 MCP 工具。** 本页列出限定支持范围，尚非正式发布或生产认证。
+**main 已合并 S5a 及登记前直接打开隔离维护修复，当前为 0.27.1 修复候选版、30 项 MCP 工具。** 本页列出限定支持范围，尚非正式发布或生产认证。
+
+`codex/direct-open-isolation` 的 **0.27.1 修复候选版、30 项工具** 已合并 main，只扩展登记前直接打开结果不确定时的维护隔离归属和计划复核；原工具输入、登记格式及 S5a 工程能力不变。日常 DeepSeek Harness 配置已指向独立 0.27.1 固定构建，进程入口已核对；最终连接的初始化握手和工具接收尚未取得证据。获该工程明确确认后，原故障工程已通过正式维护入口提交 v2 隔离；原操作仍为 `unknown`，没有恢复工程或重放请求。见[直接打开隔离维护说明](docs/direct-open-isolation.md)。
 
 `codex/library-placeholder-resolve` 功能分支开发 S5b 第一子阶段，版本为 0.28.0 候选版、31 项工具。新增 `library_placeholder_resolve`，仅设置已确认归属当前 Application 的单个普通原生占位符显式覆盖；`library_inspect` 兼容扩展显式覆盖读回。原生独立探测和离线回归通过，但本次真实 MCP 验收的 `project_open` 超时并进入 `unknown`，尚未调用新写工具或完成 DSH CLI 验收。分支尚未合并或部署日常入口，范围与证据见[占位符解析说明](docs/library-placeholder-resolve.md)。
 

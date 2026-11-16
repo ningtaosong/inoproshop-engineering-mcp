@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Store, canonical, digest, pathKey, readJson, atomicJson, type Operation, type Session } from './storage.js';
 import { DomainError } from './contracts.js';
-import {observeLeaseOwner} from './lease-process.js';
+import {observeLeaseOwner,sameProcess} from './lease-process.js';
 
 export const maintenanceGate = path.join(os.tmpdir(),'inoproshop-mcp-locks','maintenance.gate');
 export const isolationDirectory = path.join(os.tmpdir(),'inoproshop-mcp-isolations');
@@ -33,24 +33,48 @@ type Identity = Awaited<ReturnType<typeof fileIdentity>>;
 function sameFile(a:Identity,b:Identity) {
   return a.key===b.key || (!!a.realPath && !!b.realPath && pathKey(a.realPath)===pathKey(b.realPath)) || (!!a.fileId && a.fileId===b.fileId);
 }
-function binding(op:Operation,s:Session) {
+type OwnershipBasis='registered'|'provisional-direct';
+function binding(op:Operation,s:Session,basis:OwnershipBasis='registered') {
   return {operationId:op.operationId,requestId:op.requestId,tool:op.tool,fingerprint:op.fingerprint,startedAt:op.startedAt,
-    projectId:s.projectId,sessionId:s.sessionId,sourcePath:s.sourcePath,workingPath:s.workingPath};
+    projectId:s.projectId,sessionId:s.sessionId,sourcePath:s.sourcePath,workingPath:s.workingPath,
+    ...(basis==='provisional-direct'?{ownershipBasis:basis}:{})};
 }
-export function ownedProject(op:Operation,projects:Session[]) {
-  const matches=projects.filter(s=>op.args.projectId?s.projectId===op.args.projectId:
-    op.tool==='project_open_copy'&&op.args.sourcePath&&[s.sourcePath,s.workingPath].some(p=>pathKey(p)===pathKey(op.args.sourcePath)));
-  if(matches.length!==1)problem('ISOLATION_OWNERSHIP','原操作不能唯一对应已登记工程');
-  const s=matches[0];
-  if(op.project && (op.project.projectId!==s.projectId || op.project.sessionId!==s.sessionId ||
-    pathKey(op.project.sourcePath)!==pathKey(s.sourcePath)||pathKey(op.project.workingPath)!==pathKey(s.workingPath)))
-    problem('ISOLATION_OWNERSHIP','操作绑定与工程登记不一致');
+function resolveOwnership(op:Operation,projects:Session[]):{session:Session;basis:OwnershipBasis} {
   if(op.fingerprint!==digest(canonical({tool:op.tool,args:op.args})))problem('ISOLATION_OWNERSHIP','原请求指纹无法核实');
-  return s;
+  const matches=projects.filter(s=>op.args.projectId?s.projectId===op.args.projectId:
+    (op.tool==='project_open_copy'&&op.args.sourcePath&&[s.sourcePath,s.workingPath].some(p=>pathKey(p)===pathKey(op.args.sourcePath)))||
+    (op.tool==='project_open'&&op.args.projectPath&&
+      (pathKey(s.workingPath)===pathKey(op.args.projectPath)||op.project?.projectId===s.projectId)));
+  if(matches.length>1)problem('ISOLATION_OWNERSHIP','原操作对应多个已登记工程');
+  if(matches.length===1){
+    const s=matches[0];
+    if(op.project && (op.project.projectId!==s.projectId || op.project.sessionId!==s.sessionId ||
+      pathKey(op.project.sourcePath)!==pathKey(s.sourcePath)||pathKey(op.project.workingPath)!==pathKey(s.workingPath)))
+      problem('ISOLATION_OWNERSHIP','操作绑定与工程登记不一致');
+    return {session:s,basis:'registered'};
+  }
+  // A first direct open can persist its tentative identity before IDE dispatch
+  // without ever publishing a registration. The IPC and file evidence is checked
+  // separately below; this record alone is never treated as a successful open.
+  const s=op.project,p=op.args?.projectPath;
+  if(op.tool!=='project_open'||!s||
+    typeof p!=='string'||!path.isAbsolute(p)||op.args.requestId!==op.requestId||
+    !op.activation||s.storageMode!=='direct'||s.editMode!=='direct'||
+    typeof s.directPath!=='string'||!path.isAbsolute(s.directPath)||
+    !path.isAbsolute(s.sourcePath)||!path.isAbsolute(s.workingPath)||
+    pathKey(s.sourcePath)!==pathKey(s.workingPath)||pathKey(s.directPath)!==pathKey(s.workingPath)||
+    !/^[a-f0-9-]{36}$/i.test(s.projectId)||!/^[a-f0-9-]{36}$/i.test(s.sessionId)||
+    !/^[a-f0-9]{64}$/.test(s.sourceHash)||s.diskHash!==s.sourceHash||
+    projects.some(r=>r.projectId===s.projectId||r.sessionId===s.sessionId||
+      [r.sourcePath,r.workingPath].some(q=>pathKey(q)===pathKey(s.workingPath))))
+    problem('ISOLATION_OWNERSHIP','登记前直接打开的暂定身份、请求或路径不完整/有冲突');
+  return {session:s,basis:'provisional-direct'};
 }
+export function ownedProject(op:Operation,projects:Session[]) {return resolveOwnership(op,projects).session;}
 export interface IsolationPlan {
-  version:1; kind:'project-isolation'; planId:string; createdAt:string; dataDir:string; reason:string;
+  version:1|2; kind:'project-isolation'; planId:string; createdAt:string; dataDir:string; reason:string;
   operationId:string; projectId:string|null; operationIds:string[]; bindings:any[]; aliases:Identity[];
+  ownershipBasis?:'provisional-direct';
   evidenceVersion:string; evidence:any; eligible:boolean; blockers:string[]; canReleaseOtherProjects:boolean;
   prohibitedActions:string[]; recoveryMissing:string[];
 }
@@ -96,15 +120,21 @@ async function localEntries(store:Store):Promise<Entry[]> {
   const registry=await store.registry();
   for(const e of ledger.entries) {
     const p=e.plan,j=await store.get(journalName(p.planId));
-    if(e.state!=='committed' || !e.committedAt || !j || canonical(j)!==canonical(p) || p.kind!=='project-isolation' || p.version!==1 || !p.eligible ||
+    if(e.state!=='committed' || !e.committedAt || !j || canonical(j)!==canonical(p) || p.kind!=='project-isolation' ||
+      ![1,2].includes(p.version) || (p.version===2)!==(p.ownershipBasis==='provisional-direct') || !p.eligible ||
       pathKey(p.dataDir)!==pathKey(store.root) || p.evidenceVersion!==digest(canonical(p.evidence)) || !p.operationIds.length ||
       !p.aliases.length || p.bindings.length!==p.operationIds.length)
       problem('ISOLATION_INCOMPLETE','隔离提交未确认或记录不一致；全局冻结');
     for(const b of p.bindings) {
       const op=await store.operation(b.operationId);
       if(!op || !p.operationIds.includes(op.operationId))problem('ISOLATION_OWNERSHIP','隔离原操作记录缺失');
-      const s=ownedProject(op,registry.projects);
-      if(s.projectId!==p.projectId || canonical(binding(op,s))!==canonical(b))problem('ISOLATION_OWNERSHIP','隔离工程或原操作绑定改变');
+      const {session:s,basis}=resolveOwnership(op,registry.projects);
+      // A late, independently reconciled result may publish exactly the same
+      // tentative identity. The committed isolation still protects that file.
+      const recordedBasis=p.version===2&&basis==='registered'?'provisional-direct':basis;
+      if((p.version===1&&basis!=='registered')||(p.version===2&&!['provisional-direct','registered'].includes(basis))||
+        s.projectId!==p.projectId || canonical(binding(op,s,recordedBasis))!==canonical(b))
+        problem('ISOLATION_OWNERSHIP','隔离工程或原操作绑定改变');
     }
     const anchor=await envelope(anchorName(store.root,p.planId));
     if(!anchor || anchor.state!=='committed' || anchor.planId!==p.planId || anchor.evidenceVersion!==p.evidenceVersion || pathKey(anchor.dataDir)!==pathKey(store.root))
@@ -155,12 +185,18 @@ export async function evaluateIsolation(root:string,operationId?:string) {
   try{registry=await store.registry();ops=await store.operations();state=await isolationState(store);}catch(e:any){blockers.push(e.code+': '+e.message);}
   const pending=ops.filter(o=>o.status==='unknown'||o.status==='running');
   const observations:any[]=[];
-  for(const op of pending){try{const s=ownedProject(op,registry.projects);observations.push({operationId:op.operationId,requestId:op.requestId,status:op.status,projectId:s.projectId,sourcePath:s.sourcePath,workingPath:s.workingPath,isolated:!!state?.own.some(e=>e.plan.operationIds.includes(op.operationId))});}
+  for(const op of pending){try{const {session:s,basis}=resolveOwnership(op,registry.projects);observations.push({operationId:op.operationId,requestId:op.requestId,status:op.status,projectId:s.projectId,sourcePath:s.sourcePath,workingPath:s.workingPath,isolated:!!state?.own.some(e=>e.plan.operationIds.includes(op.operationId)),...(basis==='provisional-direct'?{ownershipBasis:basis}:{})});}
     catch(e:any){observations.push({operationId:op.operationId,status:op.status,ownership:'unconfirmed',reason:e.message});blockers.push(e.code+': '+e.message);}}
-  let selected:Session|undefined;const selectedOp=ops.find(o=>o.operationId===operationId);
-  if(operationId){try{if(!selectedOp || !['unknown','running'].includes(selectedOp.status))problem('ISOLATION_TARGET','指定操作不存在或不是未决操作');selected=ownedProject(selectedOp,registry.projects);}catch(e:any){blockers.push(e.code+': '+e.message);}}
-  const targetOps=selected?pending.filter(o=>{try{return ownedProject(o,registry.projects).projectId===selected!.projectId;}catch{return false;}}):[];
-  const bindings=targetOps.map(o=>binding(o,selected!));
+  let selected:Session|undefined,selectedBasis:OwnershipBasis|undefined;const selectedOp=ops.find(o=>o.operationId===operationId);
+  if(operationId){try{if(!selectedOp || !['unknown','running'].includes(selectedOp.status))problem('ISOLATION_TARGET','指定操作不存在或不是未决操作');
+    const owner=resolveOwnership(selectedOp,registry.projects);selected=owner.session;selectedBasis=owner.basis;
+    if(owner.basis==='provisional-direct' && (selectedOp.activation?.revision!==registry.revision ||
+      selectedOp.activation?.previousActiveProjectId!==registry.activeProjectId))
+      problem('ISOLATION_OWNERSHIP','登记状态已不同于直接打开受理时，暂定归属不能确认');
+  }catch(e:any){selected=undefined;blockers.push(e.code+': '+e.message);}}
+  const targetOps=selected?(selectedBasis==='provisional-direct'?[selectedOp!]:
+    pending.filter(o=>{try{return resolveOwnership(o,registry.projects).session.projectId===selected!.projectId;}catch{return false;}})):[];
+  const bindings=targetOps.map(o=>binding(o,selected!,selectedBasis));
   // Inventory the entire registered control state; unrelated queued work changes invalidate a plan.
   const walk=async(dir:string)=>{for(const n of (await fs.readdir(dir).catch((e:any)=>{if(e.code==='ENOENT')return [];throw e;})).sort()){
     const p=path.join(dir,n);if((await fs.lstat(p)).isDirectory())await walk(p);else await record(p);
@@ -179,14 +215,33 @@ export async function evaluateIsolation(root:string,operationId?:string) {
       const observation=await observeLeaseOwner(owner);processes.push({role:'锁持有者 '+p,pid:owner.pid??null,state:observation.state,leaseObservation:observation});
       if(observation.state!=='stale')blockers.push('锁拥有者实例未确认退出：'+p+'（'+observation.reason+'）');
     }}
+    return owner;
   };
   try {
-    await inspectLock(store.file('service.lock'));await record(maintenanceGate);
+    const serviceOwner=await inspectLock(store.file('service.lock'));await record(maintenanceGate);
     if(await exists(maintenanceGate))blockers.push('维护排他标记存在，需先核对');
     if(selected){
       if(state?.own.some(e=>e.plan.projectId===selected!.projectId))blockers.push('该工程已有已提交隔离；只读核对原处置，不生成第二次隔离提交');
-      aliases=await Promise.all([selected.sourcePath,selected.workingPath].map(p=>record(p,true)));
-      await inspectLock(store.sourceLock(selected.sourcePath),true);
+      const paths=selectedBasis==='provisional-direct'?
+        [...new Set([selected.sourcePath,selected.workingPath,selectedOp!.args.projectPath].map((p:string)=>path.resolve(p)))]:
+        [selected.sourcePath,selected.workingPath];
+      aliases=await Promise.all(paths.map(p=>record(p,true)));
+      if(selectedBasis==='provisional-direct'){
+        const base=aliases[0];
+        if(base.missing||!base.fileId||base.sha256!==selected.sourceHash||base.sha256!==selected.diskHash||
+          aliases.some(a=>a.missing||!a.fileId||!sameFile(a,base)))
+          blockers.push('登记前直接打开的文件身份、请求路径或派发前磁盘保护版本无法确认');
+        for(const other of pending.filter(o=>o.operationId!==selectedOp!.operationId && o.project)){
+          const i=await fileIdentity(other.project!.workingPath);
+          if(sameFile(i,base))blockers.push('另一个未决操作共享同一工程文件身份：'+other.operationId);
+        }
+      }
+      const sourceOwner=await inspectLock(store.sourceLock(selected.sourcePath),true);
+      if(selectedBasis==='provisional-direct'&&
+        (!serviceOwner?.processIdentity||!sourceOwner?.processIdentity||
+          serviceOwner.pid!==selectedOp!.ownerPid||sourceOwner.pid!==selectedOp!.ownerPid||
+          !sameProcess(serviceOwner.processIdentity,sourceOwner.processIdentity)))
+        blockers.push('登记前直接打开的服务租约与来源锁不能绑定同一原进程实例');
       // Include registered and filesystem aliases based on path/realpath/file identity, never content hash.
       for(const s of registry.projects)for(const p of [s.sourcePath,s.workingPath]){
         const i=await fileIdentity(p);if(aliases.some(a=>sameFile(i,a))){
@@ -213,6 +268,10 @@ export async function evaluateIsolation(root:string,operationId?:string) {
         const command=({project_save:'save',project_build:'build',code_apply_change:'change',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',task_config_update:'task_update',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect',object_list:'list',object_read:'read',project_search:'search',task_inspect:'tasks',library_inspect:'libraries'} as Record<string,string>)[op.tool];
         if(!req||req.operationId!==op.operationId||pathKey(req.projectPath??'')!==pathKey(selected.workingPath)||
           !command||req.command!==command||Object.entries(op.args).some(([k,v])=>canonical(req.args?.[k])!==canonical(v)))blockers.push('原桥接请求不完整或身份不一致：'+op.operationId);
+        if(selectedBasis==='provisional-direct'&&
+          (!req?.fileGuard||req.fileGuard.mode!=='direct'||req.fileGuard.expectedDiskHash!==selected.diskHash||
+            !aliases.some(a=>a.key===pathKey(op.args.projectPath)&&sameFile(a,aliases[0]))))
+          blockers.push('登记前直接打开的原请求磁盘保护字段或请求路径身份不一致：'+op.operationId);
         if(!dispatch||dispatch.operationId!==op.operationId||dispatch.pid!==op.bridge?.pid)blockers.push('原派发/PID证据不完整：'+op.operationId);
         if(['code_apply_change','pou_create','declaration_create','method_create','property_create'].includes(op.tool)){
           await record(path.join(dir,'checkpoint.project'),true);await record(path.join(dir,'before.json'),true);
@@ -252,11 +311,13 @@ export async function evaluateIsolation(root:string,operationId?:string) {
     }
   }catch(e:any){blockers.push('现场证据读取失败：'+e.message);}
   files.sort((a,b)=>a.path.localeCompare(b.path));
-  const evidence={dataDir:store.root,registry:registry??null,operations:observations,files,processes,locks,originalRecords,existingDispositions:state?.own.map(e=>({planId:e.plan.planId,projectId:e.plan.projectId}))??[]};
+  const evidence={dataDir:store.root,registry:registry??null,operations:observations,files,processes,locks,originalRecords,existingDispositions:state?.own.map(e=>({planId:e.plan.planId,projectId:e.plan.projectId}))??[],
+    ...(selectedBasis==='provisional-direct'?{ownershipBasis:selectedBasis}:{})};
   const unique=[...new Set(blockers)];
   const operationAssessments:any[]=[];
   if(!operationId)for(const o of pending){const a=await evaluateIsolation(root,o.operationId);operationAssessments.push({operationId:o.operationId,projectId:a.projectId,eligible:a.eligible,blockers:a.blockers,processes:a.evidence.processes,locks:a.evidence.locks,evidenceVersion:a.evidenceVersion});}
-  return {version:1,evaluatedAt:new Date().toISOString(),operationId:operationId??null,projectId:selected?.projectId??null,operationAssessments,
+  return {version:selectedBasis==='provisional-direct'?2:1,evaluatedAt:new Date().toISOString(),operationId:operationId??null,projectId:selected?.projectId??null,operationAssessments,
+    ownershipBasis:selectedBasis??null,
     unknownOperations:observations,evidence,evidenceVersion:digest(canonical(evidence)),aliases,bindings,
     operationIds:targetOps.map(o=>o.operationId).sort(),eligible:!!selected&&targetOps.length>0&&unique.length===0,blockers:unique,
     canReleaseOtherProjects:!!selected&&unique.length===0&&pending.every(o=>targetOps.includes(o)||state?.own.some(e=>e.plan.operationIds.includes(o.operationId)))};
@@ -264,11 +325,13 @@ export async function evaluateIsolation(root:string,operationId?:string) {
 export async function generatePlan(root:string,operationId:string,reason:string):Promise<IsolationPlan> {
   if(!reason.trim())throw new Error('处置理由不能为空');
   const a=await evaluateIsolation(root,operationId);
-  return {version:1,kind:'project-isolation',planId:randomUUID(),createdAt:new Date().toISOString(),dataDir:path.resolve(root),reason,
+  return {version:a.version as 1|2,kind:'project-isolation',planId:randomUUID(),createdAt:new Date().toISOString(),dataDir:path.resolve(root),reason,
     operationId,projectId:a.projectId,operationIds:a.operationIds,bindings:a.bindings,aliases:a.aliases,evidenceVersion:a.evidenceVersion,evidence:a.evidence,
+    ...(a.ownershipBasis==='provisional-direct'?{ownershipBasis:a.ownershipBasis}:{}) ,
     eligible:a.eligible,blockers:a.blockers,canReleaseOtherProjects:a.canReleaseOtherProjects,
     prohibitedActions:['原工程所有普通读取/修改/创建/编译/保存/激活/重新导入；已识别源、副本、realpath 和文件身份别名同样禁止','不得重放原业务，不得自动解除隔离；仅原状态查询和可信原结果核对保留'],
-    recoveryMissing:['原保存/关闭/重开操作的可信终态及原结果身份核对','原工程最终全文、对象集合、设备及任务配置证据','当前磁盘版本与文本快照、适用的完整编译证据；进程退出不足以恢复原工程']};
+    recoveryMissing:[a.ownershipBasis==='provisional-direct'?'原直接打开操作的可信终态及原结果身份核对':'原操作的可信终态及原结果身份核对',
+      '原工程最终全文、对象集合、设备及任务配置证据','当前磁盘版本与文本快照、适用的完整编译证据；进程退出不足以恢复原工程']};
 }
 export async function commitIsolation(plan:IsolationPlan, hooks?:{afterStage?:(stage:string)=>Promise<void>}) {
   if(plan?.eligible===false)problem('PLAN_BLOCKED','计划不满足隔离条件，不能提交：'+(Array.isArray(plan.blockers)?plan.blockers.join('；'):'评估未通过'));
@@ -277,7 +340,8 @@ export async function commitIsolation(plan:IsolationPlan, hooks?:{afterStage?:(s
     !plan.evidence || pathKey(plan.evidence.dataDir??'')!==pathKey(plan.dataDir)||!Array.isArray(plan.bindings)||!Array.isArray(plan.aliases)||
     !Array.isArray(plan.operationIds)||!plan.operationIds.includes(plan.operationId)||!Array.isArray(plan.evidence.files))problem('PLAN_INVALID','计划身份、路径或证据结构不合法');
   const store=new Store(path.resolve(plan.dataDir));
-  if(plan.version!==1||plan.kind!=='project-isolation'||!plan.reason?.trim()||plan.evidenceVersion!==digest(canonical(plan.evidence)))problem('PLAN_INVALID','计划校验失败');
+  if(![1,2].includes(plan.version)||(plan.version===2)!==(plan.ownershipBasis==='provisional-direct')||
+    plan.kind!=='project-isolation'||!plan.reason?.trim()||plan.evidenceVersion!==digest(canonical(plan.evidence)))problem('PLAN_INVALID','计划校验失败');
   const previous=await store.get('isolation-ledger.json');
   const duplicate=previous?.entries?.find((e:Entry)=>e.plan.planId===plan.planId);
   if(duplicate){await isolationState(store);if(canonical(duplicate.plan)!==canonical(plan))problem('PLAN_CONFLICT','计划编号已用于不同内容');return {deduplicated:true,entry:duplicate};}
@@ -293,7 +357,8 @@ export async function commitIsolation(plan:IsolationPlan, hooks?:{afterStage?:(s
     const a=await evaluateIsolation(store.root,plan.operationId);
     a.blockers=a.blockers.filter(b=>b!=='维护排他标记存在，需先核对');
     a.evidence.files=a.evidence.files.map((f:any)=>f.path===maintenanceGate?plan.evidence.files.find((p:any)=>p.path===maintenanceGate):f);
-    if(a.blockers.length || a.projectId!==plan.projectId || digest(canonical(a.evidence))!==plan.evidenceVersion || canonical(a.bindings)!==canonical(plan.bindings) ||
+    if(a.blockers.length || a.version!==plan.version || a.ownershipBasis!==((plan.ownershipBasis??'registered')) ||
+      a.projectId!==plan.projectId || digest(canonical(a.evidence))!==plan.evidenceVersion || canonical(a.bindings)!==canonical(plan.bindings) ||
       canonical(a.aliases)!==canonical(plan.aliases)||canonical(a.operationIds)!==canonical(plan.operationIds))
       problem('PLAN_STALE','现场、进程、锁或归属已变化；旧计划拒绝提交，须重新评估');
     const entry:Entry={state:'prepared',plan};
