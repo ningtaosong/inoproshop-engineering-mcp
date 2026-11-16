@@ -11,19 +11,24 @@ const requiredFlags=['is_placeholder','is_managed','system_library','optional','
 // can have exactly the same rows (and even a self-consistent version) as a full one.
 export function completeLibraryInventory(d:any,paged=false):boolean {
   const scope=d?.scope,managers=d?.managers,refs=d?.references;
-  if(!scope||!Array.isArray(managers)||!Array.isArray(refs)||scope.enumerationComplete!==true||
+  if(!scope||!Array.isArray(d.applicationPath)||!Array.isArray(managers)||!Array.isArray(refs)||scope.enumerationComplete!==true||
     scope.fieldReadComplete!==true||scope.truncated!==false||!Array.isArray(scope.enumerationFailures)||
     scope.enumerationFailures.length!==0||!Number.isInteger(scope.capturedReferences)||
-    !Number.isInteger(scope.maxReferences)||scope.capturedReferences>scope.maxReferences)return false;
+    !Number.isInteger(scope.maxReferences)||scope.maxReferences<1||scope.capturedReferences>scope.maxReferences)return false;
   if(new Set(managers.map((m:any)=>m.managerId)).size!==managers.length||
-    managers.some((m:any)=>m.enumerationComplete!==true||!Array.isArray(m.unavailableFields)||m.unavailableFields.length!==0||
+    managers.some((m:any)=>m.nativeTypeId!=='adb5cb65-8e1d-4a00-b70a-375ea27582f3'||!Array.isArray(m.path)||
+      canonical(m.path.slice(0,d.applicationPath.length))!==canonical(d.applicationPath)||
+      m.enumerationComplete!==true||!Array.isArray(m.unavailableFields)||m.unavailableFields.length!==0||
       !Number.isInteger(m.capturedReferences)||m.capturedReferences<0)||
     managers.reduce((n:number,m:any)=>n+m.capturedReferences,0)!==scope.capturedReferences)return false;
   if(paged){
     if(!d.page||d.page.retained!==scope.capturedReferences||d.page.total!==scope.capturedReferences||
       d.page.returned!==refs.length)return false;
   }else if(refs.length!==scope.capturedReferences)return false;
-  return refs.every((r:any)=>r&&managers.some((m:any)=>m.managerId===r.managerId)&&
+  return refs.every((r:any,i:number)=>r&&Number.isInteger(r.index)&&
+    r.index===(paged?d.page.offset+i:i)&&r.parentIndex===null&&Number.isInteger(r.order)&&r.order>=0&&
+    managers.some((m:any)=>m.managerId===r.managerId&&canonical(m.path)===canonical(r.managerPath)&&
+      canonical([...m.path,'references',String(r.order)])===canonical(r.path))&&
     Array.isArray(r.unavailableFields)&&r.unavailableFields.length===0&&r.rawFields&&
     typeof r.rawFields.id==='string'&&r.rawFields.id.length>0&&
     typeof r.rawFields.name==='string'&&r.rawFields.name.length>0&&
