@@ -4,7 +4,7 @@
 
 **main 已合并 S5a，当前为 0.27.0 候选版、30 项 MCP 工具。** 本页列出限定支持范围，尚非正式发布或生产认证。
 
-`codex/library-placeholder-resolve` 功能分支验证 S5b 第一子阶段，版本为 0.28.0 候选版、31 项工具。新增 `library_placeholder_resolve`，仅设置已确认归属当前 Application 的单个普通原生占位符显式覆盖；`library_inspect` 兼容扩展显式覆盖读回。分支尚未合并或部署日常入口，范围与证据见[占位符解析说明](docs/library-placeholder-resolve.md)。
+`codex/library-placeholder-resolve` 功能分支开发 S5b 第一子阶段，版本为 0.28.0 候选版、31 项工具。新增 `library_placeholder_resolve`，仅设置已确认归属当前 Application 的单个普通原生占位符显式覆盖；`library_inspect` 兼容扩展显式覆盖读回。原生独立探测和离线回归通过，但本次真实 MCP 验收的 `project_open` 超时并进入 `unknown`，尚未调用新写工具或完成 DSH CLI 验收。分支尚未合并或部署日常入口，范围与证据见[占位符解析说明](docs/library-placeholder-resolve.md)。
 
 `codex/library-reference-add` 分支提供 **S5a 0.27.0 候选版、30 项工具**：新增全局只读 `library_catalog` 与独立写入 `library_reference_add`，按本机原生已安装库的精确身份向指定 Application 添加一个直接引用。旧 `library_inspect` 仍查询工程当前直接引用；省略新增工具时原 28 项调用保持原语义。该限定能力已合并；2026-11-16 日常 DSH 已指向独立 0.27.0 固定构建并启动服务进程，最终连接的初始化握手与工具接收尚未取得证据。保存重开完整性补修及 DSH 会话提取勘误见[限定库添加说明](docs/library-reference-add.md)；最终代码完整回归 423/423，原日常登记目录独立真实 MCP 补验通过；旧 DSH CLI 模型任务未重跑。补修前证据不自动归属最终代码。
 
