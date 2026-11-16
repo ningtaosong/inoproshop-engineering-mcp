@@ -44,3 +44,5 @@ DSH Desktop 2.0.2 内置的 DSH 核心为 `0.1.1-rc.2`、Cordis 为 `4.0.1`。De
 只读检查确认原 v2 计划 711062e0-eb1c-492f-a875-5cd6b17548a4 已提交、原操作 7ca58d12-737e-4534-a21f-8178a4c2b580 仍为 unknown，隔离路径守卫返回 PROJECT_ISOLATED；另有旧 v1 隔离记录仍可读取。没有打开、复制或重放该隔离工程。独立夹具 D:\InoPro-S5b-MCP-Resume-20261116\AM610_PlaceholderMCP_Resume.project 从正常双路样例准备；原生 add_placeholder 仅用于夹具准备，记录了非系统占位符 #S5bDemo 的身份、结构与保存重开，不属于 MCP 的占位符创建能力。
 
 对该夹具的首次真实 MCP project_open 已派发，操作 3b418879-dc72-4d64-a19b-bad9c75a46b7、请求 d6883202-abd6-457d-9820-ca13039c3186 在 IDE 超时后为 unknown。IPC 有请求与派发标记，stdout 只有 AddedToUI，没有可信结果。打开期间 IDE 出现“加载一个或多个库失败”的信息提示；本次未取得其与超时的因果证据。工程主文件 SHA-256 仍为 F711E91765D2A8B6108DE6A03F0B202C8FD659DC6A542831B2396E874A6B9D73，附属文件另有变化；相同主文件哈希不能确定 IDE 操作终态。服务与桥接退出后，没有重试首次打开，没有调用 library_placeholder_resolve、编译、保存或 DSH CLI 模型任务。新 unknown 与旧隔离记录都保留；继续 S5b 工程验收需要先按现有维护机制核清或处置新操作，且不能因此宣布旧 IDE 超时原因已解决。
+
+完整 JavaScript 回归于合并产品提交 996a34992fff7eba2600b94745dfae22488c8cc0 上新跑 446/446 通过；Python 桥接 181/181、Node 定向 49/49 单独记录，彼此不累加。验收停止后正常启动原日常 DeepSeek Harness；窗口空白新会话可见，进程从原 0.27.1 固定入口启动，未修改私人配置。最终连接的 initialize、30 项工具接收、模型遵循和工程租约取得均未观察到，不能以进程和窗口代替。候选残留租约仍由原机制管理，没有人工删除或改写；新的 unknown 继续限制工程派发。
