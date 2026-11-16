@@ -23,4 +23,6 @@ InoProShop 1.9.1.6 的 `IScriptPlaceholderReference` 提供 `get_redirection()`�
 
 原生探测在独立工程上验证了显式覆盖的原生写入、身份保持和保存重开。服务离线夹具和生产桥接原生接口替身验证正常、no-op、写前拒绝、部分写入与不完整证据冻结；它们不等于真实 IDE 故障注入。最终产品提交 `3a6528d109a729fa4634b90a2605c757a0e218eb` 的完整 JavaScript 回归为 437/437，Python 原生接口替身为 10/10，定向 JavaScript 为 14/14，计数互不相加；首次失败和中断记录单列。
 
-2026-11-16 的真实 MCP 验收使用独立固定 0.28.0 构建及 DSH 当前配置的数据目录 `D:\InoPro\.local\dsh-phase4-repair-20261028-A1`。`project_open` 原操作 `7ca58d12-737e-4534-a21f-8178a4c2b580` 在 IDE 超时后终态为 `unknown`；服务与桥接进程随后退出，目标工程主文件 SHA-256 仍等于准备时的值。文件哈希不变不能证明 IDE 操作的完整终态，因此未重放原请求，也未继续调用 `library_placeholder_resolve`、编译、保存或 DSH CLI 模型业务任务。原锁和操作记录保持原样。真实 MCP 写入闭环和 DSH CLI 验收仍待完成；原生探测及离线测试不得写成这两项验收通过。当前日常 DSH 0.27 入口和 Codex 0.16 入口均未因本分支永久变更，恢复后实际握手及模型接收亦未取得新证据。
+2026-11-16 的真实 MCP 验收使用独立固定 0.28.0 构建及 DSH 当前配置的数据目录 `D:\InoPro\.local\dsh-phase4-repair-20261028-A1`。`project_open` 原操作 `7ca58d12-737e-4534-a21f-8178a4c2b580` 在 IDE 超时后终态为 `unknown`；服务与桥接进程随后退出，目标工程主文件 SHA-256 仍等于准备时的值。文件哈希不变不能证明 IDE 操作的完整终态，因此未重放原请求，也未继续调用 `library_placeholder_resolve`、编译、保存或 DSH CLI 模型业务任务。原锁和操作记录保持原样。真实 MCP 写入闭环和 DSH CLI 验收仍待完成；原生探测及离线测试不得写成这两项验收通过。
+
+日常 DSH 0.27 入口和 Codex 0.16 入口均未因本分支永久变更。尝试正常启动 DSH Desktop 恢复日常客户端时，应用在插件配置组合阶段报 `cannot resolve package "@deepseek-ai/dsh-experimental-agent-team-profile"`，停留在恢复界面；没有改动配置、禁用插件或取得本次日常连接握手。进程启动尝试、服务实际连接、模型接收分别保留，不能称为日常服务已恢复。
