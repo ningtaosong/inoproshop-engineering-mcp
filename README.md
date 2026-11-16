@@ -4,7 +4,7 @@
 
 **main 已合并 S4b 第三子阶段，当前为 0.26.0 候选版、28 项 MCP 工具。** 本页列出限定支持范围，尚非正式发布或生产认证。
 
-`codex/library-reference-add` 分支提供 **S5a 0.27.0 候选版、30 项工具**：新增全局只读 `library_catalog` 与独立写入 `library_reference_add`，按本机原生已安装库的精确身份向指定 Application 添加一个直接引用。旧 `library_inspect` 仍查询工程当前直接引用；省略新增工具时原 28 项调用保持原语义。分支候选尚未合并或部署日常 DSH，见[限定库添加说明](docs/library-reference-add.md)。
+`codex/library-reference-add` 分支提供 **S5a 0.27.0 候选版、30 项工具**：新增全局只读 `library_catalog` 与独立写入 `library_reference_add`，按本机原生已安装库的精确身份向指定 Application 添加一个直接引用。旧 `library_inspect` 仍查询工程当前直接引用；省略新增工具时原 28 项调用保持原语义。分支候选尚未合并或部署日常 DSH。保存重开完整性补修及 DSH 会话提取勘误见[限定库添加说明](docs/library-reference-add.md)；最终代码完整回归 423/423，原日常登记目录独立真实 MCP 补验通过；旧 DSH CLI 模型任务未重跑。补修前证据不自动归属最终代码。
 
 S4b 第一子阶段已合并：`variable_edit` 可修改根 GVL 已有具名聚合的直接成员。第二子阶段也已合并：可显式选择普通 ST 功能块已有且唯一的 `VAR_INPUT`／`VAR_OUTPUT`，新增普通 BOOL／DINT／TIME 单变量或修改其已有显式初值。重复块、特殊修饰、属性和不完整边界在写前拒绝。其他 S4b 范围仍未完成；DSH 实际加载版本须依据固定入口与连接证据核对。范围及验收归属见[变量编辑说明](docs/variable-edit.md)。
 S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的普通 VAR，及 Application 根 GVL 的普通 VAR_GLOBAL，已存在单变量且有显式字面初值时，可用 variable_edit 的 set-type 同时给出目标 BOOL／DINT／TIME 类型与新初值。服务绑定原类型、原初值、对象及磁盘版本，只改两个原文片段；不转换旧值、不重构调用或做语义引用分析。范围、旧动作兼容和验收状态见[变量编辑说明](docs/variable-edit.md)。
