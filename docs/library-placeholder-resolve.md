@@ -36,3 +36,11 @@ InoProShop 1.9.1.6 的 `IScriptPlaceholderReference` 提供 `get_redirection()`�
 DSH Desktop 2.0.2 内置的 DSH 核心为 `0.1.1-rc.2`、Cordis 为 `4.0.1`。Desktop profile 的 bundle 清单引用了两个未安装、未在该 profile 依赖清单声明的包：`@deepseek-ai/dsh-experimental-agent-team-profile` 和 `@deepseek-ai/dsh-experimental-auto-review`。前者不在 InoProShop 的 `cordis.patch.yml` 或 `cordis.yml` 中；未找到可核实匹配当前核心与 Cordis 的安装版本。经用户分别授权，先备份再各移除一条缺失 bundle 引用，保留其余插件与 InoProShop 配置；没有安装未经核实的新包、重置配置或清除会话。恢复窗口先后报告这两个包缺失，第二次调整后 DSH 正常进入主界面，缺失功能目前不加载。
 
 最终可观察到 DSH Desktop 进程及其子进程从原日常固定 `0.27.0` 路径启动 `dist/server.js`，仍使用原配置的 `D:\InoPro\.local\dsh-phase4-repair-20261028-A1`。这与 `D:\InoPro.local\dsh-phase4-repair-20261028-A1` 是不同目录；按用户决定保持实际 DSH 配置，不迁移历史记录。此次没有取得最终连接的初始化握手、30 项工具接收或模型遵循证据；主界面恢复与子进程存在不能代替这些检查。原 `unknown` 及工程派发冻结仍保持，S5b 真实 MCP 写入闭环和 DSH CLI 业务验收未完成。
+
+## 合入隔离修复后的再次验收（2026-11-16）
+
+功能分支正常合入 main 的 0.27.1 登记前直接打开隔离修复，合并提交为 996a34992fff7eba2600b94745dfae22488c8cc0。合并冲突只涉及 0.28.0 版本和工作指令首句；resolve_placeholder 的隔离操作映射、检查点识别与异常路径保留，v1/v2 隔离账本仍可读取。独立固定构建从该合并提交生成，版本 0.28.0、31 项工具；原 30 项输入仍兼容，library_inspect 仅扩展一个可选字段值。构建、类型检查、指令大小检查、Python 桥接 181 项及 Node 定向 49 项通过。完整回归及其最终结果见本轮复核记录，不能把旧 437 项称为合并后的结果。
+
+只读检查确认原 v2 计划 711062e0-eb1c-492f-a875-5cd6b17548a4 已提交、原操作 7ca58d12-737e-4534-a21f-8178a4c2b580 仍为 unknown，隔离路径守卫返回 PROJECT_ISOLATED；另有旧 v1 隔离记录仍可读取。没有打开、复制或重放该隔离工程。独立夹具 D:\InoPro-S5b-MCP-Resume-20261116\AM610_PlaceholderMCP_Resume.project 从正常双路样例准备；原生 add_placeholder 仅用于夹具准备，记录了非系统占位符 #S5bDemo 的身份、结构与保存重开，不属于 MCP 的占位符创建能力。
+
+对该夹具的首次真实 MCP project_open 已派发，操作 3b418879-dc72-4d64-a19b-bad9c75a46b7、请求 d6883202-abd6-457d-9820-ca13039c3186 在 IDE 超时后为 unknown。IPC 有请求与派发标记，stdout 只有 AddedToUI，没有可信结果。打开期间 IDE 出现“加载一个或多个库失败”的信息提示；本次未取得其与超时的因果证据。工程主文件 SHA-256 仍为 F711E91765D2A8B6108DE6A03F0B202C8FD659DC6A542831B2396E874A6B9D73，附属文件另有变化；相同主文件哈希不能确定 IDE 操作终态。服务与桥接退出后，没有重试首次打开，没有调用 library_placeholder_resolve、编译、保存或 DSH CLI 模型任务。新 unknown 与旧隔离记录都保留；继续 S5b 工程验收需要先按现有维护机制核清或处置新操作，且不能因此宣布旧 IDE 超时原因已解决。

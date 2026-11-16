@@ -8,6 +8,8 @@
 
 `codex/library-placeholder-resolve` 功能分支开发 S5b 第一子阶段，版本为 0.28.0 候选版、31 项工具。新增 `library_placeholder_resolve`，仅设置已确认归属当前 Application 的单个普通原生占位符显式覆盖；`library_inspect` 兼容扩展显式覆盖读回。原生独立探测和离线回归通过，但本次真实 MCP 验收的 `project_open` 超时并进入 `unknown`，尚未调用新写工具或完成 DSH CLI 验收。分支尚未合并或部署日常入口，范围与证据见[占位符解析说明](docs/library-placeholder-resolve.md)。
 
+本分支现已正常合入 main 的 0.27.1 登记前直接打开隔离修复，保留 v1/v2 隔离兼容及占位符操作映射。合并后的另一份独立工程在首次 `project_open` 时再次超时，产生新的 `unknown`；未调用占位符写工具、编译或 DSH CLI 业务任务。两次故障工程均不得重放或换名绕过；详见[占位符解析说明](docs/library-placeholder-resolve.md)。
+
 `codex/library-reference-add` 分支提供 **S5a 0.27.0 候选版、30 项工具**：新增全局只读 `library_catalog` 与独立写入 `library_reference_add`，按本机原生已安装库的精确身份向指定 Application 添加一个直接引用。旧 `library_inspect` 仍查询工程当前直接引用；省略新增工具时原 28 项调用保持原语义。该限定能力已合并；2026-11-16 日常 DSH 已指向独立 0.27.0 固定构建并启动服务进程，最终连接的初始化握手与工具接收尚未取得证据。保存重开完整性补修及 DSH 会话提取勘误见[限定库添加说明](docs/library-reference-add.md)；最终代码完整回归 423/423，原日常登记目录独立真实 MCP 补验通过；旧 DSH CLI 模型任务未重跑。补修前证据不自动归属最终代码。
 
 S4b 第一子阶段已合并：`variable_edit` 可修改根 GVL 已有具名聚合的直接成员。第二子阶段也已合并：可显式选择普通 ST 功能块已有且唯一的 `VAR_INPUT`／`VAR_OUTPUT`，新增普通 BOOL／DINT／TIME 单变量或修改其已有显式初值。重复块、特殊修饰、属性和不完整边界在写前拒绝。其他 S4b 范围仍未完成；DSH 实际加载版本须依据固定入口与连接证据核对。范围及验收归属见[变量编辑说明](docs/variable-edit.md)。
