@@ -4,6 +4,10 @@
 
 **main 已合并 S5a 及登记前直接打开隔离维护修复，当前为 0.27.1 修复候选版、30 项 MCP 工具。** 本页列出限定支持范围，尚非正式发布或生产认证。
 
+当前 `codex/s5b-library-dialog-integration` 在 S5b 候选上整合精确库加载信息提示修复，保持 **0.28.0、31 项工具**。整合后的检查结果与验收缺口见[占位符解析说明](docs/library-placeholder-resolve.md#2026-11-17-整合复核)。下面各分支的历史实测保留原提交归属。
+
+`codex/project-open-library-dialog` 的当前 **0.27.3 修复候选、30 项工具** 在原阶段诊断上，仅为服务直接 `project_open` 的初次原生打开加入本机 InoProShop 1.9.1.6 精确库加载信息提示处理。它核对服务启动的 IDE 进程实例、模态窗口、提示全文及唯一确认按钮，至多确认一次，并单独记录窗口状态；其他提示不自动处理。原工具输入不变，未合入 S5b，也未永久部署。两份历史 `unknown` 的唯一原因与具体失败库仍未确认；两份故障工程均已隔离。见[打开超时诊断](docs/project-open-library-dialog.md)。
+
 `codex/direct-open-isolation` 的 **0.27.1 修复候选版、30 项工具** 已合并 main，只扩展登记前直接打开结果不确定时的维护隔离归属和计划复核；原工具输入、登记格式及 S5a 工程能力不变。日常 DeepSeek Harness 配置已指向独立 0.27.1 固定构建，进程入口已核对；最终连接的初始化握手和工具接收尚未取得证据。获该工程明确确认后，原故障工程已通过正式维护入口提交 v2 隔离；原操作仍为 `unknown`，没有恢复工程或重放请求。见[直接打开隔离维护说明](docs/direct-open-isolation.md)。
 
 `codex/library-placeholder-resolve` 功能分支开发 S5b 第一子阶段，版本为 0.28.0 候选版、31 项工具。新增 `library_placeholder_resolve`，仅设置已确认归属当前 Application 的单个普通原生占位符显式覆盖；`library_inspect` 兼容扩展显式覆盖读回。原生独立探测和离线回归通过，但本次真实 MCP 验收的 `project_open` 超时并进入 `unknown`，尚未调用新写工具或完成 DSH CLI 验收。分支尚未合并或部署日常入口，范围与证据见[占位符解析说明](docs/library-placeholder-resolve.md)。

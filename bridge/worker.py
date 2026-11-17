@@ -8,6 +8,7 @@ import hashlib
 import shutil
 import traceback
 import re
+import datetime
 import scriptengine
 
 CONTRACT = "1.0.0"
@@ -45,6 +46,23 @@ def publish(file_path, value):
     finally:
         stream.Dispose()
     File.Move(temp, file_path)
+
+def phase_event(stage, status):
+    """Best-effort durable progress evidence, never a substitute for result.json."""
+    directory = globals().get("_phase_directory")
+    if not directory:
+        return
+    number = globals().get("_phase_number", 0) + 1
+    globals()["_phase_number"] = number
+    event = {"operationId": globals().get("_phase_operation_id"),
+             "stage": stage, "status": status,
+             "utc": datetime.datetime.utcnow().isoformat() + "Z"}
+    try:
+        publish(os.path.join(directory, "phase-%06d.json" % number), event)
+    except Exception as error:
+        # Evidence failure cannot change the native operation's result or trigger a replay.
+        try:sys.stderr.write("phase evidence unavailable: " + text(error) + "\n")
+        except Exception:pass
 
 def success(summary, data):
     return {"contractVersion": CONTRACT, "status": "succeeded", "summary": summary, "data": data}
@@ -954,19 +972,47 @@ def native_marker_evidence(state):
 def lifecycle_call(state, stage, action):
     event={"stage":stage,"status":"started","markerBefore":native_marker_evidence(state)}
     state["events"].append(event)
+    phase_event(stage,"started")
     try:
         result=action()
         event["status"]="succeeded"
+        phase_event(stage,"succeeded")
         return result
     except Exception as error:
         event.update(status="failed",error=exception_evidence(error))
+        phase_event(stage,"failed")
         raise
     finally:event["markerAfter"]=native_marker_evidence(state)
 
 def lifecycle_open(state, project_path, stage="initial-open"):
     if state["project"] is not None:raise ValueError("Refusing to replace an owned open project")
     state["projectPath"]=project_path
-    state["project"]=lifecycle_call(state,stage,lambda:projects.open(project_path,primary=True))
+    if stage=="initial-open" and state.get("promptPolicy")=="library-info-initial-open-v1":
+        def guarded_open():
+            import library_info_prompt
+            from System.Threading import Thread, ThreadStart
+            deadline=datetime.datetime.strptime(state["promptDeadlineUtc"],"%Y-%m-%dT%H:%M:%S.%fZ")
+            sequence=[0]
+            def record(row):
+                sequence[0]+=1
+                publish(os.path.join(_phase_directory,"prompt-%06d.json"%sequence[0]),row)
+            try:backend=library_info_prompt.WindowsDialogBackend()
+            except Exception as error:
+                try:record({"operationId":_phase_operation_id,"action":"backend-unavailable","stage":stage,
+                            "utc":datetime.datetime.utcnow().isoformat()+"Z","reason":text(error)})
+                except Exception:pass
+                return projects.open(project_path,primary=True)
+            observer=library_info_prompt.LibraryInfoObserver(backend,record,_phase_operation_id,deadline)
+            thread=Thread(ThreadStart(observer.run))
+            thread.IsBackground=True
+            thread.Start()
+            try:return projects.open(project_path,primary=True)
+            finally:
+                observer.active=False
+                thread.Join(1000)
+        state["project"]=lifecycle_call(state,stage,guarded_open)
+    else:
+        state["project"]=lifecycle_call(state,stage,lambda:projects.open(project_path,primary=True))
     return state["project"]
 
 def lifecycle_close(state, stage):
@@ -1139,6 +1185,9 @@ def dispatch(req):
     lifecycle = lifecycle_state(project_path=req["projectPath"])
     response = None
     command, args = req["command"], req["args"]
+    if command=="inspect" and req.get("promptPolicy")=="library-info-initial-open-v1":
+        lifecycle["promptPolicy"]=req["promptPolicy"]
+        lifecycle["promptDeadlineUtc"]=req["promptDeadlineUtc"]
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
@@ -1165,7 +1214,7 @@ def dispatch(req):
         elif command == "device":
             response = device_inventory(project,args)
         elif command == "inspect":
-            response = success(u"工作副本已打开并读取", metadata(project))
+            response = success(u"工作副本已打开并读取", lifecycle_call(lifecycle,"inspect-metadata",lambda:metadata(project)))
         else:
             app_id = args["applicationId"].lower() if args["applicationId"] is not None else None
             target_kind = args.get("targetKind", "application")
@@ -1366,6 +1415,9 @@ if not request_path:
     request_path = sys.argv[1]
 with io.open(request_path, "r", encoding="utf-8") as f:
     request = json.load(f)
+_phase_directory = os.path.dirname(request_path)
+_phase_operation_id = request["operationId"]
+_phase_number = 0
 # 一个发布目录仅执行一次。重启发现 dispatch 存在但无结果时不重放。
 dispatch_path = os.path.join(os.path.dirname(request_path), "dispatched.json")
 if os.path.exists(request["resultPath"]):
@@ -1376,16 +1428,24 @@ else:
     publish(dispatch_path, {"operationId": request["operationId"], "pid": os.getpid(), "python": sys.version})
     holder = []
     def execute():
+        phase_event("primary-thread","entered")
         holder.append(dispatch(request))
+        phase_event("primary-thread","returned")
     try:
         # OEM 保存/工程对象要求真正的 IDE 主线程。noUI 不能建立其 UI 主线程状态。
+        phase_event("primary-thread","scheduled")
         system.execute_on_primary_thread(execute)
+        phase_event("primary-thread","completed")
         result = holder[0]
     except Exception as e:
+        phase_event("primary-thread","failed")
         result = failure("unknown", "PRIMARY_THREAD_ERROR", text(e), {"detail": traceback.format_exc()})
     result["operationId"] = request["operationId"]
+    phase_event("result-finalization","started")
     if result.get("data") is not None and os.path.exists(request["projectPath"]):
         result["data"]["diskHash"] = file_hash(request["projectPath"])
+    phase_event("result-publish","started")
     publish(request["resultPath"], result)
+    phase_event("result-publish","succeeded")
 # 只退出由服务以 --runscript 启动的新实例。
 system.exit()

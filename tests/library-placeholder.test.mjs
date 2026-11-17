@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
+import path from 'node:path';
 import {setup,connect,app} from './helpers.mjs';
 
 const managerId='40000000-0000-4000-8000-000000000001';
@@ -31,7 +32,7 @@ async function context(t,copy=false,extra={}){
   expectedPlaceholderVersion:refs.data.placeholderConfigurationVersion,expectedExplicitRedirection:null,
   referenceOperationId:refs.operationId,installedIdentity:catalog.data.entries[0].identity,
   expectedCatalogVersion:catalog.data.catalogVersion,catalogOperationId:catalog.operationId};
- return {e,c,s,scope,catalog,refs,args};
+ return {e,c,s,scope,catalog,refs,args,opened};
 }
 for(const copy of [false,true])test(`原生占位符显式覆盖、持久化、去重及 no-op ${copy?'copy':'direct'}`,async t=>{
  const x=await context(t,copy),before=await readFile(x.s.workingPath);
@@ -41,6 +42,13 @@ for(const copy of [false,true])test(`原生占位符显式覆盖、持久化、�
  assert.equal(r.data.reopened,true);assert.equal(r.data.buildApplicable,false);
  assert.notDeepEqual(await readFile(x.s.workingPath),before);
  assert.equal(r.data.targetAfter.rawFields.explicit_redirection,r.data.installed.displayName);
+ // Integrating the direct-open dialog fix must not authorize confirmations in
+ // subsequent native library reads/writes or the historical copy workflow.
+ const request=async result=>JSON.parse(await readFile(path.join(x.e.dataDir,'ipc',result.operationId,'request.json'),'utf8'));
+ assert.equal((await request(x.opened)).promptPolicy,copy?undefined:'library-info-initial-open-v1');
+ assert.equal((await request(x.refs)).promptPolicy,undefined);
+ assert.equal((await request(r)).command,'resolve_placeholder');
+ assert.equal((await request(r)).promptPolicy,undefined);
  assert.deepEqual(await x.c.call('library_placeholder_resolve',x.args),r);
  const state=(await x.c.call('session_status')).data.session;
  const ref=await x.c.done(await x.c.call('library_inspect',x.scope));

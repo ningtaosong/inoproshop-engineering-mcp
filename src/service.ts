@@ -270,6 +270,7 @@ export class EngineeringService {
     op.bridge={directory:this.store.file('ipc/'+op.operationId)};
     await this.store.saveOp(op);
     const result=await this.adapter.execute({operationId:op.operationId,command,projectPath:session.workingPath,args,
+      ...(op.tool==='project_open'&&command==='inspect'?{promptPolicy:'library-info-initial-open-v1' as const}:{}),
       ...(direct?{fileGuard:{expectedDiskHash:session.diskHash!,mode:'direct' as const}}:{})},op.bridge.directory,async pid=> {
       op.bridge!.pid=pid; await this.store.saveOp(op);
     });
