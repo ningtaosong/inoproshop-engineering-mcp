@@ -120,10 +120,10 @@ class SelectorTest(unittest.TestCase):
         backend=self.backend()
         backend.dialogs=lambda:(_ for _ in ()).throw(RuntimeError('UIA scan must not run'))
         class User32:
-            def IsWindow(self,handle):return int(handle) in (42,43)
+            def IsWindow(self,handle):return int(handle) in (42,43,44)
             def GetWindowThreadProcessId(self,handle,pid):
-                pid.value=120 if int(handle)==42 else 121
-                return 1
+                pid.value=120 if int(handle)==42 else 121 if int(handle)==43 else 0
+                return 0 if int(handle)==44 else 1
         class ULong:
             def __init__(self,value):self.value=value
         fake=SimpleNamespace(windll=SimpleNamespace(user32=User32()),c_ulong=ULong,byref=lambda x:x)
@@ -131,8 +131,11 @@ class SelectorTest(unittest.TestCase):
         sys.modules['ctypes']=fake
         try:
             self.assertTrue(backend.remains(42))
-            self.assertFalse(backend.remains(43))
             self.assertFalse(backend.remains(0))
+            with self.assertRaisesRegex(ValueError,'owner changed'):
+                backend.remains(43)
+            with self.assertRaisesRegex(ValueError,'Cannot confirm'):
+                backend.remains(44)
         finally:
             if previous is None:sys.modules.pop('ctypes',None)
             else:sys.modules['ctypes']=previous

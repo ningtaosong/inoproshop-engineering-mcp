@@ -77,7 +77,9 @@ class WindowsDialogBackend(object):
         pid = ctypes.c_ulong(0)
         if not user32.GetWindowThreadProcessId(handle, ctypes.byref(pid)) or not pid.value:
             raise ValueError('Cannot confirm dialog window owner after Invoke')
-        return int(pid.value) == self.pid
+        if int(pid.value) != self.pid:
+            raise ValueError('Dialog window owner changed after Invoke')
+        return True
 
 class LibraryInfoObserver(object):
     def __init__(self, backend, record, operation_id, deadline, now=None, sleep=None, stage='initial-open', operation_active=None):
@@ -114,6 +116,10 @@ class LibraryInfoObserver(object):
             self.active = False
             return
         matches = self.backend.dialogs()
+        # The native open may have returned while UI Automation was still
+        # querying. Never describe or act on a match from a finished stage.
+        if not self.active:
+            return
         if len(matches) > 1:
             self.active = False
             try:self.emit('ambiguous-dialogs', count=len(matches))

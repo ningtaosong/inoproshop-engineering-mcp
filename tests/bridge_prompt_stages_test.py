@@ -171,7 +171,7 @@ class BridgePromptStages(unittest.TestCase):
             backend=StickyBackend();self.backends.append(backend);return backend
         prompt.WindowsDialogBackend=factory
         state=self.configure('resolve_placeholder',['initial-open','reopen'])
-        with self.assertRaisesRegex(ValueError,'dismissal could not be confirmed'):
+        with self.assertRaisesRegex(ValueError,'handling could not be confirmed'):
             self.env['lifecycle_open'](state,self.project)
         self.assertTrue(state['closeUnconfirmed'])
         self.assertIsNotNone(state['project'])
@@ -187,10 +187,114 @@ class BridgePromptStages(unittest.TestCase):
             backend=BrokenBackend();self.backends.append(backend);return backend
         prompt.WindowsDialogBackend=factory
         state=self.configure('inspect',['initial-open'])
-        with self.assertRaisesRegex(ValueError,'dismissal could not be confirmed'):
+        with self.assertRaisesRegex(ValueError,'handling could not be confirmed'):
             self.env['lifecycle_open'](state,self.project)
         self.assertTrue(state['closeUnconfirmed'])
         self.assertEqual(self.open_count,1)
+        self.env['lifecycle_close'](state,'final-cleanup')
+
+    def test_open_return_while_initial_window_query_is_blocked_is_bounded(self):
+        entered=threading.Event();release=threading.Event();created=[]
+        class SlowBackend(Backend):
+            def dialogs(self):
+                entered.set();release.wait(5)
+                return super().dialogs()
+        def factory():
+            backend=SlowBackend();self.backends.append(backend);return backend
+        class TrackedThread(NativeThread):
+            def __init__(self,callback):super().__init__(callback);created.append(self)
+            def Join(self,millis):self.join_millis=millis;return super().Join(millis)
+        prompt.WindowsDialogBackend=factory
+        sys.modules['System.Threading'].Thread=TrackedThread
+        def native_open(path,primary=True):
+            self.assertTrue(entered.wait(2))
+            self.open_count+=1
+            handle=Handle();self.handles.append(handle);return handle
+        self.env['projects'].open=native_open
+        state=self.configure('inspect',['initial-open'])
+        try:
+            with self.assertRaisesRegex(ValueError,'observer did not stop'):
+                self.env['lifecycle_open'](state,self.project)
+            self.assertEqual(created[0].join_millis,1000)
+            self.assertTrue(created[0].thread.is_alive())
+            self.assertTrue(state['promptObserverUnconfirmed'])
+            self.assertIs(state['project'],self.handles[0])
+            self.assertEqual(self.backends[0].calls,[])
+        finally:
+            release.set()
+            if created:created[0].thread.join(2)
+        self.assertFalse(created[0].thread.is_alive())
+        self.assertNotIn('observed',[x['action'] for x in self.events if isinstance(x,dict)])
+        self.env['lifecycle_close'](state,'final-cleanup')
+        self.assertEqual(self.handles[0].closes,1)
+
+    def test_open_return_while_post_confirm_query_is_blocked_stops_next_stage(self):
+        entered=threading.Event();release=threading.Event();created=[]
+        class SlowFollowupBackend(Backend):
+            def remains(self,handle):
+                entered.set();release.wait(5)
+                return False
+        def factory():
+            backend=SlowFollowupBackend();self.backends.append(backend);return backend
+        class TrackedThread(NativeThread):
+            def __init__(self,callback):super().__init__(callback);created.append(self)
+            def Join(self,millis):self.join_millis=millis;return super().Join(millis)
+        prompt.WindowsDialogBackend=factory
+        sys.modules['System.Threading'].Thread=TrackedThread
+        def native_open(path,primary=True):
+            self.assertTrue(entered.wait(2))
+            self.open_count+=1
+            handle=Handle();self.handles.append(handle);return handle
+        self.env['projects'].open=native_open
+        state=self.configure('resolve_placeholder',['initial-open','reopen'])
+        try:
+            with self.assertRaisesRegex(ValueError,'observer did not stop'):
+                self.env['lifecycle_open'](state,self.project)
+            self.assertEqual(created[0].join_millis,1000)
+            self.assertTrue(state['promptObserverUnconfirmed'])
+            self.assertEqual(self.backends[0].calls,[41])
+            self.assertNotIn('reopen',state['promptStartedStages'])
+        finally:
+            release.set()
+            if created:created[0].thread.join(2)
+        self.assertFalse(created[0].thread.is_alive())
+        self.env['lifecycle_close'](state,'final-cleanup')
+        self.assertEqual(self.open_count,1)
+
+    def test_no_prompt_and_native_open_exception_both_stop_observer(self):
+        class QuietBackend(Backend):
+            def dialogs(self):return []
+        def factory():
+            backend=QuietBackend();self.backends.append(backend);return backend
+        prompt.WindowsDialogBackend=factory
+        state=self.configure('inspect',['initial-open'])
+        self.env['projects'].open=lambda path,primary=True:Handle()
+        opened=self.env['lifecycle_open'](state,self.project)
+        self.assertIs(state['project'],opened)
+        self.assertEqual(self.backends[0].calls,[])
+        self.env['lifecycle_close'](state,'final-cleanup')
+        self.assertIn('observer-stopped',[x['action'] for x in self.events if isinstance(x,dict)])
+        state=self.configure('inspect',['initial-open'])
+        self.env['projects'].open=lambda path,primary=True:(_ for _ in ()).throw(RuntimeError('native open failed'))
+        with self.assertRaisesRegex(RuntimeError,'native open failed'):
+            self.env['lifecycle_open'](state,self.project)
+        self.assertIsNone(state['project'])
+        self.assertEqual(self.backends[1].calls,[])
+
+    def test_confirmation_failure_cannot_be_claimed_as_a_handled_prompt(self):
+        class FailedConfirmBackend(Backend):
+            def confirm(self,dialog):
+                self.event.set()
+                raise RuntimeError('Invoke failed')
+        def factory():
+            backend=FailedConfirmBackend();self.backends.append(backend);return backend
+        prompt.WindowsDialogBackend=factory
+        state=self.configure('inspect',['initial-open'])
+        with self.assertRaisesRegex(ValueError,'handling could not be confirmed'):
+            self.env['lifecycle_open'](state,self.project)
+        self.assertEqual(self.open_count,1)
+        self.assertTrue(state['closeUnconfirmed'])
+        self.assertIsNotNone(state['project'])
         self.env['lifecycle_close'](state,'final-cleanup')
 
 if __name__=='__main__':unittest.main()
