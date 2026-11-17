@@ -117,7 +117,13 @@ class LibraryInfoObserver(object):
 
     def run(self):
         while self.active and self.now() < self.deadline:
-            self.tick()
+            try:self.tick()
+            except Exception as error:
+                self.evidence_error = unicode(error)
+                self.active = False
+                try:self.emit('observer-failed', reason=self.evidence_error)
+                except Exception:pass
+                return
             if self.confirmations or not self.active:
                 return
             self.sleep(0.2)

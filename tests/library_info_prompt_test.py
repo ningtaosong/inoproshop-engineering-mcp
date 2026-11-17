@@ -42,6 +42,11 @@ class PromptObserverTest(unittest.TestCase):
         guard=self.observer(backend);guard.tick();guard.tick()
         self.assertEqual(guard.confirmations,0);self.assertFalse(guard.active)
         self.assertEqual(len(self.rows),1)
+    def test_unavailable_window_query_stops_observer_without_unhandled_thread_error(self):
+        backend=FakeBackend([self.dialog]);backend.dialogs=lambda:(_ for _ in ()).throw(RuntimeError('UIA unavailable'))
+        guard=self.observer(backend);guard.run()
+        self.assertFalse(guard.active);self.assertEqual(backend.calls,[])
+        self.assertEqual(self.rows[-1]['action'],'observer-failed')
 
 class Element:
     def __init__(self,name='',kind='',pid=120,aid='',enabled=True,modal=False,handle=0,children=None):
