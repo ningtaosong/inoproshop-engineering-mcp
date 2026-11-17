@@ -979,7 +979,32 @@ def lifecycle_call(state, stage, action):
 def lifecycle_open(state, project_path, stage="initial-open"):
     if state["project"] is not None:raise ValueError("Refusing to replace an owned open project")
     state["projectPath"]=project_path
-    state["project"]=lifecycle_call(state,stage,lambda:projects.open(project_path,primary=True))
+    if stage=="initial-open" and state.get("promptPolicy")=="library-info-initial-open-v1":
+        def guarded_open():
+            import library_info_prompt
+            from System.Threading import Thread, ThreadStart
+            deadline=datetime.datetime.strptime(state["promptDeadlineUtc"],"%Y-%m-%dT%H:%M:%S.%fZ")
+            sequence=[0]
+            def record(row):
+                sequence[0]+=1
+                publish(os.path.join(_phase_directory,"prompt-%06d.json"%sequence[0]),row)
+            try:backend=library_info_prompt.WindowsDialogBackend()
+            except Exception as error:
+                try:record({"operationId":_phase_operation_id,"action":"backend-unavailable","stage":stage,
+                            "utc":datetime.datetime.utcnow().isoformat()+"Z","reason":text(error)})
+                except Exception:pass
+                return projects.open(project_path,primary=True)
+            observer=library_info_prompt.LibraryInfoObserver(backend,record,_phase_operation_id,deadline)
+            thread=Thread(ThreadStart(observer.run))
+            thread.IsBackground=True
+            thread.Start()
+            try:return projects.open(project_path,primary=True)
+            finally:
+                observer.active=False
+                thread.Join(1000)
+        state["project"]=lifecycle_call(state,stage,guarded_open)
+    else:
+        state["project"]=lifecycle_call(state,stage,lambda:projects.open(project_path,primary=True))
     return state["project"]
 
 def lifecycle_close(state, stage):
@@ -1152,6 +1177,9 @@ def dispatch(req):
     lifecycle = lifecycle_state(project_path=req["projectPath"])
     response = None
     command, args = req["command"], req["args"]
+    if command=="inspect" and req.get("promptPolicy")=="library-info-initial-open-v1":
+        lifecycle["promptPolicy"]=req["promptPolicy"]
+        lifecycle["promptDeadlineUtc"]=req["promptDeadlineUtc"]
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None

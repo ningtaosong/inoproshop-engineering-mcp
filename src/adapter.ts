@@ -20,7 +20,7 @@ export function configuration(env = process.env): Config {
     testMode:env.INOPRO_TEST_MODE==='fixture',fixture:env.INOPRO_TEST_FIXTURE
   };
 }
-export interface BridgeRequest { operationId: string; command: string; projectPath: string; args: any; fileGuard?:{mode:'direct';expectedDiskHash:string}; }
+export interface BridgeRequest { operationId: string; command: string; projectPath: string; args: any; fileGuard?:{mode:'direct';expectedDiskHash:string}; promptPolicy?:'library-info-initial-open-v1'; }
 export interface Adapter {
   execute(request: BridgeRequest, directory: string, onStart: (pid:number)=>Promise<void>): Promise<Reply>;
   reconcile(directory: string): Promise<Reply | undefined>;
@@ -32,7 +32,9 @@ export class IdeAdapter implements Adapter {
     catch { throw new DomainError('unsupported','IDE_MISSING',`未找到 InoProShop：${this.config.executable}`); }
     await fs.mkdir(directory,{recursive:true});
     const requestFile=path.join(directory,'request.json');
-    await atomicJson(requestFile,{...request,resultPath:path.join(directory,'result.json'),...(request.command==='new_project'?{ideExecutable:this.config.executable}:{checkpointPath:path.join(directory,'checkpoint.project')})});
+    await atomicJson(requestFile,{...request,
+      ...(request.promptPolicy==='library-info-initial-open-v1'?{promptDeadlineUtc:new Date(Date.now()+Math.max(0,this.config.timeoutMs-5000)).toISOString()}:{}),
+      resultPath:path.join(directory,'result.json'),...(request.command==='new_project'?{ideExecutable:this.config.executable}:{checkpointPath:path.join(directory,'checkpoint.project')})});
     const option=(name:string,value:string)=> {
       if(/["\r\n]/.test(value)) throw new DomainError('failed','INVALID_LAUNCH_ARGUMENT','启动参数包含不支持的引号或换行');
       return process.platform==='win32'?`--${name}="${value}"`:`--${name}=${value}`;
