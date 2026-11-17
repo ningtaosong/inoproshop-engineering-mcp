@@ -60,3 +60,32 @@ DSH Desktop 2.0.2 内置的 DSH 核心为 `0.1.1-rc.2`、Cordis 为 `4.0.1`。De
 对该夹具的首次真实 MCP project_open 已派发，操作 3b418879-dc72-4d64-a19b-bad9c75a46b7、请求 d6883202-abd6-457d-9820-ca13039c3186 在 IDE 超时后为 unknown。IPC 有请求与派发标记，stdout 只有 AddedToUI，没有可信结果。打开期间 IDE 出现“加载一个或多个库失败”的信息提示；本次未取得其与超时的因果证据。工程主文件 SHA-256 仍为 F711E91765D2A8B6108DE6A03F0B202C8FD659DC6A542831B2396E874A6B9D73，附属文件另有变化；相同主文件哈希不能确定 IDE 操作终态。服务与桥接退出后，没有重试首次打开，没有调用 library_placeholder_resolve、编译、保存或 DSH CLI 模型任务。新 unknown 与旧隔离记录都保留；继续 S5b 工程验收需要先按现有维护机制核清或处置新操作，且不能因此宣布旧 IDE 超时原因已解决。
 
 完整 JavaScript 回归于合并产品提交 996a34992fff7eba2600b94745dfae22488c8cc0 上新跑 446/446 通过；Python 桥接 181/181、Node 定向 49/49 单独记录，彼此不累加。验收停止后正常启动原日常 DeepSeek Harness；窗口空白新会话可见，进程从原 0.27.1 固定入口启动，未修改私人配置。最终连接的 initialize、30 项工具接收、模型遵循和工程租约取得均未观察到，不能以进程和窗口代替。候选残留租约仍由原机制管理，没有人工删除或改写；新的 unknown 继续限制工程派发。
+
+## 2026-11-17 精确提示覆盖整合
+
+本节记录 `codex/s5b-library-dialog-integration` 的后续修正，保留上文旧提交与故障记录的原归属。`library_catalog` 只查询本机库目录，不打开工程，也不启用提示处理。每次下列工程工具派发都会由独立 IDE 子进程执行一次原生 `initial-open`；占位符设置、源码修改和工程保存还会在本次操作内保存、关闭并执行 `reopen`：
+
+| S5b 步骤 | MCP 工具 | 原生打开阶段 |
+| --- | --- | --- |
+| 选定工程和定位对象 | `project_open`、`project_structure`、`object_list`、`project_search` | `initial-open` |
+| 库和源码读回 | `library_inspect`、`object_read` | `initial-open` |
+| 设置应用级显式覆盖 | `library_placeholder_resolve` | `initial-open`、`reopen` |
+| 接入最小调用 | `code_apply_change` | `initial-open`、`reopen` |
+| 离线编译 | `project_build` | `initial-open` |
+| 保存并核对最终文件 | `project_save` | `initial-open`、`reopen` |
+
+服务只为这些工具的**直接编辑**请求传递固定阶段策略；历史 `project_open_copy`、其他工程工具、`library_catalog` 和 `recovery-reopen` 不启用。桥接再次核对命令、直接工程守卫、阶段清单和截止时间，不能由请求任意扩大处理范围。仅匹配本机 InoProShop 1.9.1.6 的精确库加载信息提示、当前服务启动的 IDE 进程实例、模态窗口结构及唯一确认按钮。每项操作的每个列明打开阶段最多确认一次，总量至多两次，共用原操作截止时间；阶段观察线程结束后才能进入下一阶段。操作记录已转 `unknown`、身份或记录无法核实、提示不匹配或观察线程未能退出时停止自动处理，保留原始提示、阶段及错误记录。确认信息按钮不代表库已解析或工程操作成功；原生调用、写后核对、关闭、结果发布和退出后的磁盘证据仍各自决定结果。Windows 以外平台、其他提示、其他打开工具及恢复性重开未纳入本次承诺。
+
+当前 DSH 配置与既有隔离记录使用 `D:\InoPro\.local\dsh-phase4-repair-20261028-A1`；用户已确认本轮沿用它，不迁移或换用另一个同名目录。两份旧故障工程及其 `unknown`、v1/v2 隔离记录继续保留。默认临时目录中状态查询的 200 毫秒断言失败已在 0.27.2 基线上复现，不能因独立临时目录中的测试或后续工程闭环而抹去，也不在本次加入缓存或放宽阈值。真实 MCP、DSH CLI 及最终回归各自的结果和提交归属继续在本节追加。
+
+### 本轮真实 MCP 首败及后续补修
+
+独立固定候选来自 `9daebb3a2ad8d8f4e66744e7823961acf060ce9a`，版本 0.28.0、31 工具；不是日常服务。第一轮对未隔离夹具 `D:\InoPro-OpenDialog-McpDiag-20261117-104923\AM610_PlaceholderMcpDiag.project` 的 `project_open` 与 `library_inspect` 均成功，原生清单完整捕获 19 条直接引用。验证脚本却只检查首个分页的 10 条，未找到位于下一页的 `#S5bDemo` 而在写前停止。保留原脚本、原结果；另存分页修正脚本，没有掩盖这次验证失败。
+
+分页修正后的独立调用取得完整引用分页、安装目录与精确 CAA Mathematics 3.5.11.0（CAA Technical Workgroup，命名空间 MATH）身份，并且确认该普通占位符没有显式覆盖。`library_placeholder_resolve` 请求 `e62ec594-3ae2-4c39-a98a-99142174120c`、操作 `7247cab3-a49a-4e3f-8ed5-73f47850a91f` 已派发。其 `initial-open` 观察到精确提示并于 2026-11-17 14:35:09 本地时间发送一次确认。原生进程随后报告项目切换、清理和结果发布，但提示观察线程在主线程等待时未能确认退出，正式操作返回 `unknown`，错误为 `Prompt observer did not stop; native open result is uncertain`。阶段位于目标库设置之前，`saveAttempts=0`；主文件 SHA-256 前后均为 `1f45e07eaf0f58212bb753d97cfe68a5eac794d299e61fea4f768efbcb747447`。这不等于该操作取得成功或原生内存状态已获完整确认。服务停止后只读隔离评估没有阻断，**未提交隔离**，未改写原操作。后续源码修改、编译、业务保存及 DSH CLI 任务均停止；没有换工程绕过冻结。
+
+新失败证据指向确认后 `WindowsDialogBackend.remains` 对 UI Automation 的整棵窗口树再次枚举：观察线程可能等待 IDE 主线程，而主线程正对观察线程执行有限 `Join`。在 `9daebb3` 之后的补修改为确认后只以 Win32 `IsWindow` 和 `GetWindowThreadProcessId` 查询原窗口句柄，不重新枚举 UI Automation；窗口仍在、归属无法确认或查询异常时继续保守标为不确定。本机随 InoProShop 交付的 IronPython 3.5.11.10 程序集及 ScriptLib 环境中，独立不打开工程的探测确认 `ctypes` 能调用这两个 Win32 接口。此补修尚未在真实 IDE 上重做占位符写入。新 `unknown` 需按原维护机制另行处置，不能用离线通过或主文件未变解除冻结。
+
+完整 Node 回归在独立测试临时目录于 `9daebb3` 产品上为 454/454；早一轮因桥接生产片段测试替身缺少 `threading` 导致 445/454，修正后受影响 20/20 及完整运行分别保留。默认 Windows TEMP/TMP 下旧 200 毫秒状态查询断言仍失败。补修后的完整 Python 桥接回归为 207/207，其中精确提示及生产阶段定向 18/18；新增定向测试首次有 2 项失败，修正测试夹具后通过。补修后的最终代码另完成隔离临时目录 Node **454/454**、构建、类型检查及指令大小检查；两轮 454 项高度重叠，不累加。
+
+候选服务及 IDE 均退出后，旧服务租约经进程身份核对为原拥有者已退出；没有手工删除或改写锁。DSH 通过应用菜单正常退出、再按既有 desktop profile 启动。恢复配置仍指向 `C:\Users\Administrator\.codex\worktrees\direct-open-daily-fixed-0271\InoPro\dist\server.js` 和原登记目录；观察到新的 DSH 主进程 PID 66388（2026-11-17 14:56:31）及该固定入口的 Node PID 46420（14:56:34）。没有取得此最终连接的 initialize 报文或 30 项工具接收记录，也没有向模型提交业务任务；进程启动不能替代握手或模型遵循。新 `unknown` 仍限制工程派发，旧隔离与历史 `unknown` 未变化。

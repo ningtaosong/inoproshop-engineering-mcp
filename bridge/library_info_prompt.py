@@ -67,7 +67,17 @@ class WindowsDialogBackend(object):
         dialog['confirm'].GetCurrentPattern(self.InvokePattern.Pattern).Invoke()
 
     def remains(self, handle):
-        return any(row['handle'] == handle for row in self.dialogs())
+        # Re-enumerating UI Automation on the observer thread can wait for the
+        # IDE primary thread while that thread is joining this observer. A
+        # bounded Win32 handle probe avoids that cross-thread wait after Invoke.
+        import ctypes
+        user32 = ctypes.windll.user32
+        if not user32.IsWindow(handle):
+            return False
+        pid = ctypes.c_ulong(0)
+        if not user32.GetWindowThreadProcessId(handle, ctypes.byref(pid)) or not pid.value:
+            raise ValueError('Cannot confirm dialog window owner after Invoke')
+        return int(pid.value) == self.pid
 
 class LibraryInfoObserver(object):
     def __init__(self, backend, record, operation_id, deadline, now=None, sleep=None, stage='initial-open', operation_active=None):
@@ -81,6 +91,7 @@ class LibraryInfoObserver(object):
         self.handles = set()
         self.confirmations = 0
         self.evidence_error = None
+        self.followup_remains = None
 
     def emit(self, action, dialog=None, **extra):
         row = {'operationId':self.operation_id, 'action':action,
@@ -123,7 +134,8 @@ class LibraryInfoObserver(object):
             self.confirmations += 1
             self.emit('confirmation-sent', dialog)
             self.sleep(0.3)
-            self.emit('window-state-after-confirmation', dialog, remains=self.backend.remains(dialog['handle']))
+            self.followup_remains = self.backend.remains(dialog['handle'])
+            self.emit('window-state-after-confirmation', dialog, remains=self.followup_remains)
         except Exception as error:
             self.evidence_error = unicode(error)
             self.active = False

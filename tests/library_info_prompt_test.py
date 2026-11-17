@@ -1,6 +1,7 @@
 """Offline tests of the production exact-dialog selector and bounded observer."""
 import datetime
 import importlib.util
+import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -73,6 +74,14 @@ class PromptObserverTest(unittest.TestCase):
         guard.tick()
         self.assertEqual(backend.calls,[])
         self.assertFalse(guard.active)
+    def test_followup_failure_is_not_treated_as_confirmed_dismissal(self):
+        backend=FakeBackend([self.dialog])
+        backend.remains=lambda handle:(_ for _ in ()).throw(RuntimeError('window probe failed'))
+        guard=self.observer(backend);guard.tick()
+        self.assertEqual(backend.calls,[42])
+        self.assertIsNone(guard.followup_remains)
+        self.assertEqual(guard.evidence_error,'window probe failed')
+
 
 class Element:
     def __init__(self,name='',kind='',pid=120,aid='',enabled=True,modal=False,handle=0,children=None):
@@ -107,5 +116,25 @@ class SelectorTest(unittest.TestCase):
     def test_similar_text_wrong_button_pid_or_nonmodal_not_selected(self):
         for changes in [{'body':prompt.MESSAGE+'!'}, {'button':'保存'}, {'pid':121}, {'modal':False}, {'aid':'9'}]:
             self.assertEqual(self.backend(**changes).dialogs(),[],changes)
+    def test_post_confirm_uses_window_handle_without_uia_reenumeration(self):
+        backend=self.backend()
+        backend.dialogs=lambda:(_ for _ in ()).throw(RuntimeError('UIA scan must not run'))
+        class User32:
+            def IsWindow(self,handle):return int(handle) in (42,43)
+            def GetWindowThreadProcessId(self,handle,pid):
+                pid.value=120 if int(handle)==42 else 121
+                return 1
+        class ULong:
+            def __init__(self,value):self.value=value
+        fake=SimpleNamespace(windll=SimpleNamespace(user32=User32()),c_ulong=ULong,byref=lambda x:x)
+        previous=sys.modules.get('ctypes')
+        sys.modules['ctypes']=fake
+        try:
+            self.assertTrue(backend.remains(42))
+            self.assertFalse(backend.remains(43))
+            self.assertFalse(backend.remains(0))
+        finally:
+            if previous is None:sys.modules.pop('ctypes',None)
+            else:sys.modules['ctypes']=previous
 
 if __name__=='__main__':unittest.main()

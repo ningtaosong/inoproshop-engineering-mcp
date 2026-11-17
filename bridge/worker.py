@@ -1069,8 +1069,13 @@ def lifecycle_open(state, project_path, stage="initial-open"):
             if observer.confirmations:state['promptConfirmedStages'].add(stage)
             try:record({'operationId':_phase_operation_id,'action':'observer-stopped','stage':stage,
                         'utc':datetime.datetime.utcnow().isoformat()+'Z','pid':backend.pid,'processStartUtc':backend.birth,
-                        'confirmations':observer.confirmations,'evidenceError':observer.evidence_error})
+                        'confirmations':observer.confirmations,'evidenceError':observer.evidence_error,
+                        'followupRemains':observer.followup_remains})
             except Exception:pass
+            if observer.confirmations and (observer.evidence_error is not None or observer.followup_remains is not False):
+                state['project']=opened
+                state['closeUnconfirmed']=True
+                raise ValueError('Prompt dismissal could not be confirmed; native open result is uncertain')
             if native_error is not None:raise native_error
             return opened
         state["project"]=lifecycle_call(state,stage,guarded_open)

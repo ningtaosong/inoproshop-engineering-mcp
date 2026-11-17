@@ -164,4 +164,33 @@ class BridgePromptStages(unittest.TestCase):
             self.env['lifecycle_open'](state,self.project,'reopen')
         self.env['lifecycle_close'](state,'final-cleanup')
 
+    def test_confirmed_click_without_confirmed_dismissal_is_uncertain(self):
+        class StickyBackend(Backend):
+            def remains(self,handle):return True
+        def factory():
+            backend=StickyBackend();self.backends.append(backend);return backend
+        prompt.WindowsDialogBackend=factory
+        state=self.configure('resolve_placeholder',['initial-open','reopen'])
+        with self.assertRaisesRegex(ValueError,'dismissal could not be confirmed'):
+            self.env['lifecycle_open'](state,self.project)
+        self.assertTrue(state['closeUnconfirmed'])
+        self.assertIsNotNone(state['project'])
+        self.assertEqual(self.open_count,1)
+        self.assertNotIn('reopen',state['promptStartedStages'])
+        self.assertIn('observer-stopped',[x['action'] for x in self.events if isinstance(x,dict)])
+        self.env['lifecycle_close'](state,'final-cleanup')
+
+    def test_followup_probe_error_is_uncertain(self):
+        class BrokenBackend(Backend):
+            def remains(self,handle):raise RuntimeError('probe failed')
+        def factory():
+            backend=BrokenBackend();self.backends.append(backend);return backend
+        prompt.WindowsDialogBackend=factory
+        state=self.configure('inspect',['initial-open'])
+        with self.assertRaisesRegex(ValueError,'dismissal could not be confirmed'):
+            self.env['lifecycle_open'](state,self.project)
+        self.assertTrue(state['closeUnconfirmed'])
+        self.assertEqual(self.open_count,1)
+        self.env['lifecycle_close'](state,'final-cleanup')
+
 if __name__=='__main__':unittest.main()

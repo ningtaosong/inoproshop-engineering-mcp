@@ -510,4 +510,10 @@ codex/library-placeholder-resolve 已正常合入 main 的登记前直接打开�
 
 ## S5b 与精确提示处理整合复核（2026-11-17）
 
-独立分支 `codex/s5b-library-dialog-integration` 在 `13d8912` 上合入 `16aebdf`，整合产品提交 `fbe8faf`；保持 0.28.0、31 工具，输入与原 S5b 一致。独立测试临时目录中完整 Node 452/452、Python 195/195 通过；默认临时目录的原 200 毫秒状态查询测试仍失败，不能称所有环境全绿。复核确认提示确认仅覆盖直接 project_open，后续 library_inspect 与 library_placeholder_resolve 均需重新原生打开且不带该策略；同一提示若再出现仍可能超时。该覆盖缺口尚无新的实机调用结果，未派发真实写入或 DSH CLI 工程任务；不以旧只读成功冒充 S5b 验收。日常配置、原 unknown 与隔离记录保持，未合并 main 或永久部署。具体证据和边界见[占位符解析说明](docs/library-placeholder-resolve.md#2026-11-17-整合复核)。
+独立分支 `codex/s5b-library-dialog-integration` 在 `13d8912` 上合入 `16aebdf`，整合产品提交 `fbe8faf`；保持 0.28.0、31 工具，输入与原 S5b 一致。独立测试临时目录中完整 Node 452/452、Python 195/195 通过；默认临时目录的原 200 毫秒状态查询测试仍失败，不能称所有环境全绿。复核确认提示确认仅覆盖直接 project_open，后续 library_inspect 与 library_placeholder_resolve 均需重新原生打开且不带该策略；同一提示若再出现仍可能超时。该覆盖缺口尚无新的实机调用结果，未派发真实写入或 DSH CLI 工程任务；不以旧只读成功冒充 S5b 验收。日常配置、原 unknown 与隔离记录保持，未合并 main 或永久部署。具体证据和边界见[占位符解析说明](docs/library-placeholder-resolve.md#2026-11-17-精确提示覆盖整合)。
+
+## S5b 必需打开阶段的精确提示覆盖（2026-11-17）
+
+在上述覆盖缺口之后，当前分支为直接编辑的 S5b 必需工程工具明确列出原生 `initial-open`，并给占位符设置、源码修改、工程保存列出 `reopen`；本机库目录查询不打开工程。策略由服务限定传递、桥接再次校验，按操作中的阶段各最多确认一次、合计最多两次，共用原操作截止时间，并核对原操作仍为 `running`。旧副本、范围外工具、恢复性重开、非本机已验窗口不自动处理。初次打开、保存重开和最终结果仍依原有正式证据判定；提示被确认不等于库解析或运行通过。旧两次 `unknown`、隔离和默认环境 200 毫秒状态查询失败保持。完整测试、真实 MCP 与 DSH CLI 的结果和提交归属见[占位符解析说明](docs/library-placeholder-resolve.md#2026-11-17-精确提示覆盖整合)；未完成前不将 S5b 标为已验收或合并。
+
+真实 MCP 验证首次 `project_open` 和分页后的 `library_inspect` 均成功；脚本第一轮只因误以为一页包含全部 19 条引用而写前停止。修正分页后的第二轮在 `library_placeholder_resolve` 的 `initial-open` 阶段精确识别并发送了信息提示确认，但观察线程随后对 UI Automation 的全窗口再枚举未能在主线程等待期间结束。原操作 `7247cab3-a49a-4e3f-8ed5-73f47850a91f` 为 `unknown`，原工程主文件哈希未变；本轮没有继续源码修改、编译、保存或 DSH CLI。后续补修将确认后状态查询改为本机 IronPython 支持的有界 Win32 窗口句柄查询，失败仍保守返回不确定。补修后的离线测试不替代真实 IDE 复验，也不解除新 `unknown` 或冻结。日常 0.27.1 的恢复连接另行记录。
