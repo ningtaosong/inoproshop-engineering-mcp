@@ -58,6 +58,16 @@
 
 脚本的目标占位符为普通 `#S5bDemo`，默认声明指向已安装的 `CAA Mathematics 3.5.11.0`，但读回的 `effectiveResolution=None`。这不等于确认 CAA Mathematics 就是加载失败的具体库。信息窗口中的具体错误原文未取得；不能把“进入或移出加载队列”当成失败证据。已确认的是对照打开成功、此次原生重开受信息提示影响，以及监测结果发布脚本的独立失败；原两次 MCP 超时原因、具体失败库、占位符夹具经 MCP 打开的结果均未确认，因此**尚不具备继续 S5b 验收的条件**。
 
+## 2026-11-17 受控收尾与独立文件发布探测
+
+用户确认已手动关闭那条 `Bad file descriptor` 脚本错误提示后，重新核对 IDE PID 63160 的创建时间、可执行文件、父进程和 `--runscript` 路径仍与原测试一致。窗口只显示空的设备树；“关闭工程”和“保存工程”菜单不可用，与先前 `final-close succeeded` 阶段相符，没有观察到需保留的用户工程或未保存编辑。随后只通过“文件 → 退出”正常结束该 IDE。监测器 PID 40616 记录 `child-exit`（退出码 0）、`result-inspected`、`launcher-finished` 和 `lease-released`；进程均退出，原数据目录的 `service.lock` 消失。目标主文件和原结果文件哈希仍分别为 `4315c273749817a87bcf1a3970d22876322c67e79a70d7c3897790c55b0118cc`、`49d40aa3a834cc6e75eb2447e7b018fa9804632f3cf6a00317617cbc79ba35f7`。原阶段 18 是 `final-close succeeded`，阶段 19 仍只是 `result-publish started`，没有补写完成标记。
+
+**原监测器结果勘误：**旧进程在人工退出后写出 `status=late-result`，因为它只看到 `passed=true` 的旧文件和迟到的退出码；它没有检查最终发布阶段。这个状态不能证明原脚本自然完成或结果发布成功。原 `launcher-summary.json` 和结果文件保留不改。本分支后续监测器已要求同一目标的 `result-publish succeeded` 才判完整发布；本次收尾属于受控关闭，而不是原脚本自然成功。
+
+租约释放且没有其他 IDE／工程服务进程后，在新目录 `D:\InoPro-FilePublishProbe-20261117-101826` 只执行一次文件发布探测。`scripts/native-placeholder-fixture.py` 和 `scripts/native-file-publish-probe.py` 共用 `scripts/native_json_publish.py` 的 `os.open`、`os.fdopen`、UTF-8 JSON 写入、刷新、`fsync` 和关闭实现，避免用另一套测试代码代替修正路径。探测目标是 `seed.json`，不是 `.project`；脚本没有调用 `projects.open`、保存、编译或库操作。真实 InoProShop 1.9.1.6 的 IronPython 2.7.7／ScriptEngine.plugin 3.5.11.10 将中文 JSON 写入、关闭、读回一致，`stage-complete` 与 `result-publish succeeded` 阶段均落盘；IDE PID 51744 自然退出码 0，监测器记录 `status=succeeded` 并释放租约。探测脚本 SHA-256 为 `ce20979a9b4e871cd159eb212481e3b976d858bca8ed670cfd511bcccbc47d65`，共用发布模块 SHA-256 为 `09b092d8017808768fc5ffda94773e5bc90491475e97d47bd1743a1327c40189`。离线替身测试为 2/2，独立于这次本机通过结果。
+
+日常 DeepSeek Harness 经原应用入口正常启动，当前 profile 配置仍指向 `C:\Users\Administrator\.codex\worktrees\direct-open-daily-fixed-0271\InoPro\dist\server.js`，登记目录仍是 `D:\InoPro\.local\dsh-phase4-repair-20261028-A1`；配置文件 SHA-256 为 `af8a85fec4b0d9122adee9d3afaee23c699cd24220f03d9734f8d9cd82743d26`。2026-11-17 10:22:58 北京时间观察到由该应用宿主派生的旧版固定服务 Node PID 18788。没有从最终 DSH 连接取得初始化握手和 30 项工具接收记录，也没有发送模型任务；进程入口不代替客户端接收。没有部署 0.27.2，也没有改 Codex 入口。两份隔离工程、原 `unknown` 与历史文件均保持原样。文件发布在本机通过，仍不能证明历史两次 MCP 打开超时的根因、具体加载失败库或占位符工程的 MCP 打开和 S5b 写入闭环。
+
 ## 检查归属
 
 本轮离线替身测试核对普通打开、模拟等待中的提示、未识别提示、关闭不确定与结果发布失败；原始 `result.json` 缺失时保持派发与不重放边界。Python 原桥接测试、TypeScript 回归和静态指令大小另行记录在交付包。它们不是 IDE 实测。首次新增测试因替身缺少 `CONTRACT` 常量失败，补齐替身后通过；首败保留。原 v1/v2 隔离保护通过既有回归核对，未提交新的隔离。日常服务和 Codex 入口未改，未连接 PLC。

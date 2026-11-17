@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 """One independent native test fixture; no product placeholder creation capability."""
-import datetime,json,os,traceback
+import datetime,os,sys,traceback
+if 'NATIVE_PUBLISH_HELPER_DIR' in os.environ:
+    sys.path.insert(0, os.environ['NATIVE_PUBLISH_HELPER_DIR'])
+elif '__file__' in globals():
+    sys.path.insert(0, os.path.dirname(__file__))
+from native_json_publish import publish_json
 
 target=os.environ['FIXTURE_TARGET']
 result=os.environ['FIXTURE_RESULT']
@@ -15,11 +20,7 @@ def phase(name,status,details=None):
     value={'stage':name,'status':status,'target':target,'atUtc':datetime.datetime.utcnow().isoformat()+'Z'}
     if details is not None:value['details']=details
     filename=os.path.join(phase_dir,'native-phase-%06d.json'%counter)
-    descriptor=os.open(filename,os.O_WRONLY|os.O_CREAT|os.O_EXCL)
-    with os.fdopen(descriptor,'wb') as f:
-        f.write(json.dumps(value,ensure_ascii=False).encode('utf-8'))
-        f.flush()
-        os.fsync(f.fileno())
+    publish_json(filename,value)
 def run(name,fn):
     phase(name,'started')
     try:
@@ -77,9 +78,6 @@ finally:
         try:run('final-close',lambda:project.close())
         except Exception:record['closeError']=traceback.format_exc();record['passed']=False
     phase('result-publish','started')
-    descriptor=os.open(result,os.O_WRONLY|os.O_CREAT|os.O_EXCL)
-    with os.fdopen(descriptor,'wb') as f:
-        f.write(json.dumps(record,ensure_ascii=False,indent=2).encode('utf-8'))
-        f.flush();os.fsync(f.fileno())
+    publish_json(result,record)
     phase('result-publish','succeeded')
     system.exit()
