@@ -528,3 +528,7 @@ codex/library-placeholder-resolve 已正常合入 main 的登记前直接打开�
 ## 2026-11-17 S5b 最终补修后的阶段状态
 
 `codex/s5b-library-dialog-integration` 保持 0.28.0 候选版、31 项工具，尚未合并 main 或永久部署。本轮已按单独授权用正式维护入口提交计划 `63d567cd-0bd3-4552-9e22-de60ddf13453`；原操作 `7247cab3-a49a-4e3f-8ed5-73f47850a91f` 仍为 `unknown`，原工程、IPC 和检查点保全。独立最终构建的真实 MCP 通过普通与有提示只读打开，以及单个普通占位符的精确覆盖、最小调用、两次编译和保存重开读回；每次编译 0 错误、1 条 CmpLog 警告。首次写前分页证据编号错误被拒绝，未派发 IDE。DSH CLI 模型验收尚未执行，日常 DSH 恢复 0.27.1 进程但最终握手与工具接收待验；Codex 入口未改。默认环境 200 毫秒状态查询性能失败、历史 unknown 与隔离、脚本信任、CmpLog 和运行验证限制继续保留。详见 [S5b 最终 MCP 复核](docs/s5b-final-mcp-review.md)。S5b 只完成候选实现及开发端工程闭环，不能标为已合并或完整客户端验收。
+
+## 2026-11-17 S5b 单次 DSH CLI 尝试
+
+独立夹具准备完成，普通 `#S5bDemo` 占位符没有显式覆盖。唯一一次 UTF-8 自然语言任务经官方 DSH CLI 提交；会话 `session-a07b3aba-1324-4633-9b40-2eba27006c2d` 在模型启动前返回 `ACCOUNT_SIGN_IN_REQUIRED`、退出码 1、空答复，没有 MCP 工具调用或工程业务修改。没有重试或用脚本代替模型。日常 DSH 已恢复原 0.27.1 服务进程，最终连接握手与工具接收仍待验；候选没有永久部署。S5b CLI 工程闭环仍未通过，真实 MCP 证据归属不变。详见 [单次 CLI 记录](docs/s5b-cli-acceptance-20261117.md)。
