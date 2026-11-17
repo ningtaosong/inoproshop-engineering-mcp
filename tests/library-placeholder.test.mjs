@@ -42,13 +42,16 @@ for(const copy of [false,true])test(`原生占位符显式覆盖、持久化、�
  assert.equal(r.data.reopened,true);assert.equal(r.data.buildApplicable,false);
  assert.notDeepEqual(await readFile(x.s.workingPath),before);
  assert.equal(r.data.targetAfter.rawFields.explicit_redirection,r.data.installed.displayName);
- // Integrating the direct-open dialog fix must not authorize confirmations in
- // subsequent native library reads/writes or the historical copy workflow.
+ // The bounded prompt policy follows direct native read and save/reopen stages,
+ // never the historical copy workflow or the no-project installed catalog.
  const request=async result=>JSON.parse(await readFile(path.join(x.e.dataDir,'ipc',result.operationId,'request.json'),'utf8'));
- assert.equal((await request(x.opened)).promptPolicy,copy?undefined:'library-info-initial-open-v1');
- assert.equal((await request(x.refs)).promptPolicy,undefined);
+ assert.equal((await request(x.opened)).promptPolicy,copy?undefined:'library-info-open-stages-v2');
+ assert.deepEqual((await request(x.opened)).promptStages,copy?undefined:['initial-open']);
+ assert.equal((await request(x.refs)).promptPolicy,copy?undefined:'library-info-open-stages-v2');
+ assert.deepEqual((await request(x.refs)).promptStages,copy?undefined:['initial-open']);
  assert.equal((await request(r)).command,'resolve_placeholder');
- assert.equal((await request(r)).promptPolicy,undefined);
+ assert.equal((await request(r)).promptPolicy,copy?undefined:'library-info-open-stages-v2');
+ assert.deepEqual((await request(r)).promptStages,copy?undefined:['initial-open','reopen']);
  assert.deepEqual(await x.c.call('library_placeholder_resolve',x.args),r);
  const state=(await x.c.call('session_status')).data.session;
  const ref=await x.c.done(await x.c.call('library_inspect',x.scope));

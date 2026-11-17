@@ -955,7 +955,37 @@ def creation_collisions(project, app_id, name):
                (aid == app_id or (aid is None and getattr(item,"has_textual_declaration",False)))]
 
 def lifecycle_state(project=None, project_path=None):
-    return {"project":project,"projectPath":project_path,"events":[],"saveAttempts":0,"closeUnconfirmed":False}
+    import threading
+    return {"project":project,"projectPath":project_path,"events":[],"saveAttempts":0,"closeUnconfirmed":False,
+            "promptStages":[],"promptStartedStages":set(),"promptConfirmedStages":set(),
+            "promptSequence":0,"promptRecordLock":threading.Lock(),"promptObserverUnconfirmed":False}
+
+# A native command always enters initial-open. These three writes also use the
+# normal save/close/reopen path. Recovery opens and unrelated tools are excluded.
+PROMPT_COMMAND_STAGES={
+    'inspect':['initial-open'],'structure':['initial-open'],'list':['initial-open'],
+    'libraries':['initial-open'],'search':['initial-open'],'read':['initial-open'],
+    'resolve_placeholder':['initial-open','reopen'],'change':['initial-open','reopen'],
+    'build':['initial-open'],'save':['initial-open','reopen']}
+
+def configure_prompt(state,req):
+    policy=req.get('promptPolicy')
+    if policy is None:return None
+    command=req.get('command')
+    stages=PROMPT_COMMAND_STAGES.get(command)
+    if req.get('fileGuard',{}).get('mode')!='direct' or not stages:
+        return failure('unsupported','PROMPT_SCOPE',u'该操作不允许处理库加载提示，未打开工程')
+    if policy=='library-info-initial-open-v1':
+        if command!='inspect' or req.get('promptStages') is not None:
+            return failure('unsupported','PROMPT_SCOPE',u'旧提示策略仅限直接打开初次阶段')
+        stages=['initial-open']
+    elif policy!='library-info-open-stages-v2' or req.get('promptStages')!=stages:
+        return failure('unsupported','PROMPT_SCOPE',u'提示阶段与固定原生操作不匹配，未打开工程')
+    try:deadline=datetime.datetime.strptime(req['promptDeadlineUtc'],'%Y-%m-%dT%H:%M:%S.%fZ')
+    except Exception:return failure('failed','PROMPT_DEADLINE',u'提示处理缺少有效截止时间，未打开工程')
+    state['promptStages']=stages[:]
+    state['promptDeadlineUtc']=deadline
+    return None
 
 def exception_evidence(error):
     return {"message":text(error),"detail":text(error.clsException.ToString()) if hasattr(error,"clsException") else __import__("traceback").format_exc()}
@@ -987,29 +1017,62 @@ def lifecycle_call(state, stage, action):
 def lifecycle_open(state, project_path, stage="initial-open"):
     if state["project"] is not None:raise ValueError("Refusing to replace an owned open project")
     state["projectPath"]=project_path
-    if stage=="initial-open" and state.get("promptPolicy")=="library-info-initial-open-v1":
+    if stage in state.get('promptStages',[]):
+        if state['promptObserverUnconfirmed'] or stage in state['promptStartedStages']:
+            raise ValueError('Prompt observer or native open stage is not confirmed finished; refusing another observer')
+        state['promptStartedStages'].add(stage)
         def guarded_open():
             import library_info_prompt
             from System.Threading import Thread, ThreadStart
-            deadline=datetime.datetime.strptime(state["promptDeadlineUtc"],"%Y-%m-%dT%H:%M:%S.%fZ")
-            sequence=[0]
+            deadline=state['promptDeadlineUtc']
             def record(row):
-                sequence[0]+=1
-                publish(os.path.join(_phase_directory,"prompt-%06d.json"%sequence[0]),row)
+                with state['promptRecordLock']:
+                    state['promptSequence']+=1
+                    publish(os.path.join(_phase_directory,"prompt-%06d.json"%state['promptSequence']),row)
+            def operation_active():
+                operation_file=os.path.join(os.path.dirname(os.path.dirname(_phase_directory)),
+                                            'operations',_phase_operation_id+'.json')
+                with open(operation_file,'rb') as stream:record=json.load(stream)
+                operation=record.get('value')
+                if record.get('schemaVersion')!=1 or not isinstance(operation,dict) or record.get('checksum')!=sha(encode(operation)):
+                    return False
+                bridge=operation.get('bridge') or {}
+                return (operation.get('operationId')==_phase_operation_id and operation.get('status')=='running' and
+                        os.path.normcase(os.path.abspath(bridge.get('directory','')))==
+                        os.path.normcase(os.path.abspath(_phase_directory)))
             try:backend=library_info_prompt.WindowsDialogBackend()
             except Exception as error:
                 try:record({"operationId":_phase_operation_id,"action":"backend-unavailable","stage":stage,
                             "utc":datetime.datetime.utcnow().isoformat()+"Z","reason":text(error)})
                 except Exception:pass
                 return projects.open(project_path,primary=True)
-            observer=library_info_prompt.LibraryInfoObserver(backend,record,_phase_operation_id,deadline)
+            observer=library_info_prompt.LibraryInfoObserver(backend,record,_phase_operation_id,deadline,
+                stage=stage,operation_active=operation_active)
             thread=Thread(ThreadStart(observer.run))
             thread.IsBackground=True
+            try:record({'operationId':_phase_operation_id,'action':'observer-started','stage':stage,
+                        'utc':datetime.datetime.utcnow().isoformat()+'Z','pid':backend.pid,'processStartUtc':backend.birth})
+            except Exception:pass
             thread.Start()
-            try:return projects.open(project_path,primary=True)
-            finally:
-                observer.active=False
-                thread.Join(1000)
+            opened=None;native_error=None
+            try:opened=projects.open(project_path,primary=True)
+            except Exception as error:native_error=error
+            observer.active=False
+            if not thread.Join(1000):
+                state['promptObserverUnconfirmed']=True
+                state['project']=opened
+                state['closeUnconfirmed']=True
+                try:record({'operationId':_phase_operation_id,'action':'observer-stop-unconfirmed','stage':stage,
+                            'utc':datetime.datetime.utcnow().isoformat()+'Z','pid':backend.pid,'processStartUtc':backend.birth})
+                except Exception:pass
+                raise ValueError('Prompt observer did not stop; native open result is uncertain')
+            if observer.confirmations:state['promptConfirmedStages'].add(stage)
+            try:record({'operationId':_phase_operation_id,'action':'observer-stopped','stage':stage,
+                        'utc':datetime.datetime.utcnow().isoformat()+'Z','pid':backend.pid,'processStartUtc':backend.birth,
+                        'confirmations':observer.confirmations,'evidenceError':observer.evidence_error})
+            except Exception:pass
+            if native_error is not None:raise native_error
+            return opened
         state["project"]=lifecycle_call(state,stage,guarded_open)
     else:
         state["project"]=lifecycle_call(state,stage,lambda:projects.open(project_path,primary=True))
@@ -1185,9 +1248,8 @@ def dispatch(req):
     lifecycle = lifecycle_state(project_path=req["projectPath"])
     response = None
     command, args = req["command"], req["args"]
-    if command=="inspect" and req.get("promptPolicy")=="library-info-initial-open-v1":
-        lifecycle["promptPolicy"]=req["promptPolicy"]
-        lifecycle["promptDeadlineUtc"]=req["promptDeadlineUtc"]
+    prompt_rejection=configure_prompt(lifecycle,req)
+    if prompt_rejection is not None:return prompt_rejection
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None

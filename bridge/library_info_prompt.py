@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Bounded, exact UI Automation handling for the OEM library-load information dialog.
 
-Only the service-owned initial project_open stage may instantiate this observer.
+Only a service-owned, explicitly allowed native open stage may instantiate this observer.
 The native project result remains authoritative; these records are diagnostic only.
 """
 import datetime
@@ -70,9 +70,11 @@ class WindowsDialogBackend(object):
         return any(row['handle'] == handle for row in self.dialogs())
 
 class LibraryInfoObserver(object):
-    def __init__(self, backend, record, operation_id, deadline, now=None, sleep=None):
+    def __init__(self, backend, record, operation_id, deadline, now=None, sleep=None, stage='initial-open', operation_active=None):
         self.backend, self.record, self.operation_id = backend, record, operation_id
         self.deadline = deadline
+        self.stage = stage
+        self.operation_active = operation_active or (lambda:True)
         self.now = now or datetime.datetime.utcnow
         self.sleep = sleep or time.sleep
         self.active = True
@@ -83,7 +85,7 @@ class LibraryInfoObserver(object):
     def emit(self, action, dialog=None, **extra):
         row = {'operationId':self.operation_id, 'action':action,
                'utc':self.now().isoformat()+'Z', 'pid':self.backend.pid, 'processStartUtc':self.backend.birth,
-               'stage':'initial-open'}
+               'stage':self.stage}
         if dialog is not None:
             row.update(handle=dialog['handle'], body=dialog['body'], button=dialog['button'])
         row.update(extra)
@@ -92,10 +94,20 @@ class LibraryInfoObserver(object):
     def tick(self):
         if not self.active or self.confirmations >= 1 or self.now() >= self.deadline:
             return
+        if not self.operation_active():
+            self.active = False
+            try:self.emit('operation-not-running')
+            except Exception:pass
+            return
         if not self.backend.identity_matches():
             self.active = False
             return
         matches = self.backend.dialogs()
+        if len(matches) > 1:
+            self.active = False
+            try:self.emit('ambiguous-dialogs', count=len(matches))
+            except Exception:pass
+            return
         if len(matches) != 1:
             return
         dialog = matches[0]
@@ -104,7 +116,8 @@ class LibraryInfoObserver(object):
         self.handles.add(dialog['handle'])
         try:
             self.emit('observed', dialog)
-            if not self.active or self.now() >= self.deadline or not self.backend.identity_matches():
+            if not self.active or self.now() >= self.deadline or not self.operation_active() or not self.backend.identity_matches():
+                self.active = False
                 return
             self.backend.confirm(dialog)
             self.confirmations += 1

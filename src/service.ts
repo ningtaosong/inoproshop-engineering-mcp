@@ -20,6 +20,15 @@ import {organizationResult} from './organization.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
 
+// Only the direct-project steps needed for the S5b offline path opt in. A native
+// command always opens once; the three writes below additionally save and reopen.
+const S5B_PROMPT_STAGES:Record<string,readonly ('initial-open'|'reopen')[]> = {
+  project_open:['initial-open'], project_structure:['initial-open'], object_list:['initial-open'],
+  library_inspect:['initial-open'], project_search:['initial-open'], object_read:['initial-open'],
+  library_placeholder_resolve:['initial-open','reopen'], code_apply_change:['initial-open','reopen'],
+  project_build:['initial-open'], project_save:['initial-open','reopen']
+};
+
 export class EngineeringService {
   readonly store: Store;
   private queue: Promise<unknown> = Promise.resolve();
@@ -270,7 +279,8 @@ export class EngineeringService {
     op.bridge={directory:this.store.file('ipc/'+op.operationId)};
     await this.store.saveOp(op);
     const result=await this.adapter.execute({operationId:op.operationId,command,projectPath:session.workingPath,args,
-      ...(op.tool==='project_open'&&command==='inspect'?{promptPolicy:'library-info-initial-open-v1' as const}:{}),
+      ...(direct&&S5B_PROMPT_STAGES[op.tool]?{promptPolicy:'library-info-open-stages-v2' as const,
+        promptStages:[...S5B_PROMPT_STAGES[op.tool]]}:{}),
       ...(direct?{fileGuard:{expectedDiskHash:session.diskHash!,mode:'direct' as const}}:{})},op.bridge.directory,async pid=> {
       op.bridge!.pid=pid; await this.store.saveOp(op);
     });

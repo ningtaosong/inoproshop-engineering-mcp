@@ -47,6 +47,32 @@ class PromptObserverTest(unittest.TestCase):
         guard=self.observer(backend);guard.run()
         self.assertFalse(guard.active);self.assertEqual(backend.calls,[])
         self.assertEqual(self.rows[-1]['action'],'observer-failed')
+    def test_each_stage_is_labeled_and_repeated_prompt_is_not_confirmed(self):
+        backend=FakeBackend([self.dialog]);guard=prompt.LibraryInfoObserver(
+            backend,self.rows.append,'op-1',self.now+datetime.timedelta(seconds=10),
+            now=lambda:self.now,sleep=lambda _:None,stage='reopen')
+        guard.tick()
+        backend.rows=[{'handle':99,'body':prompt.MESSAGE,'button':'确定'}]
+        guard.tick()
+        self.assertEqual(backend.calls,[42])
+        self.assertTrue(all(row['stage']=='reopen' for row in self.rows))
+    def test_multiple_matching_windows_stop_without_confirmation(self):
+        backend=FakeBackend([self.dialog,dict(self.dialog,handle=99)])
+        guard=self.observer(backend);guard.tick()
+        self.assertFalse(guard.active)
+        self.assertEqual(backend.calls,[])
+        self.assertEqual(self.rows[-1]['action'],'ambiguous-dialogs')
+    def test_unknown_before_confirmation_never_clicks(self):
+        backend=FakeBackend([self.dialog]);calls=[0]
+        def active():
+            calls[0]+=1
+            return calls[0]==1
+        guard=prompt.LibraryInfoObserver(backend,self.rows.append,'op-1',
+            self.now+datetime.timedelta(seconds=10),now=lambda:self.now,sleep=lambda _:None,
+            operation_active=active)
+        guard.tick()
+        self.assertEqual(backend.calls,[])
+        self.assertFalse(guard.active)
 
 class Element:
     def __init__(self,name='',kind='',pid=120,aid='',enabled=True,modal=False,handle=0,children=None):
