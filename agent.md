@@ -532,3 +532,5 @@ codex/library-placeholder-resolve 已正常合入 main 的登记前直接打开�
 ## 2026-11-17 S5b 单次 DSH CLI 尝试
 
 独立夹具准备完成，普通 `#S5bDemo` 占位符没有显式覆盖。唯一一次 UTF-8 自然语言任务经官方 DSH CLI 提交；会话 `session-a07b3aba-1324-4633-9b40-2eba27006c2d` 在模型启动前返回 `ACCOUNT_SIGN_IN_REQUIRED`、退出码 1、空答复，没有 MCP 工具调用或工程业务修改。没有重试或用脚本代替模型。日常 DSH 已恢复原 0.27.1 服务进程，最终连接握手与工具接收仍待验；候选没有永久部署。S5b CLI 工程闭环仍未通过，真实 MCP 证据归属不变。详见 [单次 CLI 记录](docs/s5b-cli-acceptance-20261117.md)。
+
+同日认证诊断确认：此前临时 CLI 覆盖把 headless 默认模型改为 Desktop 的 `deepseek-account`，但 headless 内置组合停用了 `authorization`、账号和凭证服务。一次禁用全部工具与 MCP 的模型探测，虽启用账号与凭证服务，仍因 `authorization` 依赖未激活而失败，退出码 1、空答复、零工具调用。凭证有效性及网络未验，不能断言用户未登录；发现失败后未继续切换配置或重试。日常工程服务与夹具文件未变。见 [认证路由诊断](docs/s5b-cli-auth-diagnosis-20261117.md)。
