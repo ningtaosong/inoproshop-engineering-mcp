@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,readdir} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import {setup,connect,app} from './helpers.mjs';
@@ -104,4 +104,20 @@ test('部分设置不自动恢复，原操作保持 unknown',async t=>{
  const r=await x.c.done(await x.c.call('library_placeholder_resolve',x.args));
  assert.equal(r.status,'unknown',JSON.stringify(r));assert.equal((await x.c.call('session_status')).data.globalFrozen,true);
  assert.equal((await x.c.call('operation_status',{operationId:r.operationId})).status,'unknown');
+});
+test('分页 version 不可用作写入配置版本；冲突保留原错误码、停止提示且未派发 IDE',async t=>{
+ const x=await context(t),before=await readFile(x.s.workingPath);
+ assert.notEqual(x.refs.data.version,x.refs.data.configurationVersion);
+ const result=await x.c.done(await x.c.call('library_placeholder_resolve',{...x.args,expectedReferenceVersion:x.refs.data.version}));
+ assert.equal(result.status,'conflict');assert.equal(result.error.code,'LIBRARY_REFERENCE_EVIDENCE');
+ assert.match(result.error.message,/configurationVersion.*version 仅用于续页.*停止本任务.*不重试/);
+ assert.deepEqual(await readFile(x.s.workingPath),before);
+ assert.ok(!(await readdir(path.join(x.e.dataDir,'ipc'))).includes(result.operationId));
+ const {tools}=await x.c.client.listTools();
+ const inspect=tools.find(t=>t.name==='library_inspect'), resolve=tools.find(t=>t.name==='library_placeholder_resolve');
+ assert.match(inspect.description,/version → expectedVersion.*configurationVersion → expectedReferenceVersion/);
+ assert.match(resolve.description,/aaaa….*bbbb…/);
+ assert.match(inspect.inputSchema.properties.expectedVersion.description,/version/);
+ assert.match(resolve.inputSchema.properties.expectedReferenceVersion.description,/configurationVersion/);
+ assert.match(resolve.inputSchema.properties.referenceOperationId.description,/同一页/);
 });

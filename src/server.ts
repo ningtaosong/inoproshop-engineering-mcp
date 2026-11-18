@@ -7,6 +7,7 @@ import { FixtureAdapter } from './fixture-adapter.js';
 import { EngineeringService } from './service.js';
 import { schemas, outputSchemas, reply, DomainError, VERSION } from './contracts.js';
 import {toolOutput} from './native-output.js';
+import {libraryInspectDescription, libraryPlaceholderResolveDescription} from './library-guidance.js';
 
 const config=configuration();
 if(!Number.isFinite(config.timeoutMs)||config.timeoutMs<100||!Number.isFinite(config.responseWaitMs)||config.responseWaitMs<1)
@@ -26,13 +27,13 @@ const descriptions:Record<string,string>={
   project_activate:'按已查询的 projectId 核对并激活原登记工程（保持直接/副本模式）；有未决操作时拒绝，失败保留原活动工程。',
   library_catalog:'只读列出当前本机原生已安装库，不需要工程身份。返回原生名称、版本、厂商、默认命名空间、仓库文件与精确身份；可用 query 过滤名称/厂商/版本/命名空间，按同一目录版本分页，或用 detailIdentity 取精确详情。过滤不是精确身份判定；读取不完整或截断明确标注。此查询不代表工程已引用、解析或运行加载。',
   library_reference_add:'把先由 library_catalog 精确查询的已安装库，加入当前 Application 的指定原生库管理器。需先用 library_inspect 取得完整直接引用和配置版本；提交两个查询操作引用、库身份、默认命名空间及当前磁盘哈希。写前重新核对目录和引用，冲突拒绝；同一精确引用为 no-op。写入后保存关闭重开及读回，部分结果不确定冻结，不自动安装、升级、删除或回滚。库变动后须重新编译；默认不做 project_compare。',
-  library_placeholder_resolve:'仅对精确Application库管理器中已有且归属可确认的普通占位符，设置本机已安装精确库的原生应用级显式覆盖。先完整library_inspect和library_catalog，再提交原操作引用、占位符原生ID、引用及占位符版本、磁盘哈希与目标库身份。系统或设备管理的占位符拒绝；不能把有效解析当作显式覆盖。写后及保存重开核对原对象和其他引用，部分结果不确定冻结。不安装、删除、恢复或调整直接引用；库配置变化后重新编译。',
+  library_placeholder_resolve:libraryPlaceholderResolveDescription,
   object_list:'分页列出精确应用的原生PUBLIC ST void/DINT Method、PUBLIC DINT只读Get或可读写Get+Set的Property及独立访问器，保留父链及结构，不能仅凭Get/Set名称定位；以及ST POU和根节点GVL/结构体/普通枚举/一维定长数组DUT。保留真实GUID、完整路径、有无实现及未支持子对象缺口。',
   object_read:'精确读取支持ST对象及内容哈希。Property只有声明；Get/Set独立声明和实现，返回FB→Property→访问器父链、属性哈希与访问器结构/版本。readOnly=true要求唯一Get；false要求一个Get和一个Set，不转换或补建访问器。GVL/DUT无实现区，数组边界等来自声明解析，无独立getter。',
   project_search:'只读检索选定工程/应用的支持源码。matchMode默认literal：名称/声明/实现字面子串，包含注释和字符串，areas默认全部。identifier仅接受单个完整标识符，必须显式areas=[declaration,implementation]或其非空子集，不接受name/默认全区域、正则或成员表达式；按大小写选项匹配词元，跳过注释/字符串及已支持的直接地址，未知地址和其他词法缺口独立报告，不验证地址有效性或I/O映射。保留真实身份/原文UTF-16位置/内容版本、范围/读取失败/跳过、截断和分页。按实际nextOffset+expectedVersion及原模式/条件续页，复用原清单不启动IDE；旧检索版本须重新首查，损坏证据冻结。不是语义交叉引用、读写或安全删除/重命名分析。',
   variable_inspect:'只读精确Application的支持源码声明解析（非原生符号表/运行变量）。objectId限定对象，name为父变量/字段名子串筛选。可显式includeInitializerMembers=true提取最外层(Name := Expression)的直接成员，maxInitializerMembers默认200/最大2000且仅启用时可用；成员、名称、值均返回原文UTF-16范围，父变量保留，成员/缺口单独计数，memberExtraction与声明/读取/分页完整性分开。嵌套值只保留不展开、不求值或验证类型成员；重复/混合/限定名等报告缺口，普通括号表达式不当成员。未启用保持declaration-variables-v2及旧页身份。按实际nextOffset+expectedVersion及原选项/上限续页；长原文预览用同版本sourceRead:{objectId,offset,limit}取完整声明（外层offset=0，不新启IDE）。没有初始化不补默认或运行值；不核对I/O，不修改/编译/保存。',
   variable_edit:'限定变量级写入：旧add及set-initializer省略section仍处理普通POU VAR或根GVL VAR_GLOBAL；显式VAR_INPUT/VAR_OUTPUT仅支持普通ST FB已有唯一声明块。set-member-initializer仍只处理根GVL已有聚合直接成员。新set-type仅处理普通ST PROGRAM/FUNCTION/FB的VAR或根GVL VAR_GLOBAL中已有显式字面初值的单变量，原类型及目标类型限BOOL/DINT/TIME；必须同时提供目标type、initializer及expectedOldType、expectedOldInitializer，不接受section或成员参数，不自动转换旧初值或重构使用位置。服务重读完整声明，只替换类型与初值片段，拒绝联合、特殊、重复或不完整区；写入保护、去重、读回、unknown冻结保留。编译及保存仍需单独执行，默认不比较。',
-  library_inspect:'只读精确 Application 的各原生库管理器直接引用。保留名称/命名空间、占位符默认与当前解析原文、解析来源及读取缺口；不把已安装/已引用/已解析混为一谈，不递归、不主动解析/修复/下载。独立版本/厂商或加载状态不可取得时明确说明，不从显示串猜字段。按实际 nextOffset + expectedVersion 和原 maxReferences 翻页；长字符串仅预览，带 expectedVersion + fieldRead:{referenceIndex,field,offset,limit} 分段读原清单（外层 offset=0，不启动 IDE）。CmpLog直接未出现不证明间接依赖不存在或历史警告已解决。',
+  library_inspect:libraryInspectDescription,
   task_inspect:'只读精确 Application 的真实任务身份、类型、优先级、周期/单位、看门狗与顺序调用；不可读字段单列，仅唯一核实的 PROGRAM 关联 GUID。兼容新增configurationVersion（task-configuration-v1原生配置版本），与diskHash分别用于task_config_update的expectedTaskVersion/expectedDiskHash；原version含义不变。配置不代表运行观测。',
   task_config_update:'仅修改精确Application中已有Cyclic任务的周期/优先级。先task_inspect取得taskId、configurationVersion和diskHash，分别传expectedTaskVersion/expectedDiskHash。intervalMs为整数毫秒1..60000，priority为整数0..31；至少一项，省略保持原值，0不是缺省。固定原生字符串setter，校验实际任务配置及磁盘版本、检查点、去重、写后保存关闭重开核对，原值请求不调用setter或保存。不改类型/调用/看门狗/CPU，不新建删除任务；未知单位/读取不完整/只读/歧义拒绝。修改后旧编译失效，须真实新编译及保存版本核对；部分失败保留实际动作和现场，unknown停止，不回滚。配置不是实测调度，默认不比较。',
   project_compare:'只读工程版本对比。mode=capture 在一次受管理 IDE 读取中采集精确 Application 的支持源码与任务；直接编辑用 origin=current-project；旧副本 working-copy 默认兼容。registered-source 只用于有独立来源的旧副本，直接工程拒绝；修改前快照是真实历史记录，不是修改后的文件。mode=compare 引用 baselineOperationId/targetOperationId 两个本工具成功采集记录，不接收自填源码；目标属于当前工程/应用，基线可属另一登记工程。按应用相对路径+类型匹配，不猜重命名。分页使用返回 nextOffset+expectedVersion；长变更预览可用 detail 按 itemIndex/changeIndex/side/offset 分段读取，不重启 IDE。不比较设备/I/O、其他对象或运行行为。',

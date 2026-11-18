@@ -1,3 +1,4 @@
+import {placeholderReferenceConflict} from './library-guidance.js';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -602,7 +603,7 @@ export class EngineeringService {
         ref?.readOnlyEvidence?.beforeDiskHash!==a.expectedDiskHash||
         !completeLibraryInventory(ref,true)||
         !ref.managers?.some((m:any)=>m.managerId===a.managerId))
-        throw new DomainError('conflict','LIBRARY_REFERENCE_EVIDENCE','缺少同一工程完整且当前的直接引用查询证据，未派发IDE');
+        throw new DomainError('conflict','LIBRARY_REFERENCE_EVIDENCE',op.tool==='library_placeholder_resolve'?placeholderReferenceConflict:'缺少同一工程完整且当前的直接引用查询证据，未派发IDE');
       if(op.tool==='library_placeholder_resolve' &&
         (!completePlaceholderInventory(ref,true)||ref?.placeholderVersionScheme!==LIB_PLACEHOLDER_SCHEME||
          ref?.placeholderConfigurationVersion!==a.expectedPlaceholderVersion||

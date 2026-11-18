@@ -18,7 +18,7 @@
 
 ## S5b 已有占位符的应用级显式解析
 
-本版新增限定占位符操作：当用户明确要求调整一个已有库占位符时，先完整读取 `library_inspect` 和 `library_catalog`，区分默认解析、`explicit_redirection` 显式覆盖与当前有效解析。只有精确 Application 库管理器中非系统、归属已确认的普通原生占位符，才可用 `library_placeholder_resolve` 设置精确已安装库。绑定占位符原生 ID、库与占位符配置版本、工程磁盘版本及目录查询；设备或系统管理、来源不明、字段缺失或命名空间不符时停止。有效解析碰巧等于目标不算已有显式覆盖。写后及保存重开核对目标和其余引用，再真实编译并核对最终文件。不清除覆盖、批量调整、转换直接引用、安装或推断运行加载；unknown 保留现场。
+本版新增限定占位符操作：当用户明确要求调整一个已有库占位符时，先完整读取 `library_inspect` 和 `library_catalog`，区分默认解析、`explicit_redirection` 显式覆盖与当前有效解析。只有精确 Application 库管理器中非系统、归属已确认的普通原生占位符，才可用 `library_placeholder_resolve` 设置精确已安装库。续页把查询结果的 `version` 用作 `expectedVersion`。写入时，`expectedReferenceVersion` 取自实际包含目标占位符的成功查询页的 `configurationVersion`，`referenceOperationId` 取同一页的 `operationId`。例如 `version=aaaa…` 只用于续页，`configurationVersion=bbbb…` 才用于写入；传完整值。绑定占位符原生 ID、占位符配置版本、工程磁盘版本及目录查询；返回 `conflict` 后停止本任务的后续写入和保存，报告冲突，不重试；设备或系统管理、来源不明、字段缺失或命名空间不符时停止。有效解析碰巧等于目标不算已有显式覆盖。写后及保存重开核对目标和其余引用，再真实编译并核对最终文件。不清除覆盖、批量调整、转换直接引用、安装或推断运行加载；unknown 保留现场。
 
 ## S5a 本机库目录与精确直接引用
 

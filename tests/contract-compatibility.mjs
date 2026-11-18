@@ -1,3 +1,9 @@
+// Model-facing guidance is non-validating metadata. Exclude only the newly documented library fields in old snapshots.
+export function withoutLibraryGuidance(schema){
+ if(schema.properties?.fieldRead)delete schema.properties.expectedVersion?.description;
+ if(schema.properties?.placeholderReferenceId)for(const name of ['expectedReferenceVersion','referenceOperationId'])delete schema.properties[name]?.description;
+ return schema;
+}
 // Each release's additive object-kind extension is removed only for historical checks.
 // Every other property/default/required/limit/order remains part of the historical check.
 // S3 adds only the explicit native folder kind to historical output trees.
@@ -9,7 +15,7 @@ export function withoutPropertyExtension(value){
  if(out.properties?.propertyMetadataSource)for(const k of ['fbId','propertyId','propertyPath','propertyName','propertyType','readOnly','accessorVersion','accessorStructure','propertyContentHash','propertyMetadataSource'])delete out.properties[k];
  if(out.properties?.expectedHash&&out.properties?.declaration)for(const k of ['fbId','expectedPropertyHash','expectedAccessorVersion','expectedSnapshot','expectedDiskHash'])delete out.properties[k];
  if(out.properties?.propertyCoverageVersion)delete out.properties.propertyCoverageVersion;
- return out;
+ return withoutLibraryGuidance(out);
 }
 export function withoutMethodExtension(value){
  value=withoutPropertyExtension(value);
