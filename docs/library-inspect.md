@@ -21,6 +21,7 @@
 | 占位符`default_resolution` | 默认声明/约束字符串，可能含通配符，与当前解析不同 |
 | 占位符`effective_resolution` | 当前getter提供的解析字符串，原样保留实际版本/厂商规格；不是独立加载结果标志 |
 | 占位符`resolution_info/resolver_guid/is_redirected` | 原生解析来源说明、解析器身份和重定向标记，不按文本猜测成功/缺失 |
+| 占位符`explicit_redirection` | 原生 `get_redirection()` 的显式覆盖原文；null 表示 getter 未返回覆盖，读取失败单列。与 `effective_resolution` 分开判断 |
 
 `get_libraries(False)`只提供字符串，不是元数据对象；正式工具使用上表接口。未取得经过核实的独立版本/厂商、已加载/缺失状态getter，`unavailableMetadata`明确说明。普通非占位引用不尝试占位符专用getter。字段null和空字符串原样保留，异常在`unavailableFields`保留完整原因。`resolutionStatus=effective-resolution-reported`仅表示非空当前解析字符串；否则`unknown`，不能把空值/异常推断成缺库，也不把字符串存在断言为独立证实解析成功。`installedStatus=not-queried`，不查询安装仓库补事实。
 

@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.27.1 候选版的三十项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.28.0 候选版的三十一项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）
@@ -15,6 +15,10 @@
 普通 ST FUNCTION_BLOCK 已有且唯一的 VAR_INPUT 或 VAR_OUTPUT 声明块，也可对普通 BOOL／DINT／TIME 单变量使用 variable_edit 的 add 或 set-initializer；必须显式给出 section。新增前核对同一 FB 其他声明区及直接 Method／Property 名称，不凭同名或旧偏移推断目标区。缺失、重复、联合、特殊或解析不全时停止。输入初值在实例初始化时生效；调用显式传参会为该次调用赋值，不能把源码初值当作该调用或运行时实测值。省略 section 时继续使用旧 VAR／VAR_GLOBAL 范围；set-member-initializer 不接收 section。
 
 用户明确要求修改根 GVL 单变量的已有具名聚合直接成员时，先用 variable_inspect 定位父变量和成员，再独立读取 GVL 与同 Application 根的结构体 DUT 原文和哈希。仅在类型名及字段唯一、成员显式值为已支持字面量、当前工程和磁盘版本一致时，用 variable_edit 的 set-member-initializer，分别传父变量 name、memberName、typeObjectId、expectedTypeHash 及原值。服务会在队列内重读父变量、完整类型和当前成员位置；类型、成员、归属或原值有歧义便停止。不得补缺失成员、改结构体字段初值或把源码设定说成运行值；旧成员分页位置不作写入依据。其余编译、保存重开和目标读回沿用上段流程。
+
+## S5b 已有占位符的应用级显式解析
+
+本版新增限定占位符操作：当用户明确要求调整一个已有库占位符时，先完整读取 `library_inspect` 和 `library_catalog`，区分默认解析、`explicit_redirection` 显式覆盖与当前有效解析。只有精确 Application 库管理器中非系统、归属已确认的普通原生占位符，才可用 `library_placeholder_resolve` 设置精确已安装库。续页把查询结果的 `version` 用作 `expectedVersion`。写入时，`expectedReferenceVersion` 取自实际包含目标占位符的成功查询页的 `configurationVersion`，`referenceOperationId` 取同一页的 `operationId`。例如 `version=aaaa…` 只用于续页，`configurationVersion=bbbb…` 才用于写入；传完整值。绑定占位符原生 ID、占位符配置版本、工程磁盘版本及目录查询；返回 `conflict` 后停止本任务的后续写入和保存，报告冲突，不重试；设备或系统管理、来源不明、字段缺失或命名空间不符时停止。有效解析碰巧等于目标不算已有显式覆盖。写后及保存重开核对目标和其余引用，再真实编译并核对最终文件。不清除覆盖、批量调整、转换直接引用、安装或推断运行加载；unknown 保留现场。
 
 ## S5a 本机库目录与精确直接引用
 

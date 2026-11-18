@@ -4,7 +4,7 @@ import {EventEmitter} from 'node:events';
 import path from 'node:path';
 import {setup} from './helpers.mjs';
 import {IdeAdapter} from '../dist/adapter.js';
-import {atomicJson} from '../dist/storage.js';
+import {atomicJson,readJson} from '../dist/storage.js';
 import {randomUUID} from 'node:crypto';
 
 test('真实适配器计时路径：超时不发送 kill，迟到证据可原样核对',async()=> {
@@ -31,4 +31,19 @@ test('原进程退出且没有派发标记，才确定 NOT_DISPATCHED',async()=>
   });
   const r=await adapter.execute({operationId,command:'read',projectPath:env.source,args:{}},directory,async()=>{});
   assert.equal(r.status,'failed'); assert.equal(r.error.code,'NOT_DISPATCHED');
+});
+
+test('适配器持久化精确提示阶段与操作截止时间；未授权请求不写策略',async()=>{
+  const env=await setup(),directory=path.join(env.dir,'prompt-ipc');
+  const adapter=new IdeAdapter({executable:process.execPath,profile:'profile',noUI:false,timeoutMs:10000},()=>{
+    const child=new EventEmitter();setTimeout(()=>child.emit('exit',1),10);return child;
+  });
+  const started=Date.now();
+  await adapter.execute({operationId:randomUUID(),command:'save',projectPath:env.source,args:{},
+    promptPolicy:'library-info-open-stages-v2',promptStages:['initial-open','reopen']},directory,async()=>{});
+  const persisted=await readJson(path.join(directory,'request.json'));
+  assert.equal(persisted.promptPolicy,'library-info-open-stages-v2');
+  assert.deepEqual(persisted.promptStages,['initial-open','reopen']);
+  assert.ok(Date.parse(persisted.promptDeadlineUtc)>=started+4900);
+  assert.ok(Date.parse(persisted.promptDeadlineUtc)<=Date.now()+5100);
 });

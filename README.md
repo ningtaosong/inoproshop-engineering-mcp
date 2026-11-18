@@ -2,11 +2,11 @@
 
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop：指定工程和需求，直接编辑该文件，编译并保存重开。工程比较仅在用户明确要求时执行。
 
-**main 已合并 S5a 及登记前直接打开隔离维护修复，当前为 0.27.1 修复候选版、30 项 MCP 工具。** 本页列出限定支持范围，尚非正式发布或生产认证。
+**main 已合并限定的 S5b 占位符覆盖能力，当前为 0.28.0 候选版、31 项 MCP 工具。** 日常部署及连接验证单独核对，仓库版本不表示客户端已经加载。
 
-`codex/direct-open-isolation` 的 **0.27.1 修复候选版、30 项工具** 已合并 main，只扩展登记前直接打开结果不确定时的维护隔离归属和计划复核；原工具输入、登记格式及 S5a 工程能力不变。日常 DeepSeek Harness 配置已指向独立 0.27.1 固定构建，进程入口已核对；最终连接的初始化握手和工具接收尚未取得证据。获该工程明确确认后，原故障工程已通过正式维护入口提交 v2 隔离；原操作仍为 `unknown`，没有恢复工程或重放请求。见[直接打开隔离维护说明](docs/direct-open-isolation.md)。
+S5a 可查询本机已安装库，并按精确库身份添加 Application 的直接引用。S5b 新增 `library_placeholder_resolve`：可对当前 Application 中归属明确的普通原生库占位符，设置一个精确的本机已安装库覆盖；`library_inspect` 能分别读回显式覆盖和当前有效解析。设备或系统管理的占位符、清除覆盖、安装、移除及完整传递依赖审计不在此范围。详见[库引用添加](docs/library-reference-add.md)和[占位符解析](docs/library-placeholder-resolve.md)。
 
-`codex/library-reference-add` 分支提供 **S5a 0.27.0 候选版、30 项工具**：新增全局只读 `library_catalog` 与独立写入 `library_reference_add`，按本机原生已安装库的精确身份向指定 Application 添加一个直接引用。旧 `library_inspect` 仍查询工程当前直接引用；省略新增工具时原 28 项调用保持原语义。该限定能力已合并；2026-11-16 日常 DSH 已指向独立 0.27.0 固定构建并启动服务进程，最终连接的初始化握手与工具接收尚未取得证据。保存重开完整性补修及 DSH 会话提取勘误见[限定库添加说明](docs/library-reference-add.md)；最终代码完整回归 423/423，原日常登记目录独立真实 MCP 补验通过；旧 DSH CLI 模型任务未重跑。补修前证据不自动归属最终代码。
+真实 MCP 和一次真实 DSH CLI 工程闭环均已通过编译、保存重开、保存版复编及最终读回；真实模型在冲突后继续写入，流程未通过。补修后，独立替身正例观察到正确的分页/写入字段映射，负例观察到在首次冲突后不再写入或保存。这不构成任务级强制阻断，不等于验证完整依赖或 PLC 运行。证据归属见[合并复核](docs/s5b-merge-review.md)；早期失败和隔离历史见[真实 MCP 复核](docs/s5b-final-mcp-review.md)、[CLI 首次尝试](docs/s5b-cli-acceptance-20261117.md)及[隔离维护](docs/direct-open-isolation.md)。
 
 S4b 第一子阶段已合并：`variable_edit` 可修改根 GVL 已有具名聚合的直接成员。第二子阶段也已合并：可显式选择普通 ST 功能块已有且唯一的 `VAR_INPUT`／`VAR_OUTPUT`，新增普通 BOOL／DINT／TIME 单变量或修改其已有显式初值。重复块、特殊修饰、属性和不完整边界在写前拒绝。其他 S4b 范围仍未完成；DSH 实际加载版本须依据固定入口与连接证据核对。范围及验收归属见[变量编辑说明](docs/variable-edit.md)。
 S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的普通 VAR，及 Application 根 GVL 的普通 VAR_GLOBAL，已存在单变量且有显式字面初值时，可用 variable_edit 的 set-type 同时给出目标 BOOL／DINT／TIME 类型与新初值。服务绑定原类型、原初值、对象及磁盘版本，只改两个原文片段；不转换旧值、不重构调用或做语义引用分析。范围、旧动作兼容和验收状态见[变量编辑说明](docs/variable-edit.md)。
@@ -34,7 +34,9 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 限定变量级编辑 | S4a：普通 POU VAR 或根 GVL VAR_GLOBAL 的 BOOL／DINT／TIME 单变量新增及显式字面初值修改；S4b 第一子阶段：根 GVL 已有聚合直接成员；第二子阶段：普通 ST FB 已有唯一 VAR_INPUT／VAR_OUTPUT 的单变量新增与显式初值修改。TIME 限 0..60000 ms，名称在写入前校验 | `variable_edit` | **S4a / 0.23.0；S4b 第一、第二子阶段 / 0.24.0、0.25.0**，见[范围](docs/variable-edit.md) |
 | 源码检索 | 字面子串和完整标识符词元检索；支持分页、原文位置和缺口报告。词元检索不是语义交叉引用 | `project_search` | 基础检索、0.14.0 标识符扩展 |
 | 原生结构与设备只读查询 | 保留非 ST 和未知节点，读取可访问的设备标识、描述版本、连接器及离线参数；不等于完整设备配置或固件查询 | `project_structure`、`device_inspect` | 0.6.0 |
-| 库引用只读查询 | 直接库引用、命名空间、占位符声明及当前解析原文；不可取得字段明确标注 | `library_inspect` | 0.10.0 |
+| 库引用只读查询 | 直接库引用、命名空间、占位符声明、显式覆盖与当前有效解析；不可取得字段明确标注 | `library_inspect` | 0.10.0；S5b 扩展覆盖读回 |
+| 本机库查询与精确添加 | 查询原生安装身份；按精确库身份添加一个直接引用 | `library_catalog`、`library_reference_add` | **S5a / 0.27.0** |
+| 普通占位符精确覆盖 | 支持范围内设置精确本机已安装库；显式覆盖与当前有效解析分别读回 | `library_placeholder_resolve`、`library_inspect` | **S5b / 0.28.0**，见[说明](docs/library-placeholder-resolve.md) |
 | 已有周期任务配置 | 读取任务和调用顺序；仅编辑已有周期任务的整数毫秒周期 1..60000 及优先级 0..31，不创建任务或编辑调用列表 | `task_inspect`、`task_config_update` | 查询已有；**S1 / 0.18.0** 写入，见[说明](docs/task-config.md) |
 | FB 原生方法 | PUBLIC ST Method 的创建、读取和修改，返回值限 void／DINT；绑定父 FB 身份 | `method_create`，读取和修改复用源码工具 | **S2a / 0.19.0**，见[说明](docs/methods.md) |
 | FB 原生属性 | PUBLIC DINT Property/Get/Set 创建及访问器独立读写；旧调用默认只读 Get，显式指定才创建 Get/Set，不自动转换已有属性或补建 Set | `property_create`，读取和修改复用源码工具 | **S2b / 0.20.0–0.21.0**，见[说明](docs/properties.md) |
@@ -51,7 +53,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 尚未完成的能力 | 计划阶段 | 下一步及完成条件 | 当前状态 |
 | --- | --- | --- | --- |
 | 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 前两个限定子阶段已合并；成员新增、嵌套成员、数组、类型修改及其他声明区未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
-| 占位符解析调整、库移除及其他库管理 | S5 后续阶段 | S5a 已支持查询本机已安装库与添加精确直接引用；后续能力各自另行验收 | S5a 已合并，日常入口已切换至独立 0.27.0 固定构建；最终连接握手与工具接收待验。不自动下载、安装库或为消除警告加依赖 |
+| 库移除、清除覆盖及其他库管理 | S5 后续范围 | S5a 精确添加、S5b 普通占位符精确覆盖已合并；移除等各自另行验收 | 真实工程闭环通过；原模型流程未完全遵循；补修替身负例观察到停止。后续范围未启动 |
 | 已安装设备描述查询、限定设备添加及离线参数写入 | S6 | 核实设备包、兼容父节点、参数类型和单位，建立配置版本及重开读回证据 | 未开始；当前设备能力为只读查询 |
 | 语义引用查询、变量／对象重命名和删除 | S7 | 先做有限范围引用分析，再开放证据充分的重命名或删除；不能用词元命中代替引用绑定 | 未开始 |
 | 新建任务、任务中的 PROGRAM 调用增删及排序 | S8a | 先探测原生接口，验证任务身份、调用顺序与保存持久化；依赖 S1 | 未开始，接口可行性待确认 |

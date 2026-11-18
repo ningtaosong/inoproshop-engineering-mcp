@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.27.1';
+export const VERSION = '0.28.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -37,8 +37,8 @@ export const schemas = {
     .refine(a=>a.maxInitializerMembers===undefined||a.includeInitializerMembers===true,'maxInitializerMembers仅适用于显式includeInitializerMembers=true'),
   library_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(200).default(50),
-    maxReferences:z.number().int().min(1).max(10000).default(2000),expectedVersion:hash.optional(),
-    fieldRead:z.object({referenceIndex:z.number().int().min(0).max(9999),field:z.enum(['id','name','namespace','placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid']),
+    maxReferences:z.number().int().min(1).max(10000).default(2000),expectedVersion:hash.optional().describe('续页和字段原文查询：取成功 library_inspect 结果的 version。占位符写入另用目标页的 configurationVersion，不使用 version。'),
+    fieldRead:z.object({referenceIndex:z.number().int().min(0).max(9999),field:z.enum(['id','name','namespace','placeholder_name','default_resolution','effective_resolution','resolution_info','resolver_guid','explicit_redirection']),
       offset:z.number().int().min(0).default(0),limit:z.number().int().min(2).max(2048).default(1024)}).strict().optional()}).strict(),
   library_catalog:z.object({offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(100).default(50),
     maxEntries:z.number().int().min(1).max(5000).default(2000),expectedVersion:hash.optional(),
@@ -48,6 +48,10 @@ export const schemas = {
     managerId:uuid,expectedDiskHash:hash,expectedReferenceVersion:hash,referenceOperationId:uuid,
     installedIdentity:hash,expectedCatalogVersion:hash,catalogOperationId:uuid,
     expectedNamespace:z.string().min(1).max(256)}).strict(),
+  library_placeholder_resolve:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    managerId:uuid,placeholderReferenceId:z.string().min(1).max(160),expectedDiskHash:hash,
+    expectedReferenceVersion:hash.describe('实际包含目标占位符的成功 library_inspect 页的 configurationVersion 原值；不是分页 version。'),expectedPlaceholderVersion:hash,expectedExplicitRedirection:z.string().nullable(),
+    referenceOperationId:uuid.describe('实际包含目标占位符的成功 library_inspect 页的 operationId；与 expectedReferenceVersion 来自同一页。'),installedIdentity:hash,expectedCatalogVersion:hash,catalogOperationId:uuid}).strict(),
   task_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid}).strict(),
   task_config_update:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     taskId:uuid,expectedTaskVersion:hash,expectedDiskHash:hash,
@@ -249,6 +253,10 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
     installedIdentity:hash.optional(),beforeReferenceVersion:hash.optional(),referenceVersion:hash.optional(),
     changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),
     checkpoint:z.string().optional(),...snapshotFields}).passthrough(),
+  library_placeholder_resolve:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),managerId:uuid.optional(),
+    placeholderReferenceId:z.string().optional(),installedIdentity:hash.optional(),
+    beforePlaceholderVersion:hash.optional(),placeholderVersion:hash.optional(),changed:z.boolean().optional(),
+    noOp:z.boolean().optional(),reopened:z.boolean().optional(),checkpoint:z.string().optional(),...snapshotFields}).passthrough(),
   project_compare:comparisonDataSchema.partial().passthrough(),
   project_structure:structureDataSchema.partial().passthrough(),
   folder_create:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),structureVersion:hash.optional(),structuralEvidence:z.record(z.string(),z.unknown()).optional(),object:z.record(z.string(),z.unknown()).optional(),...snapshotFields}).passthrough(),

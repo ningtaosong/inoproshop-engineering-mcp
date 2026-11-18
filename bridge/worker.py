@@ -8,6 +8,7 @@ import hashlib
 import shutil
 import traceback
 import re
+import datetime
 import scriptengine
 
 CONTRACT = "1.0.0"
@@ -45,6 +46,23 @@ def publish(file_path, value):
     finally:
         stream.Dispose()
     File.Move(temp, file_path)
+
+def phase_event(stage, status):
+    """Best-effort durable progress evidence, never a substitute for result.json."""
+    directory = globals().get("_phase_directory")
+    if not directory:
+        return
+    number = globals().get("_phase_number", 0) + 1
+    globals()["_phase_number"] = number
+    event = {"operationId": globals().get("_phase_operation_id"),
+             "stage": stage, "status": status,
+             "utc": datetime.datetime.utcnow().isoformat() + "Z"}
+    try:
+        publish(os.path.join(directory, "phase-%06d.json" % number), event)
+    except Exception as error:
+        # Evidence failure cannot change the native operation's result or trigger a replay.
+        try:sys.stderr.write("phase evidence unavailable: " + text(error) + "\n")
+        except Exception:pass
 
 def success(summary, data):
     return {"contractVersion": CONTRACT, "status": "succeeded", "summary": summary, "data": data}
@@ -529,6 +547,12 @@ def library_inventory(project,args):
                 if fields["is_placeholder"] is True:
                     for key in ("placeholder_name","default_resolution","effective_resolution","resolution_info","resolver_guid"):field(key)
                     field("is_redirected",True)
+                    try:
+                        value=ref.get_redirection()
+                        fields["explicit_redirection"]=None if value is None else text(value)
+                    except Exception as e:
+                        fields["explicit_redirection"]=None
+                        issues.append({"field":"explicit_redirection","reason":text(e)})
                 entries.append({"index":len(entries),"parentIndex":None,"managerId":manager["managerId"],"managerPath":names,
                   "order":order,"path":names+["references",text(order)],"rawFields":fields,"unavailableFields":issues,
                   "resolutionStatus":"effective-resolution-reported" if fields.get("effective_resolution") else "unknown",
@@ -551,6 +575,8 @@ def library_inventory(project,args):
         "No active resolve/repair/install/download/build/save call","Absence of CmpLog from direct references does not rule out indirect dependencies or resolve a historical compiler warning"]}
     result['referenceVersionScheme']=LIB_CONFIG_SCHEME
     result['configurationVersion']=library_configuration_version(result)
+    result['placeholderVersionScheme']=LIB_PLACEHOLDER_SCHEME
+    result['placeholderConfigurationVersion']=placeholder_configuration_version(result)
     return result
 
 
@@ -929,7 +955,37 @@ def creation_collisions(project, app_id, name):
                (aid == app_id or (aid is None and getattr(item,"has_textual_declaration",False)))]
 
 def lifecycle_state(project=None, project_path=None):
-    return {"project":project,"projectPath":project_path,"events":[],"saveAttempts":0,"closeUnconfirmed":False}
+    import threading
+    return {"project":project,"projectPath":project_path,"events":[],"saveAttempts":0,"closeUnconfirmed":False,
+            "promptStages":[],"promptStartedStages":set(),"promptConfirmedStages":set(),
+            "promptSequence":0,"promptRecordLock":threading.Lock(),"promptObserverUnconfirmed":False}
+
+# A native command always enters initial-open. These three writes also use the
+# normal save/close/reopen path. Recovery opens and unrelated tools are excluded.
+PROMPT_COMMAND_STAGES={
+    'inspect':['initial-open'],'structure':['initial-open'],'list':['initial-open'],
+    'libraries':['initial-open'],'search':['initial-open'],'read':['initial-open'],
+    'resolve_placeholder':['initial-open','reopen'],'change':['initial-open','reopen'],
+    'build':['initial-open'],'save':['initial-open','reopen']}
+
+def configure_prompt(state,req):
+    policy=req.get('promptPolicy')
+    if policy is None:return None
+    command=req.get('command')
+    stages=PROMPT_COMMAND_STAGES.get(command)
+    if req.get('fileGuard',{}).get('mode')!='direct' or not stages:
+        return failure('unsupported','PROMPT_SCOPE',u'该操作不允许处理库加载提示，未打开工程')
+    if policy=='library-info-initial-open-v1':
+        if command!='inspect' or req.get('promptStages') is not None:
+            return failure('unsupported','PROMPT_SCOPE',u'旧提示策略仅限直接打开初次阶段')
+        stages=['initial-open']
+    elif policy!='library-info-open-stages-v2' or req.get('promptStages')!=stages:
+        return failure('unsupported','PROMPT_SCOPE',u'提示阶段与固定原生操作不匹配，未打开工程')
+    try:deadline=datetime.datetime.strptime(req['promptDeadlineUtc'],'%Y-%m-%dT%H:%M:%S.%fZ')
+    except Exception:return failure('failed','PROMPT_DEADLINE',u'提示处理缺少有效截止时间，未打开工程')
+    state['promptStages']=stages[:]
+    state['promptDeadlineUtc']=deadline
+    return None
 
 def exception_evidence(error):
     return {"message":text(error),"detail":text(error.clsException.ToString()) if hasattr(error,"clsException") else __import__("traceback").format_exc()}
@@ -946,19 +1002,86 @@ def native_marker_evidence(state):
 def lifecycle_call(state, stage, action):
     event={"stage":stage,"status":"started","markerBefore":native_marker_evidence(state)}
     state["events"].append(event)
+    phase_event(stage,"started")
     try:
         result=action()
         event["status"]="succeeded"
+        phase_event(stage,"succeeded")
         return result
     except Exception as error:
         event.update(status="failed",error=exception_evidence(error))
+        phase_event(stage,"failed")
         raise
     finally:event["markerAfter"]=native_marker_evidence(state)
 
 def lifecycle_open(state, project_path, stage="initial-open"):
     if state["project"] is not None:raise ValueError("Refusing to replace an owned open project")
     state["projectPath"]=project_path
-    state["project"]=lifecycle_call(state,stage,lambda:projects.open(project_path,primary=True))
+    if stage in state.get('promptStages',[]):
+        if state['promptObserverUnconfirmed'] or stage in state['promptStartedStages']:
+            raise ValueError('Prompt observer or native open stage is not confirmed finished; refusing another observer')
+        state['promptStartedStages'].add(stage)
+        def guarded_open():
+            import library_info_prompt
+            from System.Threading import Thread, ThreadStart
+            deadline=state['promptDeadlineUtc']
+            def record(row):
+                with state['promptRecordLock']:
+                    state['promptSequence']+=1
+                    publish(os.path.join(_phase_directory,"prompt-%06d.json"%state['promptSequence']),row)
+            def operation_active():
+                operation_file=os.path.join(os.path.dirname(os.path.dirname(_phase_directory)),
+                                            'operations',_phase_operation_id+'.json')
+                with open(operation_file,'rb') as stream:record=json.load(stream)
+                operation=record.get('value')
+                if record.get('schemaVersion')!=1 or not isinstance(operation,dict) or record.get('checksum')!=sha(encode(operation)):
+                    return False
+                bridge=operation.get('bridge') or {}
+                return (operation.get('operationId')==_phase_operation_id and operation.get('status')=='running' and
+                        os.path.normcase(os.path.abspath(bridge.get('directory','')))==
+                        os.path.normcase(os.path.abspath(_phase_directory)))
+            try:backend=library_info_prompt.WindowsDialogBackend()
+            except Exception as error:
+                try:record({"operationId":_phase_operation_id,"action":"backend-unavailable","stage":stage,
+                            "utc":datetime.datetime.utcnow().isoformat()+"Z","reason":text(error)})
+                except Exception:pass
+                return projects.open(project_path,primary=True)
+            observer=library_info_prompt.LibraryInfoObserver(backend,record,_phase_operation_id,deadline,
+                stage=stage,operation_active=operation_active)
+            thread=Thread(ThreadStart(observer.run))
+            thread.IsBackground=True
+            try:record({'operationId':_phase_operation_id,'action':'observer-started','stage':stage,
+                        'utc':datetime.datetime.utcnow().isoformat()+'Z','pid':backend.pid,'processStartUtc':backend.birth})
+            except Exception:pass
+            thread.Start()
+            opened=None;native_error=None
+            try:opened=projects.open(project_path,primary=True)
+            except Exception as error:native_error=error
+            observer.active=False
+            if not thread.Join(1000):
+                state['promptObserverUnconfirmed']=True
+                state['project']=opened
+                state['closeUnconfirmed']=True
+                try:record({'operationId':_phase_operation_id,'action':'observer-stop-unconfirmed','stage':stage,
+                            'utc':datetime.datetime.utcnow().isoformat()+'Z','pid':backend.pid,'processStartUtc':backend.birth})
+                except Exception:pass
+                raise ValueError('Prompt observer did not stop; native open result is uncertain')
+            if observer.confirmations:state['promptConfirmedStages'].add(stage)
+            try:record({'operationId':_phase_operation_id,'action':'observer-stopped','stage':stage,
+                        'utc':datetime.datetime.utcnow().isoformat()+'Z','pid':backend.pid,'processStartUtc':backend.birth,
+                        'confirmations':observer.confirmations,'evidenceError':observer.evidence_error,
+                        'followupRemains':observer.followup_remains})
+            except Exception:pass
+            if (observer.confirmations and (observer.evidence_error is not None or observer.followup_remains is not False)) or \
+                    (observer.handles and observer.evidence_error is not None):
+                state['project']=opened
+                state['closeUnconfirmed']=True
+                raise ValueError('Prompt handling could not be confirmed; native open result is uncertain')
+            if native_error is not None:raise native_error
+            return opened
+        state["project"]=lifecycle_call(state,stage,guarded_open)
+    else:
+        state["project"]=lifecycle_call(state,stage,lambda:projects.open(project_path,primary=True))
     return state["project"]
 
 def lifecycle_close(state, stage):
@@ -1131,10 +1254,12 @@ def dispatch(req):
     lifecycle = lifecycle_state(project_path=req["projectPath"])
     response = None
     command, args = req["command"], req["args"]
+    prompt_rejection=configure_prompt(lifecycle,req)
+    if prompt_rejection is not None:return prompt_rejection
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "add_library", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1144,7 +1269,7 @@ def dispatch(req):
                 lifecycle_reject(lifecycle,failure("conflict","READ_DISK_CHANGED",u"正式读取前工程文件已变化，未打开或保存",{"beforeDiskHash":before_hash}))
         if projects.primary is not None:
             lifecycle_reject(lifecycle,failure("conflict", "UNOWNED_PROJECT", u"新启动实例已有工程；拒绝接管"))
-        if command in ("change", "create", "create_declaration", "create_method", "create_property", "add_library") or req.get("fileGuard") and command=="save":
+        if command in ("change", "create", "create_declaration", "create_method", "create_property", "add_library", "resolve_placeholder") or req.get("fileGuard") and command=="save":
             shutil.copyfile(req["projectPath"], req["checkpointPath"])
         project = lifecycle_open(lifecycle,req["projectPath"])
         if direct_evidence and file_hash(req["projectPath"])!=direct_evidence["beforeDiskHash"]:
@@ -1157,7 +1282,7 @@ def dispatch(req):
         elif command == "device":
             response = device_inventory(project,args)
         elif command == "inspect":
-            response = success(u"工作副本已打开并读取", metadata(project))
+            response = success(u"工作副本已打开并读取", lifecycle_call(lifecycle,"inspect-metadata",lambda:metadata(project)))
         else:
             app_id = args["applicationId"].lower() if args["applicationId"] is not None else None
             target_kind = args.get("targetKind", "application")
@@ -1174,6 +1299,8 @@ def dispatch(req):
                 response = success(u"已只读取得精确 Application 的库直接引用与原生解析信息",library_inventory(project,args))
             elif command == "add_library":
                 response,project=library_reference_add(project,req,args,lifecycle)
+            elif command == "resolve_placeholder":
+                response,project=library_placeholder_resolve(project,req,args,lifecycle)
             elif command == "list":
                 objects,unsupported_children = [],[]
                 for item, names, aid in walk(project):
@@ -1356,6 +1483,9 @@ if not request_path:
     request_path = sys.argv[1]
 with io.open(request_path, "r", encoding="utf-8") as f:
     request = json.load(f)
+_phase_directory = os.path.dirname(request_path)
+_phase_operation_id = request["operationId"]
+_phase_number = 0
 # 一个发布目录仅执行一次。重启发现 dispatch 存在但无结果时不重放。
 dispatch_path = os.path.join(os.path.dirname(request_path), "dispatched.json")
 if os.path.exists(request["resultPath"]):
@@ -1366,16 +1496,24 @@ else:
     publish(dispatch_path, {"operationId": request["operationId"], "pid": os.getpid(), "python": sys.version})
     holder = []
     def execute():
+        phase_event("primary-thread","entered")
         holder.append(dispatch(request))
+        phase_event("primary-thread","returned")
     try:
         # OEM 保存/工程对象要求真正的 IDE 主线程。noUI 不能建立其 UI 主线程状态。
+        phase_event("primary-thread","scheduled")
         system.execute_on_primary_thread(execute)
+        phase_event("primary-thread","completed")
         result = holder[0]
     except Exception as e:
+        phase_event("primary-thread","failed")
         result = failure("unknown", "PRIMARY_THREAD_ERROR", text(e), {"detail": traceback.format_exc()})
     result["operationId"] = request["operationId"]
+    phase_event("result-finalization","started")
     if result.get("data") is not None and os.path.exists(request["projectPath"]):
         result["data"]["diskHash"] = file_hash(request["projectPath"])
+    phase_event("result-publish","started")
     publish(request["resultPath"], result)
+    phase_event("result-publish","succeeded")
 # 只退出由服务以 --runscript 启动的新实例。
 system.exit()
