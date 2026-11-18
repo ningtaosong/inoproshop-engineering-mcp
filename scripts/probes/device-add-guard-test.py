@@ -4,12 +4,13 @@ import copy
 import unittest
 from pathlib import Path
 
+from device_add_preflight import comparable, rejection
+
 script = Path(__file__).with_name('device-add-native.py')
 module = ast.parse(script.read_text(encoding='utf-8'))
-keep = [entry for entry in module.body
-        if isinstance(entry, ast.FunctionDef) and entry.name in ('rejection','assess_after','comparable')]
-functions = {}
-exec(compile(ast.Module(body=keep, type_ignores=[]),str(script),'exec'),functions)
+keep = [entry for entry in module.body if isinstance(entry,ast.FunctionDef) and entry.name=='assess_after']
+functions = dict(rejection=rejection,comparable=comparable)
+exec(compile(ast.Module(body=keep,type_ignores=[]),str(script),'exec'),functions)
 
 class Guard(unittest.TestCase):
     def setUp(self):
