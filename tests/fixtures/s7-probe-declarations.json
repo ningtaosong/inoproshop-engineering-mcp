@@ -1,0 +1,32 @@
+{
+  "fixture": {
+    "PLC_PRG": {
+      "kind": "st_pou",
+      "declaration": "PROGRAM PLC_PRG\nVAR\n    DelayTime : DINT;\n    Config : ST_S7Config;\n    Configs : ARRAY [1..2] OF ST_S7Config;\n    Seen : DINT;\n    Message : STRING(40);\n    NeverUsed : DINT;\nEND_VAR",
+      "implementation": "DelayTime := 7;\nSeen := dElAyTiMe;\nSeen := GVL_Config.DelayTime;\nSeen := Config.DelayTime;\nSeen := Configs[1].DelayTime;\nMessage := 'DelayTime';\n(* DelayTime *)\n// GVL_Config.DelayTime"
+    },
+    "GVL_Config": {
+      "kind": "gvl",
+      "declaration": "VAR_GLOBAL\n    DelayTime : DINT;\nEND_VAR",
+      "implementation": ""
+    },
+    "ST_S7Config": {
+      "kind": "structure",
+      "declaration": "TYPE ST_S7Config :\nSTRUCT\n    DelayTime : DINT;\nEND_STRUCT\nEND_TYPE",
+      "implementation": ""
+    }
+  },
+  "expected": [
+    {"object":"PLC_PRG","region":"declaration","line":3,"column":5,"expression":"DelayTime","expected":"PLC_PRG.DelayTime","role":"declaration","staticExpected":"declaration"},
+    {"object":"GVL_Config","region":"declaration","line":2,"column":5,"expression":"DelayTime","expected":"GVL_Config.DelayTime","role":"declaration","staticExpected":"declaration"},
+    {"object":"ST_S7Config","region":"declaration","line":3,"column":5,"expression":"DelayTime","expected":"ST_S7Config.DelayTime","role":"declaration","staticExpected":"declaration"},
+    {"object":"PLC_PRG","region":"implementation","line":1,"column":1,"expression":"DelayTime","expected":"PLC_PRG.DelayTime","role":"write","staticExpected":"inferred"},
+    {"object":"PLC_PRG","region":"implementation","line":2,"column":9,"expression":"dElAyTiMe","expected":"PLC_PRG.DelayTime","role":"read","staticExpected":"inferred"},
+    {"object":"PLC_PRG","region":"implementation","line":3,"column":20,"expression":"GVL_Config.DelayTime","expected":"GVL_Config.DelayTime","role":"read","staticExpected":"inferred"},
+    {"object":"PLC_PRG","region":"implementation","line":4,"column":16,"expression":"Config.DelayTime","expected":"ST_S7Config.DelayTime（经 PLC_PRG.Config）","role":"read","staticExpected":"inferred"},
+    {"object":"PLC_PRG","region":"implementation","line":5,"column":20,"expression":"Configs[1].DelayTime","expected":"ST_S7Config.DelayTime（经 PLC_PRG.Configs 的数组元素）","role":"read","staticExpected":"unknown"},
+    {"object":"PLC_PRG","region":"implementation","line":6,"column":13,"expression":"'DelayTime'","expected":null,"role":"string","staticExpected":"non-reference"},
+    {"object":"PLC_PRG","region":"implementation","line":7,"column":4,"expression":"(* DelayTime *)","expected":null,"role":"comment","staticExpected":"non-reference"},
+    {"object":"PLC_PRG","region":"implementation","line":8,"column":15,"expression":"// GVL_Config.DelayTime","expected":null,"role":"comment","staticExpected":"non-reference"}
+  ]
+}

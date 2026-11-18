@@ -6,11 +6,12 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { type Config, type Adapter, ROOT } from './adapter.js';
 import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
-import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema, type Reply } from './contracts.js';
+import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema,variableUsagesDataSchema, type Reply } from './contracts.js';
 import {propertyEvidence,propertyCreationEvidence,propertyPreservationEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE,PROPERTY_COVERAGE_VERSION} from './properties.js';
 import {searchResult,taskResult,nativeInventoryResult,SEARCH_RESULT_VERSION} from './queries.js';
 import {singleIdentifier,IDENTIFIER_LEXER_VERSION,LEGACY_IDENTIFIER_LEXER_VERSION} from './st-lex.js';
 import {variableResult,VARIABLE_PARSER_VERSION,parseDeclaration} from './variables.js';
+import {variableUsagesResult} from './variable-usages.js';
 import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
@@ -26,7 +27,7 @@ import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
 // command always opens once; the three writes below additionally save and reopen.
 const S5B_PROMPT_STAGES:Record<string,readonly ('initial-open'|'reopen')[]> = {
   project_open:['initial-open'], project_structure:['initial-open'], object_list:['initial-open'],
-  library_inspect:['initial-open'], project_search:['initial-open'], object_read:['initial-open'],
+  library_inspect:['initial-open'], project_search:['initial-open'], object_read:['initial-open'], variable_usages:['initial-open'],
   library_placeholder_resolve:['initial-open','reopen'], code_apply_change:['initial-open','reopen'],
   project_build:['initial-open'], project_save:['initial-open','reopen']
 };
@@ -314,6 +315,7 @@ export class EngineeringService {
     }
     if(['folder_create','object_move'].includes(op.tool))return organizationResult(result,op.args,op.tool);
     if(op.tool==='variable_inspect')return variableResult(result,op.args);
+    if(op.tool==='variable_usages')return variableUsagesResult(result,op.args);
     if(op.tool==='project_compare')return captureReply(result,op.args,op.project!);
     return op.tool==='project_search'?searchResult(result,op.args):op.tool==='task_inspect'?taskResult(result,op.args):
       ['project_structure','device_inspect','library_inspect'].includes(op.tool)?nativeInventoryResult(result,op.args,op.tool):result;
@@ -424,6 +426,16 @@ export class EngineeringService {
       if(op.tool==='project_compare') {
         if(args.mode!=='capture'||!session||d!.mode!=='capture'||(d!.snapshot as any)?.evidence?.operationId!==op.operationId)invalid();
         return;
+      }
+      if(op.tool==='variable_usages') {
+        const result=variableUsagesDataSchema.safeParse(d);
+        if(!result.success||!session)invalid();
+        if(!result.success||!session)return;
+        const usage=result.data,e=usage.readOnlyEvidence;
+        if(usage.projectId!==session.projectId||usage.applicationId!==args.applicationId||
+          canonical(usage.applicationPath)!==canonical(session.applications?.find(x=>x.applicationId===args.applicationId)?.path)||
+          pathKey(usage.projectPath)!==pathKey(session.workingPath)||usage.diskHash!==session.diskHash||!e.unchanged||
+          e.beforeDiskHash!==usage.diskHash||e.afterCloseDiskHash!==usage.diskHash||e.postExitDiskHash!==usage.diskHash)invalid();
       }
       if(['search','variables','tasks','structure','device','libraries'].includes(command)) {
         const wide=command==='structure'||command==='device';
@@ -650,13 +662,14 @@ export class EngineeringService {
       if(currentHash!==expected)throw new DomainError('conflict','COMPARE_DISK_CHANGED','采集前文件与登记版本不一致；未启动 IDE 或保存');
       return this.bridge(op,'compare_capture',{...s,workingPath:projectPath,diskHash:expected,...(s.editMode==='direct'?{directPath:await fs.realpath(projectPath)}:{})},{...a,readDiskHash:currentHash});
     }
-    if(['project_search','variable_inspect','task_inspect','project_structure','device_inspect','library_inspect'].includes(op.tool)) {
+    if(['project_search','variable_inspect','task_inspect','project_structure','device_inspect','library_inspect','variable_usages'].includes(op.tool)) {
       if(op.tool==='project_search' && (a.offset>0&&!a.expectedVersion || new Set(a.areas).size!==a.areas.length))
         throw new DomainError('failed','SEARCH_PAGE_VERSION_REQUIRED','续页必须携带首个结果版本，搜索区域不能重复');
       if(op.tool==='project_search'&&a.matchMode==='identifier'&&(!singleIdentifier(a.query)||a.areas.includes('name')))
         throw new DomainError('failed','SEARCH_IDENTIFIER_QUERY','identifier只接受单个标识符且明确指定源码区域；未派发IDE');
       const currentHash=digest(await fs.readFile(s.workingPath));
       if(currentHash!==s.diskHash)throw new DomainError('conflict','READ_DISK_CHANGED','正式读取前工作副本与登记版本不一致；未启动 IDE 或保存');
+      if(op.tool==='variable_usages')return this.bridge(op,'search',s,{...a,targetKind:'application',readDiskHash:currentHash});
       if(op.tool==='project_search'&&a.expectedVersion)return this.searchPage(op,s,currentHash);
       if((a.valueRead||a.fieldRead||a.sourceRead)&&a.offset!==0)throw new DomainError('conflict','VALUE_PAGE_OFFSET','原文详情读取时外层offset必须为0');
       if((nativeQuery||op.tool==='library_inspect'||op.tool==='variable_inspect')&&(a.offset>0||a.expectedVersion||a.valueRead||a.fieldRead||a.sourceRead))return this.nativePage(op,s,currentHash);
