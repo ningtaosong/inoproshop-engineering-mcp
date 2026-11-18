@@ -1246,6 +1246,13 @@ def dispatch(req):
         sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
         from project_create import create_minimal
         return create_minimal(req,dict(globals(),projects=projects))
+    if req['command']=='device_catalog':
+        if projects.primary is not None:return failure('conflict','UNOWNED_PROJECT',u'新启动实例已有工程；未读取设备描述目录')
+        sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+        from device_catalog import device_catalog_inventory
+        inventory=device_catalog_inventory(device_repository, req['args'].get('detail'))
+        if projects.primary is not None:return failure('unknown','UNOWNED_PROJECT',u'查询期间检测到活动工程；无法确认目录证据')
+        return success(u'已读取本机原生设备描述目录；未打开工程或读取固件',inventory)
     if req['command']=='catalog':
         if projects.primary is not None:return failure('conflict','UNOWNED_PROJECT',u'新启动实例已有工程；未读取库目录')
         inventory,_=installed_inventory()

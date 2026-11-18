@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.28.0';
+export const VERSION = '0.29.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -12,6 +12,22 @@ const uuid = z.uuid();
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const target = { projectId: uuid, targetKind:z.enum(['application','pool']).default('application'), applicationId: uuid.nullable() };
 const request = { requestId: id };
+const nativeDeviceText=z.string().min(1).max(256);
+const nativeDeviceType=z.string().regex(/^-?(0|[1-9][0-9]{0,9})$/);
+const deviceCatalogIdentity=z.object({type:nativeDeviceType,id:nativeDeviceText,deviceDescriptionVersion:nativeDeviceText}).strict();
+export const deviceDescriptionFields=z.object({
+  type:nativeDeviceType.nullable(),id:nativeDeviceText.nullable(),deviceDescriptionVersion:nativeDeviceText.nullable(),
+  name:nativeDeviceText.nullable(),vendor:nativeDeviceText.nullable()
+});
+export const deviceCatalogEntry=deviceDescriptionFields.extend({
+  source:z.object({name:nativeDeviceText.nullable(),isInternal:z.boolean().nullable()}),
+  unavailableFields:z.array(z.string()).max(7)
+});
+export const deviceCatalogScope=z.object({
+  capturedSources:z.number().int().min(0).max(64),truncated:z.boolean(),
+  enumerationFailures:z.array(z.object({stage:z.enum(['source-devices','repository-sources']),
+    sourceIndex:z.number().int().min(0).max(63).nullable()})).max(65)
+});
 export const schemas = {
   environment_inspect: z.object({}).strict(),
   session_status: z.object({}).strict(),
@@ -71,6 +87,14 @@ export const schemas = {
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/),expectedStructureVersion:hash,expectedDiskHash:hash}).strict(),
   object_move:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,objectId:uuid,
     sourceParentId:uuid,targetParentId:uuid,expectedStructureVersion:hash,expectedDiskHash:hash}).strict(),
+  device_catalog:z.object({
+    query:z.string().trim().min(1).max(160).optional().describe('筛选词，不区分大小写；默认搜索原生型号名称。'),
+    field:z.enum(['name','vendor','type','id','deviceDescriptionVersion','source']).optional(),
+    offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(50).default(20),
+    expectedVersion:hash.optional().describe('按实际 nextOffset 续页时，传上页返回的 version，并保持原 query 和 field。'),
+    detail:deviceCatalogIdentity.optional().describe('使用已返回的原生 type、id、deviceDescriptionVersion 原值，重新核对同一条描述。')
+  }).strict().refine(a=>(a.offset===0||!!a.expectedVersion)&&(!a.field||!!a.query)&&
+    (!a.detail||(!a.query&&a.offset===0)),'续页必须传 expectedVersion；field 仅用于带 query 的筛选；详情不能和筛选或翻页同时使用'),
   device_inspect:z.object({projectId:uuid,deviceId:uuid,offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(200).default(100),
     maxParameters:z.number().int().min(1).max(20000).default(5000),expectedVersion:hash.optional(),
     valueRead:z.object({parameterIndex:z.number().int().min(0).max(19999),offset:z.number().int().min(0).default(0),
@@ -261,6 +285,15 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   project_structure:structureDataSchema.partial().passthrough(),
   folder_create:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),structureVersion:hash.optional(),structuralEvidence:z.record(z.string(),z.unknown()).optional(),object:z.record(z.string(),z.unknown()).optional(),...snapshotFields}).passthrough(),
   object_move:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),structureVersion:hash.optional(),structuralEvidence:z.record(z.string(),z.unknown()).optional(),object:z.record(z.string(),z.unknown()).optional(),...snapshotFields}).passthrough(),
+  device_catalog:z.object({
+    version:hash,entries:z.array(deviceCatalogEntry),readOrigin:z.literal('native-device-repository'),
+    projectOpened:z.literal(false),firmwareStatus:z.literal('not-read'),detailVerified:z.literal(true),
+    scope:deviceCatalogScope.extend({enumerationComplete:z.boolean(),fieldReadComplete:z.boolean(),
+      matchCoverageComplete:z.boolean(),capturedEntries:z.number().int(),observedMatches:z.number().int()}),
+    page:z.object({offset:z.number().int(),limit:z.number().int(),returned:z.number().int(),total:z.number().int().nullable(),
+      hasMore:z.boolean(),nextOffset:z.number().int().nullable(),query:z.string().nullable(),
+      field:z.enum(['name','vendor','type','id','deviceDescriptionVersion','source']).nullable()})
+  }).partial(),
   device_inspect:deviceDataSchema.partial().passthrough(),
   declaration_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),parentId:uuid.optional(),
     created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),
