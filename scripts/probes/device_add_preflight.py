@@ -117,11 +117,65 @@ def comparable(nodes):
                by_id.get(row.get('parentGuid'),{}).get('nativeType')==task_type else row for row in nodes]
 
 
-def rejection(plan, nodes, placements, repo):
+STYLE_NAME = '__VisualizationStyle'
+STYLE_TYPE = '8e687a04-7ca7-42d3-be06-fcbda676c5ef'
+
+
+def style_leaf(rows):
+    named = [i for i,row in enumerate(rows)
+             if (row.get('name') or '').lower() == STYLE_NAME.lower() or row.get('path') == [STYLE_NAME]]
+    if len(named)!=1:
+        return None
+    index=named[0]
+    row=rows[index]
+    key=row.get('guid')
+    if (row.get('name')!=STYLE_NAME or row.get('path')!=[STYLE_NAME] or row.get('nativeType')!=STYLE_TYPE or
+            row.get('parentGuid') is not None or row.get('device') is not False or row.get('explicit') is not False or
+            'connector' in row or 'connectorReadError' in row or 'identity' in row or 'identityReadError' in row or
+            not key or sum(1 for value in rows if value.get('guid')==key)!=1):
+        return None
+    if any(other.get('parentGuid')==key or
+           (other.get('path') or [])[:1]==[STYLE_NAME] and len(other['path'])>1 for other in rows):
+        return None
+    return index
+
+
+def tree_views(expected, actual, cross_open=False, task_proxy_rule=True):
+    """Pair-wise comparison, with an exact, unique root style leaf as the sole new exception."""
+    first=comparable(expected) if task_proxy_rule else list(expected)
+    second=comparable(actual) if task_proxy_rule else list(actual)
+    if not cross_open:
+        return first,second
+    index_before,index_after=style_leaf(expected),style_leaf(actual)
+    if index_before is None or index_before!=index_after:
+        return first,second
+    old,new=expected[index_before],actual[index_after]
+    if (dict(old,guid=new['guid'])!=new or
+            any(i!=index_after and row.get('guid')==old['guid'] for i,row in enumerate(actual)) or
+            any(i!=index_before and row.get('guid')==new['guid'] for i,row in enumerate(expected))):
+        return first,second
+    # Preserve every field and position, including the original GUID in the
+    # evidence. Never give two nodes the same anonymous normalized identity.
+    second[index_after]=dict(second[index_after],guid=old['guid'])
+    return first,second
+
+
+def tree_difference(expected, actual, cross_open=False, task_proxy_rule=True):
+    first,second=tree_views(expected,actual,cross_open,task_proxy_rule)
+    return first_difference(first,second,'$.nodes')
+
+
+def verify_saved_tree(expected, actual):
+    diff=tree_difference(expected,actual,cross_open=True)
+    if diff:
+        raise ProbeRejected('SAVED_TREE_CHANGED',diff)
+
+
+def rejection(plan, nodes, placements, repo, cross_open=False):
     """Append only to a read-confirmed vacant connector; never use plug/update."""
     item = plan['candidate']
     wanted = plan['parentGuid']
-    if comparable(nodes) != comparable(plan['nodes']):
+    if tree_difference(plan['nodes'],nodes,cross_open):
         return 'TREE_CHANGED'
     copies = [entry for entry in repo['matches'] if entry['identity']==item['identity']]
     if (repo['scope']['truncated'] or repo['scope']['enumerationFailures'] or repo.get('metadataReadFailures') or
@@ -371,7 +425,7 @@ def check_equal(code, expected, actual, path):
     return actual
 
 
-def verify_preflight(api, target, seed, repository, plan, nodes, placements, catalog, controls, journal=None):
+def verify_preflight(api, target, seed, repository, plan, nodes, placements, catalog, controls, journal=None, cross_open=False):
     step = journal.step if journal else without_journal
     step('plan-instance-name',lambda:check_equal('PLAN_NAME_CHANGED',NAME,plan['name'],'$.name'))
     step('fixture-hash-before-check',lambda:check_equal('DISK_CHANGED',seed,api['file_hash'](target),'$.mainSha256'))
@@ -382,12 +436,12 @@ def verify_preflight(api, target, seed, repository, plan, nodes, placements, cat
     native_matches=[row for row in catalog['matches'] if row['identity']==candidate['identity']]
     step('planned-directory-identity',lambda:native_matches)
     def guard():
-        code=rejection(plan,nodes,placements,catalog)
+        code=rejection(plan,nodes,placements,catalog,cross_open)
         if journal:
             journal.record('rejection','observed',{'rejection':code})
         if code:
             if code=='TREE_CHANGED':
-                diff=first_difference(comparable(plan['nodes']),comparable(nodes),'$.nodes')
+                diff=tree_difference(plan['nodes'],nodes,cross_open)
                 if journal:
                     journal.record('tree-difference-context','observed',
                         {'rawFirstDifference':first_difference(plan['nodes'],nodes,'$.nodes'),
@@ -407,9 +461,12 @@ def verify_preflight(api, target, seed, repository, plan, nodes, placements, cat
             raise ProbeRejected(code,diff)
         return {'rejection':code}
     step('rejection',guard)
-    # The diagnostic additionally requires every raw tree field; the
-    # legacy rejection result above remains visible even for proxy GUID drift.
-    step('raw-tree-comparison',lambda:check_equal('RAW_TREE_CHANGED',plan['nodes'],nodes,'$.nodes'),lambda value:dict(nodeCount=len(value)))
+    if cross_open:
+        expected,actual=tree_views(plan['nodes'],nodes,True)
+        step('cross-open-tree-comparison',lambda:check_equal('TREE_CHANGED',expected,actual,'$.nodes'),
+             lambda value:dict(nodeCount=len(value),rawDifference=first_difference(plan['nodes'],nodes,'$.nodes')))
+    else:
+        step('raw-tree-comparison',lambda:check_equal('RAW_TREE_CHANGED',plan['nodes'],nodes,'$.nodes'),lambda value:dict(nodeCount=len(value)))
     if 'nativeSite' in plan:
         step('native-site-comparison',lambda:check_equal('SITE_CHANGED',plan['nativeSite'],location,'$.nativeSite'))
     identity=candidate['identity']

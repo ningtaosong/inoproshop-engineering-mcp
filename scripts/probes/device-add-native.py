@@ -10,8 +10,8 @@ from System.Diagnostics import Process
 from scriptengine import device_repository, projects, system
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from device_add_preflight import (NAME, comparable, file_available, guid, load_fixed_helpers,
-    native_snapshot, read_state, task_and_st, verify_preflight)
+from device_add_preflight import (NAME, comparable, connector, file_available, guid, load_fixed_helpers,
+    native_snapshot, read_state, task_and_st, tree_difference, verify_preflight, verify_saved_tree)
 
 
 def build(api, project, nodes, items, file_path):
@@ -164,8 +164,9 @@ def run_stage(root, repo, mode, api):
         reopened_result = assess_after(plan,nodes,reopened,new_id)
         reopened_config = read_config(reopened_items[new_id])
         emit('reopen-readback',dict(tree=reopened,delta=reopened_result,initialConfiguration=reopened_config,
-                                    matchesWriteTree=comparable(reopened)==comparable(immediate),configurationMatches=reopened_config==config))
-        if comparable(reopened)!=comparable(immediate) or reopened_config!=config or task_and_st(api,handle,reopened,reopened_items)!=controls:
+                                    matchesWriteTree=not tree_difference(immediate,reopened,cross_open=True),configurationMatches=reopened_config==config))
+        verify_saved_tree(immediate,reopened)
+        if reopened_config!=config or task_and_st(api,handle,reopened,reopened_items)!=controls:
             raise ValueError('Reopened evidence differs')
         compiled = build(api,handle,reopened,reopened_items,target)
         emit('saved-build',compiled)
