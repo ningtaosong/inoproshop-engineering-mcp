@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.28.0 候选版的三十一项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。
+你通过本地 InoProShop MCP 0.29.0 候选版的三十二项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
 
 ## 解释语义（唯一规则）

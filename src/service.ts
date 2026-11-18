@@ -18,6 +18,7 @@ import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
 import {organizationResult} from './organization.js';
+import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
 
@@ -99,13 +100,13 @@ export class EngineeringService {
     if(args.reconcile && (op.status==='running'||op.status==='unknown')) {
       if(op.status==='running' && alive(op.ownerPid) && !this.persistencePoison) return this.operationReply(op,'running','原服务仍在执行，查询不会中断或重放');
       await this.store.acquire();
-      if(op.tool==='library_catalog') {
+      if(op.tool==='library_catalog'||op.tool==='device_catalog') {
         if(op.bridge?.pid&&alive(op.bridge.pid))return this.operationReply(op,'unknown','原目录探测进程仍存在；不重放');
         if(op.bridge){
           const observed=await this.adapter.reconcile(op.bridge.directory);
           if(observed){const parsed=this.prepareResult(op,replySchema.parse(observed));this.validateEvidence(op,parsed);await this.finish(op,boundNativeReply(parsed));return op.response!;}
         }
-        return this.operationReply(op,'unknown','本机库目录原操作缺少可确认终态；不重放');
+        return this.operationReply(op,'unknown','本机目录原操作缺少可确认终态；不重放');
       }
       if(op.tool==='project_create') {
         if(!op.creation) return this.operationReply(op,'unknown','缺少原新建路径预留证据，保留现场，不能重放');
@@ -176,7 +177,7 @@ export class EngineeringService {
     }
     if(ops.some(o=>!isolatedIds.has(o.operationId)&&(o.status==='unknown'||(o.status==='running'&&!alive(o.ownerPid)))))
       throw new DomainError('unknown','PENDING_UNKNOWN','存在未决操作；请先查询并核对 operation_status，禁止派发后续工程操作');
-    const globalQuery=tool==='library_catalog';
+    const globalQuery=tool==='library_catalog'||tool==='device_catalog';
     const switching=['project_create','project_open','project_open_copy','project_activate'].includes(tool);
     if(switching && ops.some(o=>o.status==='running'&&!isolatedIds.has(o.operationId)))throw new DomainError('conflict','PENDING_OPERATION','存在运行中或排队操作，不能切换；请先查询原操作');
     let registry;
@@ -298,6 +299,7 @@ export class EngineeringService {
   }
   private prepareResult(op:Operation,result:Reply):Reply {
     if(op.tool==='library_catalog')return catalogResult(result,op.args);
+    if(op.tool==='device_catalog')return deviceCatalogResult(result,op.args);
     if(op.tool==='variable_edit'&&result.status==='succeeded'&&(op as any).variableOriginal){
       const before=(op as any).variableOriginal;
       const type=(op as any).variableTypeOriginal;
@@ -318,7 +320,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.tool==='variable_edit'?(op as any).effectiveArgs??op.args:op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',library_catalog:'catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -333,6 +335,10 @@ export class EngineeringService {
           declarationMatches(v.objectType,v.path?.at(-1) || '',v.declaration);
       };
       if(!d) invalid();
+      if(command==='device_catalog'){
+        if(!isHash(d!.version)||d!.projectOpened!==false||d!.firmwareStatus!=='not-read'||!Array.isArray(d!.entries)||!d!.scope||
+          (args.detail?d!.detailVerified!==true||d!.entries.length!==1:!d!.page))invalid();
+      }
       if(command==='catalog'){
         if(!isHash(d!.catalogVersion)||d!.identityScheme!=='installed-libraries-v1'||!Array.isArray(d!.entries)||!d!.page||!d!.scope)invalid();
         return;
@@ -529,10 +535,10 @@ export class EngineeringService {
   }
   private async execute(op:Operation):Promise<Reply> {
     const a=op.args;
-    if(op.tool==='library_catalog'){
+    if(op.tool==='library_catalog'||op.tool==='device_catalog'){
       await maintenanceGuard();
       op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
-      const raw=await this.adapter.execute({operationId:op.operationId,command:'catalog',projectPath:'',args:a},op.bridge.directory,
+      const raw=await this.adapter.execute({operationId:op.operationId,command:op.tool==='device_catalog'?'device_catalog':'catalog',projectPath:'',args:a},op.bridge.directory,
         async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);});
       const parsed=this.prepareResult(op,replySchema.parse(raw));this.validateEvidence(op,parsed);
       return boundNativeReply(parsed);
