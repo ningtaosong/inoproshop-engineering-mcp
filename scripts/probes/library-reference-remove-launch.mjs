@@ -6,9 +6,11 @@ import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import crypto from 'node:crypto';
 const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..','..');
-const run=process.argv[2];
+const [run,exe,store,leaseModule,...extra]=process.argv.slice(2);
 if(process.platform!=='win32'||!/^D:\\InoPro-LibraryRemove-Probe-[0-9-]+$/i.test(run??''))throw Error('Requires dedicated Windows probe folder');
-const exe='D:\\InProShop\\CODESYS\\Common\\InoProShop.exe';
+if(extra.length || ![exe,store,leaseModule].every(value=>typeof value==='string' && path.isAbsolute(value)) ||
+   path.basename(exe).toLowerCase()!=='inoproshop.exe' || path.basename(leaseModule)!=='lease-process.js')
+ throw Error('Provide absolute paths to InoProShop.exe, the actual daily data directory, and its trusted fixed build dist/lease-process.js');
 const script=path.join(repo,'scripts','probes','library-reference-remove-probe.py');
 const argv=['--profile="InoProShop(V1.9.1.6)"','--runscript="'+script+'"'];
 const out=(n,v)=>fs.writeFileSync(path.join(run,n),JSON.stringify(v,null,2)+'\n',{flag:'wx'});
@@ -18,9 +20,6 @@ for(const k of ['unused','used']){
  if(fs.existsSync(p+'.~u') || crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex')!==fixedHash)
   throw Error('Initial occupied/changed fixture; no replay or overwrite');
 }
-const store='D:\\InoPro\\.local\\dsh-phase4-repair-20261028-A1';
-const reviewedDaily='C:\\Users\\Administrator\\.codex\\worktrees\\s5b-daily-fixed-028\\InoPro';
-const leaseModule=path.join(reviewedDaily,'dist','lease-process.js');
 const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const snapshot=label=>{
  const result={label,utc:new Date().toISOString(),markers:{},unknownOperations:{}};
