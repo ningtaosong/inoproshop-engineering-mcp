@@ -54,6 +54,17 @@ class Diagnostics(unittest.TestCase):
         self.assertEqual(journal.primaryFailure['error']['code'],'RAW_TREE_CHANGED')
         self.assertEqual(journal.primaryFailure['error']['difference']['path'],'$.nodes[2].guid')
 
+        style=dict(guid='first-style',name='__VisualizationStyle',path=['__VisualizationStyle'])
+        planned.append(style)
+        live.append(dict(style,guid='second-style'))
+        journal=Journal(lambda number,event:None)
+        run_primary(lambda callback:callback(),work,lambda:True,journal)
+        self.assertEqual(journal.primaryFailure['error']['code'],'TREE_CHANGED')
+        self.assertEqual(journal.primaryFailure['error']['difference']['objectPath'],['__VisualizationStyle'])
+        context=next(row['evidence'] for row in journal.events if row['step']=='tree-difference-context')
+        self.assertEqual(context['rawFirstDifference']['objectPath'],['MainTask','PLC_PRG'])
+        self.assertEqual(context['guardFirstDifference']['expected'],'first-style')
+
     def test_inner_exception_kept_separate_from_wrapper_cleanup_and_log_errors(self):
         def failing_sink(number,row):
             if row['state']=='failed':

@@ -387,7 +387,11 @@ def verify_preflight(api, target, seed, repository, plan, nodes, placements, cat
             journal.record('rejection','observed',{'rejection':code})
         if code:
             if code=='TREE_CHANGED':
-                diff=first_difference(plan['nodes'],nodes,'$.nodes')
+                diff=first_difference(comparable(plan['nodes']),comparable(nodes),'$.nodes')
+                if journal:
+                    journal.record('tree-difference-context','observed',
+                        {'rawFirstDifference':first_difference(plan['nodes'],nodes,'$.nodes'),
+                         'guardFirstDifference':diff})
             elif code=='IDENTITY_UNCONFIRMED':
                 diff=first_difference([candidate],native_matches,'$.catalog.matches')
                 if not diff:
