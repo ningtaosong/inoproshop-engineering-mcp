@@ -2,7 +2,7 @@
 
 规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-19。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-当前 main 为 0.33.0 候选版、36 项工具。在已验 AM610 设备描述 `3.5.11.11` 的 Application 中，[`task_create`](docs/task-create.md) 新建周期任务并绑定第一个已有根级 ST PROGRAM。[`task_call_append`](docs/task-call-append.md) 给已有周期任务末尾追加一个已有根级 ST PROGRAM，保留原调用顺序和注释。本机 InoProShop 1.9.1.6 的单条调用移除探测受阻，未提供移除工具。限定的单条调用替换已交付，调用重排待单独探测。
+当前 main 为 0.33.0 候选版、36 项工具。在已验 AM610 设备描述 `3.5.11.11` 的 Application 中，[`task_create`](docs/task-create.md) 新建周期任务并绑定第一个已有根级 ST PROGRAM。[`task_call_append`](docs/task-call-append.md) 给已有周期任务末尾追加一个已有根级 ST PROGRAM，保留原调用顺序和注释。本机 InoProShop 1.9.1.6 的单条调用移除探测受阻，未提供移除工具。限定的单条调用替换已交付，本探测分支已检查调用重排接口，详见下表。
 
 S6a 已交付本机设备描述查询。S6b 已完成 AM610 夹具上 `SMC_FreeEncoder` 与 `Device` 父连接器 `0 / Common.SoftMotion.General` 这一组合的可行性探测，结论为仅用独立脚本做只读选址评估。未提供设备添加或选址评估 MCP 工具，离线设备参数写入未开发。见 [S6b 探测结论与证据入口](docs/device-add-probe.md#探测结论与证据入口)。
 
@@ -56,7 +56,7 @@ S4b 第二子阶段在 `codex/fb-interface-variable-edit` 功能分支完成限�
 | S8a 追加 | 已有周期任务末尾追加一个已有程序 | 已验 AM610、同一 Application 根级 ST PROGRAM | 完整有序原生元组、追加与保存重开读回 | [已交付](docs/task-call-append.md)，0.32.0 候选版／35 项工具 |
 | S8a 移除 | 从已有任务移除一个调用，保留 PROGRAM 定义 | 本机 InoProShop 1.9.1.6 | 修正后的受支持公开接口或厂商修复，独立夹具验收 | [探测受阻，无产品能力](docs/task-call-remove-diagnosis.md) |
 | S8a 替换 | 替换已有任务中的一条 PROGRAM 调用 | 已验 AM610、周期任务、根级 ST PROGRAM | 备注、顺序、定义及保存重开读回 | [0.33.0 已交付](docs/task-call-replace.md) |
-| S8a 重排 | 调整已有任务的调用顺序 | 与替换分别探测 | 验证目标次序、调用身份及保存版本 | 待探测 |
+| S8a 重排 | 调整已有任务的调用顺序 | 本机 InoProShop 1.9.1.6 | 需公开行级移动入口，再验证绑定、备注和保存持久化 | [本分支接口探测受阻，暂不开发](docs/task-call-reorder-probe.md) |
 | S8b、S8c | I/O 与 PDO 接口探索 | 分别探测，能够持久化读回后才立项 | 设备能力及独立测试工程 | 未开始 |
 | S9a | PLC 在线连接与只读监控 | 设备／应用状态、限定变量实际值 | 明确型号与固件、原生接口探测、独立测试 PLC | 后续规划，未启动 |
 | S9b | 限定运行参数写入 | 允许范围内的变量写值及读回，不含强制 | S9a 验收；变量类型、范围及写入语义确认 | 后续规划，未启动 |
