@@ -3,6 +3,10 @@ import {DomainError} from './contracts.js';
 
 export const TASK_CONFIGURATION_SCHEME='task-configuration-v1';
 export const TASK_CREATE_ST_IMPLEMENTATION_TYPE='3b83b776-fb25-43b8-99f2-3c507c9143fc';
+export function isTaskAppendCall(row:unknown):row is [string,string] {
+  return Array.isArray(row)&&row.length===2&&typeof row[0]==='string'&&row[0].length>0&&typeof row[1]==='string';
+}
+
 export function configuredIntervalMs(fields:any):number|undefined {
   if(fields?.interval_unit!=='ms')return;
   const m=/^(?:t#(\d+)ms|(\d+))$/i.exec(fields.interval??'');

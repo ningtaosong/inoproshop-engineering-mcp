@@ -17,7 +17,7 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
-import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {organizationResult} from './organization.js';
 import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
@@ -572,7 +572,7 @@ export class EngineeringService {
           if(d.taskId!==args.taskId||rows.length!==1||row.rawFields?.kind_of_task!=='Cyclic'||
             canonical(row.path.slice(0,-1))!==canonical(d.taskConfigurationPath)||
             new Set(before.tasks.map((t:any)=>t.taskId)).size!==before.tasks.length||
-            before.tasks.some((t:any)=>t.rawCalls.some((call:any)=>!Array.isArray(call)||call.length!==2||call.some((v:unknown)=>typeof v!=='string')||!call[0]))||
+            before.tasks.some((t:any)=>!t.rawCalls.every(isTaskAppendCall))||
             row.rawCalls.some(([name]:string[])=>!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(name)||
               name.split('.').at(-1)?.toLowerCase()===targetName.toLowerCase())||
             canonical(before.programs.filter((p:any)=>p.path?.at(-1)?.toLowerCase()===targetName.toLowerCase()))!==

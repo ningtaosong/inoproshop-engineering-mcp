@@ -7,7 +7,7 @@ import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, type Reply } from './contracts.js';
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
-import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
 export class FixtureAdapter implements Adapter {
@@ -98,6 +98,12 @@ export class FixtureAdapter implements Adapter {
     }
     else if(req.command==='task_call_append') {
       const before=taskInventory(),taskConfigurationPath=[...before.applicationPath,'Task Configuration'];
+      const completeCalls=(inventory:typeof before)=>inventory.tasks.every((t:any)=>Array.isArray(t.rawCalls)&&t.rawCalls.every(isTaskAppendCall));
+      const readback=(stage:'afterAppend'|'reopen')=>{
+        const inventory=taskInventory();
+        if(p.nullTaskAppendCommentAt===stage)inventory.tasks.find((t:any)=>t.taskId===a.taskId).rawCalls[0][1]=null;
+        return inventory;
+      };
       const selected=before.tasks.filter((t:any)=>t.taskId===a.taskId),row=selected[0];
       const target=objects.find((o:any)=>o.objectId===a.programId),name=target?.path.at(-1);
       const program=target&&{objectId:target.objectId,applicationId:target.applicationId,path:target.path,contentHash:codeHash(target.declaration,target.implementation)};
@@ -105,11 +111,11 @@ export class FixtureAdapter implements Adapter {
         target.embeddedObjectTypes.map((v:string)=>v.toLowerCase()).sort():[];
       const reject=(status:'conflict'|'unsupported',code:string)=>({...reply(status,'Fixture rejected append before writing'),error:{code,message:'Fixture preflight rejected'}});
       if(digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash)result=reject('conflict','TASK_DISK_CHANGED');
+      else if(!completeCalls(before))result=reject('conflict','TASK_APPEND_IDENTITY_OR_COVERAGE');
       else if(taskConfigurationVersion(before)!==a.expectedTaskVersion)result=reject('conflict','TASK_VERSION_CHANGED');
       else if(!before.coverageComplete||selected.length!==1||p.taskConfigurationId!==a.taskConfigurationId||
         before.tasks.some((t:any)=>!t.callsComplete||t.unavailableFields.length||
-          canonical(t.path.slice(0,-1))!==canonical(taskConfigurationPath)||
-          t.rawCalls.some((call:any)=>call.length!==2||!call[0]))||
+          canonical(t.path.slice(0,-1))!==canonical(taskConfigurationPath))||
         !program||program.contentHash!==a.expectedProgramHash||canonical(target.path.slice(0,-1))!==canonical(before.applicationPath)||
         target.embeddedObjectTypesError||!programEmbeddedObjectTypes.includes(TASK_CREATE_ST_IMPLEMENTATION_TYPE)||
         canonical(before.programs.filter((item:any)=>item.path.at(-1).toLowerCase()===name?.toLowerCase()))!==
@@ -130,14 +136,16 @@ export class FixtureAdapter implements Adapter {
         await atomicJson(path.join(dir,'task-before.json'),facts);
         await atomicJson(path.join(dir,'task-append-dispatched.json'),{...appendedCall,taskId:a.taskId});
         p.tasks.find((t:any)=>t.applicationId===a.applicationId&&t.taskId===a.taskId).rawCalls.push(appendedCall.raw);
-        const afterAppend=taskInventory();
-        const uncertain=(message:string)=>({...reply('unknown',message,{...facts,partial:afterAppend,
+        const afterAppend=readback('afterAppend');
+        const uncertain=(message:string,partial=afterAppend)=>({...reply('unknown',message,{...facts,partial,
           primaryException:{message},automaticRollback:false}),error:{code:'TASK_APPEND_INCOMPLETE',message}});
         if(p.failTaskCallAppend)result=uncertain('Injected append error');
+        else if(!completeCalls(afterAppend))result=uncertain('Invalid call record after append');
         else {
           await atomicJson(req.projectPath,p);
-          const disk=digest(await fs.readFile(req.projectPath)),after=taskInventory(),version=taskConfigurationVersion(after);
-          result=p.failTaskAppendReopen?uncertain('Injected append reopen error'):
+          const disk=digest(await fs.readFile(req.projectPath)),after=readback('reopen'),version=taskConfigurationVersion(after);
+          result=p.failTaskAppendReopen?uncertain('Injected append reopen error',after):
+            !completeCalls(after)?uncertain('Invalid call record after reopen',after):
             reply('succeeded','任务末尾追加替身读回',{...facts,afterAppend,after,appendedCall,reopened:true,persistedToWorkingCopy:true,
               configurationVersion:version,taskConfigurationVersion:version,savedDiskHash:disk,workerDiskHash:disk,postExitDiskHashObserved:true});
         }

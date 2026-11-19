@@ -622,7 +622,19 @@ def search_inventory(project,args):
         result['scope']['propertyCoverageVersion']='fb-properties-v2';result['scope']['description']+='; native PUBLIC DINT read-only Property/Get and read-write Property/Get/Set under user ST FB, with native accessor structure evidence'
     return result
 
-def task_inventory(project,args):
+def task_append_call_row(row):
+    # The installed ScriptPouObjectList indexer builds an IronPython tuple.
+    if not isinstance(row, (tuple, list)) or len(row) != 2:
+        raise ValueError(u'原生调用行须为名称、注释两字段记录')
+    name, comment = row
+    if not isinstance(name, basestring) or not name:
+        raise ValueError(u'原生调用名称须为非空文本')
+    if not isinstance(comment, basestring):
+        raise ValueError(u'原生调用注释须为文本，可用空字符串')
+    return [text(name), text(comment)]
+
+
+def task_inventory(project,args,read_call=None):
     app,prefix,rows,errors = query_rows(project,args)
     tasks,programs,failures = [],[],[]
     fields = ("kind_of_task","priority","interval","interval_unit","event_pou_guid","event","external_event","core_binding","parent_synchron_task")
@@ -637,7 +649,9 @@ def task_inventory(project,args):
                 except Exception as error:task["unavailableFields"].append({"field":"watchdog."+field,"reason":text(error)})
             try:
                 calls=item.pous
-                for index in range(len(calls)):task["rawCalls"].append([text(v) for v in calls[index]])
+                for index in range(len(calls)):
+                    row = calls[index]
+                    task["rawCalls"].append(read_call(row) if read_call is not None else [text(v) for v in row])
             except Exception as error:
                 task["callsComplete"]=False;task["unavailableFields"].append({"field":"pous","reason":text(error)})
             tasks.append(task)
@@ -745,9 +759,9 @@ def task_config_update(project,req,args,state):
         return failure('unknown','TASK_WRITE_INCOMPLETE',text(e),dict(common,actions=actions,partial=partial,
             checkpoint=req['checkpointPath'],primaryException=exception_evidence(e),automaticRollback=False)),state['project']
 
-def task_create_context(project,args):
+def task_create_context(project,args,read_call=None):
     """Read only identity/configuration within the same owned native handle."""
-    before=task_inventory(project,args)
+    before=task_inventory(project,args,read_call)
     required=set(('kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'))
     if (not before['coverageComplete'] or len(set(t['taskId'] for t in before['tasks']))!=len(before['tasks']) or
         any(not t['callsComplete'] or not required.issubset(t['rawFields']) or
@@ -799,20 +813,18 @@ def task_call_append(project, req, args, state):
         return failure('conflict','TASK_DISK_CHANGED',u'磁盘工程与预期不符，未写入'),project
 
     def read_target(opened):
-        inventory,config,facts=task_create_context(opened,args)
+        inventory,config,facts=task_create_context(opened,args,task_append_call_row)
         rows=[row for row in inventory['tasks'] if row['taskId']==args['taskId']]
         handles=[item for item in config.get_children(False) if getattr(item,'is_task',False) and
                  text(item.guid).lower()==args['taskId']]
         if len(rows)!=1 or len(handles)!=1 or rows[0]['path']!=facts['taskConfigurationPath']+[text(handles[0].get_name())]:
             raise ValueError(u'找不到任务配置下的唯一指定任务')
-        if any(len(call)!=2 or not call[0] for row in inventory['tasks'] for call in row['rawCalls']):
-            raise ValueError(u'原生调用名称或注释清单不完整')
         return inventory,rows[0],handles[0],facts
 
     try:
         before,row,task,facts=read_target(project)
         calls=task.pous
-        live=[[text(v) for v in calls[i]] for i in range(len(calls))]
+        live=[task_append_call_row(calls[i]) for i in range(len(calls))]
         if live!=row['rawCalls']:
             raise ValueError(u'实际调用列表在本次句柄内读取不一致')
         if any(not re.match(r'^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\Z',call[0]) for call in live):
@@ -877,7 +889,7 @@ def task_call_append(project, req, args, state):
         primary=exception_evidence(error)
         partial=None
         if state['project'] is not None:
-            try:partial=task_inventory(state['project'],args)
+            try:partial=task_inventory(state['project'],args,task_append_call_row)
             except Exception:pass
         return failure('unknown','TASK_APPEND_INCOMPLETE',text(error),dict(common,partial=partial,
                        primaryException=primary,automaticRollback=False)),state['project']

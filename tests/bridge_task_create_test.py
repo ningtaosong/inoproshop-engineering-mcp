@@ -59,7 +59,7 @@ class TaskCreateTest(unittest.TestCase):
         self.project_file = self.path / 'AM610.project'
         self.project_file.write_bytes(b'unsaved probe fixture')
         tree = ast.parse(Path('bridge/worker.py').read_text(encoding='utf8'))
-        self.e = dict(unicode=str,long=int,hashlib=hashlib,json=json,os=os,re=re,shutil=shutil,CONTRACT='1.0.0')
+        self.e = dict(unicode=str,basestring=str,long=int,hashlib=hashlib,json=json,os=os,re=re,shutil=shutil,CONTRACT='1.0.0')
         exec(compile(ast.Module(body=[x for x in tree.body if isinstance(x, ast.FunctionDef)],type_ignores=[]),
                      'bridge/worker.py','exec'), self.e)
         root = self.project = Node(str(self.project_file),'root','project',path=str(self.project_file))
@@ -119,16 +119,15 @@ class TaskCreateTest(unittest.TestCase):
         return self.e['task_call_append'](self.project,self.req,args,{'project':self.project})[0]
 
     def test_append_preserves_multiple_calls_comments_and_other_tasks(self):
-        prefix=[['PLC_PRG','keep existing comment'],['Other','also keep']]
-        self.main.pous.extend([prefix[1]])
-        self.main.pous[0]=prefix[0]
+        prefix=[['PLC_PRG',''],['Other','保留中文注释'],['Third','None']]
+        self.main.pous[:]=[tuple(row) for row in prefix]
         self.make_task('Secondary','secondary',[['Other','unchanged']])
         self.refresh_version()
         result=self.append()
         self.assertEqual(result['status'],'succeeded',result)
-        self.assertEqual(self.main.pous,prefix+[['PRG_S8Probe','']])
+        self.assertEqual(result['data']['after']['tasks'][0]['rawCalls'],prefix+[['PRG_S8Probe','']])
         self.assertEqual((self.main.pous.add_calls,self.factory_calls,self.saves),(1,0,1))
-        self.assertEqual(result['data']['appendedCall'],dict(order=2,programId='program',raw=['PRG_S8Probe','']))
+        self.assertEqual(result['data']['appendedCall'],dict(order=3,programId='program',raw=['PRG_S8Probe','']))
         self.assertEqual(result['data']['afterAppend'],result['data']['after'])
 
     def test_append_rejects_repeated_target_even_if_qualified(self):
@@ -163,6 +162,67 @@ class TaskCreateTest(unittest.TestCase):
         self.assertEqual(self.append()['error']['code'],'TASK_APPEND_IDENTITY_OR_COVERAGE')
         self.assertEqual((self.main.pous.add_calls,self.saves),(0,0))
         self.assertEqual(self.events,[])
+
+    def test_append_rejects_raw_null_and_string_rows_before_dispatch(self):
+        for row in ([None,''],['PLC_PRG',None],'AB'):
+            with self.subTest(row=row):
+                self.main.pous[:]=[row]
+                # Match the legacy coerced inventory version to isolate the row guard.
+                self.refresh_version()
+                result=self.append()
+                self.assertEqual((result['status'],result['error']['code']),('conflict','TASK_APPEND_IDENTITY_OR_COVERAGE'))
+                self.assertEqual((self.main.pous.add_calls,self.saves),(0,0))
+                self.assertEqual(self.e['file_hash'](str(self.project_file)),self.args['expectedDiskHash'])
+                self.assertEqual(self.events,[])
+                self.assertFalse(Path(self.req['checkpointPath']).exists())
+
+    def test_append_rejects_raw_null_on_live_second_read(self):
+        class NullOnSecondRead(Calls):
+            reads=0
+
+            def __getitem__(self,index):
+                self.reads+=1
+                return ['PLC_PRG',None] if self.reads==2 else super().__getitem__(index)
+
+        self.main.pous=NullOnSecondRead([['PLC_PRG','None']])
+        # Calculate the matching version before setting the read counter for this call.
+        self.refresh_version()
+        self.main.pous.reads=0
+        result=self.append()
+        self.assertEqual((result['status'],result['error']['code']),('conflict','TASK_APPEND_IDENTITY_OR_COVERAGE'))
+        self.assertIn('注释须为文本',result['data']['primaryException']['message'])
+        self.assertEqual((self.main.pous.reads,self.main.pous.add_calls,self.saves),(2,0,0))
+        self.assertEqual(self.e['file_hash'](str(self.project_file)),self.args['expectedDiskHash'])
+
+    def test_append_detects_literal_none_becoming_null_after_add_or_reopen(self):
+        for stage in ('afterAdd','reopen'):
+            with self.subTest(stage=stage):
+                self.project_file.write_bytes(b'unsaved probe fixture')
+                self.main.pous=Calls([['PLC_PRG','None']])
+                self.events.clear()
+                self.saves=0
+                self.refresh_version()
+                def add_without_comment(name,comment):
+                    Calls.add(self.main.pous,name,comment)
+                    self.main.pous[0][1]=None
+
+                def reopen_without_comment(state):
+                    reopened=self.save_reopen(state)
+                    self.main.pous[0][1]=None
+                    return reopened
+
+                if stage=='afterAdd':
+                    self.main.pous.add=add_without_comment
+                self.e['lifecycle_save_reopen']=reopen_without_comment if stage=='reopen' else self.save_reopen
+                result=self.append()
+                self.assertEqual((result['status'],result['error']['code']),('unknown','TASK_APPEND_INCOMPLETE'))
+                self.assertFalse(result['data']['automaticRollback'])
+                self.assertFalse(result['data']['partial']['tasks'][0]['callsComplete'])
+                self.assertEqual(result['data']['before']['tasks'][0]['rawCalls'],[['PLC_PRG','None']])
+                self.assertEqual((self.main.pous.add_calls,self.saves),(1,int(stage=='reopen')))
+                self.assertEqual('afterAppend' in result['data'],stage=='reopen')
+                self.assertEqual(self.e['file_hash'](str(self.project_file))!=self.args['expectedDiskHash'],stage=='reopen')
+                self.assertTrue(Path(self.req['checkpointPath']).is_file())
 
     def test_append_unknown_after_add_never_saves_or_rolls_back(self):
         self.main.pous.fail=True
