@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.29.0';
+export const VERSION = '0.30.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -51,6 +51,13 @@ export const schemas = {
     maxObjects:z.number().int().min(1).max(2000).default(200),maxEntries:z.number().int().min(1).max(10000).default(2000),expectedVersion:hash.optional(),
     sourceRead:z.object({objectId:uuid,offset:z.number().int().min(0).default(0),limit:z.number().int().min(2).max(1024).default(512)}).strict().optional()}).strict()
     .refine(a=>a.maxInitializerMembers===undefined||a.includeInitializerMembers===true,'maxInitializerMembers仅适用于显式includeInitializerMembers=true'),
+  variable_usages:z.object({projectId:uuid,applicationId:uuid,
+    declaration:z.object({objectId:uuid,section:z.enum(['VAR','VAR_GLOBAL','STRUCT']),name:z.string().min(1).max(256),
+      contentHash:hash,startOffset:z.number().int().min(0),endOffset:z.number().int().min(1)}).strict()
+      .describe('从 variable_inspect 当前精确声明条目取 objectId、section、name、contentHash 和 namePosition 的 UTF-16 startOffset、endOffset。'),
+    offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(50).default(20),
+    expectedVersion:hash.optional().describe('续页时携带上一页的 version 和 nextOffset，完整保留原声明定位。')
+  }).strict().refine(a=>a.declaration.startOffset<a.declaration.endOffset&&(a.offset===0||!!a.expectedVersion),'名称范围须非空，续页须绑定 expectedVersion'),
   library_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(200).default(50),
     maxReferences:z.number().int().min(1).max(10000).default(2000),expectedVersion:hash.optional().describe('续页和字段原文查询：取成功 library_inspect 结果的 version。占位符写入另用目标页的 configurationVersion，不使用 version。'),
@@ -220,6 +227,23 @@ export const libraryDataSchema=z.object({...nativeQueryFields,applicationId:uuid
   fieldDetail:z.object({referenceIndex:z.number().int(),field:z.string(),offset:z.number().int(),endOffset:z.number().int(),text:z.string(),totalLength:z.number().int(),sha256:hash,hasMore:z.boolean(),nextOffset:z.number().int().nullable(),positionConvention:z.string()}).optional()
 }).passthrough();
 const declarationPositionSchema=z.object({startOffset:z.number().int().min(0),endOffset:z.number().int().min(0),line:z.number().int().min(1),column:z.number().int().min(1),endLine:z.number().int().min(1),endColumn:z.number().int().min(1)});
+const usageLocation=z.object({objectId:uuid,path:z.array(z.string()),contentHash:hash,region:z.literal('implementation'),
+  position:declarationPositionSchema,matchedText:z.string(),
+  context:z.object({text:z.string(),startOffset:z.number().int(),endOffset:z.number().int()})});
+export const variableUsagesDataSchema=z.object({projectId:uuid,applicationId:uuid,projectPath:z.string(),
+  applicationPath:z.array(z.string()),diskHash:hash,readOnlyEvidence:readEvidenceSchema,sourceSnapshot:hash,
+  version:hash,analysisVersion:z.string(),basis:z.literal('bounded-st-static-inference'),positionConvention:z.string(),
+  targetDeclaration:z.object({objectId:uuid,path:z.array(z.string()),section:z.enum(['VAR','VAR_GLOBAL','STRUCT']),
+    name:z.string(),contentHash:hash,namePosition:declarationPositionSchema,typeRaw:z.string()}),
+  usages:z.array(usageLocation.extend({rule:z.enum(['program-local','explicit-root-gvl','direct-structure-field'])})),
+  unknown:z.array(usageLocation.extend({reason:z.string()})),
+  coverage:z.object({treeComplete:z.boolean(),sourceReadComplete:z.boolean(),sourceScopeComplete:z.boolean(),
+    readObjects:z.number().int(),unsupportedObjects:z.number().int(),gapCount:z.number().int(),
+    gaps:z.array(z.object({objectId:uuid,path:z.array(z.string()),region:z.enum(['declaration','implementation']),reason:z.string()})),
+    exclusions:z.array(z.string())}),
+  page:z.object({offset:z.number().int(),limit:z.number().int(),returned:z.number().int(),nextOffset:z.number().int().nullable(),
+    hasMore:z.boolean(),totalUsages:z.number().int(),totalUnknown:z.number().int()}),
+  conclusion:z.enum(['found-in-covered-st','not-found-in-read-and-supported-scope'])});
 export const variableDataSchema=z.object({...nativeQueryFields,applicationId:uuid,targetKind:z.literal('application'),basis:z.literal('declaration-parsing'),parserVersion:z.string().optional(),positionConvention:z.string(),
   query:z.object({objectId:uuid.nullable(),name:z.string().nullable(),caseSensitive:z.boolean(),nameMatch:z.literal('literal-substring'),includeInitializerMembers:z.literal(true).optional(),maxInitializerMembers:z.number().int().optional()}),
   entries:z.array(z.object({index:z.number().int(),objectId:uuid,path:z.array(z.string()),objectType:z.enum(['st_pou','function_block','gvl','structure','enum','array','method','property','property_get','property_set']).nullable(),contentHash:hash.nullable(),...methodFields,...propertyFields,
@@ -264,6 +288,7 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   object_read:z.object(objectFields).passthrough(),
   project_search:searchDataSchema.partial().passthrough(),
   variable_inspect:variableDataSchema.partial().passthrough(),
+  variable_usages:variableUsagesDataSchema.partial().passthrough(),
   task_inspect:taskDataSchema.partial().passthrough(),
   task_config_update:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),taskId:uuid.optional(),
     changed:z.boolean().optional(),reopened:z.boolean().optional(),configurationVersion:hash.optional(),taskConfigurationVersion:hash.optional(),

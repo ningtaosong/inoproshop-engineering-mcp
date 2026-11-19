@@ -1,7 +1,7 @@
 {
-  "serverVersion": "0.29.0",
+  "serverVersion": "0.30.0",
   "contractVersion": "1.0.0",
-  "toolCount": 32,
+  "toolCount": 33,
   "tools": [
     {
       "name": "environment_inspect",
@@ -4321,6 +4321,681 @@
                   "nextOffset"
                 ],
                 "additionalProperties": false
+              }
+            },
+            "additionalProperties": {}
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "status",
+          "summary"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "variable_usages",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "declaration": {
+            "type": "object",
+            "properties": {
+              "objectId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "section": {
+                "type": "string",
+                "enum": [
+                  "VAR",
+                  "VAR_GLOBAL",
+                  "STRUCT"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "contentHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "startOffset": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "endOffset": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "objectId",
+              "section",
+              "name",
+              "contentHash",
+              "startOffset",
+              "endOffset"
+            ],
+            "additionalProperties": false,
+            "description": "从 variable_inspect 当前精确声明条目取 objectId、section、name、contentHash 和 namePosition 的 UTF-16 startOffset、endOffset。"
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "default": 20,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "expectedVersion": {
+            "description": "续页时携带上一页的 version 和 nextOffset，完整保留原声明定位。",
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "projectId",
+          "applicationId",
+          "declaration"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "conflict",
+              "unsupported",
+              "unknown"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "projectId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "applicationId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "projectPath": {
+                "type": "string"
+              },
+              "applicationPath": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "diskHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "readOnlyEvidence": {
+                "type": "object",
+                "properties": {
+                  "beforeDiskHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "afterCloseDiskHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "postExitDiskHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "unchanged": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "beforeDiskHash",
+                  "afterCloseDiskHash",
+                  "unchanged"
+                ],
+                "additionalProperties": false
+              },
+              "sourceSnapshot": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "analysisVersion": {
+                "type": "string"
+              },
+              "basis": {
+                "type": "string",
+                "const": "bounded-st-static-inference"
+              },
+              "positionConvention": {
+                "type": "string"
+              },
+              "targetDeclaration": {
+                "type": "object",
+                "properties": {
+                  "objectId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "path": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "section": {
+                    "type": "string",
+                    "enum": [
+                      "VAR",
+                      "VAR_GLOBAL",
+                      "STRUCT"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "namePosition": {
+                    "type": "object",
+                    "properties": {
+                      "startOffset": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "endOffset": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "line": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "column": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "endLine": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "endColumn": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "startOffset",
+                      "endOffset",
+                      "line",
+                      "column",
+                      "endLine",
+                      "endColumn"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "typeRaw": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "objectId",
+                  "path",
+                  "section",
+                  "name",
+                  "contentHash",
+                  "namePosition",
+                  "typeRaw"
+                ],
+                "additionalProperties": false
+              },
+              "usages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "objectId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "path": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "contentHash": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "region": {
+                      "type": "string",
+                      "const": "implementation"
+                    },
+                    "position": {
+                      "type": "object",
+                      "properties": {
+                        "startOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "endOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "line": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endLine": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endColumn": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "startOffset",
+                        "endOffset",
+                        "line",
+                        "column",
+                        "endLine",
+                        "endColumn"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "matchedText": {
+                      "type": "string"
+                    },
+                    "context": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "startOffset": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "endOffset": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "startOffset",
+                        "endOffset"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rule": {
+                      "type": "string",
+                      "enum": [
+                        "program-local",
+                        "explicit-root-gvl",
+                        "direct-structure-field"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "objectId",
+                    "path",
+                    "contentHash",
+                    "region",
+                    "position",
+                    "matchedText",
+                    "context",
+                    "rule"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "unknown": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "objectId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "path": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "contentHash": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "region": {
+                      "type": "string",
+                      "const": "implementation"
+                    },
+                    "position": {
+                      "type": "object",
+                      "properties": {
+                        "startOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "endOffset": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "line": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endLine": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "endColumn": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "startOffset",
+                        "endOffset",
+                        "line",
+                        "column",
+                        "endLine",
+                        "endColumn"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "matchedText": {
+                      "type": "string"
+                    },
+                    "context": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "startOffset": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "endOffset": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "startOffset",
+                        "endOffset"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "objectId",
+                    "path",
+                    "contentHash",
+                    "region",
+                    "position",
+                    "matchedText",
+                    "context",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "treeComplete": {
+                    "type": "boolean"
+                  },
+                  "sourceReadComplete": {
+                    "type": "boolean"
+                  },
+                  "sourceScopeComplete": {
+                    "type": "boolean"
+                  },
+                  "readObjects": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "unsupportedObjects": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "gapCount": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "gaps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "objectId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "region": {
+                          "type": "string",
+                          "enum": [
+                            "declaration",
+                            "implementation"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "objectId",
+                        "path",
+                        "region",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "exclusions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "treeComplete",
+                  "sourceReadComplete",
+                  "sourceScopeComplete",
+                  "readObjects",
+                  "unsupportedObjects",
+                  "gapCount",
+                  "gaps",
+                  "exclusions"
+                ],
+                "additionalProperties": false
+              },
+              "page": {
+                "type": "object",
+                "properties": {
+                  "offset": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "returned": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "nextOffset": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "hasMore": {
+                    "type": "boolean"
+                  },
+                  "totalUsages": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "totalUnknown": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "offset",
+                  "limit",
+                  "returned",
+                  "nextOffset",
+                  "hasMore",
+                  "totalUsages",
+                  "totalUnknown"
+                ],
+                "additionalProperties": false
+              },
+              "conclusion": {
+                "type": "string",
+                "enum": [
+                  "found-in-covered-st",
+                  "not-found-in-read-and-supported-scope"
+                ]
               }
             },
             "additionalProperties": {}
