@@ -7,7 +7,7 @@ import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, type Reply } from './contracts.js';
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
-import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs} from './task-config.js';
+import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
 export class FixtureAdapter implements Adapter {
@@ -102,6 +102,8 @@ export class FixtureAdapter implements Adapter {
       const target=objects.find((o:any)=>o.objectId===a.programId);
       const name=target?.path.at(-1);
       const program=target&&{objectId:target.objectId,applicationId:target.applicationId,path:target.path,contentHash:codeHash(target.declaration,target.implementation)};
+      const programEmbeddedObjectTypes=Array.isArray(target?.embeddedObjectTypes)?
+        target.embeddedObjectTypes.map((entry:string)=>entry.toLowerCase()).sort():[];
       if(digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash)result=reject('conflict','TASK_DISK_CHANGED');
       else if(taskConfigurationVersion(before)!==a.expectedTaskVersion)result=reject('conflict','TASK_VERSION_CHANGED');
       else if(before.tasks.some((t:any)=>t.path.at(-1).toLowerCase()===a.name.toLowerCase()))result=reject('conflict','TASK_NAME_EXISTS');
@@ -112,6 +114,10 @@ export class FixtureAdapter implements Adapter {
           !program||program.contentHash!==a.expectedProgramHash||canonical(target.path.slice(0,-1))!==canonical(before.applicationPath)||
           canonical(before.programs.filter((row:any)=>row.path.at(-1).toLowerCase()===name?.toLowerCase()))!==
             canonical([{objectId:a.programId,path:target.path}]))result=reject('conflict','TASK_CREATE_IDENTITY_OR_COVERAGE');
+      else if(target.embeddedObjectTypesError||!programEmbeddedObjectTypes.includes(TASK_CREATE_ST_IMPLEMENTATION_TYPE)) {
+        const message=target.embeddedObjectTypesError||'目标 PROGRAM 缺少原生 ST 实现标识';
+        result={...reply('conflict',message,{primaryException:{message}}),error:{code:'TASK_CREATE_IDENTITY_OR_COVERAGE',message}};
+      }
       else {
         const checkpoint=path.join(dir,'checkpoint.project'),taskId=randomUUID();
         await fs.copyFile(req.projectPath,checkpoint);
@@ -122,18 +128,21 @@ export class FixtureAdapter implements Adapter {
           rawFields:{...base.rawFields,interval:'t#'+a.intervalMs+'ms'},rawCalls:p.failNewTaskBinding?[]:[[name,'']]};
         const common={taskId,projectId:a.projectId,applicationId:a.applicationId,taskConfigurationId:a.taskConfigurationId,
           intervalMs:a.intervalMs,taskConfigurationPath:configPath,controller:{type:4102,id:'10f4 0002',version:'3.5.11.11'},
-          program,actions,checkpoint,before,snapshot:snapshot(),configurationOnly:true,runtimeObserved:false,
+          program,programEmbeddedObjectTypes,actions,checkpoint,before,snapshot:snapshot(),configurationOnly:true,runtimeObserved:false,
           configurationVersionScheme:'task-configuration-v1',testMode:true};
         await atomicJson(path.join(dir,'task-before.json'),before);
         p.tasks.push({...task,applicationId:a.applicationId});
         const after=taskInventory(),version=taskConfigurationVersion(after);
-        if(p.failNewTaskBinding)result={...reply('unknown','原生任务已创建，绑定结果不明，保留现场',
-          {...common,partial:after,primaryException:{message:'Injected native bind error'},automaticRollback:false}),
-          error:{code:'TASK_CREATE_INCOMPLETE',message:'Injected native bind error'}};
+        const uncertain=(message:string)=>({...reply('unknown',message,
+          {...common,partial:after,primaryException:{message},automaticRollback:false}),
+          error:{code:'TASK_CREATE_INCOMPLETE',message}});
+        if(p.failNewTaskBinding)result=uncertain('Injected native bind error');
+        else if(p.loseTaskProgramLanguageAfterBind)result=uncertain('目标 PROGRAM 缺少原生 ST 实现标识');
         else {
           await atomicJson(req.projectPath,p);
           const disk=digest(await fs.readFile(req.projectPath));
-          result=reply('succeeded','任务创建及绑定替身读回',{...common,after,task,
+          result=p.taskProgramLanguageReopenError?uncertain(p.taskProgramLanguageReopenError):
+            reply('succeeded','任务创建及绑定替身读回',{...common,after,task,
             calls:[{order:0,applicationId:a.applicationId,programId:a.programId,raw:[name,'']}],
             created:true,reopened:true,configurationVersion:version,taskConfigurationVersion:version,
             savedDiskHash:disk,workerDiskHash:disk,postExitDiskHashObserved:true,persistedToWorkingCopy:true});

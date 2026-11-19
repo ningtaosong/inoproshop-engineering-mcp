@@ -9,6 +9,8 @@ import {FixtureAdapter} from '../dist/fixture-adapter.js';
 import {schemas,outputSchemas} from '../dist/contracts.js';
 import {codeHash,digest} from '../dist/storage.js';
 
+const nativeStImplementation='3b83b776-fb25-43b8-99f2-3c507c9143fc';
+
 async function context(t,mutate=()=>{},changeResult=x=>x) {
   const e=await setup(),adapter=new FixtureAdapter();
   const writes=[];
@@ -26,7 +28,7 @@ async function context(t,mutate=()=>{},changeResult=x=>x) {
   const seed=JSON.parse(await readFile(file,'utf8')),applicationId=session.applicationId;
   const declaration='PROGRAM PRG_S8Probe\nVAR\nEND_VAR',implementation='';
   const program={...seed.objects[0],path:[...seed.applications[0].path,'PRG_S8Probe'],objectId:randomUUID(),
-    declaration,implementation,contentHash:codeHash(declaration,implementation)};
+    declaration,implementation,contentHash:codeHash(declaration,implementation),embeddedObjectTypes:[nativeStImplementation]};
   seed.objects.push(program);
   seed.taskConfigurationId=randomUUID();
   mutate(seed,program);
@@ -48,6 +50,7 @@ test('create task binds unique root PROGRAM, keeps existing calls and invalidate
   assert.equal(r.status,'succeeded',JSON.stringify(r));
   assert(outputSchemas.task_create.safeParse(r).success);
   assert.equal(r.data.task.rawFields.interval,'t#50ms');
+  assert.deepEqual(r.data.programEmbeddedObjectTypes,[nativeStImplementation]);
   assert.deepEqual(r.data.calls,[{order:0,applicationId:x.args.applicationId,programId:x.args.programId,raw:['PRG_S8Probe','']}]);
   assert.deepEqual(r.data.after.tasks[0].rawCalls,x.before.data.tasks[0].calls.map(c=>c.raw));
   assert.equal(r.data.snapshot,x.baseline.data.snapshot);
@@ -104,10 +107,53 @@ test('disk conflict is rejected without native dispatch',async t=>{
   assert.deepEqual(x.writes,[]);
 });
 
+for(const [label,mutate,message] of [
+  ['non-ST',(p,program)=>program.embeddedObjectTypes=['00000000-0000-0000-0000-000000000001'],/原生 ST/],
+  ['missing',(p,program)=>delete program.embeddedObjectTypes,/原生 ST/],
+  ['unreadable',(p,program)=>program.embeddedObjectTypesError='Native embedded type read failed',/Native embedded type read failed/]
+])test('native PROGRAM language guard rejects before creating a checkpoint: '+label,async t=>{
+  const x=await context(t,mutate);
+  const r=await x.call('task_create',x.args);
+  assert.equal(r.status,'conflict',JSON.stringify(r));
+  assert.equal(r.error.code,'TASK_CREATE_IDENTITY_OR_COVERAGE');
+  assert.match(r.data.primaryException.message,message);
+  const op=await x.service.store.operation(r.operationId);
+  await assert.rejects(access(path.join(op.bridge.directory,'checkpoint.project')));
+  assert.equal(digest(await readFile(x.file)),x.args.expectedDiskHash);
+  assert.deepEqual(x.writes,[r.operationId]);
+});
+
+for(const [stage,mutate,message,saved] of [
+  ['bind',p=>p.loseTaskProgramLanguageAfterBind=true,/原生 ST/,false],
+  ['reopen',p=>p.taskProgramLanguageReopenError='Native embedded type read failed',/Native embedded type read failed/,true]
+])test('language evidence failure at '+stage+' freezes without replay or rollback',async t=>{
+  const x=await context(t,mutate);
+  const r=await x.call('task_create',x.args);
+  assert.equal(r.status,'unknown',JSON.stringify(r));
+  assert.equal(r.error.code,'TASK_CREATE_INCOMPLETE');
+  assert.match(r.data.primaryException.message,message);
+  assert.deepEqual(r.data.actions.at(-1),{stage:'bind',status:'succeeded'});
+  assert.equal(r.data.automaticRollback,false);
+  assert.equal(digest(await readFile(r.data.checkpoint)),x.args.expectedDiskHash);
+  assert.equal(digest(await readFile(x.file))!==x.args.expectedDiskHash,saved);
+  assert.deepEqual(await x.call('task_create',x.args),r);
+  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
+  assert.deepEqual(x.writes,[r.operationId]);
+});
+
 test('inconsistent saved binding evidence reported as unknown',async t=>{
   const x=await context(t,()=>{},r=>{r.data.calls[0].programId=randomUUID();return r;});
   const r=await x.call('task_create',x.args);
   assert.equal(r.status,'unknown');assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
   await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
   assert.equal(x.writes.length,1);
+});
+
+test('service freezes when bridge success omits native ST evidence',async t=>{
+  const x=await context(t,()=>{},r=>{delete r.data.programEmbeddedObjectTypes;return r;});
+  const r=await x.call('task_create',x.args);
+  assert.equal(r.status,'unknown');
+  assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
+  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
+  assert.deepEqual(x.writes,[r.operationId]);
 });

@@ -17,7 +17,7 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
-import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME} from './task-config.js';
+import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {organizationResult} from './organization.js';
 import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
@@ -556,6 +556,8 @@ export class EngineeringService {
           canonical(d.taskConfigurationPath.slice(0,-1))!==canonical(appPath)||
           program?.objectId!==args.programId||program?.applicationId!==args.applicationId||program?.contentHash!==args.expectedProgramHash||
           !Array.isArray(program?.path)||canonical(program.path.slice(0,-1))!==canonical(appPath)||
+          !Array.isArray(d.programEmbeddedObjectTypes)||d.programEmbeddedObjectTypes.some((entry:unknown)=>typeof entry!=='string')||
+          !d.programEmbeddedObjectTypes.includes(TASK_CREATE_ST_IMPLEMENTATION_TYPE)||
           !isHash(d.snapshot)||d.snapshot!==session.snapshot||!isHash(d.diskHash)||d.diskHash===args.expectedDiskHash||
           d.savedDiskHash!==d.diskHash||d.postExitDiskHashObserved!==true||d.workerDiskHash!==d.diskHash||
           d.created!==true||d.reopened!==true||!persisted()||d.configurationOnly!==true||d.runtimeObserved!==false||

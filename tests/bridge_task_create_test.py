@@ -14,6 +14,9 @@ from types import SimpleNamespace as S
 from unittest.mock import patch
 
 
+ST_IMPLEMENTATION_TYPE = '3b83b776-fb25-43b8-99f2-3c507c9143fc'
+
+
 class Node:
     def __init__(self, name, guid, native_type, parent=None, **fields):
         self.name, self.guid, self.type, self.parent = name, guid, native_type, parent
@@ -29,12 +32,20 @@ class Node:
         return self.nodes
 
 
+class UnreadableProgram(Node):
+    @property
+    def embedded_object_types(self):
+        raise RuntimeError('Native embedded type read failed')
+
+
 class Calls(list):
     def __init__(self, rows=(), fail=False):
         super().__init__(rows)
         self.fail = fail
+        self.add_calls = 0
 
     def add(self, name, comment):
+        self.add_calls += 1
         self.append([name, comment])
         if self.fail:
             raise RuntimeError('The native bind may have taken effect')
@@ -59,7 +70,8 @@ class TaskCreateTest(unittest.TestCase):
         self.config = Node('Task Configuration','config','task-config-type',self.app,is_task_configuration=True)
         self.main = self.make_task('MainTask','main',[['PLC_PRG','']])
         self.program = Node('PRG_S8Probe','program','6f9dac99-8de1-4efc-8465-68ac443b7d08',self.app,
-                            has_textual_declaration=True,has_textual_implementation=True,language='ST',pou_type='program')
+                            has_textual_declaration=True,has_textual_implementation=True,language='ST',pou_type='program',
+                            embedded_object_types=[ST_IMPLEMENTATION_TYPE.upper()])
         # The call wrapper is not a second PROGRAM, though its displayed name matches.
         Node('PRG_S8Probe','wrapper','413e2a7d-adb1-4d2c-be29-6ae6e4fab820',self.main)
         self.events=[];self.factory_calls=0;self.saves=0;self.fail=False;self.wrong_reopen=False
@@ -70,8 +82,7 @@ class TaskCreateTest(unittest.TestCase):
         self.program.textual_declaration=S(text='PROGRAM PRG_S8Probe\nVAR\nEND_VAR')
         self.program.textual_implementation=S(text='')
         program_hash=self.e['content_hash'](self.program.textual_declaration.text,'')
-        self.e.update(pou_fields=lambda p:dict(pouType='program',pouTypeSource='native-pou-type-id-and-declaration-header'),
-                      snapshot=lambda p:'source-hash', publish=lambda p,d:self.events.append((Path(p).name,json.loads(json.dumps(d)))),
+        self.e.update(snapshot=lambda p:'source-hash', publish=lambda p,d:self.events.append((Path(p).name,json.loads(json.dumps(d)))),
                       lifecycle_save_reopen=self.save_reopen)
         io=types.ModuleType('System.IO');io.File=S(GetAttributes=lambda f:0);io.FileAttributes=S(ReadOnly=1)
         io.FileStream=lambda *args:S(Dispose=lambda:None);io.FileMode=S(Open=1);io.FileAccess=S(ReadWrite=1);io.FileShare=S(ReadWrite=1)
@@ -107,12 +118,71 @@ class TaskCreateTest(unittest.TestCase):
         result=self.write()
         self.assertEqual(result['status'],'succeeded',result)
         self.assertEqual(self.factory_calls,1)
+        self.assertEqual(self.config.nodes[-1].pous.add_calls,1)
         self.assertEqual(self.saves,1)
+        self.assertEqual(result['data']['task']['rawFields']['interval'],'t#50ms')
+        self.assertEqual(result['data']['programEmbeddedObjectTypes'],[ST_IMPLEMENTATION_TYPE])
         self.assertEqual(result['data']['task']['rawCalls'],[['PRG_S8Probe','']])
         self.assertEqual(result['data']['calls'],[dict(order=0,applicationId='app',programId='program',raw=['PRG_S8Probe',''])])
         self.assertEqual([event[0] for event in self.events if '-end' in event[0]],
                          ['task-create-create-end.json','task-create-period-end.json','task-create-bind-end.json'])
         self.assertEqual(Path(self.req['checkpointPath']).read_bytes(),b'unsaved probe fixture')
+
+    def test_native_language_evidence_is_required_before_factory_bind_or_save(self):
+        for case in ('non-ST','empty','missing','getter raises'):
+            with self.subTest(case=case):
+                self.program.__class__ = Node
+                if case=='non-ST':
+                    self.program.embedded_object_types=['00000000-0000-0000-0000-000000000001']
+                elif case=='empty':
+                    self.program.embedded_object_types=[]
+                elif case=='missing':
+                    del self.program.embedded_object_types
+                else:
+                    self.program.__class__ = UnreadableProgram
+                result=self.write()
+                self.assertEqual(result['status'],'conflict',result)
+                self.assertEqual(result['error']['code'],'TASK_CREATE_IDENTITY_OR_COVERAGE')
+                message=result['data']['primaryException']['message']
+                self.assertIn({'non-ST':'原生 ST','empty':'原生 ST','missing':'embedded_object_types',
+                               'getter raises':'Native embedded type read failed'}[case],message)
+                self.assertEqual(self.factory_calls,0)
+                self.assertEqual(sum(node.pous.add_calls for node in self.config.nodes),0)
+                self.assertEqual(self.saves,0)
+                self.assertEqual(self.events,[])
+                self.assertFalse(Path(self.req['checkpointPath']).exists())
+                self.assertEqual(self.e['file_hash'](str(self.project_file)),self.args['expectedDiskHash'])
+
+    def test_language_marker_lost_after_binding_never_saves(self):
+        publish=self.e['publish']
+        def lose_after_binding(path,data):
+            publish(path,data)
+            if Path(path).name=='task-create-bind-end.json':
+                self.program.embedded_object_types=[]
+        self.e['publish']=lose_after_binding
+        result=self.write()
+        self.assertEqual(result['status'],'unknown',result)
+        self.assertEqual(result['error']['code'],'TASK_CREATE_INCOMPLETE')
+        self.assertIn('原生 ST',result['data']['primaryException']['message'])
+        self.assertEqual((self.factory_calls,self.config.nodes[-1].pous.add_calls,self.saves),(1,1,0))
+        self.assertFalse(result['data']['automaticRollback'])
+        self.assertEqual(self.e['file_hash'](str(self.project_file)),self.args['expectedDiskHash'])
+        self.assertTrue(Path(self.req['checkpointPath']).exists())
+
+    def test_language_getter_error_after_reopen_preserves_original_error_and_no_recovery_save(self):
+        def unreadable_after_reopen(state):
+            project=self.save_reopen(state)
+            self.program.__class__=UnreadableProgram
+            return project
+        self.e['lifecycle_save_reopen']=unreadable_after_reopen
+        result=self.write()
+        self.assertEqual(result['status'],'unknown',result)
+        self.assertEqual(result['error']['code'],'TASK_CREATE_INCOMPLETE')
+        self.assertIn('Native embedded type read failed',result['data']['primaryException']['message'])
+        self.assertEqual((self.factory_calls,self.config.nodes[-1].pous.add_calls,self.saves),(1,1,1))
+        self.assertFalse(result['data']['automaticRollback'])
+        self.assertEqual(self.project_file.read_bytes(),b'saved native fixture')
+        self.assertTrue(Path(self.req['checkpointPath']).exists())
 
     def test_native_bind_unknown_never_saves_deletes_or_repeats(self):
         self.fail=True

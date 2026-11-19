@@ -776,6 +776,10 @@ def task_create_context(project,args):
     if (actual.get('pouType')!='program' or actual.get('pouTypeSource')!='native-pou-type-id-and-declaration-header' or
         actual['contentHash']!=args['expectedProgramHash']):
         raise ValueError(u'目标 PROGRAM 类型或原文版本不符')
+    # Native STImplementationObject TypeGuidAttribute. Textual IL also exposes a text implementation.
+    embedded_types=sorted(text(t).lower() for t in item.embedded_object_types)
+    if '3b83b776-fb25-43b8-99f2-3c507c9143fc' not in embedded_types:
+        raise ValueError(u'目标 PROGRAM 缺少原生 ST 实现标识')
     # The task-call child can share the name; only native POU definitions count.
     native_pous=[x for x,n,a in rows if a==aid and text(x.type).lower()=='6f9dac99-8de1-4efc-8465-68ac443b7d08' and
                  n[-1].lower()==names[-1].lower()]
@@ -783,6 +787,7 @@ def task_create_context(project,args):
     if len(native_pous)!=1 or program_rows!=[{'objectId':args['programId'],'path':names}]:
         raise ValueError(u'调用名称无法唯一解析到指定 PROGRAM')
     facts={'taskConfigurationPath':config_path,'controller':{'type':4102,'id':'10f4 0002','version':'3.5.11.11'},
+           'programEmbeddedObjectTypes':embedded_types,
            'program':{key:actual[key] for key in ('objectId','applicationId','path','contentHash')}}
     return before,config,facts
 
