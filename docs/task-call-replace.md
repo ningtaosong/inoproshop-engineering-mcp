@@ -12,4 +12,4 @@ Agent 从 `task_inspect` 取目标任务、零基位置与原始名称和备注�
 
 版本或原始行冲突即停止。运行中查询原操作；已派发且结果无法确认时保留检查点并冻结后续写入。配置顺序和周期只反映离线工程。单条移除的接口缺陷、未探测的重排和实际调度分别保留原边界。
 
-[原生替换探测](task-call-replace-probe.md) · [单条移除的限制](task-call-remove-diagnosis.md)
+[原生替换探测](task-call-replace-probe.md) · [单条移除的限制](task-call-remove-diagnosis.md) · [真实工程与测试归属](task-call-replace-acceptance.md)
