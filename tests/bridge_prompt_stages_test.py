@@ -117,6 +117,15 @@ class BridgePromptStages(unittest.TestCase):
             self.env['lifecycle_open'](state,self.project,'reopen')
         self.assertEqual(self.open_count,2)
 
+    def test_task_creation_can_open_and_reopen_under_its_direct_scope(self):
+        state=self.configure('task_create',['initial-open','reopen'])
+        self.env['lifecycle_open'](state,self.project)
+        self.env['lifecycle_save_reopen'](state)
+        self.env['lifecycle_close'](state,'final-cleanup')
+        self.assertEqual(self.open_count,2)
+        self.assertEqual([x.calls for x in self.backends],[[41],[41]])
+        self.assertEqual(self.handles[0].saves,1)
+
     def test_mismatched_or_unowned_scope_rejects_before_native_open(self):
         for command,stages,mode in [('catalog',['initial-open'],'direct'),
                                     ('read',['initial-open','reopen'],'direct'),

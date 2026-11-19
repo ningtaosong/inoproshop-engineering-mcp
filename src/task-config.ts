@@ -2,6 +2,7 @@ import {canonical,digest} from './storage.js';
 import {DomainError} from './contracts.js';
 
 export const TASK_CONFIGURATION_SCHEME='task-configuration-v1';
+export const TASK_CREATE_ST_IMPLEMENTATION_TYPE='3b83b776-fb25-43b8-99f2-3c507c9143fc';
 export function configuredIntervalMs(fields:any):number|undefined {
   if(fields?.interval_unit!=='ms')return;
   const m=/^(?:t#(\d+)ms|(\d+))$/i.exec(fields.interval??'');

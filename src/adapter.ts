@@ -85,6 +85,14 @@ export class IdeAdapter implements Adapter {
       response.data.postExitDiskHashObserved=true;
       await atomicJson(path.join(directory,'observed-after-exit.json'),response);
     }
+    if(request.command==='task_create'&&response.status==='succeeded') {
+      const current=digest(await fs.readFile(request.projectPath));
+      if(response.data?.diskHash!==current||response.data?.savedDiskHash!==current)
+        throw new DomainError('unknown','TASK_SAVED_DISK_CHANGED','任务创建的保存读回与退出后的文件不同，保持冻结');
+      response.data.workerDiskHash=current;
+      response.data.postExitDiskHashObserved=true;
+      await atomicJson(path.join(directory,'observed-after-exit.json'),response);
+    }
     if(['search','tasks','structure','device','libraries','compare_capture'].includes(request.command) || request.fileGuard&&['inspect','list','read'].includes(request.command)) {
       if(response.status==='unknown'&&response.error?.code==='READ_ONLY_FILE_CHANGED')return response;
       const after=digest(await fs.readFile(request.projectPath)),e=response.data?.readOnlyEvidence;

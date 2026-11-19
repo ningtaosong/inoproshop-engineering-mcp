@@ -7,7 +7,7 @@ import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, type Reply } from './contracts.js';
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
-import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs} from './task-config.js';
+import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
 export class FixtureAdapter implements Adapter {
@@ -94,6 +94,59 @@ export class FixtureAdapter implements Adapter {
           ...(actions.length?{checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true}:{}),testMode:true};
         result=p.failTaskField||p.failTaskLifecycle?{...reply('unknown','任务部分写入或保存重开失败，保留现场',{...evidence,...(p.failTaskLifecycle?{failedStage:p.failTaskLifecycle}:{}),automaticRollback:false}),error:{code:'TASK_WRITE_INCOMPLETE',message:'Injected failure'}}:reply('succeeded','任务配置替身读回',evidence);
         if(p.wrongTaskReadback)after.tasks[0].rawFields.core_binding='tampered';
+      }
+    }
+    else if(req.command==='task_create') {
+      const before=taskInventory(),configPath=[...before.applicationPath,'Task Configuration'];
+      const reject=(status:'conflict'|'unsupported',code:string)=>({...reply(status,'Fixture refused task creation before writing'),error:{code,message:'Fixture preflight rejected'}});
+      const target=objects.find((o:any)=>o.objectId===a.programId);
+      const name=target?.path.at(-1);
+      const program=target&&{objectId:target.objectId,applicationId:target.applicationId,path:target.path,contentHash:codeHash(target.declaration,target.implementation)};
+      const programEmbeddedObjectTypes=Array.isArray(target?.embeddedObjectTypes)?
+        target.embeddedObjectTypes.map((entry:string)=>entry.toLowerCase()).sort():[];
+      if(digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash)result=reject('conflict','TASK_DISK_CHANGED');
+      else if(taskConfigurationVersion(before)!==a.expectedTaskVersion)result=reject('conflict','TASK_VERSION_CHANGED');
+      else if(before.tasks.some((t:any)=>t.path.at(-1).toLowerCase()===a.name.toLowerCase()))result=reject('conflict','TASK_NAME_EXISTS');
+      else if(p.taskReadOnly)result=reject('unsupported','TASK_PROJECT_READ_ONLY');
+      else if(!before.tasks.some((t:any)=>t.rawFields.kind_of_task==='Cyclic'))result=reject('unsupported','TASK_CREATE_NATIVE_API');
+      else if(!before.coverageComplete||before.tasks.some((t:any)=>!t.callsComplete||t.unavailableFields.length||
+          canonical(t.path.slice(0,-1))!==canonical(configPath))||p.taskConfigurationId!==a.taskConfigurationId||
+          !program||program.contentHash!==a.expectedProgramHash||canonical(target.path.slice(0,-1))!==canonical(before.applicationPath)||
+          canonical(before.programs.filter((row:any)=>row.path.at(-1).toLowerCase()===name?.toLowerCase()))!==
+            canonical([{objectId:a.programId,path:target.path}]))result=reject('conflict','TASK_CREATE_IDENTITY_OR_COVERAGE');
+      else if(target.embeddedObjectTypesError||!programEmbeddedObjectTypes.includes(TASK_CREATE_ST_IMPLEMENTATION_TYPE)) {
+        const message=target.embeddedObjectTypesError||'目标 PROGRAM 缺少原生 ST 实现标识';
+        result={...reply('conflict',message,{primaryException:{message}}),error:{code:'TASK_CREATE_IDENTITY_OR_COVERAGE',message}};
+      }
+      else {
+        const checkpoint=path.join(dir,'checkpoint.project'),taskId=randomUUID();
+        await fs.copyFile(req.projectPath,checkpoint);
+        const actions=[{stage:'create',status:'succeeded'},{stage:'period',status:'succeeded'},
+          {stage:'bind',status:p.failNewTaskBinding?'started':'succeeded'}];
+        const base=before.tasks.find((t:any)=>t.rawFields.kind_of_task==='Cyclic');
+        const task={...structuredClone(base),taskId,path:[...configPath,a.name],
+          rawFields:{...base.rawFields,interval:'t#'+a.intervalMs+'ms'},rawCalls:p.failNewTaskBinding?[]:[[name,'']]};
+        const common={taskId,projectId:a.projectId,applicationId:a.applicationId,taskConfigurationId:a.taskConfigurationId,
+          intervalMs:a.intervalMs,taskConfigurationPath:configPath,controller:{type:4102,id:'10f4 0002',version:'3.5.11.11'},
+          program,programEmbeddedObjectTypes,actions,checkpoint,before,snapshot:snapshot(),configurationOnly:true,runtimeObserved:false,
+          configurationVersionScheme:'task-configuration-v1',testMode:true};
+        await atomicJson(path.join(dir,'task-before.json'),before);
+        p.tasks.push({...task,applicationId:a.applicationId});
+        const after=taskInventory(),version=taskConfigurationVersion(after);
+        const uncertain=(message:string)=>({...reply('unknown',message,
+          {...common,partial:after,primaryException:{message},automaticRollback:false}),
+          error:{code:'TASK_CREATE_INCOMPLETE',message}});
+        if(p.failNewTaskBinding)result=uncertain('Injected native bind error');
+        else if(p.loseTaskProgramLanguageAfterBind)result=uncertain('目标 PROGRAM 缺少原生 ST 实现标识');
+        else {
+          await atomicJson(req.projectPath,p);
+          const disk=digest(await fs.readFile(req.projectPath));
+          result=p.taskProgramLanguageReopenError?uncertain(p.taskProgramLanguageReopenError):
+            reply('succeeded','任务创建及绑定替身读回',{...common,after,task,
+            calls:[{order:0,applicationId:a.applicationId,programId:a.programId,raw:[name,'']}],
+            created:true,reopened:true,configurationVersion:version,taskConfigurationVersion:version,
+            savedDiskHash:disk,workerDiskHash:disk,postExitDiskHashObserved:true,persistedToWorkingCopy:true});
+        }
       }
     }
     else if(req.command==='inspect') result=reply('succeeded','测试工程副本已打开',{applications:p.applications,poolBuildAvailable:p.applications.length===0&&p.objects.length>0,projectPath:req.projectPath,snapshot:snapshot(),testMode:true});
