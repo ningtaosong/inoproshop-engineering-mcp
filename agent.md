@@ -57,7 +57,7 @@ S4b 第二子阶段在 `codex/fb-interface-variable-edit` 功能分支完成限�
 | S8a 移除 | 从已有任务移除一个调用，保留 PROGRAM 定义 | 本机 InoProShop 1.9.1.6 | 修正后的受支持公开接口或厂商修复，独立夹具验收 | [探测受阻，无产品能力](docs/task-call-remove-diagnosis.md) |
 | S8a 替换 | 替换已有任务中的一条 PROGRAM 调用 | 已验 AM610、周期任务、根级 ST PROGRAM | 备注、顺序、定义及保存重开读回 | [0.33.0 已交付](docs/task-call-replace.md) |
 | S8a 重排 | 调整已有任务的调用顺序 | 本机 InoProShop 1.9.1.6 | 需公开行级移动入口，再验证绑定、备注和保存持久化 | [已查公开接口不满足要求，暂不开发](docs/task-call-reorder-probe.md) |
-| S8b | I/O 通道与现有映射 | 本机 AM610 样例的 HIGH_SPEED_IO 连接器 2 | 26 个元素可定位，映射为空；尚缺非空映射正例 | [第一阶段只读探测](docs/io-mapping-inspect-probe.md)，未提供产品工具 |
+| S8b | I/O 通道与现有映射 | 本机 AM610 样例的 HIGH_SPEED_IO 连接器 2 | 26 个元素可定位，一项非空首项已与同句柄原生导出对照，保存后的非空读回待验 | [首轮](docs/io-mapping-inspect-probe.md)及[补充探测](docs/io-mapping-positive-probe.md)，未提供产品工具 |
 | S8c | EtherCAT PDO 接口探索 | 独立探测索引、子索引、方向和位宽 | 具体设备能力及独立测试工程 | 未开始 |
 | S9a | PLC 在线连接与只读监控 | 设备／应用状态、限定变量实际值 | 明确型号与固件、原生接口探测、独立测试 PLC | 后续规划，未启动 |
 | S9b | 限定运行参数写入 | 允许范围内的变量写值及读回，不含强制 | S9a 验收；变量类型、范围及写入语义确认 | 后续规划，未启动 |
@@ -260,7 +260,7 @@ S4b 第二子阶段在 `codex/fb-interface-variable-edit` 功能分支完成限�
 
 ### S8b：I/O 变量映射
 
-S8b 第一阶段已在独立 AM610 样例核实离线通道的身份、原生方向、类型、位宽和空映射。同源工程导出按设备、连接器、参数和子路径逐项对照。下一步需要已有非空映射的可信样例，用于核对首项表达式和覆盖范围。[原生证据及限制](docs/io-mapping-inspect-probe.md)
+S8b 第一阶段已在独立 AM610 样例核实离线通道的身份、原生方向、类型、位宽和空映射。同源工程导出按设备、连接器、参数和子路径逐项对照。新夹具一次设置后，首项与完整导出列表的唯一条目相符。目标的默认变量字段从 null 变为空文本，触发写后停止。下一步需明确该字段的语义，另取得已保存的非空样例做独立重开验证。[设置记录与限制](docs/io-mapping-positive-probe.md)。[原生证据及限制](docs/io-mapping-inspect-probe.md)
 
 映射写入未开发。首项表达式、变量声明绑定与完整映射集合须分别取证。后续若另行探测写入，仍须验证方向、类型、地址、重复映射及保存重开。S6b 单一设备组合的实际对端挂接证据仍缺失。[设备添加探测](docs/device-add-probe.md#探测结论与证据入口)
 

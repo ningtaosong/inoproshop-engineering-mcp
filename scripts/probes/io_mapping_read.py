@@ -59,7 +59,7 @@ def mapping_state(f):
         return "no-first-mapping-native-sentinel"
     if f["variable"]["state"] == "value" and variable == "":
         return "empty-expression"
-    if (isinstance(mid, int_types) and not isinstance(mid, bool) and mid >= 0 and
+    if (isinstance(mid, int_types) and not isinstance(mid, bool) and mid >= -1 and
             isinstance(variable, string_type) and variable and
             isinstance(existing, bool) and isinstance(creates, bool) and existing != creates):
         return "mapping-text-read"
