@@ -759,6 +759,28 @@ def task_config_update(project,req,args,state):
         return failure('unknown','TASK_WRITE_INCOMPLETE',text(e),dict(common,actions=actions,partial=partial,
             checkpoint=req['checkpointPath'],primaryException=exception_evidence(e),automaticRollback=False)),state['project']
 
+def task_program_evidence(rows,aid,app_path,before,program_id,expected_hash):
+    program=[(x,n) for x,n,a in rows if a==aid and st_object(x) and text(x.guid).lower()==program_id]
+    if len(program)!=1 or program[0][1][:-1]!=app_path:
+        raise ValueError(u'目标 GUID 未唯一指向同一 Application 的根级 ST PROGRAM 定义')
+    item,names=program[0]
+    actual=read_object(item,names,aid)
+    if (actual.get('pouType')!='program' or actual.get('pouTypeSource')!='native-pou-type-id-and-declaration-header' or
+        actual['contentHash']!=expected_hash):
+        raise ValueError(u'目标 PROGRAM 类型或原文版本不符')
+    # Native STImplementationObject TypeGuidAttribute. Textual IL also exposes a text implementation.
+    embedded_types=sorted(text(t).lower() for t in item.embedded_object_types)
+    if '3b83b776-fb25-43b8-99f2-3c507c9143fc' not in embedded_types:
+        raise ValueError(u'目标 PROGRAM 缺少原生 ST 实现标识')
+    # The task-call child can share the name; only native POU definitions count.
+    native_pous=[x for x,n,a in rows if a==aid and text(x.type).lower()=='6f9dac99-8de1-4efc-8465-68ac443b7d08' and
+                 n[-1].lower()==names[-1].lower()]
+    program_rows=[p for p in before['programs'] if p['path'][-1].lower()==names[-1].lower()]
+    if len(native_pous)!=1 or program_rows!=[{'objectId':program_id,'path':names}]:
+        raise ValueError(u'调用名称无法唯一解析到指定 PROGRAM')
+    return {key:actual[key] for key in ('objectId','applicationId','path','contentHash')},embedded_types
+
+
 def task_create_context(project,args,read_call=None):
     """Read only identity/configuration within the same owned native handle."""
     before=task_inventory(project,args,read_call)
@@ -782,47 +804,37 @@ def task_create_context(project,args,read_call=None):
     config,config_path=configs[0]
     if any(t['path'][:-1]!=config_path for t in before['tasks']):
         raise ValueError(u'现有任务不都属于同一原生配置节点')
-    program=[(x,n) for x,n,a in rows if a==aid and st_object(x) and text(x.guid).lower()==args['programId']]
-    if len(program)!=1 or program[0][1][:-1]!=app_path:
-        raise ValueError(u'目标 GUID 未唯一指向同一 Application 的根级 ST PROGRAM 定义')
-    item,names=program[0]
-    actual=read_object(item,names,aid)
-    if (actual.get('pouType')!='program' or actual.get('pouTypeSource')!='native-pou-type-id-and-declaration-header' or
-        actual['contentHash']!=args['expectedProgramHash']):
-        raise ValueError(u'目标 PROGRAM 类型或原文版本不符')
-    # Native STImplementationObject TypeGuidAttribute. Textual IL also exposes a text implementation.
-    embedded_types=sorted(text(t).lower() for t in item.embedded_object_types)
-    if '3b83b776-fb25-43b8-99f2-3c507c9143fc' not in embedded_types:
-        raise ValueError(u'目标 PROGRAM 缺少原生 ST 实现标识')
-    # The task-call child can share the name; only native POU definitions count.
-    native_pous=[x for x,n,a in rows if a==aid and text(x.type).lower()=='6f9dac99-8de1-4efc-8465-68ac443b7d08' and
-                 n[-1].lower()==names[-1].lower()]
-    program_rows=[p for p in before['programs'] if p['path'][-1].lower()==names[-1].lower()]
-    if len(native_pous)!=1 or program_rows!=[{'objectId':args['programId'],'path':names}]:
-        raise ValueError(u'调用名称无法唯一解析到指定 PROGRAM')
+    program,embedded_types=task_program_evidence(rows,aid,app_path,before,args['programId'],args['expectedProgramHash'])
     facts={'taskConfigurationPath':config_path,'controller':{'type':4102,'id':'10f4 0002','version':'3.5.11.11'},
-           'programEmbeddedObjectTypes':embedded_types,
-           'program':{key:actual[key] for key in ('objectId','applicationId','path','contentHash')}}
+           'programEmbeddedObjectTypes':embedded_types,'program':program}
     return before,config,facts
 
 
-def task_call_append(project, req, args, state):
+def task_writable_probe(project_path):
     from System.IO import File, FileAttributes, FileStream, FileMode, FileAccess, FileShare
+    if int(File.GetAttributes(project_path)) & int(FileAttributes.ReadOnly):raise ValueError(u'工程文件只读')
+    handle=FileStream(project_path,FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite)
+    handle.Dispose()
+
+
+def task_call_target(opened,args):
+    inventory,config,facts=task_create_context(opened,args,task_append_call_row)
+    rows=[row for row in inventory['tasks'] if row['taskId']==args['taskId']]
+    handles=[item for item in config.get_children(False) if getattr(item,'is_task',False) and
+             text(item.guid).lower()==args['taskId']]
+    if len(rows)!=1 or len(handles)!=1 or rows[0]['path']!=facts['taskConfigurationPath']+[text(handles[0].get_name())]:
+        raise ValueError(u'找不到任务配置下的唯一指定任务')
+    return inventory,rows[0],handles[0],facts
+
+
+def task_call_append(project, req, args, state):
     disk_before=args['expectedDiskHash']
     if file_hash(req['projectPath'])!=disk_before:
         return failure('conflict','TASK_DISK_CHANGED',u'磁盘工程与预期不符，未写入'),project
 
-    def read_target(opened):
-        inventory,config,facts=task_create_context(opened,args,task_append_call_row)
-        rows=[row for row in inventory['tasks'] if row['taskId']==args['taskId']]
-        handles=[item for item in config.get_children(False) if getattr(item,'is_task',False) and
-                 text(item.guid).lower()==args['taskId']]
-        if len(rows)!=1 or len(handles)!=1 or rows[0]['path']!=facts['taskConfigurationPath']+[text(handles[0].get_name())]:
-            raise ValueError(u'找不到任务配置下的唯一指定任务')
-        return inventory,rows[0],handles[0],facts
 
     try:
-        before,row,task,facts=read_target(project)
+        before,row,task,facts=task_call_target(project,args)
         calls=task.pous
         live=[task_append_call_row(calls[i]) for i in range(len(calls))]
         if live!=row['rawCalls']:
@@ -842,9 +854,7 @@ def task_call_append(project, req, args, state):
     if not callable(getattr(calls,'add',None)):
         return failure('unsupported','TASK_APPEND_NATIVE_API',u'原生调用集合不支持追加，未写入'),project
     try:
-        if int(File.GetAttributes(req['projectPath'])) & int(FileAttributes.ReadOnly):raise ValueError(u'工程文件只读')
-        probe=FileStream(req['projectPath'],FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite)
-        probe.Dispose()
+        task_writable_probe(req['projectPath'])
     except Exception as error:
         return failure('unsupported','TASK_PROJECT_READ_ONLY',text(error)),project
 
@@ -858,7 +868,7 @@ def task_call_append(project, req, args, state):
                 configurationOnly=True,runtimeObserved=False,configurationVersionScheme='task-configuration-v1')
 
     def verify(opened):
-        inventory,unused_row,unused_handle,observed=read_target(opened)
+        inventory,unused_row,unused_handle,observed=task_call_target(opened,args)
         if inventory!=expected or observed!=facts or snapshot(opened)!=old_snapshot:
             raise ValueError('Tail call, native identity or preserved task/source evidence differs')
         return inventory
@@ -893,6 +903,99 @@ def task_call_append(project, req, args, state):
             except Exception:pass
         return failure('unknown','TASK_APPEND_INCOMPLETE',text(error),dict(common,partial=partial,
                        primaryException=primary,automaticRollback=False)),state['project']
+
+
+def task_replace_ide_version():
+    from System.Diagnostics import Process
+    return text(Process.GetCurrentProcess().MainModule.FileVersionInfo.FileVersion)
+
+
+def task_call_replace(project,req,args,state):
+    directory=os.path.dirname(req['resultPath'])
+    disk=args['expectedDiskHash']
+    checkpoint=req['checkpointPath']
+
+    def identify(opened):
+        inventory,row,task,facts=task_call_target(opened,args)
+        old,types=task_program_evidence(list(walk(opened)),args['applicationId'],inventory['applicationPath'],
+                                        inventory,args['oldProgramId'],args['expectedOldProgramHash'])
+        facts.update(oldProgram=old,oldProgramEmbeddedObjectTypes=types)
+        return inventory,row,task,facts
+
+    if file_hash(req['projectPath'])!=disk:
+        return failure('conflict','TASK_DISK_CHANGED',u'磁盘版本变化'),project
+    try:
+        if task_replace_ide_version()!='1.9.1.6':
+            return failure('unsupported','TASK_REPLACE_IDE_VERSION',u'仅支持已验 InoProShop 1.9.1.6'),project
+        before,row,task,facts=identify(project)
+        if task_configuration_version(before)!=args['expectedTaskVersion']:
+            return failure('conflict','TASK_VERSION_CHANGED',u'任务配置已变化'),project
+        if row['rawFields']['kind_of_task']!='Cyclic':
+            return failure('unsupported','TASK_NOT_CYCLIC',u'仅支持普通周期任务'),project
+        calls=task.pous
+        live=[task_append_call_row(calls[i]) for i in range(len(calls))]
+        old=facts['oldProgram']['path'][-1].lower()
+        name=facts['program']['path'][-1]
+        index=args['expectedCallOrder']
+        if (row['rawCalls']!=live or index<0 or index>=len(live) or
+            live[index]!=args['expectedCall'] or live[index][0].lower()!=old or
+            any(not re.match(r'^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\Z',call[0]) for call in live)):
+            raise ValueError(u'调用位置、原始名称、注释或完整列表与读取证据不符')
+        names=[call[0].split('.')[-1].lower() for call in live]
+        if names.count(old)!=1 or name.lower() in names or args['oldProgramId']==args['programId']:
+            raise ValueError(u'旧调用不唯一、新程序已被调用或新旧目标相同')
+        if not callable(getattr(calls,'replace',None)):
+            return failure('unsupported','TASK_REPLACE_NATIVE_API',u'缺少已验证的原生 replace 入口'),project
+        task_writable_probe(req['projectPath'])
+        original_snapshot=snapshot(project)
+        if original_snapshot!=args['expectedSourceSnapshot']:
+            raise ValueError(u'当前可读源码快照与登记版本不符')
+    except Exception as error:
+        return failure('conflict','TASK_REPLACE_PREFLIGHT',text(error),{'primaryException':exception_evidence(error)}),project
+
+    new_raw=[name,live[index][1]]
+    change=dict(order=index,previousRaw=live[index],raw=new_raw,oldProgramId=args['oldProgramId'],programId=args['programId'])
+    expected=dict(before,tasks=[dict(t,rawCalls=live[:index]+[new_raw]+live[index+1:]) if t['taskId']==args['taskId'] else t for t in before['tasks']])
+    common=dict(facts,projectId=args['projectId'],applicationId=args['applicationId'],taskId=args['taskId'],
+                taskConfigurationId=args['taskConfigurationId'],snapshot=original_snapshot,before=before,checkpoint=checkpoint,
+                replacedCall=change,configurationOnly=True,runtimeObserved=False,configurationVersionScheme='task-configuration-v1')
+    common['programReads']={}
+    def verify(opened,stage):
+        observed,unused,handle,identities=identify(opened)
+        common['programReads'][stage]=identities
+        if observed!=expected or identities!=facts or snapshot(opened)!=original_snapshot:
+            raise ValueError(u'调用列表、PROGRAM 身份、ST 证据、任务字段或源码发生非预期变化')
+        return observed
+
+    shutil.copyfile(req['projectPath'],checkpoint)
+    publish(os.path.join(directory,'task-before.json'),common)
+    try:
+        final_inventory,unused,task,final_facts=identify(project)
+        calls=task.pous
+        if (final_inventory!=before or final_facts!=facts or snapshot(project)!=original_snapshot or
+            file_hash(checkpoint)!=disk or file_hash(req['projectPath'])!=disk or
+            [task_append_call_row(calls[i]) for i in range(len(calls))]!=live):
+            raise ValueError(u'派发前工程、程序身份或调用行变化')
+    except Exception as error:
+        return failure('conflict','TASK_REPLACE_CHANGED',text(error),{'primaryException':exception_evidence(error)}),project
+    publish(os.path.join(directory,'task-replace-dispatched.json'),dict(change,taskId=args['taskId']))
+    try:
+        calls.replace(index,name,live[index][1])
+        common['afterReplace']=verify(project,'afterReplace')
+        publish(os.path.join(directory,'task-after-replace.json'),common['afterReplace'])
+        if file_hash(req['projectPath'])!=disk:raise ValueError('Disk changed before save')
+        project=lifecycle_save_reopen(state)
+        after=verify(project,'reopened')
+        saved=file_hash(req['projectPath'])
+        if saved==disk:raise ValueError('No new saved revision')
+        publish(os.path.join(directory,'task-after-reopen.json'),after)
+        version=task_configuration_version(after)
+        return success(u'目标调用已替换，已保存关闭重开并核对绑定、备注、配置和源码',
+                       dict(common,after=after,reopened=True,persistedToWorkingCopy=True,savedDiskHash=saved,
+                            configurationVersion=version,taskConfigurationVersion=version)),project
+    except Exception as error:
+        return failure('unknown','TASK_REPLACE_INCOMPLETE',text(error),
+                       dict(common,primaryException=exception_evidence(error),automaticRollback=False)),state['project']
 
 
 def task_create(project,req,args,state):
@@ -1216,6 +1319,7 @@ PROMPT_COMMAND_STAGES={
     'resolve_placeholder':['initial-open','reopen'],'change':['initial-open','reopen'],
     'task_create':['initial-open','reopen'],
     'task_call_append':['initial-open','reopen'],
+    'task_call_replace':['initial-open','reopen'],
     'build':['initial-open'],'save':['initial-open','reopen']}
 
 def configure_prompt(state,req):
@@ -1516,7 +1620,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "task_call_append", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "task_call_append", "task_call_replace", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1554,6 +1658,8 @@ def dispatch(req):
                 response,project=task_config_update(project,req,args,lifecycle)
             elif command == 'task_create':
                 response,project=task_create(project,req,args,lifecycle)
+            elif command == 'task_call_replace':
+                response,project=task_call_replace(project,req,args,lifecycle)
             elif command == 'task_call_append':
                 response,project=task_call_append(project,req,args,lifecycle)
             elif command == "libraries":

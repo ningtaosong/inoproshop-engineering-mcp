@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.32.0';
+export const VERSION = '0.33.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -91,6 +91,17 @@ export const schemas = {
     taskId:uuid.describe('当前 task_inspect 中目标任务的 taskId。'),
     taskConfigurationId:uuid.describe('project_structure 中目标任务父配置节点 GUID；不是任务 GUID。'),
     programId:uuid.describe('同一 Application 根级 ST PROGRAM 定义的 objectId；不是任务调用节点 GUID。'),
+    expectedProgramHash:hash.describe('当前 object_read 读出的目标 PROGRAM contentHash。'),
+    expectedTaskVersion:hash.describe('当前 task_inspect 的 configurationVersion，而不是 version。'),
+    expectedDiskHash:hash.describe('当前 task_inspect 的 diskHash。')}).strict(),
+  task_call_replace:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    taskId:uuid.describe('当前 task_inspect 中目标任务的 taskId。'),
+    taskConfigurationId:uuid.describe('project_structure 中目标任务父配置节点 GUID；不是任务 GUID。'),
+    oldProgramId:uuid.describe('原调用唯一解析到的根级 PROGRAM 定义 objectId。'),
+    expectedOldProgramHash:hash.describe('原 PROGRAM 的 object_read.contentHash。'),
+    expectedCallOrder:z.number().int().nonnegative().describe('task_inspect 目标调用的 order，零基。'),
+    expectedCall:z.tuple([z.string().min(1),z.string()]).describe('task_inspect 目标调用的完整 raw 数组，保留原名称、原备注。'),
+    programId:uuid.describe('替换后新目标的同一 Application 根级 ST PROGRAM 定义 objectId；不是任务调用节点 GUID。'),
     expectedProgramHash:hash.describe('当前 object_read 读出的目标 PROGRAM contentHash。'),
     expectedTaskVersion:hash.describe('当前 task_inspect 的 configurationVersion，而不是 version。'),
     expectedDiskHash:hash.describe('当前 task_inspect 的 diskHash。')}).strict(),
@@ -318,6 +329,14 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
     program:z.object({objectId:uuid,applicationId:uuid,path:z.array(z.string()),contentHash:hash}),
     before:z.record(z.string(),z.unknown()),afterAppend:z.record(z.string(),z.unknown()),after:z.record(z.string(),z.unknown()),
     appendedCall:z.object({order:z.number().int().nonnegative(),programId:uuid,raw:z.tuple([z.string(),z.literal('')])}),
+    configurationVersion:hash,taskConfigurationVersion:hash,savedDiskHash:hash,checkpoint:z.string(),...snapshotFields}).partial().passthrough(),
+  task_call_replace:z.object({projectId:uuid,applicationId:uuid,taskId:uuid,taskConfigurationId:uuid,
+    reopened:z.literal(true),configurationOnly:z.literal(true),runtimeObserved:z.literal(false),
+    program:z.object({objectId:uuid,applicationId:uuid,path:z.array(z.string()),contentHash:hash}),
+    before:z.record(z.string(),z.unknown()),afterReplace:z.record(z.string(),z.unknown()),after:z.record(z.string(),z.unknown()),
+    oldProgram:z.object({objectId:uuid,applicationId:uuid,path:z.array(z.string()),contentHash:hash}),
+    replacedCall:z.object({order:z.number().int().nonnegative(),oldProgramId:uuid,programId:uuid,
+      previousRaw:z.tuple([z.string(),z.string()]),raw:z.tuple([z.string(),z.string()])}),
     configurationVersion:hash,taskConfigurationVersion:hash,savedDiskHash:hash,checkpoint:z.string(),...snapshotFields}).partial().passthrough(),
   library_inspect:libraryDataSchema.partial().passthrough(),
   library_catalog:z.object({catalogVersion:hash.optional(),identityScheme:z.string().optional(),entries:z.array(z.record(z.string(),z.unknown())).optional(),

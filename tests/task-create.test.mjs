@@ -11,20 +11,20 @@ import {codeHash,digest} from '../dist/storage.js';
 
 const nativeStImplementation='3b83b776-fb25-43b8-99f2-3c507c9143fc';
 
-async function context(t,mutate=()=>{},changeResult=x=>x,{inspect=true}={}) {
+async function context(t,mutate=()=>{},changeResult=x=>x,{inspect=true,copy=false}={}) {
   const e=await setup(),adapter=new FixtureAdapter();
   const writes=[];
   const service=new EngineeringService({dataDir:e.dataDir,executable:'fixture',profile:'fixture',testMode:true,noUI:false,timeoutMs:1000,responseWaitMs:3000},
     {execute:async (req,...rest)=>{
-      if(['task_create','task_call_append'].includes(req.command))writes.push(req.operationId);
+      if(['task_create','task_call_append','task_call_replace'].includes(req.command))writes.push(req.operationId);
       const result=await adapter.execute(req,...rest);
-      return ['task_create','task_call_append'].includes(req.command)?changeResult(result):result;
+      return ['task_create','task_call_append','task_call_replace'].includes(req.command)?changeResult(result):result;
     },reconcile:d=>adapter.reconcile(d)});
   t.after(()=>service.store.release());
   const call=(tool,args)=>service.call(tool,schemas[tool].parse(args));
   const opened=await call('project_create',{requestId:randomUUID(),projectPath:path.join(await realpath(e.dir),'AM610.project')});
   assert.equal(opened.status,'succeeded');
-  const session=opened.data.session,file=session.workingPath;
+  let session=opened.data.session,file=session.workingPath;
   const seed=JSON.parse(await readFile(file,'utf8')),applicationId=session.applicationId;
   const declaration='PROGRAM PRG_S8Probe\nVAR\nEND_VAR',implementation='';
   const program={...seed.objects[0],path:[...seed.applications[0].path,'PRG_S8Probe'],objectId:randomUUID(),
@@ -33,6 +33,13 @@ async function context(t,mutate=()=>{},changeResult=x=>x,{inspect=true}={}) {
   seed.taskConfigurationId=randomUUID();
   mutate(seed,program);
   await writeFile(file,JSON.stringify(seed));
+  if(copy){
+    const source=path.join(e.dir,'copy-seed.project');
+    await writeFile(source,JSON.stringify(seed),{flag:'wx'});
+    const openedCopy=await call('project_open_copy',{sourcePath:source,applicationId,requestId:randomUUID()});
+    assert.equal(openedCopy.status,'succeeded',JSON.stringify(openedCopy));
+    session=openedCopy.data.session;file=session.workingPath;
+  }
   const disk=digest(await readFile(file));
   await service.store.saveSession({...session,diskHash:disk});
   const target={projectId:session.projectId,applicationId};
@@ -43,7 +50,7 @@ async function context(t,mutate=()=>{},changeResult=x=>x,{inspect=true}={}) {
     programId:program.objectId,expectedProgramHash:program.contentHash,expectedTaskVersion:before?.data.configurationVersion??baseline.data.taskConfigurationVersion,expectedDiskHash:disk};
   const {name,intervalMs,...identity}=args;
   const appendArgs={...identity,taskId:seed.tasks[0].taskId};
-  return {file,service,call,baseline,before,args,appendArgs,target,writes};
+  return {file,service,call,baseline,before,args,appendArgs,target,writes,seed};
 }
 
 test('append product retains the entire ordered prefix and comments, invalidates build, and deduplicates',async t=>{
@@ -249,4 +256,59 @@ test('service freezes when bridge success omits native ST evidence',async t=>{
   assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
   await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
   assert.deepEqual(x.writes,[r.operationId]);
+});
+
+for(const mode of ['direct','copy']){
+  for(const fault of [null,'name','comment','readback','reopen'])test('replace '+mode+' '+(fault??'saved version'),async t=>{
+    const x=await context(t,p=>{
+      p.objects[0].embeddedObjectTypes=[nativeStImplementation];
+      p.tasks[0].rawCalls=[['Other','中文'],['PLC_PRG','None']];
+      p.failTaskReplace=fault;
+    },undefined,{copy:mode==='copy'});
+    const old=x.seed.objects[0],args={...x.appendArgs,oldProgramId:old.objectId,expectedOldProgramHash:old.contentHash,
+      expectedCallOrder:1,expectedCall:['PLC_PRG','None']};
+    const r=await x.call('task_call_replace',args);
+    assert.equal(r.status,fault?'unknown':'succeeded',JSON.stringify(r));
+    assert.deepEqual(await x.call('task_call_replace',args),r);
+    assert.equal(x.writes.length,1);
+    if(fault){
+      assert.equal(r.data.automaticRollback,false);
+      assert.equal(digest(await readFile(x.file))!==args.expectedDiskHash,fault==='reopen');
+      await assert.rejects(x.call('task_call_replace',{...args,requestId:randomUUID()}),/未决/);
+      assert.equal(x.writes.length,1);
+    }else{
+      assert.deepEqual(r.data.after.tasks[0].rawCalls,[['Other','中文'],['PRG_S8Probe','None']]);
+      assert.equal((await x.service.store.session()).buildApplicable,false);
+      const build=await x.call('project_build',{...x.target,requestId:randomUUID()});
+      assert.equal(build.data.taskConfigurationVersion,r.data.configurationVersion);
+      assert.equal(build.data.diskHash,digest(await readFile(x.file)));
+    }
+  });
+}
+test('replace service independently rejects incomplete reopened PROGRAM evidence',async t=>{
+  const x=await context(t,p=>{p.objects[0].embeddedObjectTypes=[nativeStImplementation];},r=>{
+    if(r.status==='succeeded')delete r.data.programReads.reopened.oldProgram;
+    return r;
+  });
+  const old=x.seed.objects[0];
+  const r=await x.call('task_call_replace',{...x.appendArgs,oldProgramId:old.objectId,expectedOldProgramHash:old.contentHash,
+    expectedCallOrder:0,expectedCall:['PLC_PRG','']});
+  assert.equal(r.status,'unknown',JSON.stringify(r));
+  assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
+});
+
+for(const copy of [false,true])test('replace refuses a stale row, PROGRAM or disk before mutation '+(copy?'copy':'direct'),async t=>{
+  const x=await context(t,p=>{p.objects[0].embeddedObjectTypes=[nativeStImplementation];},undefined,{copy});
+  const old=x.seed.objects[0],args={...x.appendArgs,oldProgramId:old.objectId,expectedOldProgramHash:old.contentHash,
+    expectedCallOrder:0,expectedCall:['PLC_PRG','']};
+  for(const patch of [{expectedCallOrder:1},{expectedCall:['PLC_PRG','None']},{expectedTaskVersion:'1'.repeat(64)},
+    {expectedOldProgramHash:'2'.repeat(64)},{expectedProgramHash:'3'.repeat(64)},{expectedDiskHash:'4'.repeat(64)}]){
+    const r=await x.call('task_call_replace',{...args,...patch,requestId:randomUUID()});
+    assert.equal(r.status,'conflict');
+    const op=await x.service.store.operation(r.operationId);
+    if(op.bridge)for(const name of ['task-replace-dispatched.json','checkpoint.project']){
+      await assert.rejects(access(path.join(op.bridge.directory,name)));
+    }
+    assert.equal(digest(await readFile(x.file)),args.expectedDiskHash);
+  }
 });

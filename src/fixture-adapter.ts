@@ -7,7 +7,7 @@ import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, type Reply } from './contracts.js';
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
-import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
 export class FixtureAdapter implements Adapter {
@@ -94,6 +94,58 @@ export class FixtureAdapter implements Adapter {
           ...(actions.length?{checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true}:{}),testMode:true};
         result=p.failTaskField||p.failTaskLifecycle?{...reply('unknown','任务部分写入或保存重开失败，保留现场',{...evidence,...(p.failTaskLifecycle?{failedStage:p.failTaskLifecycle}:{}),automaticRollback:false}),error:{code:'TASK_WRITE_INCOMPLETE',message:'Injected failure'}}:reply('succeeded','任务配置替身读回',evidence);
         if(p.wrongTaskReadback)after.tasks[0].rawFields.core_binding='tampered';
+      }
+    }
+    else if(req.command==='task_call_replace'){
+      const before=taskInventory(),oldSnapshot=snapshot(),configPath=[...before.applicationPath,'Task Configuration'];
+      const task=p.tasks.find((t:any)=>t.applicationId===a.applicationId&&t.taskId===a.taskId);
+      const inspectProgram=(project:any,id:string,hash:string)=>{
+        const found=project.objects.filter((o:any)=>o.objectId===id&&o.applicationId===a.applicationId);
+        const o=found[0],types=o?.embeddedObjectTypes;
+        if(found.length!==1||o.pouType!=='program'||o.pouTypeSource!=='native-pou-type-id-and-declaration-header'||
+          o.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||canonical(o.path.slice(0,-1))!==canonical(before.applicationPath)||
+          o.embeddedObjectTypesError||!Array.isArray(types)||!types.every((type:unknown)=>typeof type==='string')||
+          !types.some((type:string)=>type.toLowerCase()===TASK_CREATE_ST_IMPLEMENTATION_TYPE)||
+          codeHash(o.declaration,o.implementation)!==hash||
+          project.objects.filter((x:any)=>x.applicationId===a.applicationId&&x.nativeTypeId===o.nativeTypeId&&
+            x.path.at(-1).toLowerCase()===o.path.at(-1).toLowerCase()).length!==1)throw Error('PROGRAM identity, source or ST marker inconsistent');
+        return {program:{objectId:id,applicationId:a.applicationId,path:o.path,contentHash:hash},types:types.map((v:string)=>v.toLowerCase()).sort()};
+      };
+      const identify=(project:any)=>{
+        const old=inspectProgram(project,a.oldProgramId,a.expectedOldProgramHash),next=inspectProgram(project,a.programId,a.expectedProgramHash);
+        return {oldProgram:old.program,program:next.program,oldProgramEmbeddedObjectTypes:old.types,programEmbeddedObjectTypes:next.types,
+          taskConfigurationPath:configPath,controller:{type:4102,id:'10f4 0002',version:'3.5.11.11'}};
+      };
+      let dispatched=false;
+      const checkpoint=path.join(dir,'checkpoint.project');
+      try{
+        const facts=identify(p);
+        if(p.taskReadOnly||p.taskConfigurationId!==a.taskConfigurationId||canonical(task?.path.slice(0,-1))!==canonical(configPath)||
+          taskConfigurationVersion(before)!==a.expectedTaskVersion||oldSnapshot!==a.expectedSourceSnapshot||
+          digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash||!validReplacement(before,a,facts.oldProgram,facts.program))
+          throw Error('Task, selected call or disk version inconsistent');
+        const raw=[facts.program.path.at(-1),a.expectedCall[1]],order=a.expectedCallOrder;
+        const replacedCall={order,raw,previousRaw:a.expectedCall,oldProgramId:a.oldProgramId,programId:a.programId};
+        const common={...facts,before,projectId:a.projectId,applicationId:a.applicationId,taskId:a.taskId,
+          taskConfigurationId:a.taskConfigurationId,replacedCall,checkpoint,snapshot:oldSnapshot,configurationOnly:true,runtimeObserved:false,
+          configurationVersionScheme:'task-configuration-v1'};
+        await fs.copyFile(req.projectPath,checkpoint);await atomicJson(path.join(dir,'task-before.json'),common);
+        await atomicJson(path.join(dir,'task-replace-dispatched.json'),replacedCall);dispatched=true;
+        task.rawCalls[order]=raw;
+        if(p.failTaskReplace==='name'||p.failTaskReplace==='comment')throw Error('Injected native '+p.failTaskReplace+' setter failure');
+        const afterReplace=taskInventory(),immediate=identify(p);
+        if(p.failTaskReplace==='readback')throw Error('Injected binding readback failure');
+        await atomicJson(req.projectPath,p);
+        const reopened=await readJson(req.projectPath),reopenedFacts=identify(reopened);
+        if(p.failTaskReplace==='reopen'||canonical(reopened)!==canonical(p))throw Error('Reopened binding differs');
+        const after=taskInventory(),version=taskConfigurationVersion(after),disk=digest(await fs.readFile(req.projectPath));
+        result=reply('succeeded','夹具替换并读回',{...common,afterReplace,after,programReads:{afterReplace:immediate,reopened:reopenedFacts},
+          reopened:true,persistedToWorkingCopy:true,configurationVersion:version,taskConfigurationVersion:version,
+          savedDiskHash:disk,workerDiskHash:disk,postExitDiskHashObserved:true});
+      }catch(error){
+        const message=String(error);
+        result={...reply(dispatched?'unknown':'conflict',message,{primaryException:{message},automaticRollback:false,...(dispatched?{checkpoint}:{})}),
+          error:{code:dispatched?'TASK_REPLACE_INCOMPLETE':'TASK_REPLACE_PREFLIGHT',message}};
       }
     }
     else if(req.command==='task_call_append') {

@@ -43,7 +43,7 @@ test('S7 source positions bind the exact local declaration, GVL and type field s
   const ctx=await context(t);
   const before=await readFile(ctx.source);
   const list=(await ctx.client.client.listTools()).tools;
-  assert.equal(list.length,35);assert.equal(list.find(tool=>tool.name==='variable_usages').annotations.readOnlyHint,true);
+  assert.equal(list.length,36);assert.equal(list.find(tool=>tool.name==='variable_usages').annotations.readOnlyHint,true);
   const expected=[
     {target:obj,scope:'VAR',rule:'program-local',name:'PLC_PRG.DelayTime'},
     {target:gvlId,scope:'VAR_GLOBAL',rule:'explicit-root-gvl',name:'GVL_Config.DelayTime'},
