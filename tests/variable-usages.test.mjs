@@ -136,18 +136,79 @@ test('page version binds the same declaration and protects old locations',async 
   assert.equal(after.status,'conflict');
 });
 
-test('a new source snapshot invalidates pages even if the selected declaration is unchanged',()=>{
+function fixtureInventory() {
   const objects=fixture().map(o=>({...o,hasImplementation:o.objectType==='st_pou',contentHash:codeHash(o.declaration,o.implementation)}));
   const diskHash='a'.repeat(64);
-  const raw={status:'succeeded',operationId:obj,data:{projectId:obj,applicationId:app,targetKind:'application',projectPath:'x',diskHash,
+  return {status:'succeeded',operationId:obj,data:{projectId:obj,applicationId:app,targetKind:'application',projectPath:'x',diskHash,
     readOnlyEvidence:{beforeDiskHash:diskHash,afterCloseDiskHash:diskHash,postExitDiskHash:diskHash,unchanged:true},corpus:objects,
     scope:{applicationPath:prefix,description:'fixture',readObjects:3,eligibleObjects:3,treeComplete:true,coverageComplete:true,skippedObjects:[],enumerationFailures:[],readFailures:[]}}};
-  const nameStart=objects[0].declaration.indexOf('DelayTime');
-  const args={projectId:obj,applicationId:app,declaration:{objectId:obj,name:'DelayTime',section:'VAR',
-    startOffset:nameStart,endOffset:nameStart+9,contentHash:objects[0].contentHash},offset:0,limit:1};
+}
+
+function fixtureQuery(raw,objectId,section) {
+  const object=raw.data.corpus.find(o=>o.objectId===objectId);
+  const name='DelayTime',startOffset=object.declaration.indexOf(name);
+  return {projectId:obj,applicationId:app,declaration:{objectId,name,section,
+    startOffset,endOffset:startOffset+name.length,contentHash:object.contentHash},offset:0,limit:1};
+}
+
+test('a new source snapshot invalidates pages even if the selected declaration is unchanged',()=>{
+  const raw=fixtureInventory();
+  const args=fixtureQuery(raw,obj,'VAR');
   const original=variableUsagesResult(raw,args);
+  const objects=raw.data.corpus;
   objects[1].declaration=objects[1].declaration.replace('DINT','INT');
   objects[1].contentHash=codeHash(objects[1].declaration,'');
   assert.throws(()=>variableUsagesResult(raw,{...args,offset:1,expectedVersion:original.data.version}),
     error=>error.code==='USAGES_VERSION_CHANGED');
+});
+
+test('losing native PROGRAM evidence rejects the previous GVL usage page',()=>{
+  const raw=fixtureInventory(),args=fixtureQuery(raw,gvlId,'VAR_GLOBAL');
+  const first=variableUsagesResult(raw,args).data;
+  assert.deepEqual(at(first.usages),[['PLC_PRG',3,20,'DelayTime','explicit-root-gvl']]);
+  assert.deepEqual([first.page.totalUsages,first.page.totalUnknown],[1,1]);
+  const next={...args,offset:first.page.nextOffset,expectedVersion:first.version};
+  for(const fields of [['pouType'],['pouTypeSource'],['pouType','pouTypeSource']]) {
+    const changed=structuredClone(raw);
+    for(const field of fields)delete changed.data.corpus[0][field];
+    assert.throws(()=>variableUsagesResult(changed,next),{status:'conflict',code:'USAGES_VERSION_CHANGED',message:/重新首查/});
+    const fresh=variableUsagesResult(changed,args).data;
+    assert.equal(fresh.sourceSnapshot,first.sourceSnapshot);
+    assert.notEqual(fresh.version,first.version);
+    assert.deepEqual([fresh.page.totalUsages,fresh.page.totalUnknown],[0,5]);
+  }
+});
+
+test('losing PROGRAM evidence on the selected local declaration rejects its previous page',()=>{
+  const raw=fixtureInventory(),args=fixtureQuery(raw,obj,'VAR');
+  const first=variableUsagesResult(raw,args).data;
+  delete raw.data.corpus[0].pouTypeSource;
+  assert.throws(()=>variableUsagesResult(raw,{...args,offset:first.page.nextOffset,expectedVersion:first.version}),
+    {status:'conflict',code:'USAGES_VERSION_CHANGED'});
+});
+
+test('identical evidence pages the GVL usage and unknown in order',()=>{
+  const raw=fixtureInventory(),args=fixtureQuery(raw,gvlId,'VAR_GLOBAL');
+  const first=variableUsagesResult(raw,args).data;
+  assert.deepEqual(at(first.usages),[['PLC_PRG',3,20,'DelayTime','explicit-root-gvl']]);
+  assert.deepEqual(first.unknown,[]);
+  assert.equal(first.page.nextOffset,1);
+  const second=variableUsagesResult(raw,{...args,declaration:{...args.declaration,name:'dELAYtIME'},
+    offset:first.page.nextOffset,expectedVersion:first.version}).data;
+  assert.equal(second.version,first.version);
+  assert.deepEqual(second.usages,[]);
+  assert.deepEqual(at(second.unknown),[['PLC_PRG',5,20,'DelayTime',undefined]]);
+  assert.deepEqual([second.page.totalUsages,second.page.totalUnknown],[1,1]);
+  assert.equal(second.page.nextOffset,null);
+  assert.equal(second.page.hasMore,false);
+});
+
+test('object enumeration order does not affect usage pages or their version',()=>{
+  const raw=fixtureInventory(),args=fixtureQuery(raw,gvlId,'VAR_GLOBAL');
+  const first=variableUsagesResult(raw,args).data;
+  const next={...args,offset:first.page.nextOffset,expectedVersion:first.version};
+  const second=variableUsagesResult(raw,next).data;
+  raw.data.corpus.reverse();
+  assert.deepEqual(variableUsagesResult(raw,args).data,first);
+  assert.deepEqual(variableUsagesResult(raw,next).data,second);
 });

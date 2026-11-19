@@ -86,6 +86,14 @@ export function variableUsagesResult(raw:Reply,a:Args):Reply {
   const target=objects.find(o=>o.objectId===a.declaration.objectId);
   const stale=()=>new DomainError('conflict','USAGE_DECLARATION_CHANGED','声明对象、原文位置或内容版本不匹配；请重新读取 variable_inspect 的声明条目');
   if(!target||target.contentHash!==a.declaration.contentHash)throw stale();
+  // The search fingerprint covers scope and source text. Usage binding also
+  // requires the PROGRAM evidence attached to each source object.
+  const bindingEvidence=objects.map(o=>[o.objectId,o.hasImplementation,o.pouType??null,o.pouTypeSource??null]);
+  const version=digest(canonical({analysisVersion:VARIABLE_USAGES_VERSION,parser:VARIABLE_PARSER_VERSION,
+    lexer:IDENTIFIER_LEXER_VERSION,sourceSnapshot:source.version,bindingEvidence,
+    declaration:{...a.declaration,name:fold(a.declaration.name)}}));
+  const changed=()=>new DomainError('conflict','USAGES_VERSION_CHANGED','原声明、源码快照、绑定证据或分析规则已变化；请显式重新首查');
+  if(a.expectedVersion&&a.expectedVersion!==version)throw changed();
   const targetRow=find(target,a.declaration.name);
   if(!targetRow) {
     if(!parsed.get(target.objectId))throw new DomainError('unsupported','USAGE_DECLARATION_SCOPE','目标声明区、类型或语法超出本次静态分析范围');
@@ -99,10 +107,6 @@ export function variableUsagesResult(raw:Reply,a:Args):Reply {
   const declaredName=fold(targetRow.name);
   const targetDeclaration={objectId:target.objectId,path:target.path,section:targetRow.section,name:targetRow.name,
     contentHash:target.contentHash,namePosition:targetRow.namePosition,typeRaw:targetRow.typeRaw};
-  const version=digest(canonical({analysisVersion:VARIABLE_USAGES_VERSION,parser:VARIABLE_PARSER_VERSION,
-    lexer:IDENTIFIER_LEXER_VERSION,sourceSnapshot:source.version,targetDeclaration}));
-  const changed=()=>new DomainError('conflict','USAGES_VERSION_CHANGED','原声明、源码快照或分析规则已变化；请显式重新首查');
-  if(a.expectedVersion&&a.expectedVersion!==version)throw changed();
 
   function resolve(program:Source,operand:Token[]):Binding|undefined {
     const owner=operand[0].text;
