@@ -96,3 +96,5 @@ remove(self: IScriptPouObjectCollection, index: int)
 构建、类型检查、Python/Node 脚本语法检查通过。未修改产品、Schema、初始化指令或日常配置，未运行全量回归、DSH 模型任务、PLC 连接或运行。
 
 后续需先查明本机整数重载为何对刚读取的有效项报集合缺项，再单独决定是否设计新的验收；不能把接口存在、基线编译成功或磁盘未变写成移除可行。
+
+后续已沿本机安装件查到只读元素与可写副本之间的对象身份差异。原次结果继续保留为 `unknown`。[单条移除失败链路及本轮处置](task-call-remove-diagnosis.md)
