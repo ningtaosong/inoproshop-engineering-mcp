@@ -124,6 +124,7 @@ Agent 内部仍核对环境、会话、登记，读取目标对象完整原文�
 | 库或源码检索 | 查询选定 Application 的直接库引用及解析原文，或显式选择 literal/identifier 范围并取完分页；不推断完整依赖树或语义引用 |
 | 按声明查静态用法（S7a，0.30.0） | 先用 `variable_inspect` 选具体声明，再用 `variable_usages` 分别读出用法、未绑定候选和覆盖范围。见[支持语法与操作示例](variable-usages.md) |
 | 创建周期任务并绑定已有 PROGRAM（S8a，0.31.0 候选） | 用户只需给出 AM610 工程、任务名、毫秒周期和程序名。Agent 读回实际任务配置及 PROGRAM，再执行 `task_create`、真实编译、保存重开和最终核对。见[任务创建说明](task-create.md) |
+| 已有周期任务末尾追加 PROGRAM（S8a，0.32.0） | 用户只需给出 AM610 工程、已有任务名、已有程序名。Agent 从只读工具获取身份和版本，再执行 `task_call_append`、编译保存版和任务读回。见[可复制示例](task-call-append.md) |
 
 ### 只读检查库的使用情况
 

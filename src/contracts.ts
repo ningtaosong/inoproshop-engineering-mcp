@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.31.0';
+export const VERSION = '0.32.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -85,6 +85,13 @@ export const schemas = {
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/),intervalMs:z.number().int().min(1).max(60000),
     programId:uuid.describe('同一 Application 根级 ST PROGRAM 定义的 objectId；不是任务调用节点 GUID。'),
     expectedProgramHash:hash.describe('该 PROGRAM 当前 object_read 的 contentHash。'),
+    expectedTaskVersion:hash.describe('当前 task_inspect 的 configurationVersion，而不是 version。'),
+    expectedDiskHash:hash.describe('当前 task_inspect 的 diskHash。')}).strict(),
+  task_call_append:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    taskId:uuid.describe('当前 task_inspect 中目标任务的 taskId。'),
+    taskConfigurationId:uuid.describe('project_structure 中目标任务父配置节点 GUID；不是任务 GUID。'),
+    programId:uuid.describe('同一 Application 根级 ST PROGRAM 定义的 objectId；不是任务调用节点 GUID。'),
+    expectedProgramHash:hash.describe('当前 object_read 读出的目标 PROGRAM contentHash。'),
     expectedTaskVersion:hash.describe('当前 task_inspect 的 configurationVersion，而不是 version。'),
     expectedDiskHash:hash.describe('当前 task_inspect 的 diskHash。')}).strict(),
   project_compare:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
@@ -305,6 +312,12 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
     intervalMs:z.number().int(),created:z.literal(true),reopened:z.literal(true),configurationOnly:z.literal(true),runtimeObserved:z.literal(false),
     program:z.object({objectId:uuid,applicationId:uuid,path:z.array(z.string()),contentHash:hash}),
     calls:z.array(z.object({order:z.literal(0),programId:uuid,applicationId:uuid,raw:z.array(z.string())})),
+    configurationVersion:hash,taskConfigurationVersion:hash,savedDiskHash:hash,checkpoint:z.string(),...snapshotFields}).partial().passthrough(),
+  task_call_append:z.object({projectId:uuid,applicationId:uuid,taskId:uuid,taskConfigurationId:uuid,
+    reopened:z.literal(true),configurationOnly:z.literal(true),runtimeObserved:z.literal(false),
+    program:z.object({objectId:uuid,applicationId:uuid,path:z.array(z.string()),contentHash:hash}),
+    before:z.record(z.string(),z.unknown()),afterAppend:z.record(z.string(),z.unknown()),after:z.record(z.string(),z.unknown()),
+    appendedCall:z.object({order:z.number().int().nonnegative(),programId:uuid,raw:z.tuple([z.string(),z.literal('')])}),
     configurationVersion:hash,taskConfigurationVersion:hash,savedDiskHash:hash,checkpoint:z.string(),...snapshotFields}).partial().passthrough(),
   library_inspect:libraryDataSchema.partial().passthrough(),
   library_catalog:z.object({catalogVersion:hash.optional(),identityScheme:z.string().optional(),entries:z.array(z.record(z.string(),z.unknown())).optional(),
