@@ -105,7 +105,7 @@ def run():
         expect(element.is_mappable_io and unicode(element.base_type)=='BOOL' and int(element.bit_size)==1,
                'Live mapping wrapper lost BOOL identity')
         m=element.io_mapping
-        expect(m is not None and int(m.Id)==-1 and m.variable is None and not m.mapping_creates_variable
+        expect(m is not None and int(m.Id)==-1 and m.variable is None and m.default_variable is None and not m.mapping_creates_variable
                and m.maps_to_existing_variable,'Native mapping changed before dispatch')
         return m
 

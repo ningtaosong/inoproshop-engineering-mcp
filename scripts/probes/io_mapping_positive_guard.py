@@ -48,6 +48,15 @@ def index(rows, key):
     return out
 
 
+def exported_empty_default(entry):
+    # An explicit empty, typed scalar is distinguishable from a missing/Null XML node.
+    children = entry.get("xml", {}).get("children", [])
+    fields = [c for c in children if c.get("attrs", {}).get("Name") == "DefaultVariable"]
+    return (len(fields) == 1 and fields[0].get("tag") == "Single"
+            and fields[0]["attrs"].get("Type") == "string"
+            and fields[0].get("children") == [] and fields[0].get("value") == "")
+
+
 def validate_state(state, positive, match_export=None):
     snap, export = state["snapshot"], state["export"]
     gvl = state["declaration"]
@@ -83,12 +92,18 @@ def validate_state(state, positive, match_export=None):
         entries = xml[k]["rawMappings"]
         require(isinstance(entries,list), "Independent mapping list unreadable")
         m=row["mapping"]
+        if k == target:
+            expected_default = ({"state": "value", "value": ""} if positive
+                                else {"state": "null", "value": None})
+            require(m.get("default_variable") == expected_default,
+                    "Target default_variable is missing or differs from the expected native state")
         if k==target and positive:
             require(row["mappingState"]=="mapping-text-read" and raw(m,"variable")==EXPRESSION and
                     raw(m,"mapping_creates_variable") is False and raw(m,"maps_to_existing_variable") is True,
                     "Setter did not establish the requested existing-variable expression")
             require(len(entries)==1 and match_export is not None and match_export(entries[0],EXPRESSION),
                     "Getter disagrees with the independently exported mapping entry")
+            require(exported_empty_default(entries[0]), "Export DefaultVariable disagrees with target getter")
         else:
             require(not entries and row["mappingState"]=="no-first-mapping-native-sentinel" and
                     m["variable"]["state"]=="null" and raw(m,"Id")==-1 and
@@ -122,5 +137,10 @@ def invariant(state, target, cross_open=False):
 def change_only(before, after, match_export, cross_open=False):
     first=validate_state(before,False)
     second=validate_state(after,True,match_export)
-    require(first==second and invariant(before,first,cross_open)==invariant(after,second,cross_open),
+    # Model the one expected metadata transition on a copy of the original target.
+    # Equal-phase comparisons in invariant() still compare this field verbatim.
+    expected = copy.deepcopy(before)
+    target = index(expected["snapshot"]["channels"], rowkey)[first]
+    target["mapping"]["default_variable"] = {"state": "value", "value": ""}
+    require(first==second and invariant(expected,first,cross_open)==invariant(after,second,cross_open),
             "Source, declaration, task, address, connector or another channel changed")
