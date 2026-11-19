@@ -65,8 +65,9 @@ def discover(api, project, project_path, target_required):
     expected_names = ('PLC_PRG', PROGRAM) if target_required else ('PLC_PRG',)
     programs = {}
     for name in expected_names:
+        # A task-call child can have the same name as the underlying PROGRAM.
         matches = [(item, names) for item, names, aid in rows
-                   if aid == app_id and names[-1].lower() == name.lower()]
+                   if aid == app_id and names[-1].lower() == name.lower() and api['st_object'](item)]
         expect(len(matches) == 1 and matches[0][1] == app_path + [name], 'PROGRAM identity differs: ' + name)
         item, names = matches[0]
         record = api['read_object'](item, names, app_id)
@@ -249,6 +250,20 @@ def run(root, repo, mode):
         except Exception as error:
             result['error'] = dict(api['exception_evidence'](error), stage=stage[0])
             note(stage[0], 'stopped', error=result['error'])
+            if not result['writeStarted'] and handle[0] is not None:
+                try:
+                    project = handle[0]
+                    expect(os.path.normcase(unicode(project.path)) == os.path.normcase(project_path), 'Unexpected project to close')
+                    project.close()
+                    expect(projects.primary is None, 'Read-only failure close unconfirmed')
+                    result['closed'] = True
+                    result['diskAfterClose'] = api['file_hash'](project_path)
+                    note('close-read-only-failure', 'succeeded')
+                    if result['diskAfterClose'] == expected_hash:
+                        result['status'] = 'failed'
+                except Exception as cleanup:
+                    result['cleanupError'] = api['exception_evidence'](cleanup)
+                    note('close-read-only-failure', 'stopped', error=result['cleanupError'])
 
     system.execute_on_primary_thread(guarded_work)
     publish(result_path, result)

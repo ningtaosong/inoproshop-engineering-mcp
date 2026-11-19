@@ -84,9 +84,14 @@ async function nativePass(mode,expectedDisk) {
     if(ended.code!==0||birth.state!=='running')throw Error('Native completion could not be confirmed; retain evidence and lease');
     const result=await load(mode+'-result.json');
     if(result.engine.pid!==child.pid||result.engine.creationUtcTicks!==birth.identity.startId||
-       result.status!=='succeeded'||!result.closed||pathKey(result.projectPath)!==pathKey(project)||
+       !result.closed||pathKey(result.projectPath)!==pathKey(project)||
        result.diskBefore!==expectedDisk||result.diskAfterClose!==await sha(project))
       throw Error('Native result unconfirmed; read original pass output, no replay');
+    if (result.status==='failed'&&!result.writeStarted&&result.diskAfterClose===expectedDisk) {
+      dispatched=false;
+      throw Error('Read-only preflight stopped before mutation; see original result');
+    }
+    if(result.status!=='succeeded')throw Error('Native result unconfirmed; retain evidence and lease');
     dispatched=false;
     return result;
   } finally {await stdout.close();await stderr.close();}
