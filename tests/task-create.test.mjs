@@ -16,9 +16,9 @@ async function context(t,mutate=()=>{},changeResult=x=>x) {
   const writes=[];
   const service=new EngineeringService({dataDir:e.dataDir,executable:'fixture',profile:'fixture',testMode:true,noUI:false,timeoutMs:1000,responseWaitMs:3000},
     {execute:async (req,...rest)=>{
-      if(req.command==='task_create')writes.push(req.operationId);
+      if(['task_create','task_call_append'].includes(req.command))writes.push(req.operationId);
       const result=await adapter.execute(req,...rest);
-      return req.command==='task_create'?changeResult(result):result;
+      return ['task_create','task_call_append'].includes(req.command)?changeResult(result):result;
     },reconcile:d=>adapter.reconcile(d)});
   t.after(()=>service.store.release());
   const call=(tool,args)=>service.call(tool,schemas[tool].parse(args));
@@ -41,8 +41,64 @@ async function context(t,mutate=()=>{},changeResult=x=>x) {
   const before=await call('task_inspect',target);
   const args={...target,requestId:randomUUID(),taskConfigurationId:seed.taskConfigurationId,name:'ProbeTask',intervalMs:50,
     programId:program.objectId,expectedProgramHash:program.contentHash,expectedTaskVersion:before.data.configurationVersion,expectedDiskHash:disk};
-  return {file,service,call,baseline,before,args,target,writes};
+  const {name,intervalMs,...identity}=args;
+  const appendArgs={...identity,taskId:before.data.tasks[0].taskId};
+  return {file,service,call,baseline,before,args,appendArgs,target,writes};
 }
+
+test('append product retains the entire ordered prefix and comments, invalidates build, and deduplicates',async t=>{
+  const original=[['PLC_PRG','keep; 注释'],['Another','also keep']];
+  const x=await context(t,p=>p.tasks[0].rawCalls=original);
+  const r=await x.call('task_call_append',x.appendArgs);
+  assert.equal(r.status,'succeeded',JSON.stringify(r));
+  assert(outputSchemas.task_call_append.safeParse(r).success);
+  assert.deepEqual(r.data.before.tasks[0].rawCalls,original);
+  assert.deepEqual(r.data.after.tasks[0].rawCalls,[...original,['PRG_S8Probe','']]);
+  assert.deepEqual(r.data.afterAppend,r.data.after);
+  assert.equal(r.data.buildApplicable,false);
+  assert.equal((await x.service.store.session()).buildApplicable,false);
+  assert.deepEqual(await x.call('task_call_append',x.appendArgs),r);
+  assert.deepEqual(x.writes,[r.operationId]);
+  const built=await x.call('project_build',{...x.target,requestId:randomUUID()});
+  assert.equal(built.data.taskConfigurationVersion,r.data.configurationVersion);
+  assert.equal(built.data.diskHash,digest(await readFile(x.file)));
+});
+
+test('append guard rejects duplicate names, stale versions and missing comment tuples before native mutation',async t=>{
+  for(const [mutation,patch,code] of [
+    [p=>p.tasks[0].rawCalls.push(['pRg_s8pROBE','already']),{},'TASK_CALL_EXISTS'],
+    [p=>p.tasks[0].rawCalls=[['PLC_PRG']],{},'TASK_APPEND_IDENTITY_OR_COVERAGE'],
+    [()=>{}, {expectedTaskVersion:'9'.repeat(64)},'TASK_VERSION_CHANGED'],
+  ]){
+    const x=await context(t,mutation),before=await readFile(x.file);
+    const r=await x.call('task_call_append',{...x.appendArgs,...patch});
+    assert.equal(r.status,'conflict',JSON.stringify(r));
+    assert.equal(r.error.code,code);
+    const op=await x.service.store.operation(r.operationId);
+    await assert.rejects(access(path.join(op.bridge.directory,'task-append-dispatched.json')));
+    await assert.rejects(access(path.join(op.bridge.directory,'checkpoint.project')));
+    assert.deepEqual(await readFile(x.file),before);
+  }
+});
+
+for(const [fault,changed] of [['failTaskCallAppend',false],['failTaskAppendReopen',true]])test('append freezes after '+fault,async t=>{
+  const x=await context(t,p=>p[fault]=true);
+  const r=await x.call('task_call_append',x.appendArgs);
+  assert.equal(r.status,'unknown',JSON.stringify(r));
+  assert.equal(r.error.code,'TASK_APPEND_INCOMPLETE');
+  assert.equal(r.data.automaticRollback,false);
+  assert.equal(digest(await readFile(x.file))!==x.appendArgs.expectedDiskHash,changed);
+  assert.deepEqual(await x.call('task_call_append',x.appendArgs),r);
+  await assert.rejects(x.call('task_call_append',{...x.appendArgs,requestId:randomUUID()}),/未决/);
+  assert.deepEqual(x.writes,[r.operationId]);
+});
+
+test('service freezes even when a success reply hides a damaged append prefix',async t=>{
+  const x=await context(t,()=>{},r=>{r.data.afterAppend.tasks[0].rawCalls[0][1]='changed';return r;});
+  const r=await x.call('task_call_append',x.appendArgs);
+  assert.equal(r.status,'unknown');
+  assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
+});
 
 test('create task binds unique root PROGRAM, keeps existing calls and invalidates old build',async t=>{
   const x=await context(t);

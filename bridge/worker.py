@@ -792,6 +792,97 @@ def task_create_context(project,args):
     return before,config,facts
 
 
+def task_call_append(project, req, args, state):
+    from System.IO import File, FileAttributes, FileStream, FileMode, FileAccess, FileShare
+    disk_before=args['expectedDiskHash']
+    if file_hash(req['projectPath'])!=disk_before:
+        return failure('conflict','TASK_DISK_CHANGED',u'磁盘工程与预期不符，未写入'),project
+
+    def read_target(opened):
+        inventory,config,facts=task_create_context(opened,args)
+        rows=[row for row in inventory['tasks'] if row['taskId']==args['taskId']]
+        handles=[item for item in config.get_children(False) if getattr(item,'is_task',False) and
+                 text(item.guid).lower()==args['taskId']]
+        if len(rows)!=1 or len(handles)!=1 or rows[0]['path']!=facts['taskConfigurationPath']+[text(handles[0].get_name())]:
+            raise ValueError(u'找不到任务配置下的唯一指定任务')
+        if any(len(call)!=2 or not call[0] for row in inventory['tasks'] for call in row['rawCalls']):
+            raise ValueError(u'原生调用名称或注释清单不完整')
+        return inventory,rows[0],handles[0],facts
+
+    try:
+        before,row,task,facts=read_target(project)
+        calls=task.pous
+        live=[[text(v) for v in calls[i]] for i in range(len(calls))]
+        if live!=row['rawCalls']:
+            raise ValueError(u'实际调用列表在本次句柄内读取不一致')
+        if any(not re.match(r'^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\Z',call[0]) for call in live):
+            raise ValueError(u'已有调用名称形式不明，无法排除重复绑定')
+    except Exception as error:
+        return failure('conflict','TASK_APPEND_IDENTITY_OR_COVERAGE',text(error),
+                       {'primaryException':exception_evidence(error)}),project
+    if task_configuration_version(before)!=args['expectedTaskVersion']:
+        return failure('conflict','TASK_VERSION_CHANGED',u'实际任务配置与原版本不符，未写入'),project
+    if row['rawFields']['kind_of_task']!='Cyclic':
+        return failure('unsupported','TASK_NOT_CYCLIC',u'仅支持已有普通周期任务，未写入'),project
+    name=facts['program']['path'][-1]
+    if any(call[0].split('.')[-1].lower()==name.lower() for call in live):
+        return failure('conflict','TASK_CALL_EXISTS',u'调用列表已有目标名称或同名限定项，未写入'),project
+    if not callable(getattr(calls,'add',None)):
+        return failure('unsupported','TASK_APPEND_NATIVE_API',u'原生调用集合不支持追加，未写入'),project
+    try:
+        if int(File.GetAttributes(req['projectPath'])) & int(FileAttributes.ReadOnly):raise ValueError(u'工程文件只读')
+        probe=FileStream(req['projectPath'],FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite)
+        probe.Dispose()
+    except Exception as error:
+        return failure('unsupported','TASK_PROJECT_READ_ONLY',text(error)),project
+
+    checkpoint=req['checkpointPath']
+    directory=os.path.dirname(req['resultPath'])
+    old_snapshot=snapshot(project)
+    preferred_calls=live+[[name,'']]
+    expected=dict(before,tasks=[dict(t,rawCalls=preferred_calls) if t['taskId']==args['taskId'] else t for t in before['tasks']])
+    common=dict(facts,projectId=args['projectId'],applicationId=args['applicationId'],taskId=args['taskId'],
+                taskConfigurationId=args['taskConfigurationId'],snapshot=old_snapshot,before=before,checkpoint=checkpoint,
+                configurationOnly=True,runtimeObserved=False,configurationVersionScheme='task-configuration-v1')
+
+    def verify(opened):
+        inventory,unused_row,unused_handle,observed=read_target(opened)
+        if inventory!=expected or observed!=facts or snapshot(opened)!=old_snapshot:
+            raise ValueError('Tail call, native identity or preserved task/source evidence differs')
+        return inventory
+
+    shutil.copyfile(req['projectPath'],checkpoint)
+    if file_hash(checkpoint)!=disk_before or file_hash(req['projectPath'])!=disk_before:
+        return failure('conflict','TASK_DISK_CHANGED',u'检查点或磁盘版本变化，未写入'),project
+    publish(os.path.join(directory,'task-before.json'),common)
+    try:
+        publish(os.path.join(directory,'task-append-dispatched.json'),
+                dict(taskId=args['taskId'],programId=args['programId'],order=len(live),raw=[name,'']))
+        calls.add(name,'')
+        common['afterAppend']=verify(project)
+        publish(os.path.join(directory,'task-after-append.json'),common['afterAppend'])
+        if file_hash(req['projectPath'])!=disk_before:
+            raise ValueError('Disk file changed before authorized save')
+        project=lifecycle_save_reopen(state)
+        after=verify(project)
+        saved_hash=file_hash(req['projectPath'])
+        if saved_hash==disk_before:raise ValueError('No saved disk revision was observed')
+        publish(os.path.join(directory,'task-after-reopen.json'),after)
+        version=task_configuration_version(after)
+        return success(u'已追加到任务末尾并保存关闭重开核对；请真实编译保存版',
+            dict(common,after=after,appendedCall=dict(order=len(live),programId=args['programId'],raw=[name,'']),
+                 reopened=True,configurationVersion=version,taskConfigurationVersion=version,
+                 savedDiskHash=saved_hash,persistedToWorkingCopy=True)),project
+    except Exception as error:
+        primary=exception_evidence(error)
+        partial=None
+        if state['project'] is not None:
+            try:partial=task_inventory(state['project'],args)
+            except Exception:pass
+        return failure('unknown','TASK_APPEND_INCOMPLETE',text(error),dict(common,partial=partial,
+                       primaryException=primary,automaticRollback=False)),state['project']
+
+
 def task_create(project,req,args,state):
     """Create once; errors after the factory is dispatched never trigger a save or rollback."""
     from System.IO import File,FileAttributes,FileStream,FileMode,FileAccess,FileShare
@@ -1112,6 +1203,7 @@ PROMPT_COMMAND_STAGES={
     'libraries':['initial-open'],'search':['initial-open'],'read':['initial-open'],
     'resolve_placeholder':['initial-open','reopen'],'change':['initial-open','reopen'],
     'task_create':['initial-open','reopen'],
+    'task_call_append':['initial-open','reopen'],
     'build':['initial-open'],'save':['initial-open','reopen']}
 
 def configure_prompt(state,req):
@@ -1412,7 +1504,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "task_call_append", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1450,6 +1542,8 @@ def dispatch(req):
                 response,project=task_config_update(project,req,args,lifecycle)
             elif command == 'task_create':
                 response,project=task_create(project,req,args,lifecycle)
+            elif command == 'task_call_append':
+                response,project=task_call_append(project,req,args,lifecycle)
             elif command == "libraries":
                 response = success(u"已只读取得精确 Application 的库直接引用与原生解析信息",library_inventory(project,args))
             elif command == "add_library":

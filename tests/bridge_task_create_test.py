@@ -114,6 +114,74 @@ class TaskCreateTest(unittest.TestCase):
     def write(self, **overrides):
         return self.e['task_create'](self.project,self.req,dict(self.args,**overrides),{'project':self.project})[0]
 
+    def append(self, **overrides):
+        args=dict(self.args,taskId='main',**overrides)
+        return self.e['task_call_append'](self.project,self.req,args,{'project':self.project})[0]
+
+    def test_append_preserves_multiple_calls_comments_and_other_tasks(self):
+        prefix=[['PLC_PRG','keep existing comment'],['Other','also keep']]
+        self.main.pous.extend([prefix[1]])
+        self.main.pous[0]=prefix[0]
+        self.make_task('Secondary','secondary',[['Other','unchanged']])
+        self.refresh_version()
+        result=self.append()
+        self.assertEqual(result['status'],'succeeded',result)
+        self.assertEqual(self.main.pous,prefix+[['PRG_S8Probe','']])
+        self.assertEqual((self.main.pous.add_calls,self.factory_calls,self.saves),(1,0,1))
+        self.assertEqual(result['data']['appendedCall'],dict(order=2,programId='program',raw=['PRG_S8Probe','']))
+        self.assertEqual(result['data']['afterAppend'],result['data']['after'])
+
+    def test_append_rejects_repeated_target_even_if_qualified(self):
+        for existing in ('prg_s8probe','Application.PRG_S8Probe'):
+            with self.subTest(existing=existing):
+                self.main.pous[:]=[['PLC_PRG',''],[existing,'old']]
+                self.refresh_version()
+                self.assertEqual(self.append()['error']['code'],'TASK_CALL_EXISTS')
+        self.assertEqual((self.main.pous.add_calls,self.saves),(0,0))
+        self.assertFalse(Path(self.req['checkpointPath']).exists())
+
+    def test_append_rejects_stale_version_and_wrong_program_without_dispatch_or_save(self):
+        for overrides,code in [(dict(expectedTaskVersion='stale'),'TASK_VERSION_CHANGED'),
+                               (dict(programId='wrapper'),'TASK_APPEND_IDENTITY_OR_COVERAGE')]:
+            with self.subTest(overrides=overrides):
+                self.assertEqual(self.append(**overrides)['error']['code'],code)
+        self.assertEqual((self.main.pous.add_calls,self.saves),(0,0))
+        self.assertEqual(self.events,[])
+
+    def test_append_rejects_ambiguity_missing_st_and_incomplete_call_comment(self):
+        duplicate=Node('prg_s8probe','duplicate',self.program.type,self.app,
+                       has_textual_declaration=True,textual_declaration=S(text='PROGRAM prg_s8probe\nVAR\nEND_VAR'))
+        self.refresh_version()
+        self.assertEqual(self.append()['error']['code'],'TASK_APPEND_IDENTITY_OR_COVERAGE')
+        self.app.nodes.remove(duplicate)
+        previous=self.program.embedded_object_types
+        self.program.embedded_object_types=[]
+        self.assertEqual(self.append()['error']['code'],'TASK_APPEND_IDENTITY_OR_COVERAGE')
+        self.program.embedded_object_types=previous
+        self.main.pous[:]=[['PLC_PRG']]
+        self.refresh_version()
+        self.assertEqual(self.append()['error']['code'],'TASK_APPEND_IDENTITY_OR_COVERAGE')
+        self.assertEqual((self.main.pous.add_calls,self.saves),(0,0))
+        self.assertEqual(self.events,[])
+
+    def test_append_unknown_after_add_never_saves_or_rolls_back(self):
+        self.main.pous.fail=True
+        result=self.append()
+        self.assertEqual(result['status'],'unknown',result)
+        self.assertIn('may have taken effect',result['data']['primaryException']['message'])
+        self.assertFalse(result['data']['automaticRollback'])
+        self.assertEqual((self.main.pous.add_calls,self.saves),(1,0))
+        self.assertEqual(self.main.pous,[['PLC_PRG',''],['PRG_S8Probe','']])
+        self.assertTrue(Path(self.req['checkpointPath']).is_file())
+
+    def test_append_wrong_reopen_is_unknown_without_recovery_save(self):
+        self.wrong_reopen=True
+        result=self.append()
+        self.assertEqual(result['status'],'unknown',result)
+        self.assertFalse(result['data']['automaticRollback'])
+        self.assertEqual((self.main.pous.add_calls,self.saves),(1,1))
+        self.assertIn('afterAppend',result['data'])
+
     def test_native_factory_period_and_single_bind_saved_once(self):
         result=self.write()
         self.assertEqual(result['status'],'succeeded',result)

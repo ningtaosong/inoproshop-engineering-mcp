@@ -96,6 +96,53 @@ export class FixtureAdapter implements Adapter {
         if(p.wrongTaskReadback)after.tasks[0].rawFields.core_binding='tampered';
       }
     }
+    else if(req.command==='task_call_append') {
+      const before=taskInventory(),taskConfigurationPath=[...before.applicationPath,'Task Configuration'];
+      const selected=before.tasks.filter((t:any)=>t.taskId===a.taskId),row=selected[0];
+      const target=objects.find((o:any)=>o.objectId===a.programId),name=target?.path.at(-1);
+      const program=target&&{objectId:target.objectId,applicationId:target.applicationId,path:target.path,contentHash:codeHash(target.declaration,target.implementation)};
+      const programEmbeddedObjectTypes=Array.isArray(target?.embeddedObjectTypes)?
+        target.embeddedObjectTypes.map((v:string)=>v.toLowerCase()).sort():[];
+      const reject=(status:'conflict'|'unsupported',code:string)=>({...reply(status,'Fixture rejected append before writing'),error:{code,message:'Fixture preflight rejected'}});
+      if(digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash)result=reject('conflict','TASK_DISK_CHANGED');
+      else if(taskConfigurationVersion(before)!==a.expectedTaskVersion)result=reject('conflict','TASK_VERSION_CHANGED');
+      else if(!before.coverageComplete||selected.length!==1||p.taskConfigurationId!==a.taskConfigurationId||
+        before.tasks.some((t:any)=>!t.callsComplete||t.unavailableFields.length||
+          canonical(t.path.slice(0,-1))!==canonical(taskConfigurationPath)||
+          t.rawCalls.some((call:any)=>call.length!==2||!call[0]))||
+        !program||program.contentHash!==a.expectedProgramHash||canonical(target.path.slice(0,-1))!==canonical(before.applicationPath)||
+        target.embeddedObjectTypesError||!programEmbeddedObjectTypes.includes(TASK_CREATE_ST_IMPLEMENTATION_TYPE)||
+        canonical(before.programs.filter((item:any)=>item.path.at(-1).toLowerCase()===name?.toLowerCase()))!==
+          canonical([{objectId:a.programId,path:target.path}])||
+        row.rawCalls.some(([v]:string[])=>!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(v)))
+        result=reject('conflict','TASK_APPEND_IDENTITY_OR_COVERAGE');
+      else if(row.rawFields.kind_of_task!=='Cyclic')result=reject('unsupported','TASK_NOT_CYCLIC');
+      else if(row.rawCalls.some(([v]:string[])=>v.split('.').at(-1)?.toLowerCase()===name.toLowerCase()))
+        result=reject('conflict','TASK_CALL_EXISTS');
+      else if(p.taskReadOnly)result=reject('unsupported','TASK_PROJECT_READ_ONLY');
+      else {
+        const checkpoint=path.join(dir,'checkpoint.project'),snapshotBefore=snapshot();
+        const appendedCall={order:row.rawCalls.length,programId:a.programId,raw:[name,'']};
+        const facts={projectId:a.projectId,applicationId:a.applicationId,taskId:a.taskId,taskConfigurationId:a.taskConfigurationId,
+          taskConfigurationPath,controller:{type:4102,id:'10f4 0002',version:'3.5.11.11'},program,programEmbeddedObjectTypes,
+          snapshot:snapshotBefore,before,checkpoint,configurationOnly:true,runtimeObserved:false,configurationVersionScheme:'task-configuration-v1',testMode:true};
+        await fs.copyFile(req.projectPath,checkpoint);
+        await atomicJson(path.join(dir,'task-before.json'),facts);
+        await atomicJson(path.join(dir,'task-append-dispatched.json'),{...appendedCall,taskId:a.taskId});
+        p.tasks.find((t:any)=>t.applicationId===a.applicationId&&t.taskId===a.taskId).rawCalls.push(appendedCall.raw);
+        const afterAppend=taskInventory();
+        const uncertain=(message:string)=>({...reply('unknown',message,{...facts,partial:afterAppend,
+          primaryException:{message},automaticRollback:false}),error:{code:'TASK_APPEND_INCOMPLETE',message}});
+        if(p.failTaskCallAppend)result=uncertain('Injected append error');
+        else {
+          await atomicJson(req.projectPath,p);
+          const disk=digest(await fs.readFile(req.projectPath)),after=taskInventory(),version=taskConfigurationVersion(after);
+          result=p.failTaskAppendReopen?uncertain('Injected append reopen error'):
+            reply('succeeded','任务末尾追加替身读回',{...facts,afterAppend,after,appendedCall,reopened:true,persistedToWorkingCopy:true,
+              configurationVersion:version,taskConfigurationVersion:version,savedDiskHash:disk,workerDiskHash:disk,postExitDiskHashObserved:true});
+        }
+      }
+    }
     else if(req.command==='task_create') {
       const before=taskInventory(),configPath=[...before.applicationPath,'Task Configuration'];
       const reject=(status:'conflict'|'unsupported',code:string)=>({...reply(status,'Fixture refused task creation before writing'),error:{code,message:'Fixture preflight rejected'}});

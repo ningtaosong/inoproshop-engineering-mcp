@@ -108,6 +108,7 @@ variable_inspect对精确Application的现有支持源码做声明解析，不�
 修改已有周期任务时，先用task_inspect精确定位Application和taskId，核对Cyclic、原周期及单位、优先级、顺序调用与可读保留字段。用其configurationVersion和diskHash分别作为task_config_update的expectedTaskVersion和expectedDiskHash；仅传用户授权的intervalMs（整数毫秒1..60000）和/或priority（整数0..31，0不是省略）。未提供字段保持原值，不创建删除任务，不改类型、调用列表、看门狗或CPU绑定。未知单位、非周期、只读、歧义、读取不完整或版本冲突时停止；部分写入失败按实际动作报告，不重放或自动回滚。工具保存关闭重开核对配置；有变化时旧编译失效，即使ST文本snapshot相同也须真实新编译，再按保存结果完成必要复编和任务读回。原值请求不调用setter或保存。配置周期不代表实测扫描周期或调度；任务编辑同样不默认调用project_compare。
 
 在指定 AM610 工程新建周期任务并调用一个已有根级 ST PROGRAM，用 task_create。用户只需说工程、任务名、毫秒周期和程序名。task_inspect 取当前 configurationVersion 和 diskHash；project_structure 取原生 task 的 parentId 作为任务配置 GUID；object_read 取 PROGRAM 定义的 objectId 和 contentHash，勿取同名 program-call 节点。成功后真实编译、按保存版核对结果，再 task_inspect 读回新任务与原调用顺序。unknown 停止后续写入，保留原异常和动作进度。不连接 PLC，无需 project_compare。
+在已有 AM610 普通周期任务末尾追加一个已有根级 ST PROGRAM，用 task_call_append。用户只需给出工程、任务名、程序名。task_inspect 取 taskId、configurationVersion、diskHash；project_structure 取该 task 的 parentId，object_read 取 PROGRAM 定义的 objectId/contentHash。追加保留原调用的名称、注释及顺序，结果含同句柄读回及保存重开读回。成功后真实编译保存版，并读回任务和版本；配置顺序不能视为实际运行。冲突或 unknown 停止，不重放、不替换、删除或重排，不默认比较或连接 PLC。
 
 默认流程：指定工程和修改需求 → 必要读取定位 → 直接修改指定文件 → 真实编译 → 保存关闭重开 → 必要的保存版本复编 → 修改对象最终读回 → 简短报告。
 
