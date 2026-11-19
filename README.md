@@ -63,6 +63,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 已有周期任务配置 | 读取任务和调用顺序；仅编辑已有周期任务的整数毫秒周期 1..60000 及优先级 0..31，不创建任务或编辑调用列表 | `task_inspect`、`task_config_update` | 查询已有；**S1 / 0.18.0** 写入，见[说明](docs/task-config.md) |
 | 创建周期任务并绑定程序 | AM610（设备描述 `3.5.11.11`）Application 内新建一个周期任务，绑定一个已有根级 ST PROGRAM；创建前、绑定后及重开后核验原生 ST 标识，保留原任务和调用顺序 | `task_create` | **S8a 首项 / 0.31.0，已交付**，见[说明](docs/task-create.md) |
 | 追加已有周期任务调用 | AM610（设备描述 `3.5.11.11`）Application 内给已有普通周期任务末尾追加一个已有根级 ST PROGRAM，保留原调用名称、注释和顺序，保存重开核对 | `task_call_append` | **S8a 追加 / 0.32.0，已交付**，见[说明](docs/task-call-append.md) |
+| 从已有任务移除单条调用 | 本机 InoProShop 1.9.1.6 的唯一一次真实移除调用抛出异常，工程中的移除结果仍为 `unknown` | 无 | **S8a 移除探测受阻，未提供产品能力**，见[原生接口诊断](docs/task-call-remove-diagnosis.md) |
 | FB 原生方法 | PUBLIC ST Method 的创建、读取和修改，返回值限 void／DINT；绑定父 FB 身份 | `method_create`，读取和修改复用源码工具 | **S2a / 0.19.0**，见[说明](docs/methods.md) |
 | FB 原生属性 | PUBLIC DINT Property/Get/Set 创建及访问器独立读写；旧调用默认只读 Get，显式指定才创建 Get/Set，不自动转换已有属性或补建 Set | `property_create`，读取和修改复用源码工具 | **S2b / 0.20.0–0.21.0**，见[说明](docs/properties.md) |
 | 文件夹与对象整理 | Application 根节点创建文件夹；同一 Application 的根与直接文件夹间移动 ST PROGRAM／FUNCTION／FB；支持的 Method、Property 子对象随 FB 保持身份和源码 | `folder_create`、`object_move` | **S3 / 0.22.0**，见[说明](docs/object-organize.md) |
@@ -84,7 +85,9 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 离线设备参数写入 | S6 后续独立项 | 核实参数身份、离线可写语义和持久化 | 未开发 |
 | 按声明查询限定 ST 用法 | S7a | 在已读取的普通 ST `PROGRAM` 简单赋值中做保守静态推导 | [已交付](docs/variable-usages.md)，含绑定证据变化时的分页校验 |
 | 原生语义引用与其他引用来源 | S7 后续 | 原生双向绑定和其余引用来源另行验证 | 重命名或删除需另行评估 |
-| 已有任务调用的删除、替换和重排 | S8a 后续 | 分别探测原生接口，再验证调用目标、顺序及保存持久化 | 未开始 |
+| 移除已有任务中的单条调用 | S8a 移除 | 取得修正后的受支持公开接口或厂商修复，在独立夹具验证只少目标行、剩余调用顺序和注释保持、保存重开及保存版编译 | 本机 1.9.1.6 探测受阻 |
+| 替换已有任务中的一条 PROGRAM 调用 | S8a 替换 | 下一项建议单独探测，核对替换位置、目标程序及其他调用是否保持 | 待探测 |
+| 重排已有任务的调用 | S8a 重排 | 独立验证顺序变更、调用身份和保存持久化 | 待探测 |
 | I/O 通道与变量映射 | S8b | 读取通道身份、方向和类型，验证兼容变量映射及保存读回；依赖 S6 | 未开始，接口可行性待确认 |
 | EtherCAT PDO 映射 | S8c | 核实具体设备的索引、子索引、位宽、方向和可编辑性；依赖 S6，必要时依赖 S8b | 未开始，接口可行性待确认 |
 | PLC 在线连接、状态和变量实际值读取 | S9a | 使用明确型号、固件的独立测试 PLC，验证只读连接、目标身份、采样及正常断开 | 仅规划，未实现或实机验收 |

@@ -4,7 +4,7 @@
 
 > 在这个 AM610 工程里，把已有程序 `PRG_S8Append` 加到 `MainTask` 的调用列表末尾，保留原调用顺序，编译并保存重开核对。
 
-范围为已验设备描述 `4102 / 10f4 0002 / 3.5.11.11`、已有普通 Cyclic 任务、同一 Application 的一个已有且唯一根级 ST PROGRAM。调用名称和注释必须完整可读。识别不到名称形式或出现同名限定项时保守拒绝。非空已有注释逐项保留。替换、删除和重排另行探测。
+范围为已验设备描述 `4102 / 10f4 0002 / 3.5.11.11`、已有普通 Cyclic 任务、同一 Application 的一个已有且唯一根级 ST PROGRAM。调用名称和注释必须完整可读。识别不到名称形式或出现同名限定项时保守拒绝。非空已有注释逐项保留。单条替换和重排分别待探测。本机 1.9.1.6 的单条移除探测受阻，见[失败链路与验收边界](task-call-remove-diagnosis.md)。
 
 `task_inspect` 提供 `taskId`、`configurationVersion` 和 `diskHash`。用 `project_structure` 取得目标任务的父配置节点，`object_read` 取得根级 PROGRAM 定义的 `objectId` 和 `contentHash`。用户只需提供工程、任务名和程序名。
 
