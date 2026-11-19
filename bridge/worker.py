@@ -1100,12 +1100,13 @@ def lifecycle_state(project=None, project_path=None):
             "promptStages":[],"promptStartedStages":set(),"promptConfirmedStages":set(),
             "promptSequence":0,"promptRecordLock":threading.Lock(),"promptObserverUnconfirmed":False}
 
-# A native command always enters initial-open. These three writes also use the
+# A native command always enters initial-open. The allowlisted writes also use the
 # normal save/close/reopen path. Recovery opens and unrelated tools are excluded.
 PROMPT_COMMAND_STAGES={
     'inspect':['initial-open'],'structure':['initial-open'],'list':['initial-open'],
     'libraries':['initial-open'],'search':['initial-open'],'read':['initial-open'],
     'resolve_placeholder':['initial-open','reopen'],'change':['initial-open','reopen'],
+    'task_create':['initial-open','reopen'],
     'build':['initial-open'],'save':['initial-open','reopen']}
 
 def configure_prompt(state,req):

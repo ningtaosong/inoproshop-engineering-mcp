@@ -6,7 +6,7 @@
 
 ## 用法与边界
 
-1. 用户提供工程路径、任务名、整数毫秒周期及已有程序名称。Agent 用 `project_open` 确认活动工程及 Application，用 `task_inspect` 取得 `configurationVersion` 和 `diskHash`。通过 `project_structure` 读取已有原生 task 的父配置节点 GUID，再用 `object_list`／`object_read` 定位同一 Application 的根级 ST PROGRAM 定义。任务下的同名调用节点属于不同原生类型。
+1. 用户提供工程路径、任务名、整数毫秒周期及已有程序名称。Agent 用 `project_open` 确认活动工程及 Application，用 `task_inspect` 取得 `configurationVersion` 和 `diskHash`。通过 `project_structure` 读取已有原生 task 的父配置节点 GUID，遇到分页时按返回的 `nextOffset` 及同一 `version` 继续。再用 `object_list`／`object_read` 定位同一 Application 的根级 ST PROGRAM 定义。任务下的同名调用节点属于不同原生类型。
 2. `task_create` 接收 `requestId`、`projectId`、`applicationId`、`taskConfigurationId`、`name`、`intervalMs`、`programId`、`expectedProgramHash`、`expectedTaskVersion` 和 `expectedDiskHash`。版本分别取 PROGRAM 的 `contentHash` 和 `task_inspect` 的 `configurationVersion`／`diskHash`。内部标识由 Agent 查取。
 3. 首版限设备描述 4102／10f4 0002／3.5.11.11 的 AM610 Application、一个普通 Cyclic 任务、一个已存在且唯一的根级 ST PROGRAM。任务名称为 1–63 字符的普通 ASCII 标识符，周期为 1..60000 整数毫秒。新任务的优先级及看门狗等由原生工厂取默认值，结果保留可读配置。已有周期任务的周期及优先级仍用 [task_config_update](task-config.md)。
 4. 成功后运行 `project_build`，按 `project_save` 的保存重开结果判断已编译文件是否适用，必要时复编，再用 `task_inspect` 读回新任务和原调用顺序。50 ms 是配置周期，实际调度待运行观测。这个流程无需 `project_compare` 或连接 PLC。

@@ -23,8 +23,8 @@ import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
 
-// Only the direct-project steps needed for the S5b offline path opt in. A native
-// command always opens once; the three writes below additionally save and reopen.
+// Only allowlisted direct-project operations opt in. A native command always
+// opens once; the write commands below additionally save and reopen.
 const S5B_PROMPT_STAGES:Record<string,readonly ('initial-open'|'reopen')[]> = {
   project_open:['initial-open'], project_structure:['initial-open'], object_list:['initial-open'],
   library_inspect:['initial-open'], project_search:['initial-open'], object_read:['initial-open'], variable_usages:['initial-open'],
