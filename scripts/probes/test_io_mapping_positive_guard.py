@@ -4,8 +4,11 @@ import copy
 import unittest
 from xml.etree import ElementTree
 from io_mapping_read import mapping_state, val
-from io_mapping_positive_guard import DECL, EXPRESSION, change_only, validate_state, invariant
+from io_mapping_positive_guard import DECL, change_only, validate_state, invariant, mapping_expression
 from io_mapping_export_guard import mapping_item, mapping_matches
+
+# Fixture expectation, independent of the expression builder under test.
+EXPRESSION = 'Application.GVL_IOProbe.Input0'
 
 
 def field(value):
@@ -32,9 +35,15 @@ def device(name_path,guid,model):
 
 def state():
     rows=[row('Bit0'),row('Bit1')]
+    app_path = ['Device','Plc Logic','Application']
+    gvl_path = app_path + ['GVL_IOProbe']
+    gvl_type = 'ffbfa93a-b94d-45fc-a329-229860183b1d'
     return dict(applicationId='app',declaration=dict(name='GVL_IOProbe',text=DECL,guid='gvl',
-                typeGuid='ffbfa93a-b94d-45fc-a329-229860183b1d',parentGuid='app'),
-                sources={'PLC_PRG':'source A'},tasks={'MainTask':['PLC_PRG']},
+                typeGuid=gvl_type,parentGuid='app',path=gvl_path),
+                applications=[dict(guid='app',name='Application',path=app_path,
+                                   isApplication=True,typeGuid='app-type',deviceGuid='root')],
+                sources=[dict(guid='gvl',app='app',path=gvl_path,typeGuid=gvl_type,declaration=DECL)],
+                tasks={'applicationId':'app','applicationPath':app_path,'MainTask':['PLC_PRG']},
                 snapshot=dict(devices=[device(['Device'],'root',(4102,'10f4 0002','3.5.11.11')),
                                        device(['Device','HIGH_SPEED_IO'],'module-guid',(40600,'10F4 0600','00.00.00.20'))],
                               connectors=[dict(enumeratedFromDeviceGuid='module-guid',
@@ -42,7 +51,11 @@ def state():
                                               interface=field('Common.inovance2')))],
                               channels=rows,issues=[],unclassified=[],scans=[{'endObserved':True}],
                               coverage=dict(enumerationComplete=True,truncated=False,mappingStates={})),
-                export=dict(complete=True,rows=[dict(deviceGuid='module-guid',connectorId=2,parameterId=13,
+                export=dict(complete=True,devices=[dict(guid='root',ioApplicationId='app',ioApplicationSet=True),
+                            dict(guid='module-guid',ioApplicationId='00000000-0000-0000-0000-000000000000',
+                                 ioApplicationSet=False,connectorHandling=[dict(connectorId=2,ioApplicationSet=False,
+                                 ioApplicationId='00000000-0000-0000-0000-000000000000')])],
+                            rows=[dict(deviceGuid='module-guid',connectorId=2,parameterId=13,
                             elementPath=[name],rawMappings=[]) for name in ('Bit0','Bit1')]))
 
 
@@ -66,6 +79,64 @@ def positive(before,expr=EXPRESSION,export_expr=EXPRESSION):
 
 
 class ProbeTests(unittest.TestCase):
+    def test_expression_uses_actual_application_and_root_gvl_declaration(self):
+        b = state()
+        self.assertEqual(mapping_expression(b), EXPRESSION)
+        app_path = ['Device', 'Plc Logic', 'MyTestApp']
+        gvl_path = app_path + ['GVL_IOProbe']
+        b['applications'][0].update(name='MyTestApp', path=app_path)
+        b['tasks']['applicationPath'] = app_path
+        b['declaration']['path'] = gvl_path
+        b['sources'][0]['path'] = gvl_path
+        e = 'MyTestApp.GVL_IOProbe.Input0'
+        self.assertEqual(mapping_expression(b, e), e)
+        validate_state(positive(b, e, e), True, mapping_matches)
+        with self.assertRaisesRegex(ValueError, 'Authorized expression'):
+            mapping_expression(b, EXPRESSION)
+
+    def test_prewrite_refuses_unqualified_wrong_application_or_tree_paths(self):
+        for expr in ('GVL_IOProbe.Input0', 'OtherApp.GVL_IOProbe.Input0', 'Device.Application.GVL_IOProbe.Input0',
+                     'MainTask.GVL_IOProbe.Input0', 'GVL_IOProbe.GVL_IOProbe.Input0',
+                     'Device.Plc Logic.Application.GVL_IOProbe.Input0', 'Application.Input0'):
+            with self.subTest(expr=expr), self.assertRaisesRegex(ValueError, 'Authorized expression'):
+                mapping_expression(state(), expr)
+
+    def test_application_evidence_must_be_unique_native_and_on_device(self):
+        b = state()
+        b['applications'].append(copy.deepcopy(b['applications'][0]))
+        self.reject_before_dispatch(b, 'one native Application')
+        b = state()
+        b['applications'][0]['isApplication'] = False
+        self.reject_before_dispatch(b, 'Native Application identity')
+        b = state()
+        b['applications'][0]['deviceGuid'] = 'other-device'
+        self.reject_before_dispatch(b, 'selected device')
+        b = state()
+        b['export']['devices'][0]['ioApplicationId'] = 'another-app'
+        self.reject_before_dispatch(b, 'I/O handling Application differs')
+        b = state()
+        b['export']['devices'][1]['connectorHandling'][0]['ioApplicationSet'] = True
+        self.reject_before_dispatch(b, 'target device or connector')
+
+    def test_existing_variable_and_declaring_module_are_required(self):
+        for wrong in (DECL.replace('Input0', 'Input1'), DECL.replace('BOOL', 'BYTE')):
+            b = state()
+            b['declaration']['text'] = b['sources'][0]['declaration'] = wrong
+            self.reject_before_dispatch(b, 'root BOOL declaration')
+        b = state()
+        b['sources'] = []
+        self.reject_before_dispatch(b, 'GVL source absent')
+        b = state()
+        b['sources'][0]['guid'] = 'unrelated-object'
+        self.reject_before_dispatch(b, 'source inventory')
+
+    def test_reject_short_expression_even_if_getter_and_export_agree(self):
+        b = state()
+        short = 'GVL_IOProbe.Input0'  # Actual 1-error compiler counterexample.
+        for getter, exported in ((short, short), (short, EXPRESSION), (EXPRESSION, short)):
+            with self.subTest(getter=getter, exported=exported), self.assertRaises(ValueError):
+                change_only(b, positive(b, getter, exported), mapping_matches)
+
     def reject_before_dispatch(self, s, reason):
         counts=dict(setter=0,save=0)
         with self.assertRaisesRegex(ValueError,reason):
@@ -93,6 +164,7 @@ class ProbeTests(unittest.TestCase):
         b=state();a=positive(b)
         new='changed-module'
         a['snapshot']['devices'][1]['guid']=field(new)
+        a['export']['devices'][1]['guid']=new
         c=a['snapshot']['connectors'][0]
         c.update(enumeratedFromDeviceGuid=new)
         c['fields']['ownerGuid']=field(new)

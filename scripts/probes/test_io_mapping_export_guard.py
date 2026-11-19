@@ -26,12 +26,18 @@ def fixture():
     put(meta,"Single","Guid","uid")
     put(meta,"Single","Name","Device")
     obj=put(record,"Single","Object")
+    driver=put(obj,"Single","DriverInfo")
+    put(driver,"Single","IoApp","8a8575f9-b8b9-4ed2-9d37-146a0ec806c7","System.Guid")
+    put(driver,"Single","IoAppSet","True","bool")
     dev=put(obj,"Single","Id")
     for n,v in (("Type","test"),("Id","one"),("Version","1")):
         put(dev,"Single",n,v)
     put(put(obj,"Single","DeviceParameterSet"),"List2","Params")
     conn=ET.SubElement(put(put(obj,"Single","ConnectorList"),"List","InnerList"),"Single")
     put(conn,"Single","ConnectorId","2")
+    con_driver=put(conn,"Single","DriverInfo")
+    put(con_driver,"Single","IoApp","00000000-0000-0000-0000-000000000000","System.Guid")
+    put(con_driver,"Single","IoAppSet","False","bool")
     p=ET.SubElement(put(put(conn,"Single","HostParameterSet"),"List2","Params"),"Single")
     put(p,"Single","Id","13")
     put(p,"Single","ChannelType","Input")
@@ -51,6 +57,16 @@ def fixture():
 
 
 class ExportGuardTests(unittest.TestCase):
+    def test_device_io_application_cannot_be_inferred_from_connector(self):
+        doc,_=fixture()
+        device=self.read(doc)["devices"][0]
+        self.assertTrue(device["ioApplicationSet"])
+        self.assertFalse(device["connectorHandling"][0]["ioApplicationSet"])
+        obj=doc.find(".//Single[@Name='Object']")
+        obj.remove(obj.find("Single[@Name='DriverInfo']"))
+        with self.assertRaisesRegex(ValueError,"DriverInfo"):
+            self.read(doc)
+
     def read(self,doc):
         with tempfile.TemporaryDirectory() as td:
             target=Path(td)/"fixture.export"

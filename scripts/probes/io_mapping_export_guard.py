@@ -97,6 +97,13 @@ def mapping_item(m):
 def row_key(row):
     return (row['deviceGuid'], row['connectorId'], row['parameterId'], tuple(row['elementPath']))
 
+def io_handling(owner):
+    driver = named(owner, 'DriverInfo', 'Single')
+    selected = scalar(driver, 'IoAppSet', 'bool')
+    require(selected in ('True','False'), 'Unsupported IoAppSet value')
+    return {'ioApplicationId':scalar(driver, 'IoApp', 'System.Guid').lower(),
+            'ioApplicationSet':selected == 'True'}
+
 
 def parse_export(path, expected_devices):
     """Read only owned DataElement/SubElements. BaseType templates do not add rows."""
@@ -153,7 +160,9 @@ def parse_export(path, expected_devices):
         captured.add(guid)
         dev = named(obj,'Id','Single')
         identity = dict((k,scalar(dev,k)) for k in ['Type','Id','Version'])
-        devices.append({'guid':guid,'name':scalar(meta,'Name'),'deviceDescription':identity})
+        device = io_handling(obj)
+        device.update(guid=guid,name=scalar(meta,'Name'),deviceDescription=identity,connectorHandling=[])
+        devices.append(device)
         index_set(named(obj,'DeviceParameterSet','Single'),guid,None)
         connectors = named(named(obj,'ConnectorList','Single'),'InnerList','List')
         connector_ids = set()
@@ -162,6 +171,9 @@ def parse_export(path, expected_devices):
             cid = number(scalar(c,'ConnectorId'))
             require(cid not in connector_ids, 'Duplicate connector identity')
             connector_ids.add(cid)
+            handling = io_handling(c)
+            handling['connectorId'] = cid
+            device['connectorHandling'].append(handling)
             require(not any(v.get('Name') == 'ParameterSet' for v in c), 'Additional unclassified parameter view')
             index_set(named(c,'HostParameterSet','Single'),guid,cid)
     require(captured == expected, 'Selected device missing from export')

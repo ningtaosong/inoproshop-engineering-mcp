@@ -2,9 +2,9 @@
 """Admission and postconditions for one disposable AM610 fixture, never a product endpoint."""
 from __future__ import unicode_literals
 import copy
+import re
 from io_mapping_read import binding_key, string_type, int_types
 
-EXPRESSION = "GVL_IOProbe.Input0"
 GVL_NAME = "GVL_IOProbe"
 DECL = "VAR_GLOBAL\n    Input0 : BOOL := FALSE;\nEND_VAR"
 MODEL = (4102, "10f4 0002", "3.5.11.11")
@@ -57,12 +57,46 @@ def exported_empty_default(entry):
             and fields[0].get("children") == [] and fields[0].get("value") == "")
 
 
-def validate_state(state, positive, match_export=None):
-    snap, export = state["snapshot"], state["export"]
+def target_names(state):
+    app = unique(state["applications"], "Expected one native Application in the fixture")
+    name = app["name"]
+    require(app["isApplication"] is True and app["guid"] == state["applicationId"] and app["guid"]
+            and app["typeGuid"] and isinstance(name, string_type) and re.match(r"\A[A-Za-z_][A-Za-z0-9_]*\Z", name)
+            and app["path"] and app["path"][-1] == name, "Native Application identity, name or path differs")
+    require(state["tasks"]["applicationId"] == app["guid"] and state["tasks"]["applicationPath"] == app["path"],
+            "Task inventory identifies a different Application")
+    root = unique((d for d in state["snapshot"]["devices"] if d["path"] == ["Device"]),
+                  "Fixture root device not unique")
+    require(app["deviceGuid"] == raw(root, "guid") and app["path"][:1] == root["path"],
+            "Application does not belong to the selected device")
+    exported_root = unique((d for d in state["export"]["devices"] if d["guid"] == app["deviceGuid"]),
+                           "Root device is missing or ambiguous in the export")
+    require(exported_root["ioApplicationSet"] is True and exported_root["ioApplicationId"] == app["guid"],
+            "Root device I/O handling Application differs")
     gvl = state["declaration"]
     require(gvl["typeGuid"] == "ffbfa93a-b94d-45fc-a329-229860183b1d" and
             gvl["text"].strip() == DECL and gvl["parentGuid"] == state["applicationId"] and
             gvl["name"] == GVL_NAME and gvl["guid"], "Existing unique root BOOL declaration differs")
+    require(gvl["path"] == app["path"] + [gvl["name"]], "GVL is not at the verified Application path")
+    source = unique((s for s in state["sources"] if s["app"] == app["guid"] and
+                     s["path"][-1].lower() == GVL_NAME.lower()), "GVL source absent or ambiguous")
+    require(source["guid"] == gvl["guid"] and source["path"] == gvl["path"] and
+            source["typeGuid"] == gvl["typeGuid"] and source["declaration"] == gvl["text"],
+            "Declaration differs from the source inventory")
+    # The exact one-declaration fixture above authorizes this spelling and BOOL type.
+    return name, gvl["name"], "Input0"
+
+
+def mapping_expression(state, planned=None):
+    expression = ".".join(target_names(state))
+    if planned is not None:
+        require(expression == planned, "Authorized expression differs from the actual Application and GVL declaration")
+    return expression
+
+
+def validate_state(state, positive, match_export=None):
+    snap, export = state["snapshot"], state["export"]
+    expression = mapping_expression(state)
     cov = snap["coverage"]
     require(cov["enumerationComplete"] and not cov["truncated"] and not snap["issues"] and
             not snap["unclassified"] and all(s["endObserved"] for s in snap["scans"]),
@@ -77,6 +111,13 @@ def validate_state(state, positive, match_export=None):
     mod = unique((d for d in snap["devices"] if d["path"] == root["path"]+["HIGH_SPEED_IO"] and model(d) == MODULE),
                  "HIGH_SPEED_IO instance identity differs")
     guid = raw(mod, "guid")
+    exported_mod = unique((d for d in export["devices"] if d["guid"] == guid),
+                          "Target device driver metadata absent or ambiguous")
+    connector_driver = unique((c for c in exported_mod["connectorHandling"] if c["connectorId"] == 2),
+                              "Target connector driver metadata absent or ambiguous")
+    for driver in (exported_mod, connector_driver):
+        require(driver["ioApplicationSet"] is False and driver["ioApplicationId"] == "00000000-0000-0000-0000-000000000000",
+                "I/O Application selection differs on target device or connector")
     conn = unique((c for c in snap["connectors"] if c["enumeratedFromDeviceGuid"] == guid and
                    raw(c["fields"], "connector_id") == 2), "Connector 2 is ambiguous or absent")
     require(raw(conn["fields"], "ownerGuid") == guid and raw(conn["fields"],"interface") == "Common.inovance2",
@@ -98,10 +139,10 @@ def validate_state(state, positive, match_export=None):
             require(m.get("default_variable") == expected_default,
                     "Target default_variable is missing or differs from the expected native state")
         if k==target and positive:
-            require(row["mappingState"]=="mapping-text-read" and raw(m,"variable")==EXPRESSION and
+            require(row["mappingState"]=="mapping-text-read" and raw(m,"variable")==expression and
                     raw(m,"mapping_creates_variable") is False and raw(m,"maps_to_existing_variable") is True,
                     "Setter did not establish the requested existing-variable expression")
-            require(len(entries)==1 and match_export is not None and match_export(entries[0],EXPRESSION),
+            require(len(entries)==1 and match_export is not None and match_export(entries[0],expression),
                     "Getter disagrees with the independently exported mapping entry")
             require(exported_empty_default(entries[0]), "Export DefaultVariable disagrees with target getter")
         else:
@@ -130,8 +171,9 @@ def invariant(state, target, cross_open=False):
         c = index(connectors, lambda v: (v["enumeratedFromDeviceGuid"],raw(v["fields"],"connector_id")))
         devices = [d[k] for k in sorted(d)]
         connectors = [c[k] for k in sorted(c)]
-    return (state["applicationId"],state["declaration"],state["sources"],state["tasks"],
-            devices,connectors,snap["channels"],rows)
+    export_devices = sorted(state["export"]["devices"], key=lambda dev: dev["guid"])
+    return ((state["applicationId"],state["applications"]),state["declaration"],state["sources"],state["tasks"],
+            devices,connectors,snap["channels"],rows,export_devices)
 
 
 def change_only(before, after, match_export, cross_open=False):

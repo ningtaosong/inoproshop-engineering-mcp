@@ -56,7 +56,17 @@ def run():
 
     def inventory(project):
         nodes=list(api['walk'](project))
-        app,names,aid=unique((row for row in nodes if getattr(row[0],'is_application',False)), 'Application not unique')
+        applications = [(obj, names, scope) for obj, names, scope in nodes if getattr(obj, 'is_application', False)]
+        app, names, aid = unique(applications, 'Application not unique')
+        ancestor = app
+        for _ in range(len(names) - 1):
+            ancestor = ancestor.parent
+            if getattr(ancestor, 'is_device', False):
+                break
+        expect(getattr(ancestor, 'is_device', False), 'Application owning device not identified')
+        app_record = dict(guid=unicode(app.guid).lower(), name=unicode(app.get_name()), path=names,
+                          isApplication=bool(app.is_application), typeGuid=unicode(app.type).lower(),
+                          deviceGuid=unicode(ancestor.guid).lower())
         sources=[]
         for obj,n,scope in nodes:
             decl=api['normalize'](unicode(obj.textual_declaration.text)) if getattr(obj,'has_textual_declaration',False) else None
@@ -69,17 +79,17 @@ def run():
                                     api['task_append_call_row'])
         expect(tasks['coverageComplete'] and not tasks['enumerationFailures'] and not tasks['resolutionReadFailures']
                and all(t['callsComplete'] for t in tasks['tasks']), 'Task inventory not complete')
-        return nodes, app, aid, sources, tasks
+        return nodes, [app_record], aid, sources, tasks
 
     def gather(project,label,needs_gvl=True):
         stage(label)
-        nodes,app,aid,sources,tasks=inventory(project)
+        nodes,applications,aid,sources,tasks=inventory(project)
         matches=[(obj,n) for obj,n,scope in nodes if scope==aid and n[-1].lower()==guard.GVL_NAME.lower()]
         decl=None
         if needs_gvl:
             obj,n=unique(matches,'GVL_IOProbe missing or ambiguous in Application')
             expect(unicode(obj.parent.guid).lower()==aid,'GVL is not at the Application root')
-            decl=dict(name=unicode(obj.get_name()),guid=unicode(obj.guid).lower(),parentGuid=unicode(obj.parent.guid).lower(),
+            decl=dict(name=unicode(obj.get_name()),path=n,guid=unicode(obj.guid).lower(),parentGuid=unicode(obj.parent.guid).lower(),
                       typeGuid=unicode(obj.type).lower(),text=api['normalize'](unicode(obj.textual_declaration.text)))
         else:
             expect(not matches,'Fixture already has the target GVL')
@@ -87,7 +97,7 @@ def run():
         record(label+'-getter',snap)
         devices=[obj for obj,n,scope in nodes if getattr(obj,'is_device',False)]
         idx=xml.export_index(project,devices,file(label+'.export'))
-        st=dict(snapshot=snap,export=idx,applicationId=aid,declaration=decl,sources=sources,tasks=tasks,
+        st=dict(snapshot=snap,export=idx,applicationId=aid,applications=applications,declaration=decl,sources=sources,tasks=tasks,
                 sourceSnapshot=api['snapshot'](project))
         record(label+'-state',st)
         return st
@@ -172,16 +182,17 @@ def run():
             expect(key==guard.validate_state(live,False) and guard.invariant(live,key)==guard.invariant(original,key)
                    and sha(path)==expected,'Same-handle precheck changed')
             m=target_wrapper(project,key)
+            expression=guard.mapping_expression(live,guard.mapping_expression(prior))
             checkpoint=os.path.join(root,'checkpoint.project')
             File.Copy(path,checkpoint,False)
             expect(sha(checkpoint)==expected==sha(path),'Checkpoint mismatch')
             record('checkpoint',dict(path=checkpoint,sha256=expected))
             stage('setter-dispatch')
             record('dispatch',dict(operationId=operation,owner=key[0],connector=key[1],parameter=key[2],element=key[3],
-                                   targetGVL=live['declaration'],expression=guard.EXPRESSION,disk=expected,
+                                   application=live['applications'][0],targetGVL=live['declaration'],expression=expression,disk=expected,
                                    fullMappingEvidence=live['export']['exportSha256']))
             result['setterDispatchCount']=1
-            m.variable=guard.EXPRESSION
+            m.variable=expression
             stage('setter-returned')
             after=gather(project,'after-setter')
             guard.change_only(live,after,xml.mapping_matches)

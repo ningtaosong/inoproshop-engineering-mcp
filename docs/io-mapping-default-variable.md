@@ -2,6 +2,8 @@
 
 在 InoProShop 1.9.1.6 的 AM610 测试工程中，目标成员 `InputData.Bit0` 首次建立映射时，`default_variable` 从原生 null 变为零长度字符串符合本机实现。新的独立夹具通过了严格的写后读回，随后编译器拒绝映射表达式 `GVL_IOProbe.Input0`。本次取得未保存状态下的两种读数，保存版的独立重开正例仍缺。产品保持 0.33.0 候选版、36 项工具。
 
+后续使用新夹具核实了带应用名的完整表达式。[独立的命名与编译验收](io-mapping-application-name.md)保留该次写后结果及保存前的停点。
+
 ## 字段依据与允许的变化
 
 本机脚本适配器的 `get_First`（0x06000148）在集合为空时返回 null。`get_default_variable`（0x06000152）检查首项的 `IVariableMapping2` 接口，缺少适用首项时返回 null，否则调用它的 `DefaultVariable` getter。单独一个 null 不足以判断列表是否为空。
