@@ -17,7 +17,7 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
-import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {organizationResult} from './organization.js';
 import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
@@ -30,7 +30,7 @@ const S5B_PROMPT_STAGES:Record<string,readonly ('initial-open'|'reopen')[]> = {
   library_inspect:['initial-open'], project_search:['initial-open'], object_read:['initial-open'], variable_usages:['initial-open'],
   library_placeholder_resolve:['initial-open','reopen'], code_apply_change:['initial-open','reopen'],
   task_create:['initial-open','reopen'],
-  task_call_append:['initial-open','reopen'],
+  task_call_append:['initial-open','reopen'], task_call_replace:['initial-open','reopen'],
   project_build:['initial-open'], project_save:['initial-open','reopen']
 };
 
@@ -324,7 +324,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.tool==='variable_edit'?(op as any).effectiveArgs??op.args:op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',task_create:'task_create',task_call_append:'task_call_append',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',task_create:'task_create',task_call_append:'task_call_append',task_call_replace:'task_call_replace',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -541,7 +541,7 @@ export class EngineeringService {
         if(d!.changed===false&&(d!.noOp!==true||d!.reopened!==false||d!.diskHash!==args.expectedDiskHash))invalid();
         d!.buildApplicable=d!.changed===true?false:buildApplies(session,d);
       }
-      if(command==='task_create'||command==='task_call_append') {
+      if(command==='task_create'||command==='task_call_append'||command==='task_call_replace') {
         const d=parsed.data as any, before=d.before, after=d.after, program=d.program;
         const appPath=session?.applications?.find(x=>x.applicationId===args.applicationId)?.path;
         const complete=(v:any)=>v?.projectId===args.projectId&&v.applicationId===args.applicationId&&
@@ -566,6 +566,27 @@ export class EngineeringService {
           d.configurationVersionScheme!==TASK_CONFIGURATION_SCHEME||taskConfigurationVersion(before)!==args.expectedTaskVersion||
           taskConfigurationVersion(after)!==d.configurationVersion||d.taskConfigurationVersion!==d.configurationVersion)invalid();
         const targetName=program.path.at(-1),raw=[[targetName,'']];
+        if(command==='task_call_replace'){
+          const old=d.oldProgram;
+          const facts={taskConfigurationPath:d.taskConfigurationPath,controller:d.controller,program,
+            programEmbeddedObjectTypes:d.programEmbeddedObjectTypes,oldProgram:old,oldProgramEmbeddedObjectTypes:d.oldProgramEmbeddedObjectTypes};
+          if(canonical(d.programReads?.afterReplace)!==canonical(facts)||canonical(d.programReads?.reopened)!==canonical(facts))invalid();
+          if(!old||old.objectId!==args.oldProgramId||old.contentHash!==args.expectedOldProgramHash||
+            old.applicationId!==args.applicationId||!Array.isArray(old.path)||canonical(old.path.slice(0,-1))!==canonical(appPath)||
+            !Array.isArray(d.oldProgramEmbeddedObjectTypes)||!d.oldProgramEmbeddedObjectTypes.includes(TASK_CREATE_ST_IMPLEMENTATION_TYPE)||
+            d.taskId!==args.taskId||taskConfigurationVersion(after)===args.expectedTaskVersion)invalid();
+          const expected=structuredClone(before),row=expected.tasks.find((t:any)=>t.taskId===args.taskId);
+          if(!row||canonical(row.path.slice(0,-1))!==canonical(d.taskConfigurationPath)||
+             !validReplacement(expected,args,old,program))invalid();
+          const newRow=[targetName,args.expectedCall[1]];
+          row.rawCalls[args.expectedCallOrder]=newRow;
+          const change={order:args.expectedCallOrder,oldProgramId:old.objectId,programId:program.objectId,
+            previousRaw:args.expectedCall,raw:newRow};
+          if(canonical(d.replacedCall)!==canonical(change)||canonical(d.afterReplace)!==canonical(expected)||
+            canonical(after)!==canonical(expected))invalid();
+          d.buildApplicable=false;
+          return;
+        }
         if(command==='task_call_append'){
           const expected=structuredClone(before),rows=expected.tasks.filter((t:any)=>t.taskId===args.taskId);
           const row=rows[0];
@@ -706,11 +727,12 @@ export class EngineeringService {
       if(op.tool==='folder_create'&&a.parentId!==a.applicationId)throw new DomainError('unsupported','FOLDER_ROOT_ONLY','仅在Application直接根节点创建文件夹');
       return this.bridge(op,op.tool==='folder_create'?'create_folder':'move_object',s,a);
     }
-    if(['task_config_update','task_create','task_call_append'].includes(op.tool)) {
+    if(['task_config_update','task_create','task_call_append','task_call_replace'].includes(op.tool)) {
       if(op.tool==='task_config_update')validateTaskPatch(a);
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
         throw new DomainError('conflict','TASK_DISK_CHANGED','任务写入前磁盘版本与登记/请求不一致；未派发IDE');
-      return this.bridge(op,op.tool==='task_config_update'?'task_update':op.tool,s,a);
+      return this.bridge(op,op.tool==='task_config_update'?'task_update':op.tool,s,
+        op.tool==='task_call_replace'?{...a,expectedSourceSnapshot:s.snapshot}:a);
     }
     if(op.tool==='project_compare') {
       if(a.mode==='compare')return this.compareRecorded(op,s);

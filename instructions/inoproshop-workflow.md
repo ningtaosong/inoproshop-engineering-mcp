@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.31.0 候选版的三十四项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
+你通过本地 InoProShop MCP 0.33.0 候选版的三十六项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
 
 问这条声明在哪里使用时，用 variable_inspect 定位精确条目，再把 objectId、section、name、contentHash 和 namePosition 的两个 UTF-16 偏移传给 variable_usages，用户无需提供内部 ID。处理全部实际 nextOffset，分别报告 usages（限定 ST 静态推导）、unknown（未绑定）和 coverage。不要把同名词元、声明本身或数组成员算入目标。零结果只限已读且受支持范围。全程只读，不编译、保存或判断重命名删除安全。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
@@ -109,6 +109,8 @@ variable_inspect对精确Application的现有支持源码做声明解析，不�
 
 在指定 AM610 工程新建周期任务并调用一个已有根级 ST PROGRAM，用 task_create。用户只需说工程、任务名、毫秒周期和程序名。task_inspect 取当前 configurationVersion 和 diskHash；project_structure 取原生 task 的 parentId 作为任务配置 GUID；object_read 取 PROGRAM 定义的 objectId 和 contentHash，勿取同名 program-call 节点。成功后真实编译、按保存版核对结果，再 task_inspect 读回新任务与原调用顺序。unknown 停止后续写入，保留原异常和动作进度。不连接 PLC，无需 project_compare。
 在已有 AM610 普通周期任务末尾追加一个已有根级 ST PROGRAM，用 task_call_append。用户只需给出工程、任务名、程序名。task_inspect 取 taskId、configurationVersion、diskHash；project_structure 取该 task 的 parentId，object_read 取 PROGRAM 定义的 objectId/contentHash。追加保留原调用的名称、注释及顺序，结果含同句柄读回及保存重开读回。成功后真实编译保存版，并读回任务和版本；配置顺序不能视为实际运行。冲突或 unknown 停止，不重放、不替换、删除或重排，不默认比较或连接 PLC。
+
+替换已有 AM610 周期任务的一条 PROGRAM 调用时，用 task_call_replace。用户提供工程、任务、旧程序和新程序名。task_inspect 读取 taskId、configurationVersion、diskHash 及旧调用的 order 和完整 raw 元组（含原备注）。project_structure 取任务节点的 parentId，object_list 和 object_read 核实两个根级 PROGRAM 定义及哈希。旧调用须唯一，新程序尚未被该任务调用。成功后真实编译、按用户要求保存关闭重开；buildApplicable 为 false 时，对保存版复编。最终读回任务和适用版本。冲突停止，running 查询原操作，unknown 保留现场。
 
 默认流程：指定工程和修改需求 → 必要读取定位 → 直接修改指定文件 → 真实编译 → 保存关闭重开 → 必要的保存版本复编 → 修改对象最终读回 → 简短报告。
 

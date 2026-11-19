@@ -7,6 +7,29 @@ export function isTaskAppendCall(row:unknown):row is [string,string] {
   return Array.isArray(row)&&row.length===2&&typeof row[0]==='string'&&row[0].length>0&&typeof row[1]==='string';
 }
 
+// The task version covers the full ordered inventory; the caller also identifies
+// the exact raw row and both definitions. A qualified lookalike blocks the edit.
+export function validReplacement(inv:any,a:any,old:any,next:any):boolean {
+  const unique=(p:any)=>Array.isArray(p?.path)&&
+    canonical(inv.programs.filter((x:any)=>x.path.at(-1)?.toLowerCase()===p.path.at(-1)?.toLowerCase()))===
+    canonical([{objectId:p.objectId,path:p.path}]);
+  const fields=['kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'];
+  const watchdog=['enabled','time','time_unit','sensitivity'];
+  if(inv.enumerationFailures?.length!==0||inv.resolutionReadFailures?.length!==0||
+    inv.tasks.some((t:any)=>fields.some(k=>typeof t.rawFields?.[k]!=='string')||watchdog.some(k=>typeof t.watchdog?.[k]!=='string')))return false;
+  if(!unique(old)||!unique(next)||old.objectId===next.objectId||inv.coverageComplete!==true||
+     inv.tasks.some((t:any)=>!t.callsComplete||t.unavailableFields?.length!==0||!Array.isArray(t.rawCalls)||
+       !t.rawCalls.every(isTaskAppendCall))||new Set(inv.tasks.map((t:any)=>t.taskId)).size!==inv.tasks.length)return false;
+  const row=inv.tasks.find((t:any)=>t.taskId===a.taskId);
+  if(row?.rawFields?.kind_of_task!=='Cyclic')return false;
+  const calls=row.rawCalls as [string,string][], oldName=old.path.at(-1).toLowerCase(),newName=next.path.at(-1).toLowerCase();
+  if(!calls.every(([name])=>/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(name)))return false;
+  const names=calls.map(([name])=>name.split('.').at(-1)!.toLowerCase());
+  return calls[a.expectedCallOrder]?.[0].toLowerCase()===oldName&&
+    canonical(calls[a.expectedCallOrder])===canonical(a.expectedCall)&&
+    names.filter(n=>n===oldName).length===1&&!names.includes(newName);
+}
+
 export function configuredIntervalMs(fields:any):number|undefined {
   if(fields?.interval_unit!=='ms')return;
   const m=/^(?:t#(\d+)ms|(\d+))$/i.exec(fields.interval??'');

@@ -118,6 +118,95 @@ class TaskCreateTest(unittest.TestCase):
         args=dict(self.args,taskId='main',**overrides)
         return self.e['task_call_append'](self.project,self.req,args,{'project':self.project})[0]
 
+    def prepare_replace(self):
+        old=Node('Old','old',self.program.type,self.app,has_textual_declaration=True,
+                 has_textual_implementation=True,embedded_object_types=[ST_IMPLEMENTATION_TYPE],
+                 textual_declaration=S(text='PROGRAM Old\\nVAR\\nEND_VAR'),textual_implementation=S(text=''))
+        self.main.pous[:]=[['First',''],['Middle','中文'],['Old','None']]
+        self.main.pous.replace=lambda i,n,c:self.main.pous.__setitem__(i,[n,c])
+        self.e['task_replace_ide_version']=lambda:'1.9.1.6'
+        self.refresh_version()
+        self.args.update(taskId='main',oldProgramId='old',expectedOldProgramHash=self.e['content_hash'](old.textual_declaration.text,''),
+                         expectedCallOrder=2,expectedCall=['Old','None'],expectedSourceSnapshot='source-hash')
+        return old
+
+    def replace(self,**kw):
+        return self.e['task_call_replace'](self.project,self.req,dict(self.args,**kw),{'project':self.project})[0]
+
+    def test_replace_last_row_preserves_native_comments_both_programs_and_other_tasks(self):
+        self.prepare_replace()
+        self.make_task('OtherTask','other',[['First','keep']])
+        self.refresh_version()
+        r=self.replace()
+        self.assertEqual(r['status'],'succeeded',r)
+        self.assertEqual(r['data']['afterReplace'],r['data']['after'])
+        self.assertEqual(r['data']['programReads']['afterReplace'],r['data']['programReads']['reopened'])
+        self.assertEqual(self.main.pous,[['First',''],['Middle','中文'],['PRG_S8Probe','None']])
+        self.assertEqual(self.saves,1)
+
+    def test_replace_preflight_guards_have_zero_native_writes_saves_and_unchanged_disk(self):
+        old=self.prepare_replace()
+        original=[row[:] for row in self.main.pous]
+        def unexpected(*args):self.fail('unexpected native replace')
+        self.main.pous.replace=unexpected
+        for label,rows,overrides in [
+            ('missing',original[:2],{}),('duplicate',original+[['old','other']],{}),
+            ('mixed order',original[::-1],{}),('wrong index',original,dict(expectedCallOrder=0)),
+            ('different comment',original,dict(expectedCall=['Old',''])),('new already exists',original+[['prg_s8probe','']],{}),
+            ('malformed',[['First',None]]+original[1:],{}),('string row',['AB']+original[1:],{}),
+            ('native null',[[None,'']]+original[1:],{}),('short row',[['First']]+original[1:],{}),
+            ('old==new',original,dict(oldProgramId='program',expectedOldProgramHash=self.args['expectedProgramHash'])),
+            ('wrong ID',original,dict(programId='wrapper')),('task version',original,dict(expectedTaskVersion='stale')),
+            ('changed old source',original,dict(expectedOldProgramHash='stale')),('changed new source',original,dict(expectedProgramHash='stale')),
+            ('snapshot',original,dict(expectedSourceSnapshot='changed')),('disk',original,dict(expectedDiskHash='stale'))]:
+            with self.subTest(label=label):
+                self.main.pous[:]=rows
+                self.refresh_version()
+                self.assertEqual(self.replace(**overrides)['status'],'conflict')
+        self.main.pous[:]=original
+        self.refresh_version()
+        for obj in (old,self.program):
+            for mode in ('missing','wrong','raises'):
+                with self.subTest(program=obj.name,mode=mode):
+                    obj.embedded_object_types=[] if mode=='missing' else ['not-st']
+                    if mode=='raises':obj.__class__=UnreadableProgram
+                    self.assertEqual(self.replace()['status'],'conflict')
+                    obj.__class__=Node;obj.embedded_object_types=[ST_IMPLEMENTATION_TYPE]
+        duplicate=Node('oLd','duplicate',old.type,self.app,has_textual_declaration=True,textual_declaration=old.textual_declaration)
+        self.assertEqual(self.replace()['status'],'conflict')
+        self.app.nodes.remove(duplicate)
+        self.assertEqual((self.saves,self.events),(0,[]))
+        self.assertEqual(self.e['file_hash'](str(self.project_file)),self.args['expectedDiskHash'])
+
+    def test_replace_partial_setters_and_lost_binding_in_both_registration_modes(self):
+        self.prepare_replace()
+        for direct in (True,False):
+            for fault in ('name','comment','after-read','reopen'):
+                with self.subTest(direct=direct,fault=fault):
+                    self.main.pous[2]=['Old','None']
+                    self.program.embedded_object_types=[ST_IMPLEMENTATION_TYPE]
+                    self.project_file.write_bytes(b'unsaved probe fixture')
+                    self.saves=0;self.events.clear();mutations=[]
+                    if direct:self.req['fileGuard']={'mode':'direct'}
+                    else:self.req.pop('fileGuard',None)
+                    def change(i,name,comment):
+                        mutations.append((i,name,comment));self.main.pous[i][0]=name
+                        if fault in ('name','comment'):raise RuntimeError('native setter '+fault)
+                        if fault=='after-read':self.program.embedded_object_types=[]
+                    def reopen(state):
+                        value=self.save_reopen(state)
+                        self.main.pous[2][1]=None
+                        return value
+                    self.main.pous.replace=change
+                    self.e['lifecycle_save_reopen']=reopen
+                    r=self.replace()
+                    self.assertEqual(r['status'],'unknown',r)
+                    self.assertFalse(r['data']['automaticRollback'])
+                    self.assertTrue(r['data']['primaryException'])
+                    self.assertEqual(mutations,[(2,'PRG_S8Probe','None')])
+                    self.assertEqual(self.saves,int(fault=='reopen'))
+                    self.assertTrue(Path(self.req['checkpointPath']).is_file())
+
     def test_append_preserves_multiple_calls_comments_and_other_tasks(self):
         prefix=[['PLC_PRG',''],['Other','保留中文注释'],['Third','None']]
         self.main.pous[:]=[tuple(row) for row in prefix]
