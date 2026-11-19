@@ -745,6 +745,146 @@ def task_config_update(project,req,args,state):
         return failure('unknown','TASK_WRITE_INCOMPLETE',text(e),dict(common,actions=actions,partial=partial,
             checkpoint=req['checkpointPath'],primaryException=exception_evidence(e),automaticRollback=False)),state['project']
 
+def task_create_context(project,args):
+    """Read only identity/configuration within the same owned native handle."""
+    before=task_inventory(project,args)
+    required=set(('kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'))
+    if (not before['coverageComplete'] or len(set(t['taskId'] for t in before['tasks']))!=len(before['tasks']) or
+        any(not t['callsComplete'] or not required.issubset(t['rawFields']) or
+            not set(('enabled','time','time_unit','sensitivity')).issubset(t['watchdog']) for t in before['tasks'])):
+        raise ValueError(u'任务字段、原生调用列表或程序枚举不完整')
+    app_path=before['applicationPath'];aid=args['applicationId']
+    rows=list(walk(project))
+    app=[x for x,n,a in rows if a==aid and n==app_path and getattr(x,'is_application',False)]
+    devices=[x for x,n,a in rows if getattr(x,'is_device',False) and n+['Plc Logic']==app_path[:-1]]
+    if len(app)!=1 or len(devices)!=1:
+        raise ValueError(u'无法确认指定 Application 的唯一原生设备归属')
+    ident=devices[0].get_device_identification()
+    if (int(ident.type),text(ident.id),text(ident.version))!=(4102,'10f4 0002','3.5.11.11'):
+        raise ValueError(u'只支持已验证的 AM610 设备描述 4102 / 10f4 0002 / 3.5.11.11')
+    configs=[(x,n) for x,n,a in rows if a==aid and n[:-1]==app_path and getattr(x,'is_task_configuration',False)]
+    if len(configs)!=1 or text(configs[0][0].guid).lower()!=args['taskConfigurationId']:
+        raise ValueError(u'精确 Application 的根任务配置节点身份已变或不唯一')
+    config,config_path=configs[0]
+    if any(t['path'][:-1]!=config_path for t in before['tasks']):
+        raise ValueError(u'现有任务不都属于同一原生配置节点')
+    program=[(x,n) for x,n,a in rows if a==aid and st_object(x) and text(x.guid).lower()==args['programId']]
+    if len(program)!=1 or program[0][1][:-1]!=app_path:
+        raise ValueError(u'目标 GUID 未唯一指向同一 Application 的根级 ST PROGRAM 定义')
+    item,names=program[0]
+    actual=read_object(item,names,aid)
+    if (actual.get('pouType')!='program' or actual.get('pouTypeSource')!='native-pou-type-id-and-declaration-header' or
+        actual['contentHash']!=args['expectedProgramHash']):
+        raise ValueError(u'目标 PROGRAM 类型或原文版本不符')
+    # The task-call child can share the name; only native POU definitions count.
+    native_pous=[x for x,n,a in rows if a==aid and text(x.type).lower()=='6f9dac99-8de1-4efc-8465-68ac443b7d08' and
+                 n[-1].lower()==names[-1].lower()]
+    program_rows=[p for p in before['programs'] if p['path'][-1].lower()==names[-1].lower()]
+    if len(native_pous)!=1 or program_rows!=[{'objectId':args['programId'],'path':names}]:
+        raise ValueError(u'调用名称无法唯一解析到指定 PROGRAM')
+    facts={'taskConfigurationPath':config_path,'controller':{'type':4102,'id':'10f4 0002','version':'3.5.11.11'},
+           'program':{key:actual[key] for key in ('objectId','applicationId','path','contentHash')}}
+    return before,config,facts
+
+
+def task_create(project,req,args,state):
+    """Create once; errors after the factory is dispatched never trigger a save or rollback."""
+    from System.IO import File,FileAttributes,FileStream,FileMode,FileAccess,FileShare
+    expected_disk=args['expectedDiskHash'];interval=args['intervalMs'];name=args['name']
+    if (not re.match(r'^[A-Za-z_][A-Za-z0-9_]{0,62}\Z',name) or isinstance(interval,bool) or
+        not isinstance(interval,(int,long)) or not 1<=interval<=60000):
+        return failure('failed','TASK_CREATE_INPUT',u'任务名须为普通标识符，周期为整数毫秒 1..60000'),project
+    if file_hash(req['projectPath'])!=expected_disk:
+        return failure('conflict','TASK_DISK_CHANGED',u'磁盘工程与预期不符，未写入'),project
+    try:
+        before,config,facts=task_create_context(project,args)
+    except Exception as e:
+        return failure('conflict','TASK_CREATE_IDENTITY_OR_COVERAGE',text(e),{'primaryException':exception_evidence(e)}),project
+    if task_configuration_version(before)!=args['expectedTaskVersion']:
+        return failure('conflict','TASK_VERSION_CHANGED',u'实际任务配置与原版本不符，未写入'),project
+    if any(text(x.get_name()).lower()==name.lower() for x in config.get_children(False)):
+        return failure('conflict','TASK_NAME_EXISTS',u'任务配置节点下名称已占用，未写入'),project
+    cyclic_ids=set(t['taskId'] for t in before['tasks'] if t['rawFields']['kind_of_task']=='Cyclic')
+    cyclic=[x.kind_of_task for x in config.get_children(False) if text(x.guid).lower() in cyclic_ids]
+    if not cyclic or not callable(getattr(config,'create_task',None)):
+        return failure('unsupported','TASK_CREATE_NATIVE_API',u'无法核实原生任务工厂或已验证的 Cyclic 枚举值，未写入'),project
+    try:
+        if int(File.GetAttributes(req['projectPath'])) & int(FileAttributes.ReadOnly):raise ValueError(u'工程文件只读')
+        handle=FileStream(req['projectPath'],FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite);handle.Dispose()
+    except Exception as e:
+        return failure('unsupported','TASK_PROJECT_READ_ONLY',text(e)),project
+    directory=os.path.dirname(req['resultPath'])
+    checkpoint=req['checkpointPath'];old_snapshot=snapshot(project);actions=[]
+    common=dict(facts,projectId=args['projectId'],applicationId=args['applicationId'],taskConfigurationId=args['taskConfigurationId'],
+                intervalMs=interval,before=before,actions=actions,snapshot=old_snapshot,configurationOnly=True,runtimeObserved=False,
+                configurationVersionScheme='task-configuration-v1',checkpoint=checkpoint)
+    shutil.copyfile(req['projectPath'],checkpoint)
+    if file_hash(checkpoint)!=expected_disk or file_hash(req['projectPath'])!=expected_disk:
+        return failure('conflict','TASK_DISK_CHANGED',u'检查点或磁盘版本变化，未写入'),project
+    publish(os.path.join(directory,'task-before.json'),common)
+
+    def action(stage,call):
+        row={'stage':stage,'status':'started'};actions.append(row)
+        publish(os.path.join(directory,'task-create-'+stage+'-start.json'),row)
+        value=call()
+        row['status']='succeeded'
+        publish(os.path.join(directory,'task-create-'+stage+'-end.json'),row)
+        return value
+
+    def verify(opened,task_id):
+        inventory,unused,observed=task_create_context(opened,args)
+        new=[row for row in inventory['tasks'] if row['taskId']==task_id]
+        if (len(new)!=1 or [row for row in inventory['tasks'] if row['taskId']!=task_id]!=before['tasks'] or
+            sorted(inventory['programs'],key=lambda p:p['objectId'])!=sorted(before['programs'],key=lambda p:p['objectId']) or
+            observed!=facts or snapshot(opened)!=old_snapshot):
+            raise ValueError('Created task identity or preserved task/program evidence differs')
+        row=new[0]
+        if (row['path']!=facts['taskConfigurationPath']+[name] or row['rawFields']['kind_of_task']!='Cyclic' or
+            configured_interval_ms(row['rawFields'])!=interval or row['rawCalls']!=[[facts['program']['path'][-1],'']]):
+            raise ValueError('Native cyclic configuration or ordered program call readback differs')
+        return inventory,row
+
+    try:
+        created=action('create',lambda:config.create_task(name))
+        task_id=text(created.guid).lower()
+        common['taskId']=task_id
+        if (not getattr(created,'is_task',False) or text(created.get_name())!=name or
+            text(created.parent.guid).lower()!=args['taskConfigurationId'] or len(created.pous)!=0 or
+            any(row['taskId']==task_id for row in before['tasks'])):
+            raise ValueError('Native factory did not return the new empty task on the expected node')
+        def set_period():
+            created.kind_of_task=cyclic[0]
+            created.interval='t#%dms'%interval
+            if text(created.kind_of_task)!='Cyclic' or configured_interval_ms({'interval':text(created.interval),
+                'interval_unit':text(created.interval_unit)})!=interval:
+                raise ValueError('Native cycle readback differs')
+        action('period',set_period)
+        action('bind',lambda:created.pous.add(facts['program']['path'][-1],''))
+        after_binding,row=verify(project,task_id)
+        publish(os.path.join(directory,'task-after-bind.json'),after_binding)
+        if file_hash(req['projectPath'])!=expected_disk:
+            raise ValueError('Disk file changed before authorized save')
+        project=lifecycle_save_reopen(state)
+        after,reopened_row=verify(project,task_id)
+        if after!=after_binding:
+            raise ValueError('Reopened inventory differs from the task binding readback')
+        version=task_configuration_version(after);saved_hash=file_hash(req['projectPath'])
+        if saved_hash==expected_disk:raise ValueError('No saved disk revision was observed')
+        publish(os.path.join(directory,'task-after-reopen.json'),after)
+        return success(u'周期任务已创建并绑定程序，保存关闭重开核对通过；请真实编译',dict(common,after=after,task=reopened_row,
+            calls=[{'order':0,'applicationId':args['applicationId'],'programId':args['programId'],'raw':reopened_row['rawCalls'][0]}],
+            created=True,reopened=True,configurationVersion=version,taskConfigurationVersion=version,
+            savedDiskHash=saved_hash,persistedToWorkingCopy=True)),project
+    except Exception as e:
+        primary=exception_evidence(e)
+        partial=None
+        if state['project'] is not None:
+            try:partial=task_inventory(state['project'],args)
+            except Exception:pass
+        return failure('unknown','TASK_CREATE_INCOMPLETE',text(e),dict(common,partial=partial,primaryException=primary,
+            automaticRollback=False)),state['project']
+
+
 def native_structure(project, args):
     """Same native child API as walk; retain non-ST objects and per-branch failures."""
     nodes, failures, native = [], [], {}
@@ -1266,7 +1406,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1302,6 +1442,8 @@ def dispatch(req):
                 response = success(u"已只读取得真实任务字段与程序候选",task_inventory(project,args))
             elif command == 'task_update':
                 response,project=task_config_update(project,req,args,lifecycle)
+            elif command == 'task_create':
+                response,project=task_create(project,req,args,lifecycle)
             elif command == "libraries":
                 response = success(u"已只读取得精确 Application 的库直接引用与原生解析信息",library_inventory(project,args))
             elif command == "add_library":

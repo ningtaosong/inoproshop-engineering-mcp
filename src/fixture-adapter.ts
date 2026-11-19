@@ -96,6 +96,50 @@ export class FixtureAdapter implements Adapter {
         if(p.wrongTaskReadback)after.tasks[0].rawFields.core_binding='tampered';
       }
     }
+    else if(req.command==='task_create') {
+      const before=taskInventory(),configPath=[...before.applicationPath,'Task Configuration'];
+      const reject=(status:'conflict'|'unsupported',code:string)=>({...reply(status,'Fixture refused task creation before writing'),error:{code,message:'Fixture preflight rejected'}});
+      const target=objects.find((o:any)=>o.objectId===a.programId);
+      const name=target?.path.at(-1);
+      const program=target&&{objectId:target.objectId,applicationId:target.applicationId,path:target.path,contentHash:codeHash(target.declaration,target.implementation)};
+      if(digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash)result=reject('conflict','TASK_DISK_CHANGED');
+      else if(taskConfigurationVersion(before)!==a.expectedTaskVersion)result=reject('conflict','TASK_VERSION_CHANGED');
+      else if(before.tasks.some((t:any)=>t.path.at(-1).toLowerCase()===a.name.toLowerCase()))result=reject('conflict','TASK_NAME_EXISTS');
+      else if(p.taskReadOnly)result=reject('unsupported','TASK_PROJECT_READ_ONLY');
+      else if(!before.tasks.some((t:any)=>t.rawFields.kind_of_task==='Cyclic'))result=reject('unsupported','TASK_CREATE_NATIVE_API');
+      else if(!before.coverageComplete||before.tasks.some((t:any)=>!t.callsComplete||t.unavailableFields.length||
+          canonical(t.path.slice(0,-1))!==canonical(configPath))||p.taskConfigurationId!==a.taskConfigurationId||
+          !program||program.contentHash!==a.expectedProgramHash||canonical(target.path.slice(0,-1))!==canonical(before.applicationPath)||
+          canonical(before.programs.filter((row:any)=>row.path.at(-1).toLowerCase()===name?.toLowerCase()))!==
+            canonical([{objectId:a.programId,path:target.path}]))result=reject('conflict','TASK_CREATE_IDENTITY_OR_COVERAGE');
+      else {
+        const checkpoint=path.join(dir,'checkpoint.project'),taskId=randomUUID();
+        await fs.copyFile(req.projectPath,checkpoint);
+        const actions=[{stage:'create',status:'succeeded'},{stage:'period',status:'succeeded'},
+          {stage:'bind',status:p.failNewTaskBinding?'started':'succeeded'}];
+        const base=before.tasks.find((t:any)=>t.rawFields.kind_of_task==='Cyclic');
+        const task={...structuredClone(base),taskId,path:[...configPath,a.name],
+          rawFields:{...base.rawFields,interval:'t#'+a.intervalMs+'ms'},rawCalls:p.failNewTaskBinding?[]:[[name,'']]};
+        const common={taskId,projectId:a.projectId,applicationId:a.applicationId,taskConfigurationId:a.taskConfigurationId,
+          intervalMs:a.intervalMs,taskConfigurationPath:configPath,controller:{type:4102,id:'10f4 0002',version:'3.5.11.11'},
+          program,actions,checkpoint,before,snapshot:snapshot(),configurationOnly:true,runtimeObserved:false,
+          configurationVersionScheme:'task-configuration-v1',testMode:true};
+        await atomicJson(path.join(dir,'task-before.json'),before);
+        p.tasks.push({...task,applicationId:a.applicationId});
+        const after=taskInventory(),version=taskConfigurationVersion(after);
+        if(p.failNewTaskBinding)result={...reply('unknown','原生任务已创建，绑定结果不明，保留现场',
+          {...common,partial:after,primaryException:{message:'Injected native bind error'},automaticRollback:false}),
+          error:{code:'TASK_CREATE_INCOMPLETE',message:'Injected native bind error'}};
+        else {
+          await atomicJson(req.projectPath,p);
+          const disk=digest(await fs.readFile(req.projectPath));
+          result=reply('succeeded','任务创建及绑定替身读回',{...common,after,task,
+            calls:[{order:0,applicationId:a.applicationId,programId:a.programId,raw:[name,'']}],
+            created:true,reopened:true,configurationVersion:version,taskConfigurationVersion:version,
+            savedDiskHash:disk,workerDiskHash:disk,postExitDiskHashObserved:true,persistedToWorkingCopy:true});
+        }
+      }
+    }
     else if(req.command==='inspect') result=reply('succeeded','测试工程副本已打开',{applications:p.applications,poolBuildAvailable:p.applications.length===0&&p.objects.length>0,projectPath:req.projectPath,snapshot:snapshot(),testMode:true});
     else if(req.command==='libraries') {
       result=reply('succeeded','库引用替身，非真实 IDE',libraryInventory());

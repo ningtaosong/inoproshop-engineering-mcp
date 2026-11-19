@@ -29,6 +29,7 @@ const S5B_PROMPT_STAGES:Record<string,readonly ('initial-open'|'reopen')[]> = {
   project_open:['initial-open'], project_structure:['initial-open'], object_list:['initial-open'],
   library_inspect:['initial-open'], project_search:['initial-open'], object_read:['initial-open'], variable_usages:['initial-open'],
   library_placeholder_resolve:['initial-open','reopen'], code_apply_change:['initial-open','reopen'],
+  task_create:['initial-open','reopen'],
   project_build:['initial-open'], project_save:['initial-open','reopen']
 };
 
@@ -322,7 +323,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.tool==='variable_edit'?(op as any).effectiveArgs??op.args:op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',task_create:'task_create',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -539,6 +540,41 @@ export class EngineeringService {
         if(d!.changed===false&&(d!.noOp!==true||d!.reopened!==false||d!.diskHash!==args.expectedDiskHash))invalid();
         d!.buildApplicable=d!.changed===true?false:buildApplies(session,d);
       }
+      if(command==='task_create') {
+        const d=parsed.data as any, before=d.before, after=d.after, program=d.program;
+        const appPath=session?.applications?.find(x=>x.applicationId===args.applicationId)?.path;
+        const complete=(v:any)=>v?.projectId===args.projectId&&v.applicationId===args.applicationId&&
+          v.targetKind==='application'&&pathKey(v.projectPath||'')===pathKey(session!.workingPath)&&
+          canonical(v.applicationPath)===canonical(appPath)&&v.coverageComplete===true&&
+          v.enumerationFailures?.length===0&&v.resolutionReadFailures?.length===0&&
+          Array.isArray(v.tasks)&&v.tasks.every((t:any)=>typeof t.taskId==='string'&&Array.isArray(t.path)&&
+            Array.isArray(t.rawCalls)&&t.callsComplete===true&&t.unavailableFields?.length===0)&&Array.isArray(v.programs);
+        if(!session||!appPath||!complete(before)||!complete(after)||
+          d.projectId!==args.projectId||d.applicationId!==args.applicationId||d.taskConfigurationId!==args.taskConfigurationId||
+          canonical(d.controller)!==canonical({type:4102,id:'10f4 0002',version:'3.5.11.11'})||
+          !Array.isArray(d.taskConfigurationPath)||d.taskConfigurationPath.length!==appPath.length+1||
+          canonical(d.taskConfigurationPath.slice(0,-1))!==canonical(appPath)||
+          program?.objectId!==args.programId||program?.applicationId!==args.applicationId||program?.contentHash!==args.expectedProgramHash||
+          !Array.isArray(program?.path)||canonical(program.path.slice(0,-1))!==canonical(appPath)||
+          !isHash(d.snapshot)||d.snapshot!==session.snapshot||!isHash(d.diskHash)||d.diskHash===args.expectedDiskHash||
+          d.savedDiskHash!==d.diskHash||d.postExitDiskHashObserved!==true||d.workerDiskHash!==d.diskHash||
+          d.created!==true||d.reopened!==true||!persisted()||d.configurationOnly!==true||d.runtimeObserved!==false||
+          d.checkpoint!==path.join(op.bridge!.directory,'checkpoint.project')||d.intervalMs!==args.intervalMs||
+          d.configurationVersionScheme!==TASK_CONFIGURATION_SCHEME||taskConfigurationVersion(before)!==args.expectedTaskVersion||
+          taskConfigurationVersion(after)!==d.configurationVersion||d.taskConfigurationVersion!==d.configurationVersion)invalid();
+        const row=d.task, targetName=program.path.at(-1),raw=[[targetName,'']];
+        if(!row||d.taskId!==row.taskId||before.tasks.some((t:any)=>t.taskId===d.taskId)||
+          canonical(row.path)!==canonical([...d.taskConfigurationPath,args.name])||
+          row.rawFields?.kind_of_task!=='Cyclic'||configuredIntervalMs(row.rawFields)!==args.intervalMs||
+          canonical(row.rawCalls)!==canonical(raw)||canonical(after.tasks.filter((t:any)=>t.taskId!==d.taskId))!==canonical(before.tasks)||
+          canonical(after.tasks.filter((t:any)=>t.taskId===d.taskId))!==canonical([row])||
+          canonical(after.programs)!==canonical(before.programs)||
+          canonical(after.programs.filter((p:any)=>p.path?.at(-1)?.toLowerCase()===targetName?.toLowerCase()))!==
+            canonical([{objectId:args.programId,path:program.path}])||
+          canonical(d.calls)!==canonical([{order:0,applicationId:args.applicationId,programId:args.programId,raw:raw[0]}])||
+          canonical(d.actions)!==canonical(['create','period','bind'].map(stage=>({stage,status:'succeeded'}))))invalid();
+        d.buildApplicable=false;
+      }
       if(command==='save') {
         if(d!.saved!==true || d!.reopened!==true || d!.snapshot!==args.expectedSnapshot || !isHash(d!.diskHash)) invalid();
         d!.buildApplicable=buildApplies(session,d);
@@ -648,11 +684,11 @@ export class EngineeringService {
       if(op.tool==='folder_create'&&a.parentId!==a.applicationId)throw new DomainError('unsupported','FOLDER_ROOT_ONLY','仅在Application直接根节点创建文件夹');
       return this.bridge(op,op.tool==='folder_create'?'create_folder':'move_object',s,a);
     }
-    if(op.tool==='task_config_update') {
-      validateTaskPatch(a);
+    if(op.tool==='task_config_update'||op.tool==='task_create') {
+      if(op.tool==='task_config_update')validateTaskPatch(a);
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
         throw new DomainError('conflict','TASK_DISK_CHANGED','任务写入前磁盘版本与登记/请求不一致；未派发IDE');
-      return this.bridge(op,'task_update',s,a);
+      return this.bridge(op,op.tool==='task_create'?'task_create':'task_update',s,a);
     }
     if(op.tool==='project_compare') {
       if(a.mode==='compare')return this.compareRecorded(op,s);

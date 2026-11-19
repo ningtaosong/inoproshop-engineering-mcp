@@ -1,5 +1,9 @@
 # InoProShop Engineering MCP
 
+**S8a 首个功能候选版为 0.31.0、34 项工具。** `task_create` 支持在已验证的 AM610 Application 新建普通周期任务，绑定一个已有根级 ST PROGRAM，并保存重开核对。任务调用的删除、替换和重排另行探测。见[任务创建说明](docs/task-create.md)。
+
+> 在指定 AM610 工程中新建一个 50 ms 周期任务 `ProbeTask`，让它调用已有程序 `PRG_S8Probe`，编译并保存重开核对。
+
 通过 DeepSeek Harness（DSH）或 Codex 调用本地 InoProShop。可以只读查询本机设备描述，也可以直接编辑指定工程、编译并保存重开。工程比较仅在用户明确要求时执行。
 
 **S7a 已交付，main 为 0.30.0 候选版、33 项 MCP 工具。** `variable_usages` 查询精确声明在普通 ST `PROGRAM` 简单赋值中的用法，区分确认位置、未知候选和未覆盖范围。结果来自限定 ST 静态推导，零结果不足以判断能否重命名或删除变量。见[声明用法查询](docs/variable-usages.md)。
@@ -29,7 +33,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 
 ## 已完成功能（main）
 
-下表列出 main 已合并的 33 项工具。具体受验版本和未验事项见[验证范围](#能力与验证边界)。
+下表列出 main 已合并的 33 项工具和标注为候选的分支能力。具体受验版本和未验事项见[验证范围](#能力与验证边界)。
 
 | 功能 | 已实现范围 | 对应工具 | 完成阶段 |
 | --- | --- | --- | --- |
@@ -51,6 +55,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 普通占位符精确覆盖 | 支持范围内设置精确本机已安装库；显式覆盖与当前有效解析分别读回 | `library_placeholder_resolve`、`library_inspect` | **S5b / 0.28.0**，见[说明](docs/library-placeholder-resolve.md) |
 | 库使用证据收集 | 读取直接引用和命名空间，检索并核对可读源码中的调用，报告实际检查范围和缺口 | 复用 `library_inspect`、`project_search`、`object_read` | [只读用法](docs/getting-started.md#只读检查库的使用情况)，[移除可行性探测](docs/library-reference-remove-probe.md) |
 | 已有周期任务配置 | 读取任务和调用顺序；仅编辑已有周期任务的整数毫秒周期 1..60000 及优先级 0..31，不创建任务或编辑调用列表 | `task_inspect`、`task_config_update` | 查询已有；**S1 / 0.18.0** 写入，见[说明](docs/task-config.md) |
+| 创建周期任务（功能分支候选） | 已验证 AM610 Application，创建一个任务并绑定一个已有根级 ST PROGRAM；保留原任务和调用顺序 | `task_create` | **S8a / 0.31.0**，见[说明](docs/task-create.md) |
 | FB 原生方法 | PUBLIC ST Method 的创建、读取和修改，返回值限 void／DINT；绑定父 FB 身份 | `method_create`，读取和修改复用源码工具 | **S2a / 0.19.0**，见[说明](docs/methods.md) |
 | FB 原生属性 | PUBLIC DINT Property/Get/Set 创建及访问器独立读写；旧调用默认只读 Get，显式指定才创建 Get/Set，不自动转换已有属性或补建 Set | `property_create`，读取和修改复用源码工具 | **S2b / 0.20.0–0.21.0**，见[说明](docs/properties.md) |
 | 文件夹与对象整理 | Application 根节点创建文件夹；同一 Application 的根与直接文件夹间移动 ST PROGRAM／FUNCTION／FB；支持的 Method、Property 子对象随 FB 保持身份和源码 | `folder_create`、`object_move` | **S3 / 0.22.0**，见[说明](docs/object-organize.md) |

@@ -265,7 +265,7 @@ export async function evaluateIsolation(root:string,operationId?:string) {
           const p=path.join(dir,n),bytes=await fs.readFile(p);originalRecords.push({path:p,sha256:digest(bytes),base64:bytes.toString('base64')});
         }
         const req=await readJson(path.join(dir,'request.json')),dispatch=await readJson(path.join(dir,'dispatched.json'));
-        const command=({project_save:'save',project_build:'build',code_apply_change:'change',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',task_config_update:'task_update',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect',object_list:'list',object_read:'read',project_search:'search',variable_usages:'search',task_inspect:'tasks',library_inspect:'libraries'} as Record<string,string>)[op.tool];
+        const command=({project_save:'save',project_build:'build',code_apply_change:'change',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',task_config_update:'task_update',task_create:'task_create',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect',object_list:'list',object_read:'read',project_search:'search',variable_usages:'search',task_inspect:'tasks',library_inspect:'libraries'} as Record<string,string>)[op.tool];
         if(!req||req.operationId!==op.operationId||pathKey(req.projectPath??'')!==pathKey(selected.workingPath)||
           !command||req.command!==command||Object.entries(op.args).some(([k,v])=>canonical(req.args?.[k])!==canonical(v)))blockers.push('原桥接请求不完整或身份不一致：'+op.operationId);
         if(selectedBasis==='provisional-direct'&&
@@ -276,7 +276,7 @@ export async function evaluateIsolation(root:string,operationId?:string) {
         if(['code_apply_change','pou_create','declaration_create','method_create','property_create'].includes(op.tool)){
           await record(path.join(dir,'checkpoint.project'),true);await record(path.join(dir,'before.json'),true);
         }
-        if(op.tool==='task_config_update'){
+        if(op.tool==='task_config_update'||op.tool==='task_create'){
           await record(path.join(dir,'checkpoint.project'),true);await record(path.join(dir,'task-before.json'),true);
         }
         if(['library_reference_add','library_placeholder_resolve'].includes(op.tool))await record(path.join(dir,'checkpoint.project'),true);
