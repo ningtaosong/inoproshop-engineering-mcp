@@ -112,6 +112,8 @@ variable_inspect对精确Application的现有支持源码做声明解析，不�
 
 替换已有 AM610 周期任务的一条 PROGRAM 调用时，用 task_call_replace。用户提供工程、任务、旧程序和新程序名。task_inspect 读取 taskId、configurationVersion、diskHash 及旧调用的 order 和完整 raw 元组（含原备注）。project_structure 取任务节点的 parentId，object_list 和 object_read 核实两个根级 PROGRAM 定义及哈希。旧调用须唯一，新程序尚未被该任务调用。成功后真实编译、按用户要求保存关闭重开；buildApplicable 为 false 时，对保存版复编。最终读回任务和适用版本。冲突停止，running 查询原操作，unknown 保留现场。
 
+当 task_inspect 因非空备注将绑定列为 unresolved 时，保留该读数。仅当 coverageComplete、callsComplete 均为 true、枚举和解析读取失败为空，而且完整 raw 行名称唯一匹配、唯一候选的身份与同一 Application 根级 PROGRAM 的 object_read 一致时，可交由 task_call_replace 在原生句柄内精确复核。最终核对同时使用重开后的 programReads、原始行和对应定义；歧义或其他证据缺失时停止。
+
 默认流程：指定工程和修改需求 → 必要读取定位 → 直接修改指定文件 → 真实编译 → 保存关闭重开 → 必要的保存版本复编 → 修改对象最终读回 → 简短报告。
 
 - 默认不调用 project_compare，不采集修改前基线或最终比较快照；工具缺失或没有基线不阻止普通授权修改。只在用户明确要求比较时，执行下节按需流程。只读解释不追加修改、编译或保存。

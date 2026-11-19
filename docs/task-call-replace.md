@@ -6,6 +6,8 @@
 
 Agent 从 `task_inspect` 取目标任务、零基位置与原始名称和备注、配置版本及磁盘哈希，从 `project_structure` 取任务父配置节点，从 `object_read` 取新旧 PROGRAM 定义的身份与源码哈希。用户只需给出工程、任务、旧程序和新程序名。桥接在写入句柄内重新检查原生 ST 标识、完整有序列表、支持的源码快照和磁盘版本。空备注、中文和字面文本 “None” 均按原文保留。
 
+当 task_inspect 因非空备注将绑定列为 unresolved 时，保留该读数。仅当 coverageComplete、callsComplete 均为 true、枚举和解析读取失败为空，而且完整 raw 行名称唯一匹配、唯一候选的身份与同一 Application 根级 PROGRAM 的 object_read 一致时，可交由 task_call_replace 在原生句柄内精确复核。最终核对同时使用重开后的 programReads、原始行和对应定义；歧义或其他证据缺失时停止。
+
 写前保留检查点，只派发一次公开的 `replace(index, name, comment)`。写后及保存关闭重开后均通过原生调用名称与唯一根级定义核实绑定，并检查原定义仍存在，其余调用、可读任务配置及受支持源码相同。返回 `before`、`replacedCall`、`afterReplace`、`after`、两阶段的 PROGRAM 证据及保存文件哈希。旧编译失效，新的编译结果须对应保存文件的磁盘哈希和任务配置版本。
 
 版本或原始行冲突即停止。运行中查询原操作；已派发且结果无法确认时保留检查点并冻结后续写入。配置顺序和周期只反映离线工程。单条移除的接口缺陷、未探测的重排和实际调度分别保留原边界。
