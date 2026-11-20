@@ -38,7 +38,7 @@ export const alive = (pid: number) => { try { process.kill(pid,0); return true; 
 export interface Operation {
   schemaVersion: 1; operationId: string; requestId: string; tool: string; args: any;
   fingerprint: string; status: Reply['status']; startedAt: string; ownerPid: number;
-  response?: Reply; bridge?: { directory: string; pid?: number }; finishedAt?: string;
+  response?: Reply; bridge?: { directory: string; pid?: number; launchId?: string }; finishedAt?: string;
   registryVersion?: 1;
   project?: Session;
   creation?: {projectId:string;sessionId:string;projectPath:string;preset:string};

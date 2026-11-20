@@ -98,7 +98,7 @@ test('源、副本、大小写/realpath/硬链接别名和跨数据目录导入�
  const copy=path.join(c.env.dir,'independent-copy.json');await fs.copyFile(c.env.source,copy);await assertNotIsolated(otherStore,undefined,[copy]);
  assert.equal(c.dispatches.length,count);assert.equal((await c.store.operation(c.op.operationId)).status,'unknown');
 });
-test('其他工程可读改编存重开；原请求不重放，迟到可信结果核对后仍隔离',async t=>{
+test('其他工程可读改编存重开；原请求不重放，已隔离迟到结果仅观察且保留原 unknown',async t=>{
  const c=await context(t);await commitIsolation(await c.plan());const sv=c.create();const other=path.join(c.env.dir,'other.json');await fs.copyFile(c.env.source,other);
  const s=(await sv.call('project_open_copy',{requestId:'other-open',sourcePath:other,applicationId:app})).data.session;const to=target(s);
  const r=await sv.call('object_read',{...to,objectId:obj});
@@ -110,10 +110,12 @@ test('其他工程可读改编存重开；原请求不重放，迟到可信结�
  assert.equal(c.dispatches.length,before);
  const late={contractVersion:'1.0.0',operationId:c.op.operationId,status:'succeeded',summary:'trusted fixture original save result',data:{snapshot:c.s.snapshot,diskHash:digest(await fs.readFile(c.s.workingPath)),saved:true,reopened:true}};
  await atomicJson(path.join(c.op.bridge.directory,'result.json'),late);
- assert.equal((await sv.call('operation_status',{operationId:c.op.operationId,reconcile:true})).status,'succeeded');assert.equal(c.dispatches.length,before);
+ const originalBytes=await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json'));
+ assert.equal((await sv.call('operation_status',{operationId:c.op.operationId,reconcile:true})).status,'unknown');assert.equal(c.dispatches.length,before);
+ assert.deepEqual(await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json')),originalBytes);
  const archived=(await isolationState(c.store)).own[0].plan.evidence.originalRecords.find(r=>r.path===c.store.file('operations/'+c.op.operationId+'.json'));
  assert.equal(JSON.parse(Buffer.from(archived.base64,'base64')).value.status,'unknown');
- assert.equal((await sv.call('session_status',{})).data.isolatedProjects.length,1);assert.equal((await sv.call('session_status',{})).data.pending.length,0);
+ assert.equal((await sv.call('session_status',{})).data.isolatedProjects.length,1);assert.equal((await sv.call('session_status',{})).data.pending.length,1);assert.equal((await sv.call('session_status',{})).data.globalFrozen,false);
  await assert.rejects(()=>sv.call('project_activate',{requestId:'no-auto-recovery',projectId:c.s.projectId}),e=>e.code==='PROJECT_ISOLATED');
  assert.ok(c.dispatches.every(r=>r.operationId!==c.op.operationId));
 });
@@ -162,4 +164,64 @@ test('其他服务尚未登记的候选工程若共享文件身份，也不能�
  const lock=foreign.sourceLock(alias);await atomicJson(lock,{pid:process.pid,dataDir:foreign.root});
  try{const p=await c.plan();assert.equal(p.eligible,false);assert.ok(p.blockers.some(x=>x.includes('关联外部服务')));}
  finally{await fs.unlink(lock);}
+});
+
+test('隔离回归：operationId/requestId 普通与 reconcile 查询全部保护字节不变',async t=>{
+ const c=await context(t);c.op.finishedAt='2026-11-20T05:44:13.237Z';
+ c.op.response={contractVersion:'1.0.0',status:'unknown',summary:'fixture reopen uncertainty',operationId:c.op.operationId,requestId:c.op.requestId};
+ await c.store.saveOp(c.op);await commitIsolation(await c.plan());
+ const before=await inventory(c.env.dataDir),count=c.dispatches.length;let reconciles=0;
+ const native=c.adapter.reconcile;c.adapter.reconcile=async d=>{reconciles++;return native(d);};
+ const sv=c.create();
+ for(const key of [{operationId:c.op.operationId},{requestId:c.op.requestId}])for(const reconcile of [false,true]){
+  const r=await sv.call('operation_status',{...key,reconcile});assert.equal(r.status,'unknown');
+  assert.deepEqual(await inventory(c.env.dataDir),before);
+ }
+ assert.equal(reconciles,0);assert.equal(c.dispatches.length,count);
+});
+
+test('隔离证据损坏或未完整提交时查询也不进入核对和账本写入',async t=>{
+ for(const kind of ['corrupt','incomplete','binding']){
+  const c=await context(t);await commitIsolation(await c.plan());
+  const file=c.store.file('isolation-ledger.json');
+  if(kind==='corrupt')await fs.writeFile(file,'{broken');
+  else {const v=await c.store.get('isolation-ledger.json');if(kind==='incomplete')v.entries[0].state='prepared';else v.entries[0].plan.bindings[0].requestId='foreign';await c.store.put('isolation-ledger.json',v);}
+  const before=await inventory(c.env.dataDir);let reconciles=0;c.adapter.reconcile=async()=>{reconciles++;throw Error('must not run');};
+  for(const key of [{operationId:c.op.operationId},{requestId:c.op.requestId}])for(const reconcile of [false,true])
+   await assert.rejects(()=>c.create().call('operation_status',{...key,reconcile}));
+  assert.equal(reconciles,0);assert.deepEqual(await inventory(c.env.dataDir),before);
+  // Only this test's own invalid anchor is removed, allowing next independent case.
+  for(const f of await fs.readdir(isolationDirectory)){const p=path.join(isolationDirectory,f),r=JSON.parse(await fs.readFile(p));if(r.value?.dataDir===c.env.dataDir)await fs.unlink(p);}
+ }
+});
+test('隔离在首次读取与获得排他条件之间提交，复查阻止 adapter 和 finish',async t=>{
+ const c=await context(t),plan=await c.plan(),sv=c.create();let reconciles=0;
+ c.adapter.reconcile=async()=>{reconciles++;throw Error('must not run');};
+ const acquire=sv.store.acquire.bind(sv.store);let raced=false,after;
+ sv.store.acquire=async(...args)=>{if(!raced){raced=true;await commitIsolation(plan);after=await inventory(c.env.dataDir);}return acquire(...args);};
+ const r=await sv.call('operation_status',{operationId:c.op.operationId,reconcile:true});assert.equal(r.status,'unknown');assert.equal(reconciles,0);
+ for(const [file,hash] of after.filter(([p])=>!p.includes('.lock')))assert.equal(digest(await fs.readFile(file)),hash);
+});
+test('未隔离同终态反复核对保持 finishedAt 与账本字节；已隔离不阻断另一独立工程',async t=>{
+ const c=await context(t),sv=c.create();
+ await sv.call('operation_status',{operationId:c.op.operationId,reconcile:true});
+ const file=c.store.file('operations/'+c.op.operationId+'.json'),before=await fs.readFile(file);
+ await new Promise(r=>setTimeout(r,10));await sv.call('operation_status',{requestId:c.op.requestId,reconcile:true});
+ assert.deepEqual(await fs.readFile(file),before);
+ await sv.store.release();const isolated=await context(t);await commitIsolation(await isolated.plan());const otherService=isolated.create();
+ const independent=await setup();const r=await otherService.call('project_open_copy',{requestId:'unrelated',sourcePath:independent.source,applicationId:app});
+ assert.equal(r.status,'succeeded');assert.equal((await otherService.status()).data.globalFrozen,false);
+});
+
+test('未隔离结果恢复持久化后，历史隔离 unknown 不延续 persistencePoison',async t=>{
+ const c=await context(t);await commitIsolation(await c.plan());const sv=c.create(),e=await setup();
+ const opened=await sv.call('project_open_copy',{requestId:'unrelated-open',sourcePath:e.source,applicationId:app}),to=target(opened.data.session);
+ const read=await sv.call('object_read',{...to,objectId:obj});const persist=sv.store.saveOp.bind(sv.store);
+ sv.store.saveOp=async op=>{if(op.status!=='running')throw Error('publication failure');return persist(op);};
+ const args={...to,objectId:obj,requestId:'new-unrelated-write',expectedHash:read.data.contentHash,declaration:read.data.declaration,implementation:'// preserved new task'};
+ const failed=await sv.call('code_apply_change',args);assert.equal(failed.error.code,'PERSISTENCE_ERROR');
+ sv.store.saveOp=persist;
+ const r=await sv.call('operation_status',{operationId:failed.operationId,reconcile:true});assert.equal(r.status,'succeeded');
+ assert.equal((await sv.status()).data.globalFrozen,false);assert.equal((await c.store.operation(c.op.operationId)).status,'unknown');
+ assert.equal((await sv.call('object_read',{...to,objectId:obj})).status,'succeeded');
 });

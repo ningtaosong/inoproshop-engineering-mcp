@@ -1,3 +1,4 @@
+import {processObservations,requestBinding} from './process-double.mjs';
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile,writeFile,rm} from 'node:fs/promises';import path from 'node:path';import {randomUUID} from 'node:crypto';import {spawnSync} from 'node:child_process';
 import {setup,connect,app,obj} from './helpers.mjs';import {schemas,structureDataSchema,deviceDataSchema} from '../dist/contracts.js';
 import {IdeAdapter} from '../dist/adapter.js';import {digest,atomicJson} from '../dist/storage.js';import {EventEmitter} from 'node:events';
@@ -65,8 +66,8 @@ test('新只读工具发现意外文件变化后冻结；原操作查询不重�
 });
 test('实际适配器为两项命令核对进程退出后的工程文件，不保存修正或 kill',async()=>{
  for(const command of ['structure','device']){const e=await setup(),dir=path.join(e.dir,'ipc'),before=digest(await readFile(e.source));let killed=0;
-  const adapter=new IdeAdapter({executable:process.execPath,profile:'test',timeoutMs:1000},()=>{const child=new EventEmitter();child.kill=()=>killed++;setTimeout(async()=>{const r=JSON.parse(await readFile(path.join(dir,'request.json')));await atomicJson(path.join(dir,'result.json'),{contractVersion:'1.0.0',status:'succeeded',summary:'fixture',operationId:r.operationId,data:{diskHash:before,readOnlyEvidence:{beforeDiskHash:before,afterCloseDiskHash:before,unchanged:true}}});await writeFile(e.source,(await readFile(e.source,'utf8'))+' ');child.emit('exit',0);},20);return child;});
-  const r=await adapter.execute({operationId:randomUUID(),command,projectPath:e.source,args:{readDiskHash:before}},dir,async()=>{});assert.equal(r.status,'unknown');assert.equal(r.error.code,'READ_ONLY_FILE_CHANGED');assert.equal(killed,0);
+  const adapter=new IdeAdapter({executable:process.execPath,profile:'test',timeoutMs:1000},()=>{const child=new EventEmitter();child.pid=12345;child.kill=()=>killed++;setTimeout(async()=>{const r=JSON.parse(await readFile(path.join(dir,'request.json')));await atomicJson(path.join(dir,'dispatched.json'),{operationId:r.operationId,pid:12345});await atomicJson(path.join(dir,'result.json'),{contractVersion:'1.0.0',status:'succeeded',summary:'fixture',operationId:r.operationId,data:{diskHash:before,readOnlyEvidence:{beforeDiskHash:before,afterCloseDiskHash:before,unchanged:true}}});await writeFile(e.source,(await readFile(e.source,'utf8'))+' ');child.emit('exit',0);},20);return child;},processObservations);
+  const r=await adapter.execute({...requestBinding,operationId:randomUUID(),command,projectPath:e.source,args:{readDiskHash:before}},dir,async()=>{});assert.equal(r.status,'unknown');assert.equal(r.error.code,'READ_ONLY_FILE_CHANGED');assert.equal(killed,0);
  }
 });
 test('生产原生读取器故障覆盖（API 替身，不是真实 IDE）',()=>{const r=spawnSync('python',['tests/bridge_native_queries_test.py'],{encoding:'utf8'});assert.equal(r.status,0,r.stdout+r.stderr);});
