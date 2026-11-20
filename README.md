@@ -1,6 +1,8 @@
 # InoProShop Engineering MCP
 
-**当前 main 为 0.33.0 候选版、36 项工具。** S8a 已交付单条任务调用替换。在已验 AM610 设备描述 `3.5.11.11` 的普通周期任务中，可将一条调用改为同一 Application 内另一个唯一的根级 ST PROGRAM。该行的位置和备注、其余调用及旧 PROGRAM 定义均保留。[替换说明](docs/task-call-replace.md) · [工程验收与限制](docs/task-call-replace-acceptance.md)
+**本分支为 0.34.0 候选版、37 项工具，新增 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。**
+
+当前 main 为 0.33.0 候选版、36 项工具。 S8a 已交付单条任务调用替换。在已验 AM610 设备描述 `3.5.11.11` 的普通周期任务中，可将一条调用改为同一 Application 内另一个唯一的根级 ST PROGRAM。该行的位置和备注、其余调用及旧 PROGRAM 定义均保留。[替换说明](docs/task-call-replace.md) · [工程验收与限制](docs/task-call-replace-acceptance.md)
 
 > 在指定 AM610 工程中，把 MainTask 调用 PRG_ReplaceMe 的那一条改为调用已有的 PRG_Replacement，保留备注和其他调用顺序，编译并保存重开核对。
 
@@ -59,6 +61,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 限定变量级编辑 | S4a：普通 POU VAR 或根 GVL VAR_GLOBAL 的 BOOL／DINT／TIME 单变量新增及显式字面初值修改；S4b 第一子阶段：根 GVL 已有聚合直接成员；第二子阶段：普通 ST FB 已有唯一 VAR_INPUT／VAR_OUTPUT 的单变量新增与显式初值修改。TIME 限 0..60000 ms，名称在写入前校验 | `variable_edit` | **S4a / 0.23.0；S4b 第一、第二子阶段 / 0.24.0、0.25.0**，见[范围](docs/variable-edit.md) |
 | 源码检索 | 字面子串和完整标识符词元检索；支持分页、原文位置和缺口报告。词元检索不是语义交叉引用 | `project_search` | 基础检索、0.14.0 标识符扩展 |
 | 本机设备描述只读目录 | 不打开工程；查询精确原生设备类型、ID、型号、厂商、仓库来源及描述版本。支持过滤、分页和按身份读回 | `device_catalog` | **S6a / 0.29.0，已完成**，见[查询示例和说明](docs/device-catalog.md) |
+| 查询已验 HIGH_SPEED_IO 通道与现有映射 | 查看工程内的通道身份、原生字段、首项及完整映射列表 | `io_mapping_inspect` | S8b / 0.34.0 候选 |
 | 原生结构与设备只读查询 | 保留非 ST 和未知节点，读取可访问的设备标识、描述版本、连接器及离线参数；不等于完整设备配置或固件查询 | `project_structure`、`device_inspect` | 0.6.0 |
 | 库引用只读查询 | 直接库引用、命名空间、占位符声明、显式覆盖与当前有效解析；不可取得字段明确标注 | `library_inspect` | 0.10.0；S5b 扩展覆盖读回 |
 | 本机库查询与精确添加 | 查询原生安装身份；按精确库身份添加一个直接引用 | `library_catalog`、`library_reference_add` | **S5a / 0.27.0** |
@@ -94,7 +97,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 移除已有任务中的单条调用 | S8a 移除 | 取得修正后的受支持公开接口或厂商修复，在独立夹具验证只少目标行、剩余调用顺序和注释保持、保存重开及保存版编译 | 本机 1.9.1.6 探测受阻 |
 | 替换已有任务中的一条 PROGRAM 调用 | S8a 替换 | 原位置替换一个目标，保存重开核对备注、新旧定义和完整调用顺序 | [0.33.0 已交付](docs/task-call-replace.md) |
 | 重排已有任务的调用 | S8a 重排 | 取得可核验的公开入口或厂商确认的等价操作，明确源行、目标位置、备注保留和异常语义，再独立验证读回、保存重开及保存版编译 | [本机 1.9.1.6 已查入口不满足要求](docs/task-call-reorder-probe.md)，暂不开发 |
-| I/O 通道与变量映射 | S8b | S8b：先探测 I/O 通道身份、方向、数据类型及现有变量映射的只读读取能力。 | 下一项建议，尚未开始；未提供映射写入能力 |
+| I/O 通道与变量映射 | S8b | 已验 AM610 的 HIGH_SPEED_IO 连接器 2，参数及复合成员 | [只读工具](docs/io-mapping-inspect.md)已在候选分支实现；映射写入未开发 |
 | EtherCAT PDO 映射 | S8c | 核实具体设备的索引、子索引、位宽、方向和可编辑性；依赖 S6，必要时依赖 S8b | 未开始，接口可行性待确认 |
 | PLC 在线连接、状态和变量实际值读取 | S9a | 使用明确型号、固件的独立测试 PLC，验证只读连接、目标身份、采样及正常断开 | 仅规划，未实现或实机验收 |
 | 限定运行参数写值及读回 | S9b | S9a 通过后，绑定目标、类型、范围和预期旧值；验证写后读回及不确定结果处理 | 仅规划；不含强制，不默认改源码初值 |
