@@ -7,7 +7,10 @@ import {promisify, isDeepStrictEqual} from 'node:util';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import path from 'node:path';
 
-const input = process.argv.slice(2);
+const args = process.argv.slice(2);
+const scenario = args[0]==='--control' ? 'control' : args[0]==='--after-control' ? 'mapping' : null;
+const input = scenario ? args.slice(1,4) : args;
+if (scenario && args.length!==(scenario==='control'?4:6)) throw Error('Malformed independent stage invocation');
 const followup = input[0]==='--after-preflight';
 const fixtureRoot = input[followup ? 1 : 0];
 if(!/^D:\\InoPro-S8b-Positive-\d{8}-\d{6}$/i.test(fixtureRoot ?? '') ||
@@ -114,6 +117,7 @@ async function dirImage(directory) {
 const tracked = [fileURLToPath(import.meta.url), script, path.join(repo,'bridge','worker.py'),
   path.join(repo,'scripts','probes','io_mapping_read.py'),path.join(repo,'scripts','probes','io_mapping_export_guard.py'),
   path.join(repo,'scripts','probes','io_mapping_positive_guard.py'),path.join(repo,'scripts','probes','io-mapping-native.py')];
+if(scenario) tracked.push(...['io_mapping_phase_guard.py','device_add_preflight.py'].map(name=>path.join(repo,'scripts','probes',name)));
 async function fingerprints() {
   const files={};
   for(const filename of tracked)files[path.relative(repo,filename)]=await sha(filename);
@@ -147,6 +151,8 @@ async function witness(mode,suffix) {
   return current;
 }
 const methods={prepare:{save:1,compile:1,dispatch:0},map:{save:1,compile:1,dispatch:1},verify:{save:0,compile:1,dispatch:0}};
+Object.assign(methods,{setup:{save:1,compile:0,dispatch:0},control:{save:1,compile:1,dispatch:0},
+  controlread:{save:0,compile:1,dispatch:0},mapping:{save:1,compile:2,dispatch:1},mappedread:{save:0,compile:1,dispatch:0}});
 let uncertain=false, acquireAttempted=false;
 async function nativePass(mode, disk, fileId, codeIdentity) {
   const pre=await witness(mode,'preflight');
@@ -196,7 +202,7 @@ async function nativePass(mode, disk, fileId, codeIdentity) {
     }
     const wanted=methods[mode];
     if(r.status!=='succeeded' || r.saveCalls!==wanted.save || r.compileCalls!==wanted.compile ||
-       r.setterDispatchCount!==wanted.dispatch || (mode==='verify' && (r.diskAfterClose!==disk || post.fileIdentity!==fileId)))
+       r.setterDispatchCount!==wanted.dispatch || (wanted.save===0 && (r.diskAfterClose!==disk || post.fileIdentity!==fileId)))
       throw Error('Required native evidence unconfirmed; retain original outcome and stop');
     uncertain=false;
     return {disk:r.diskAfterClose,fileId:post.fileIdentity,process:r.engine};
@@ -255,6 +261,23 @@ async function validatePreflight() {
     throw Error('Original keyed observations, independent export or disk identity diverge');
   return {prep,manifest,previousOperationId:op};
 }
+async function controlProof() {
+  const dir=args[4],receipt=path.join(dir,'probe-complete.json');
+  if(!/^D:\\InoPro-S8b-Positive-\d{8}-\d{6}$/i.test(dir)||dir===root||
+     !/^[a-f0-9]{64}$/.test(args[5])||await sha(receipt)!==args[5])throw Error('Control completion fingerprint differs');
+  const r=await readJson(receipt),release=await readJson(path.join(dir,'lease-final.json'));
+  if(r.scenario!=='control'||!r.stageHashes||release.operationId!==r.operationId||
+      release.service.present!==false||release.fixture.present!==false)throw Error('Control incomplete or leases not released');
+  for(const [f,h] of Object.entries(r.stageHashes)){
+    if(f!==path.basename(f)||await sha(path.join(dir,f))!==h)throw Error('Control evidence changed: '+f);
+  }
+  const o=await readJson(path.join(dir,'fixture-origin.json'));
+  if(o.operationId!==r.operationId||JSON.stringify(o.scripts)!==await fingerprints()||o.seedSha256!==seed||
+     await sha(o.project)!==r.mainFileSha256)throw Error('Control file, seed or probe source changed');
+  return {operationId:r.operationId,receiptSha256:args[5],controlRoot:dir,
+          behavior:await readJson(path.join(dir,'controlread-behavior.json'))};
+}
+const proof=scenario==='mapping' ? await controlProof() : null;
 const bound=followup ? await validatePreflight() : null;
 await mkdir(root); // Exclusive creation also prevents replay or continuation of old attempts.
 try {
@@ -288,12 +311,26 @@ try {
   await publish('fixture-origin.json',{operationId,source,project,sha256:seed,sourceId:held.sourceId,projectFileId:fileId,
     archive,archiveSha256,member:seedMember,runtime:fixed,seedSha256:seed,preparedDisk:bound?.prep.disk,
     originalOperationId:bound?.previousOperationId,scripts:JSON.parse(codeIdentity)});
+  if(scenario) {
+    if(proof)await publish('control-proof.json',proof);
+    const prep=await nativePass('setup',seed,fileId,codeIdentity);
+    const middle=await nativePass(scenario,prep.disk,prep.fileId,codeIdentity);
+    const verified=await nativePass(scenario==='control'?'controlread':'mappedread',middle.disk,middle.fileId,codeIdentity);
+    if(new Set([prep,middle,verified].map(p=>p.process.creationUtcTicks)).size!==3)throw Error('Independent IDE identities required');
+    const stageHashes={};
+    for(const f of await readdir(root,{withFileTypes:true})){
+      if(f.isFile())stageHashes[f.name]=await sha(path.join(root,f.name));
+    }
+    await publish('probe-complete.json',{operationId,scenario,prepare:prep,middle,verified,
+      stageHashes,mainFileSha256:verified.disk,time:now()});
+  } else {
   const prep=followup ? bound.prep : await nativePass('prepare',seed,fileId,codeIdentity);
   const mapped=await nativePass('map',prep.disk,prep.fileId,codeIdentity);
   const verify=await nativePass('verify',mapped.disk,mapped.fileId,codeIdentity);
   if(new Set([prep,mapped,verify].map(p=>p.process.creationUtcTicks)).size!==3)
     throw Error('Cannot identify independent preparation, mapping and readback processes');
   await publish('probe-complete.json',{operationId,time:now(),prepare:prep,map:mapped,verify,mainFileSha256:verify.disk});
+  }
 } catch(e) {
   await publish('probe-stopped.json',{operationId,time:now(),uncertain,error:e.message});
   throw e;

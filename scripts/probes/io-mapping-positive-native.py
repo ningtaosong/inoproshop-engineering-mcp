@@ -23,12 +23,16 @@ def run():
     expected, operation = env['INOPRO_S8B_EXPECTED_SHA256'], env['INOPRO_S8B_OPERATION']
     fixture_root = env.get('INOPRO_S8B_FIXTURE_ROOT',root)
     assert root in (fixture_root,os.path.join(fixture_root,'confirmed-preflight-followup'))
-    assert re.match(r'^D:\\InoPro-S8b-Positive-\d{8}-\d{6}$',fixture_root,re.I) and mode in ('prepare','map','verify')
+    staged = mode in ('setup','control','controlread','mapping','mappedread')
+    assert re.match(r'^D:\\InoPro-S8b-Positive-\d{8}-\d{6}$',fixture_root,re.I) and (staged or mode in ('prepare','map','verify'))
     origin = load(os.path.join(root,'fixture-origin.json'))
     path = os.path.join(fixture_root,'engineering','AM610_IO_Positive.project')
     assert origin['operationId']==operation and origin['project']==path
     folder = os.path.join(repo,'scripts','probes')
     sys.path.insert(0,folder)
+    if staged:
+        import io_mapping_phase_guard as phases
+        from device_add_preflight import native_snapshot
     import io_mapping_read as read
     import io_mapping_positive_guard as guard
     import io_mapping_export_guard as xml
@@ -99,6 +103,11 @@ def run():
         idx=xml.export_index(project,devices,file(label+'.export'))
         st=dict(snapshot=snap,export=idx,applicationId=aid,applications=applications,declaration=decl,sources=sources,tasks=tasks,
                 sourceSnapshot=api['snapshot'](project))
+        if staged:
+            st['nativeTree'] = native_snapshot(project)[0]
+            record(label+'-capture', dict(disk=sha(path), time=unicode(DateTime.UtcNow.ToString('o')),
+                engine=result['engine'],operationId=operation,exportSha256=idx['exportSha256'],
+                sourceSnapshot=st['sourceSnapshot'],path=path))
         record(label+'-state',st)
         return st
 
@@ -155,7 +164,7 @@ def run():
         h[0]=project
         result['opened']=True
         expect(os.path.normcase(unicode(project.path))==os.path.normcase(path),'Opened another file')
-        if mode=='prepare':
+        if mode in ('prepare','setup'):
             seed=gather(project,'seed',False)
             expect(seed['snapshot']['coverage']['enumerationComplete'] and
                    set(guard.index(seed['snapshot']['channels'],guard.rowkey))==set(guard.index(seed['export']['rows'],guard.xmlkey)) and
@@ -171,14 +180,43 @@ def run():
                    if r['guid']!=baseline['declaration']['guid']], 'Fixture preparation changed other task or source')
             disk=save(project,'save-prepared-fixture')
             expect(disk!=expected,'Fixture preparation did not change the project')
-            check_build(project,baseline,'baseline-build',disk,True)
-        elif mode=='map':
-            prior=load(os.path.join(fixture_root,'prepare-prepared-state.json'))
+            if mode=='prepare':
+                check_build(project,baseline,'baseline-build',disk,True)
+        elif mode in ('control','controlread'):
+            disk=expected
+            if mode=='control':
+                prepared=load(os.path.join(root,'setup-prepared-state.json'))
+                a=gather(project,'open-uncompiled')
+                key=guard.validate_state(a,False)
+                expect(guard.invariant(prepared,key,True)==guard.invariant(a,key,True)
+                       and prepared['export']==a['export'],'Prepared fixture changed at control open')
+                check_build(project,a,'baseline-build',expected,True)
+                b=gather(project,'compiled-unsaved')
+                phases.transition(a,b,shape='appear')
+                disk=save(project,'save-compiled-control')
+                record('save-receipt',dict(before=expected,after=disk))
+            else:
+                a=load(os.path.join(root,'control-open-uncompiled-state.json'))
+                b=load(os.path.join(root,'control-compiled-unsaved-state.json'))
+                c=gather(project,'reopened-uncompiled')
+                phases.transition(b,c,cross=True,shape='disappear' if phases.derived(c) is None else 'same')
+                check_build(project,c,'saved-build',disk,True)
+                d=gather(project,'saved-compiled')
+                record('behavior',phases.control_pattern(a,b,c,d))
+        elif mode in ('map','mapping'):
+            prior=load(os.path.join(fixture_root,('setup' if staged else 'prepare')+'-prepared-state.json'))
             original=gather(project,'before')
             key=guard.validate_state(original,False)
             expect(prior['export']['exportSha256']==original['export']['exportSha256'] and
                    guard.invariant(prior,key,True)==guard.invariant(original,key,True),'Prepared fixture evidence differs at reopen')
+            if staged:
+                check_build(project,original,'baseline-build',expected,True)
+                compiled=gather(project,'compiled-baseline')
+                phases.transition(original,compiled,shape='appear')
+                original=compiled
             live=gather(project,'same-handle-prewrite')
+            if staged:
+                phases.transition(original,live)
             expect(key==guard.validate_state(live,False) and guard.invariant(live,key)==guard.invariant(original,key)
                    and sha(path)==expected,'Same-handle precheck changed')
             m=target_wrapper(project,key)
@@ -195,13 +233,29 @@ def run():
             m.variable=expression
             stage('setter-returned')
             after=gather(project,'after-setter')
-            guard.change_only(live,after,xml.mapping_matches)
+            if staged:
+                phases.transition(live,after,positive=True,setting=True)
+            else:
+                guard.change_only(live,after,xml.mapping_matches)
             check_build(project,after,'mapped-build',expected,False)
             # Compilation can create IDE-only tree nodes. Recheck readable channels, sources and tasks before saving.
             presave=gather(project,'before-save')
-            guard.change_only(live,presave,xml.mapping_matches)
+            if staged:
+                phases.transition(after,presave,positive=True)
+                phases.transition(live,presave,positive=True,setting=True)
+            else:
+                guard.change_only(live,presave,xml.mapping_matches)
             disk=save(project,'save-mapped-fixture')
             expect(disk!=expected,'Mapping save did not publish a new disk version')
+        elif mode=='mappedread':
+            behavior=load(os.path.join(root,'control-proof.json'))['behavior']
+            after=load(os.path.join(root,'mapping-before-save-state.json'))
+            check=gather(project,'saved-reopen')
+            phases.transition(after,check,positive=True,cross=True,shape=behavior['reopen'])
+            check_build(project,check,'saved-build',expected,True)
+            final=gather(project,'final')
+            phases.transition(check,final,positive=True,shape=behavior['rebuild'])
+            disk=expected
         else:
             prior=load(os.path.join(root,'map-same-handle-prewrite-state.json'))
             after=load(os.path.join(root,'map-before-save-state.json'))
