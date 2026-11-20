@@ -11,3 +11,5 @@
 Input、Output 按原生字符串显示，其参照方尚未确认。automatic_iec_address 与 manual_iec_address 无法证明最终自动分配地址。映射 ID 仅属于映射记录。变量声明的原生绑定身份、实际接线、信号及 PLC 运行值尚未取得。映射修改和 EtherCAT PDO 编辑未开发。
 
 原生证据来自探测分支 `codex/io-mapping-inspect-probe` 提交 `4307d8da511e68aea81f21a002995b2d9aea8171`。其一次保存版编译属于探测历史。产品查询只打开、读取、导出并关闭。
+
+[真实 MCP、DSH CLI 与回归记录](io-mapping-inspect-acceptance.md)

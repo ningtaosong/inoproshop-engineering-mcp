@@ -1,6 +1,6 @@
 # InoProShop Engineering MCP
 
-**本分支为 0.34.0 候选版、37 项工具，新增 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。**
+**本分支为 0.34.0 候选版、37 项工具，新增 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
 当前 main 为 0.33.0 候选版、36 项工具。 S8a 已交付单条任务调用替换。在已验 AM610 设备描述 `3.5.11.11` 的普通周期任务中，可将一条调用改为同一 Application 内另一个唯一的根级 ST PROGRAM。该行的位置和备注、其余调用及旧 PROGRAM 定义均保留。[替换说明](docs/task-call-replace.md) · [工程验收与限制](docs/task-call-replace-acceptance.md)
 
