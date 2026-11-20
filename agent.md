@@ -264,7 +264,7 @@ S4b 第二子阶段在 `codex/fb-interface-variable-edit` 功能分支完成限�
 
 已交付 io_mapping_inspect，仅覆盖已验 AM610 的 HIGH_SPEED_IO 连接器 2。首项 getter 和同句柄原生导出的完整映射列表分别取证；声明的原生绑定身份尚未取得。两份已验夹具各有 26 项，包括两个参数根和 24 个 BOOL 成员。原始字段和覆盖缺口分别报告。已交付工具的原验收边界保留；本轮补充的方向文档依据见下一段，最终自动地址及 PLC 运行仍待验证。
 
-已在两份保存工程取得空列表及非空表达式正例，映射写入产品未开发。[限定写入前置核查](docs/io-mapping-write-precheck.md)复用保存正例，结论为②只适合写前只读评估。本轮补到控制器编程模型的方向文档依据，以及自动模式下地址 getter 的实际含义；实际信号与最终地址仍未验证。仍须补齐有效 I/O Application 选择、应用级映射来源与重复目标检查覆盖，并明确输入变量程序写引用的未覆盖范围。后续仅评估 InputData（参数 13）/ Bit0 到已有根 GVL 普通 BOOL 的单一组合，不推广到其它通道或 OutputData。S6b 单一设备组合的实际对端挂接证据仍缺失。[设备添加探测](docs/device-add-probe.md#探测结论与证据入口)
+已在两份保存工程取得空列表及非空表达式正例，映射写入产品未开发。[限定写入前置核查](docs/io-mapping-write-precheck.md)复用保存正例，结论为②只适合写前只读评估。本轮补到控制器编程模型的方向文档依据，以及自动模式下地址 getter 的实际含义；实际信号与最终地址仍未验证。仍须补齐有效 I/O Application 选择、应用级映射来源与重复目标检查覆盖，并明确输入变量程序写引用的未覆盖范围。[有效 Application 单项核查](docs/io-mapping-effective-application.md)定位了脚本 GUID getter 与完整 provider 选择之间的接口缺口，未打开工程；应用级重复映射和程序写引用不在本次补证范围。后续仅评估 InputData（参数 13）/ Bit0 到已有根 GVL 普通 BOOL 的单一组合，不推广到其它通道或 OutputData。S6b 单一设备组合的实际对端挂接证据仍缺失。[设备添加探测](docs/device-add-probe.md#探测结论与证据入口)
 
 ### S8c：EtherCAT PDO 映射
 
