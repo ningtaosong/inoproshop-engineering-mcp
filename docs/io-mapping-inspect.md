@@ -1,5 +1,7 @@
 # HIGH_SPEED_IO 通道与已有映射
 
+0.34.0 候选版已交付首版限定查询。
+
 示例：“只读查看这个 AM610 工程的 HIGH_SPEED_IO 通道及已有映射，列出实际结果、字段缺口和方向、地址的限制。”
 
 打开用户指定的工程后，用 `io_mapping_inspect` 传活动 `projectId`。仅支持 InoProShop 1.9.1.6、AM610 根设备描述 `4102 / 10f4 0002 / 3.5.11.11` 下的直接子设备 `40600 / 10F4 0600 / 00.00.00.20`，以及该实例实际拥有的连接器 2、接口 `Common.inovance2`。名称用于展示。多个符合条件的实例需要用实际设备 GUID（deviceId）区分。
@@ -13,3 +15,5 @@ Input、Output 按原生字符串显示，其参照方尚未确认。automatic_i
 原生证据来自探测分支 `codex/io-mapping-inspect-probe` 提交 `4307d8da511e68aea81f21a002995b2d9aea8171`。其一次保存版编译属于探测历史。产品查询只打开、读取、导出并关闭。
 
 [真实 MCP、DSH CLI 与回归记录](io-mapping-inspect-acceptance.md)
+
+两份已验夹具各读取 26 项，包括两个参数根和 24 个 BOOL 成员，其他工程按实际枚举报告。两个聚合根缺少逐行 element.base_type，参数 type_string 分别有 UINT 和 BYTE。模型原答复的地址表格来自 manual_iec_address；最终自动分配地址尚未取得。
