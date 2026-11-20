@@ -168,14 +168,23 @@ test('其他服务尚未登记的候选工程若共享文件身份，也不能�
 
 test('隔离回归：operationId/requestId 普通与 reconcile 查询全部保护字节不变',async t=>{
  const c=await context(t);c.op.finishedAt='2026-11-20T05:44:13.237Z';
+ await fs.copyFile(c.s.workingPath,path.join(c.op.bridge.directory,'checkpoint.project'));
+ await atomicJson(path.join(c.op.bridge.directory,'phase-readback.json'),{stage:'synthetic-original-readback',status:'failed'});
  c.op.response={contractVersion:'1.0.0',status:'unknown',summary:'fixture reopen uncertainty',operationId:c.op.operationId,requestId:c.op.requestId};
  await c.store.saveOp(c.op);await commitIsolation(await c.plan());
  const before=await inventory(c.env.dataDir),count=c.dispatches.length;let reconciles=0;
+ const extraFiles=[c.env.source,c.store.sourceLock(c.s.sourcePath)];
+ for(const name of await fs.readdir(isolationDirectory)){
+  const file=path.join(isolationDirectory,name),record=JSON.parse(await fs.readFile(file));
+  if(record.value?.dataDir===c.env.dataDir)extraFiles.push(file);
+ }
+ const extras=await Promise.all(extraFiles.map(async file=>[file,digest(await fs.readFile(file))]));
  const native=c.adapter.reconcile;c.adapter.reconcile=async d=>{reconciles++;return native(d);};
  const sv=c.create();
  for(const key of [{operationId:c.op.operationId},{requestId:c.op.requestId}])for(const reconcile of [false,true]){
   const r=await sv.call('operation_status',{...key,reconcile});assert.equal(r.status,'unknown');
   assert.deepEqual(await inventory(c.env.dataDir),before);
+  for(const [file,hash] of extras)assert.equal(digest(await fs.readFile(file)),hash,file);
  }
  assert.equal(reconciles,0);assert.equal(c.dispatches.length,count);
 });
