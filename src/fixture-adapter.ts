@@ -7,7 +7,7 @@ import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, type Reply } from './contracts.js';
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
-import {taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskCallInventoryView,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
 export class FixtureAdapter implements Adapter {
@@ -122,7 +122,7 @@ export class FixtureAdapter implements Adapter {
         const facts=identify(p);
         if(p.taskReadOnly||p.taskConfigurationId!==a.taskConfigurationId||canonical(task?.path.slice(0,-1))!==canonical(configPath)||
           taskConfigurationVersion(before)!==a.expectedTaskVersion||oldSnapshot!==a.expectedSourceSnapshot||
-          digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash||!validReplacement(before,a,facts.oldProgram,facts.program))
+          digest(await fs.readFile(req.projectPath))!==a.expectedDiskHash||!taskCallInventoryView(before)||!validReplacement(before,a,facts.oldProgram,facts.program))
           throw Error('Task, selected call or disk version inconsistent');
         const raw=[facts.program.path.at(-1),a.expectedCall[1]],order=a.expectedCallOrder;
         const replacedCall={order,raw,previousRaw:a.expectedCall,oldProgramId:a.oldProgramId,programId:a.programId};
@@ -150,7 +150,7 @@ export class FixtureAdapter implements Adapter {
     }
     else if(req.command==='task_call_append') {
       const before=taskInventory(),taskConfigurationPath=[...before.applicationPath,'Task Configuration'];
-      const completeCalls=(inventory:typeof before)=>inventory.tasks.every((t:any)=>Array.isArray(t.rawCalls)&&t.rawCalls.every(isTaskAppendCall));
+      const completeCalls=(inventory:typeof before)=>!!taskCallInventoryView(inventory);
       const readback=(stage:'afterAppend'|'reopen')=>{
         const inventory=taskInventory();
         if(p.nullTaskAppendCommentAt===stage)inventory.tasks.find((t:any)=>t.taskId===a.taskId).rawCalls[0][1]=null;

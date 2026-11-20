@@ -1,10 +1,10 @@
 # InoProShop Engineering MCP
 
-**当前版本为 0.34.2 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+**当前分支版本为 0.34.3 修复候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
 0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，日常入口未部署本补丁。
 
-0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因、默认环境性能与追加／替换的任务集合顺序风险仍未解决。
+0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因与默认环境性能问题仍未解决。追加／替换的任务集合顺序风险已在本分支进行[0.34.3 离线补修](docs/task-call-inventory-order.md)，真实复验待另行安排；本分支尚未合并或部署。
 
 S8b 的三项状态分别记录：`io_mapping_inspect` 已交付，范围为已验 AM610 的 HIGH_SPEED_IO 连接器 2；单个 BOOL 通道已有设置、保存、独立重开及保存版编译的原生正例；映射写工具仍未开发。当前尚缺可信、可调用的完整有效 I/O Application 选择入口，应用级重复映射覆盖和输入变量的程序写引用也是独立缺口。现阶段保持只读评估，`writeAuthorized=false`。见[前置探测收尾与恢复条件](docs/io-mapping-write-probe-closeout.md)。
 
@@ -93,7 +93,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 
 | 尚未完成的能力 | 计划阶段 | 下一步及完成条件 | 当前状态 |
 | --- | --- | --- | --- |
-| 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 前两个限定子阶段已合并；成员新增、嵌套成员、数组、类型修改及其他声明区未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
+| 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 三个限定子阶段已合并；普通 VAR／根 GVL VAR_GLOBAL 已有单变量的 BOOL、DINT、TIME set-type 已交付。成员新增、嵌套成员、数组、更广类型及其他声明区仍未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
 | 普通直接库引用移除 | S5 后续范围 | 写入前将原生选择条件与选中引用唯一绑定，并说明使用关系和反向依赖的实际覆盖 | [可行性探测已完成](docs/library-reference-remove-probe.md)，目前仅适合只读评估，未提供删除能力 |
 | 清除占位符显式覆盖 | S5 后续独立项 | 单独确认原生清除语义和读回结果 | 未实现；已合并的 S5b 仅支持设置显式覆盖 |
 | 限定设备添加 | S6b | 先在已知正确挂接的现有实例上读回对端连接器 ID 和所属父设备，并区分同接口的不同连接器 | [单一组合的可行性探测已完成](docs/device-add-probe.md#探测结论与证据入口)，只读选址评估，无添加工具 |

@@ -68,7 +68,7 @@ class TaskCreateTest(unittest.TestCase):
         logic = Node('Plc Logic','logic','logic-type',device)
         self.app = Node('Application','app','app-type',logic,is_application=True)
         self.config = Node('Task Configuration','config','task-config-type',self.app,is_task_configuration=True)
-        self.main = self.make_task('MainTask','main',[['PLC_PRG','']])
+        self.main = self.make_task('MainTask','11111111-1111-4111-8111-111111111111',[['PLC_PRG','']])
         self.program = Node('PRG_S8Probe','program','6f9dac99-8de1-4efc-8465-68ac443b7d08',self.app,
                             has_textual_declaration=True,has_textual_implementation=True,language='ST',pou_type='program',
                             embedded_object_types=[ST_IMPLEMENTATION_TYPE.upper()])
@@ -115,7 +115,7 @@ class TaskCreateTest(unittest.TestCase):
         return self.e['task_create'](self.project,self.req,dict(self.args,**overrides),{'project':self.project})[0]
 
     def append(self, **overrides):
-        args=dict(self.args,taskId='main',**overrides)
+        args=dict(self.args,taskId=self.main.guid,**overrides)
         return self.e['task_call_append'](self.project,self.req,args,{'project':self.project})[0]
 
     def prepare_replace(self):
@@ -126,7 +126,7 @@ class TaskCreateTest(unittest.TestCase):
         self.main.pous.replace=lambda i,n,c:self.main.pous.__setitem__(i,[n,c])
         self.e['task_replace_ide_version']=lambda:'1.9.1.6'
         self.refresh_version()
-        self.args.update(taskId='main',oldProgramId='old',expectedOldProgramHash=self.e['content_hash'](old.textual_declaration.text,''),
+        self.args.update(taskId=self.main.guid,oldProgramId='old',expectedOldProgramHash=self.e['content_hash'](old.textual_declaration.text,''),
                          expectedCallOrder=2,expectedCall=['Old','None'],expectedSourceSnapshot='source-hash')
         return old
 
@@ -135,7 +135,7 @@ class TaskCreateTest(unittest.TestCase):
 
     def test_replace_last_row_preserves_native_comments_both_programs_and_other_tasks(self):
         self.prepare_replace()
-        self.make_task('OtherTask','other',[['First','keep']])
+        self.make_task('OtherTask','22222222-2222-4222-8222-222222222222',[['First','keep']])
         self.refresh_version()
         r=self.replace()
         self.assertEqual(r['status'],'succeeded',r)
@@ -210,7 +210,7 @@ class TaskCreateTest(unittest.TestCase):
     def test_append_preserves_multiple_calls_comments_and_other_tasks(self):
         prefix=[['PLC_PRG',''],['Other','保留中文注释'],['Third','None']]
         self.main.pous[:]=[tuple(row) for row in prefix]
-        self.make_task('Secondary','secondary',[['Other','unchanged']])
+        self.make_task('Secondary','33333333-3333-4333-8333-333333333333',[['Other','unchanged']])
         self.refresh_version()
         result=self.append()
         self.assertEqual(result['status'],'succeeded',result)

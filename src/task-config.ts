@@ -25,7 +25,39 @@ export function taskCreateInventoryView(inventory:any):any|undefined {
   return {...inventory,tasks:Object.fromEntries(entries.map((t:any)=>[t.taskId,t]))};
 }
 
-// The task version covers the full ordered inventory; the caller also identifies
+// Append/replace reuse task_create's comparison view, with native GUID validation.
+// Do not normalize values or order within tasks; unknown fields remain significant.
+export function taskCallInventoryView(inventory:any):any|undefined {
+  const view=taskCreateInventoryView(inventory);
+  if(!view||!Array.isArray(inventory.enumerationFailures)||!Array.isArray(inventory.resolutionReadFailures)||
+     !Array.isArray(inventory.programs)||inventory.tasks.some((t:any)=>!Array.isArray(t.unavailableFields)))return;
+  const ids=inventory.tasks.map((t:any)=>t.taskId);
+  if(ids.some((id:string)=>id==='00000000-0000-0000-0000-000000000000'||!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id))||
+     new Set(ids.map((id:string)=>id.toLowerCase())).size!==ids.length)return;
+  return view;
+}
+export function taskCallDifference(expected:any,actual:any,at:(string|number)[]=[]):any {
+  const kind=(v:any)=>v===null?'null':Array.isArray(v)?'array':typeof v;
+  if(kind(expected)!==kind(actual))return {path:at,kind:'type',expected,actual};
+  if(Array.isArray(expected)){
+    if(expected.length!==actual.length)return {path:at,kind:'length',expected:expected.length,actual:actual.length};
+    for(let i=0;i<expected.length;i++){const d=taskCallDifference(expected[i],actual[i],[...at,i]);if(d)return d;}
+  }else if(expected!==null&&typeof expected==='object'){
+    for(const k of [...new Set([...Object.keys(expected),...Object.keys(actual)])].sort()){
+      if(!Object.hasOwn(expected,k)||!Object.hasOwn(actual,k))
+        return {path:[...at,k],kind:'field-presence',expectedPresent:Object.hasOwn(expected,k),actualPresent:Object.hasOwn(actual,k)};
+      const d=taskCallDifference(expected[k],actual[k],[...at,k]);if(d)return d;
+    }
+  }else if(expected!==actual)return {path:at,kind:'value',expected,actual};
+}
+export function taskCallInventoryDifference(expected:any,actual:any):any {
+  const left=taskCallInventoryView(expected),right=taskCallInventoryView(actual);
+  if(!left||!right)return {kind:'invalid-inventory',expectedValid:!!left,actualValid:!!right,
+    difference:taskCallDifference(expected,actual)};
+  return taskCallDifference(left,right);
+}
+
+// The task version covers the identity-sorted task set and ordered calls; the caller also identifies
 // the exact raw row and both definitions. A qualified lookalike blocks the edit.
 export function validReplacement(inv:any,a:any,old:any,next:any):boolean {
   const unique=(p:any)=>Array.isArray(p?.path)&&

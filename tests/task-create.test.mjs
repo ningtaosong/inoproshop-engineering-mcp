@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile,writeFile,access,realpath} from 'node:fs/promises';
+import {readFile,writeFile,access,realpath,readdir} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import {setup} from './helpers.mjs';
@@ -18,7 +18,7 @@ async function context(t,mutate=()=>{},changeResult=x=>x,{inspect=true,copy=fals
     {execute:async (req,...rest)=>{
       if(['task_create','task_call_append','task_call_replace'].includes(req.command))writes.push(req.operationId);
       const result=await adapter.execute(req,...rest);
-      return ['task_create','task_call_append','task_call_replace'].includes(req.command)?changeResult(result):result;
+      return ['task_create','task_call_append','task_call_replace'].includes(req.command)?changeResult(result,req,rest[0]):result;
     },reconcile:d=>adapter.reconcile(d)});
   t.after(()=>service.store.release());
   const call=(tool,args)=>service.call(tool,schemas[tool].parse(args));
@@ -378,4 +378,160 @@ for(const [label,mutate] of [
   assert.equal(digest(await readFile(x.file)),x.args.expectedDiskHash);
   const op=await x.service.store.operation(r.operationId);
   await assert.rejects(access(path.join(op.bridge.directory,'checkpoint.project')));
+});
+
+
+function callInventorySeed(p) {
+  p.objects[0].embeddedObjectTypes=[nativeStImplementation];
+  p.tasks[0].rawCalls=[['PLC_PRG','中文'],['Another',''],['Third','None']];
+  p.tasks.push({...structuredClone(p.tasks[0]),taskId:randomUUID(),
+    path:[...p.tasks[0].path.slice(0,-1),'Secondary'],rawCalls:[['Other','保留'],['Last','None']]});
+}
+function callInventoryArgs(x,tool) {
+  const old=x.seed.objects[0];
+  return tool==='append'?x.appendArgs:{...x.appendArgs,oldProgramId:old.objectId,
+    expectedOldProgramHash:old.contentHash,expectedCallOrder:0,expectedCall:['PLC_PRG','中文']};
+}
+for(const tool of ['append','replace'])for(const stage of ['none','immediate','reopened']){
+  test('call inventory '+tool+' accepts only top-level order at '+stage,async t=>{
+    const x=await context(t,callInventorySeed,r=>{
+      if(r.status==='succeeded'){
+        const key=stage==='immediate'?(tool==='append'?'afterAppend':'afterReplace'):'after';
+        if(stage!=='none')r.data[key].tasks.reverse();
+      }
+      return r;
+    });
+    const r=await x.call('task_call_'+tool,callInventoryArgs(x,tool));
+    assert.equal(r.status,'succeeded',JSON.stringify(r));
+    const row=r.data.after.tasks.find(task=>task.taskId===x.appendArgs.taskId);
+    assert.deepEqual(row.rawCalls,tool==='append'?
+      [['PLC_PRG','中文'],['Another',''],['Third','None'],['PRG_S8Probe','']]:
+      [['PRG_S8Probe','中文'],['Another',''],['Third','None']]);
+  });
+}
+
+
+const callInventoryFaults={
+  'target order':i=>i.tasks[0].rawCalls.reverse(),
+  'other order':i=>i.tasks[1].rawCalls.reverse(),
+  'call added':i=>i.tasks[0].rawCalls.push(['Unexpected','']),
+  'call removed':i=>i.tasks[0].rawCalls.pop(),
+  'call name':i=>i.tasks[0].rawCalls[0][0]='Wrong',
+  'comment':i=>i.tasks[0].rawCalls[0][1]='Wrong',
+  'None versus null':i=>i.tasks[0].rawCalls[2][1]=null,
+  'binding':i=>i.programs[0].objectId=randomUUID(),
+  'program order':i=>i.programs.reverse(),
+  'priority':i=>i.tasks[0].rawFields.priority='9',
+  'interval':i=>i.tasks[0].rawFields.interval='t#99ms',
+  'watchdog':i=>i.tasks[0].watchdog.enabled='True',
+  'missing id':i=>delete i.tasks[0].taskId,
+  'zero id':i=>i.tasks[0].taskId='00000000-0000-0000-0000-000000000000',
+  'invalid id':i=>i.tasks[0].taskId='not-a-guid',
+  'duplicate id':i=>i.tasks[1].taskId=i.tasks[0].taskId,
+  'task added':i=>i.tasks.push({...structuredClone(i.tasks[0]),taskId:randomUUID()}),
+  'task removed':i=>i.tasks.pop(),
+  'path':i=>i.tasks[0].path.push('Unexpected'),
+  'parent':i=>i.tasks[0].path[0]='Wrong',
+  'type':i=>i.tasks[0].rawFields.priority=1,
+  'missing field':i=>delete i.tasks[0].watchdog.enabled,
+  'incomplete':i=>i.coverageComplete=false,
+  'read failure':i=>i.resolutionReadFailures.push({message:'injected'}),
+  'unavailable':i=>i.tasks[0].unavailableFields.push('watchdog'),
+  'unknown field':i=>i.tasks[0].future=[null,'','None']
+};
+for(const tool of ['append','replace'])for(const stage of ['immediate','reopened'])
+for(const [label,mutate] of Object.entries(callInventoryFaults)){
+ test('call inventory '+tool+' rejects '+stage+' '+label,async t=>{
+   const key=stage==='immediate'?(tool==='append'?'afterAppend':'afterReplace'):'after';
+   const x=await context(t,callInventorySeed,r=>{if(r.status==='succeeded')mutate(r.data[key]);return r;});
+   const args=callInventoryArgs(x,tool),r=await x.call('task_call_'+tool,args);
+   assert.equal(r.status,'unknown',JSON.stringify(r));
+   assert.deepEqual(await x.call('task_call_'+tool,args),r);
+   const saved=await readFile(x.file),op=await x.service.store.operation(r.operationId);
+   const attempts=await readdir(path.join(op.bridge.directory,'task-call-service'));
+   assert.equal(attempts.length,1);
+   const evidence=path.join(op.bridge.directory,'task-call-service',attempts[0]);
+   const observed=JSON.parse(await readFile(path.join(evidence,'task-call-service-observed.json'),'utf8'));
+   const check=JSON.parse(await readFile(path.join(evidence,'task-call-service-verification.json'),'utf8'));
+   assert.equal(check.status,'failed');assert(check.checks[key]);
+   assert.equal(observed.result.status,'succeeded'); // Raw bridge reply retained, not accepted as overall success.
+   await assert.rejects(x.call('task_call_'+tool,{...args,requestId:randomUUID()}),{code:'PENDING_UNKNOWN'});
+   assert.equal(x.writes.length,1);
+   assert.deepEqual(await readFile(x.file),saved); // no recovery save/rollback
+ });
+}
+for(const tool of ['append','replace'])for(const label of ['source','language','identity']){
+ test('call inventory '+tool+' retains PROGRAM '+label+' guards',async t=>{
+   const x=await context(t,callInventorySeed,r=>{
+     if(r.status==='succeeded'){
+       if(label==='source')r.data.program.contentHash='0'.repeat(64);
+       if(label==='language')r.data.programEmbeddedObjectTypes=[];
+       if(label==='identity')r.data.program.objectId=randomUUID();
+     }return r;
+   });
+   assert.equal((await x.call('task_call_'+tool,callInventoryArgs(x,tool))).status,'unknown');
+ });
+}
+for(const tool of ['append','replace'])for(const copy of [false,true]){
+ test('call inventory '+tool+' publication failure freezes '+copy,async t=>{
+   const x=await context(t,callInventorySeed,undefined,{copy});
+   x.service.publishTaskCallEvidence=async()=>{throw Error('injected disk publication failure');};
+   const args=callInventoryArgs(x,tool),r=await x.call('task_call_'+tool,args);
+   assert.equal(r.status,'unknown',JSON.stringify(r));
+   assert.equal(r.error.code,'TASK_CALL_EVIDENCE_PUBLICATION_FAILED');
+   const saved=await readFile(x.file);
+   assert.deepEqual(await x.call('task_call_'+tool,args),r);
+   await assert.rejects(x.call('task_call_'+tool,{...args,requestId:randomUUID()}),{code:'PENDING_UNKNOWN'});
+   assert.equal(x.writes.length,1);assert.deepEqual(await readFile(x.file),saved);
+ });
+ test('call inventory '+tool+' restart rejects same invalid evidence '+copy,async t=>{
+   const x=await context(t,callInventorySeed,async(r,req,dir)=>{
+     if(r.status==='succeeded'){
+       r.data.after.tasks[0].rawCalls[0][1]='wrong on saved reopen';
+       await writeFile(path.join(dir,'result.json'),JSON.stringify(r));
+     }return r;
+   },{copy});
+   const args=callInventoryArgs(x,tool),r=await x.call('task_call_'+tool,args);
+   assert.equal(r.status,'unknown',JSON.stringify(r));const saved=await readFile(x.file);
+   const op=await x.service.store.operation(r.operationId);
+   const root=path.join(op.bridge.directory,'task-call-service'),first=(await readdir(root))[0];
+   const firstBytes=await readFile(path.join(root,first,'task-call-service-verification.json'));
+   await x.service.store.release();
+   const adapter=new FixtureAdapter(),restarted=new EngineeringService(x.service.config,{
+     execute:async()=>{assert.fail('must not redispatch');},reconcile:d=>adapter.reconcile(d)});
+   t.after(()=>restarted.store.release());
+   await assert.rejects(restarted.operation({operationId:r.operationId,reconcile:true}),/桥接结果/);
+   assert.deepEqual(await restarted.call('task_call_'+tool,schemas['task_call_'+tool].parse(args)),r);
+   assert.equal((await restarted.store.operation(r.operationId)).status,'unknown');
+   assert.equal((await readdir(root)).length,2);
+   assert.deepEqual(await readFile(path.join(root,first,'task-call-service-verification.json')),firstBytes);
+   assert.deepEqual(await readFile(x.file),saved);
+ });
+}
+for(const tool of ['append','replace'])for(const label of ['duplicate','missing','invalid','calls','coverage']){
+ test('call inventory '+tool+' preflight '+label+' has zero dispatch and unchanged file',async t=>{
+   const x=await context(t,p=>{
+     callInventorySeed(p);
+     if(label==='duplicate')p.tasks[1].taskId=p.tasks[0].taskId;
+     if(label==='missing')delete p.tasks[1].taskId;
+     if(label==='invalid')p.tasks[1].taskId='invalid';
+     if(label==='calls')p.tasks[1].rawCalls[0][1]=null;
+     if(label==='coverage')p.tasks[1].callsComplete=false;
+   },undefined,{inspect:false});
+   const disk=await readFile(x.file);
+   const r=await x.call('task_call_'+tool,callInventoryArgs(x,tool));
+   assert.notEqual(r.status,'succeeded',JSON.stringify(r));
+   const op=await x.service.store.operation(r.operationId);
+   if(op.bridge)await assert.rejects(access(path.join(op.bridge.directory,'task-'+tool+'-dispatched.json')));
+   assert.deepEqual(await readFile(x.file),disk);
+ });
+}
+
+for(const tool of ['append','replace'])test('call inventory '+tool+' publication failure retains first validation error',async t=>{
+  const x=await context(t,callInventorySeed,r=>{r.data.after.tasks[0].rawCalls[0][1]='wrong';return r;});
+  x.service.publishTaskCallEvidence=async()=>{throw Error('secondary publication error');};
+  const r=await x.call('task_call_'+tool,callInventoryArgs(x,tool));
+  assert.equal(r.status,'unknown');
+  assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
+  assert.match(r.error.message,/桥接结果/);assert.match(r.error.message,/secondary publication error/);
 });

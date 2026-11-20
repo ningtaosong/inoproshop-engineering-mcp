@@ -2,11 +2,11 @@
 
 规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-20。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-当前版本为 0.34.2 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+当前分支版本为 0.34.3 修复候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
 
 0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，日常入口未部署本补丁。
 
-0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因、默认环境性能与追加／替换的任务集合顺序风险仍未解决。
+0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因与默认环境性能问题仍未解决。追加／替换的任务集合顺序风险已在本分支进行[0.34.3 离线补修](docs/task-call-inventory-order.md)，真实复验待另行安排；本分支尚未合并或部署。
 
 0.34.2 已完成[一次 DSH CLI 双路报警综合工程验收](docs/offline-alarm-acceptance-0342.md)：限定离线工程闭环通过，流程与展示部分通过；本次未出现任务集合枚举换序，不能据此宣称复现原故障。原 0.34.0／0.34.1 综合验收失败及勘误保留，不扩大为全部工具或运行验收。
 
