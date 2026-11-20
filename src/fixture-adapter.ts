@@ -7,7 +7,7 @@ import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, type Reply } from './contracts.js';
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
 import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './storage.js';
-import {taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
 export class FixtureAdapter implements Adapter {
@@ -216,7 +216,7 @@ export class FixtureAdapter implements Adapter {
       else if(before.tasks.some((t:any)=>t.path.at(-1).toLowerCase()===a.name.toLowerCase()))result=reject('conflict','TASK_NAME_EXISTS');
       else if(p.taskReadOnly)result=reject('unsupported','TASK_PROJECT_READ_ONLY');
       else if(!before.tasks.some((t:any)=>t.rawFields.kind_of_task==='Cyclic'))result=reject('unsupported','TASK_CREATE_NATIVE_API');
-      else if(!before.coverageComplete||before.tasks.some((t:any)=>!t.callsComplete||t.unavailableFields.length||
+      else if(!taskCreateInventoryView(before)||before.tasks.some((t:any)=>!t.callsComplete||t.unavailableFields.length||
           canonical(t.path.slice(0,-1))!==canonical(configPath))||p.taskConfigurationId!==a.taskConfigurationId||
           !program||program.contentHash!==a.expectedProgramHash||canonical(target.path.slice(0,-1))!==canonical(before.applicationPath)||
           canonical(before.programs.filter((row:any)=>row.path.at(-1).toLowerCase()===name?.toLowerCase()))!==
@@ -248,6 +248,7 @@ export class FixtureAdapter implements Adapter {
         else {
           await atomicJson(req.projectPath,p);
           const disk=digest(await fs.readFile(req.projectPath));
+          if(p.taskCreateReopenOrder)after.tasks.reverse();
           result=p.taskProgramLanguageReopenError?uncertain(p.taskProgramLanguageReopenError):
             reply('succeeded','任务创建及绑定替身读回',{...common,after,task,
             calls:[{order:0,applicationId:a.applicationId,programId:a.programId,raw:[name,'']}],

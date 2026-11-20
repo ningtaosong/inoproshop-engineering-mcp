@@ -312,3 +312,70 @@ for(const copy of [false,true])test('replace refuses a stale row, PROGRAM or dis
     assert.equal(digest(await readFile(x.file)),args.expectedDiskHash);
   }
 });
+
+
+// 0.34.1: only task_create task enumeration is an identity set; raw calls stay ordered.
+for(const copy of [false,true])test('create accepts reordered multiple old tasks in saved inventory '+(copy?'copy':'direct'),async t=>{
+  const x=await context(t,p=>{
+    p.tasks.push({...structuredClone(p.tasks[0]),taskId:randomUUID(),
+      path:[...p.tasks[0].path.slice(0,-1),'Secondary'],rawCalls:[['A','中文'],['B','None']]});
+    p.taskCreateReopenOrder=true;
+  },undefined,{copy});
+  const r=await x.call('task_create',x.args);
+  assert.equal(r.status,'succeeded',JSON.stringify(r));
+  assert(outputSchemas.task_create.safeParse(r).success);
+  assert.deepEqual(r.data.before.tasks.map(t=>t.path.at(-1)),['MainTask','Secondary']);
+  assert.deepEqual(r.data.after.tasks.map(t=>t.path.at(-1)),['ProbeTask','Secondary','MainTask']);
+  assert.deepEqual(r.data.after.tasks[1].rawCalls,[['A','中文'],['B','None']]);
+  assert.deepEqual(await x.call('task_create',x.args),r);
+  assert.equal(x.writes.length,1);
+  assert.equal((await x.service.store.session()).buildApplicable,false);
+});
+
+for(const [label,mutate] of [
+  ['removed task',d=>d.after.tasks.splice(0,1)],
+  ['added task',d=>d.after.tasks.push({...d.after.tasks[0],taskId:randomUUID()})],
+  ['duplicated identity',d=>d.after.tasks.push(structuredClone(d.after.tasks[0]))],
+  ['empty identity',d=>d.after.tasks[0].taskId=''],
+  ['missing identity',d=>delete d.after.tasks[0].taskId],
+  ['parent path',d=>d.after.tasks[0].path[0]='Elsewhere'],
+  ['period',d=>d.after.tasks[0].rawFields.interval='t#21ms'],
+  ['priority',d=>d.after.tasks[0].rawFields.priority='2'],
+  ['watchdog',d=>d.after.tasks[0].watchdog.enabled='True'],
+  ['calls reorder',d=>d.after.tasks[0].rawCalls.reverse()],
+  ['comment null',d=>d.after.tasks[0].rawCalls[0][1]=null],
+  ['comment value',d=>d.after.tasks[0].rawCalls[0][1]='Changed'],
+  ['binding',d=>d.after.tasks[0].rawCalls[0][0]='Changed'],
+  ['PROGRAM identity',d=>d.after.programs[0].objectId=randomUUID()],
+  ['missing field',d=>delete d.after.tasks[0].rawFields.priority],
+  ['read error',d=>d.after.tasks[0].unavailableFields.push({field:'priority',reason:'failed'})],
+  ['coverage',d=>d.after.coverageComplete=false],
+  ['new metadata',d=>d.after.futureEvidence={readable:false}],
+])test('create service refuses changed preserved evidence and freezes: '+label,async t=>{
+  const x=await context(t,p=>p.tasks[0].rawCalls=[['PLC_PRG','None'],['Other','中文']],r=>{
+    mutate(r.data);return r;
+  });
+  const r=await x.call('task_create',x.args);
+  assert.equal(r.status,'unknown',JSON.stringify(r));
+  assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
+  const bytes=await readFile(x.file);
+  assert.deepEqual(await x.call('task_create',x.args),r);
+  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
+  assert.deepEqual(await readFile(x.file),bytes);
+  assert.equal(x.writes.length,1);
+});
+
+for(const [label,mutate] of [
+  ['duplicate ID',p=>p.tasks.push(structuredClone(p.tasks[0]))],
+  ['empty ID',p=>p.tasks[0].taskId=''],
+  ['null call',p=>p.tasks[0].rawCalls=[['PLC_PRG',null]]],
+  ['missing configuration field',p=>delete p.tasks[0].rawFields.priority],
+])test('create fixture strict preflight has no checkpoint or save: '+label,async t=>{
+  const x=await context(t,mutate,undefined,{inspect:false});
+  const r=await x.call('task_create',x.args);
+  assert.equal(r.status,'conflict',JSON.stringify(r));
+  assert.equal(r.error.code,'TASK_CREATE_IDENTITY_OR_COVERAGE');
+  assert.equal(digest(await readFile(x.file)),x.args.expectedDiskHash);
+  const op=await x.service.store.operation(r.operationId);
+  await assert.rejects(access(path.join(op.bridge.directory,'checkpoint.project')));
+});

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { type Config, type Adapter, ROOT } from './adapter.js';
+import { type Config, type Adapter, type BridgeRequest, ROOT } from './adapter.js';
 import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
 import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema,variableUsagesDataSchema, type Reply } from './contracts.js';
 import {propertyEvidence,propertyCreationEvidence,propertyPreservationEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE,PROPERTY_COVERAGE_VERSION} from './properties.js';
@@ -17,7 +17,7 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
-import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {organizationResult} from './organization.js';
 import {ioMappingPage} from './io-mapping.js';
 import {deviceCatalogResult} from './device-catalog.js';
@@ -99,16 +99,23 @@ export class EngineeringService {
     return s;
   }
   async operation(args:any):Promise<Reply> {
-    const op=args.operationId?await this.store.operation(args.operationId):(await this.store.operations()).find(o=>o.requestId===args.requestId);
+    const matches=args.operationId?[]:(await this.store.operations()).filter(o=>o.requestId===args.requestId);
+    if(matches.length>1)throw new DomainError('unknown','OPERATION_REQUEST_AMBIGUOUS','原 requestId 对应多个操作；不选择或修改记录');
+    const op=args.operationId?await this.store.operation(args.operationId):matches[0];
     if(!op) throw new DomainError('failed','OPERATION_NOT_FOUND','未找到原操作');
+    const isolated=await this.isolatedObservation(op);
+    if(isolated)return isolated;
     if(args.reconcile && (op.status==='running'||op.status==='unknown')) {
       if(op.status==='running' && alive(op.ownerPid) && !this.persistencePoison) return this.operationReply(op,'running','原服务仍在执行，查询不会中断或重放');
       await this.store.acquire();
+      // Formal maintenance commits require this lease too; recheck the race.
+      const isolatedAfterLease=await this.isolatedObservation(op);
+      if(isolatedAfterLease)return isolatedAfterLease;
       if(op.tool==='library_catalog'||op.tool==='device_catalog') {
         if(op.bridge?.pid&&alive(op.bridge.pid))return this.operationReply(op,'unknown','原目录探测进程仍存在；不重放');
         if(op.bridge){
-          const observed=await this.adapter.reconcile(op.bridge.directory);
-          if(observed){const parsed=this.prepareResult(op,replySchema.parse(observed));this.validateEvidence(op,parsed);await this.finish(op,boundNativeReply(parsed));return op.response!;}
+          const observed=await this.reconcileNative(op);
+          if(observed){const parsed=this.prepareResult(op,replySchema.parse(observed));this.validateEvidence(op,parsed);await this.finish(op,boundNativeReply(parsed));await this.clearReconciledPoison();return op.response!;}
         }
         return this.operationReply(op,'unknown','本机目录原操作缺少可确认终态；不重放');
       }
@@ -117,8 +124,8 @@ export class EngineeringService {
         await this.store.acquire(op.creation.projectPath);
         if(op.bridge?.pid&&alive(op.bridge.pid))return this.operationReply(op,'unknown','原新建进程仍存在，保持冻结，不重新创建');
         if(op.bridge) {
-          const observed=await this.adapter.reconcile(op.bridge.directory);
-          if(observed){await this.finish(op,replySchema.parse(observed));return op.response!;}
+          const observed=await this.reconcileNative(op);
+          if(observed){await this.finish(op,replySchema.parse(observed));await this.clearReconciledPoison();return op.response!;}
         }
         return this.operationReply(op,'unknown','原新建操作缺少可核对终态，保留文件，不覆盖重试');
       }
@@ -127,7 +134,7 @@ export class EngineeringService {
       await this.store.acquire(project.sourcePath);
       if(op.bridge?.pid && alive(op.bridge.pid)) return this.operationReply(op,'unknown','原 IDE 进程仍存在，不能确认其已退出；继续冻结后续工程操作');
       if(op.bridge) {
-        const observed=await this.adapter.reconcile(op.bridge.directory);
+        const observed=await this.reconcileNative(op);
         if(observed) {
           this.validateDirect(observed,op.tool==='project_compare'&&op.args.origin==='registered-source'?{...project,workingPath:project.sourcePath,diskHash:project.sourceHash}:project);
           const parsed=this.prepareResult(op,replySchema.parse(observed));
@@ -135,7 +142,7 @@ export class EngineeringService {
           if(parsed.status==='succeeded' && op.tool!=='project_compare' && parsed.data?.diskHash && parsed.data.diskHash!==digest(await fs.readFile(project.workingPath)))
             throw new DomainError('unknown','RESULT_DISK_CHANGED','原操作结果与其工作副本当前磁盘内容不一致，保持冻结');
           await this.finish(op,boundNativeReply(parsed));
-          if(!(await this.store.operations()).some(o=>o.status==='running'||o.status==='unknown')) {await this.store.registry();this.persistencePoison=undefined;}
+          await this.clearReconciledPoison();
           return op.response!;
         }
       }
@@ -223,7 +230,39 @@ export class EngineeringService {
       execution.finally(()=>clearTimeout(timer)).catch(()=>{});
     })]);
   }
+  private async clearReconciledPoison() {
+    if(!this.persistencePoison)return;
+    const scope=await isolationState(this.store),isolated=new Set(scope.own.flatMap(e=>e.plan.operationIds));
+    if(!(await this.store.operations()).some(o=>!isolated.has(o.operationId)&&(o.status==='running'||o.status==='unknown'))) {
+      await this.store.registry();this.persistencePoison=undefined;
+    }
+  }
+  private async isolatedObservation(op:Operation):Promise<Reply|undefined> {
+    await maintenanceGuard();
+    const state=await isolationState(this.store);
+    if(state.own.some(e=>e.plan.operationIds.includes(op.operationId)))
+      return op.response ?? this.operationReply(op,op.status,'原操作已正式隔离；仅观察原记录，不核对提交或派发');
+  }
+  private async reconcileNative(op:Operation) {
+    const isolated=await this.isolatedObservation(op);
+    if(isolated)return isolated;
+    return this.adapter.reconcile(op.bridge!.directory,{operationId:op.operationId,requestId:op.requestId,
+      requestFingerprint:op.fingerprint,launchId:op.bridge!.launchId});
+  }
+  private async executeNative(op:Operation,request:BridgeRequest,directory:string,onStart:(pid:number)=>Promise<void>) {
+    return this.adapter.execute({...request,requestId:op.requestId,requestFingerprint:op.fingerprint},directory,
+      async(pid,evidence)=>{
+        if(evidence)op.bridge!.launchId=evidence.binding.launchId;
+        await onStart(pid);
+      });
+  }
   private async finish(op:Operation,result:Reply) {
+    const isolated=await this.isolatedObservation(op);
+    if(isolated){op.response=isolated;return;}
+    const response={...result,operationId:op.operationId,requestId:op.requestId};
+    // Reobserving identical terminal evidence is not a new completion.
+    if(op.status===result.status&&op.finishedAt&&canonical(op.response)===canonical(response))return;
+
     const switching=['project_create','project_open','project_open_copy','project_activate'].includes(op.tool);
     if(op.tool==='project_create'&&result.status==='succeeded') {
       op.project=await createdSession(this.store,op,result);
@@ -284,7 +323,7 @@ export class EngineeringService {
     if(direct)await guardDirect(this.store,session);
     op.bridge={directory:this.store.file('ipc/'+op.operationId)};
     await this.store.saveOp(op);
-    const result=await this.adapter.execute({operationId:op.operationId,command,projectPath:session.workingPath,args,
+    const result=await this.executeNative(op,{operationId:op.operationId,command,projectPath:session.workingPath,args,
       ...(direct&&S5B_PROMPT_STAGES[op.tool]?{promptPolicy:'library-info-open-stages-v2' as const,
         promptStages:[...S5B_PROMPT_STAGES[op.tool]]}:{}),
       ...(direct?{fileGuard:{expectedDiskHash:session.diskHash!,mode:'direct' as const}}:{})},op.bridge.directory,async pid=> {
@@ -614,10 +653,15 @@ export class EngineeringService {
           return;
         }
         const row=d.task;
+        const beforeView=taskCreateInventoryView(before),afterView=taskCreateInventoryView(after);
+        if(!beforeView||!afterView)invalid();
+        const preservedView=taskCreateInventoryView({...after,tasks:after.tasks.filter((t:any)=>t.taskId!==d.taskId)});
+        if(!preservedView||canonical(preservedView)!==canonical(beforeView)||
+           before.tasks.some((t:any)=>canonical(t.path.slice(0,-1))!==canonical(d.taskConfigurationPath)))invalid();
         if(d.created!==true||d.intervalMs!==args.intervalMs||!row||d.taskId!==row.taskId||before.tasks.some((t:any)=>t.taskId===d.taskId)||
           canonical(row.path)!==canonical([...d.taskConfigurationPath,args.name])||
           row.rawFields?.kind_of_task!=='Cyclic'||configuredIntervalMs(row.rawFields)!==args.intervalMs||
-          canonical(row.rawCalls)!==canonical(raw)||canonical(after.tasks.filter((t:any)=>t.taskId!==d.taskId))!==canonical(before.tasks)||
+          canonical(row.rawCalls)!==canonical(raw)||
           canonical(after.tasks.filter((t:any)=>t.taskId===d.taskId))!==canonical([row])||
           canonical(after.programs)!==canonical(before.programs)||
           canonical(after.programs.filter((p:any)=>p.path?.at(-1)?.toLowerCase()===targetName?.toLowerCase()))!==
@@ -637,7 +681,7 @@ export class EngineeringService {
     if(op.tool==='library_catalog'||op.tool==='device_catalog'){
       await maintenanceGuard();
       op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
-      const raw=await this.adapter.execute({operationId:op.operationId,command:op.tool==='device_catalog'?'device_catalog':'catalog',projectPath:'',args:a},op.bridge.directory,
+      const raw=await this.executeNative(op,{operationId:op.operationId,command:op.tool==='device_catalog'?'device_catalog':'catalog',projectPath:'',args:a},op.bridge.directory,
         async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);});
       const parsed=this.prepareResult(op,replySchema.parse(raw));this.validateEvidence(op,parsed);
       return boundNativeReply(parsed);
@@ -650,7 +694,7 @@ export class EngineeringService {
         const target=await reserveProject(this.store,op,registry);
         await guardNewPath(target);await maintenanceGuard();
         op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
-        const result=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'new_project',projectPath:target,args:{preset:op.creation!.preset}},
+        const result=replySchema.parse(await this.executeNative(op,{operationId:op.operationId,command:'new_project',projectPath:target,args:{preset:op.creation!.preset}},
           op.bridge.directory,async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
         await createdSession(this.store,op,result);
         // Validation/registration occurs in finish only after final file evidence.
@@ -802,7 +846,7 @@ export class EngineeringService {
     if(s.editMode==='direct')await guardDirect(this.store,s);
     const dir=this.store.file('ipc/'+op.operationId),pre=path.join(dir,'preflight');
     op.bridge={directory:pre};await this.store.saveOp(op);
-    const raw=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'read',projectPath:s.workingPath,
+    const raw=replySchema.parse(await this.executeNative(op,{operationId:op.operationId,command:'read',projectPath:s.workingPath,
       args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.objectId},
       ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pre,
       async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
@@ -828,7 +872,7 @@ export class EngineeringService {
         const children:any[]=[];let offset=0,total:number|undefined;
         do {
           const pageDir=path.join(dir,'interface-list-'+offset);op.bridge={directory:pageDir};await this.store.saveOp(op);
-          const listed=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'list',projectPath:s.workingPath,
+          const listed=replySchema.parse(await this.executeNative(op,{operationId:op.operationId,command:'list',projectPath:s.workingPath,
             args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,offset,limit:200},
             ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pageDir,
             async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
@@ -869,7 +913,7 @@ export class EngineeringService {
       const inventory:any[]=[];let offset=0,total:number|undefined;
       do {
         const pageDir=path.join(dir,'type-list-'+offset);op.bridge={directory:pageDir};await this.store.saveOp(op);
-        const listed=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'list',projectPath:s.workingPath,
+        const listed=replySchema.parse(await this.executeNative(op,{operationId:op.operationId,command:'list',projectPath:s.workingPath,
           args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,offset,limit:200},
           ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pageDir,
           async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
@@ -894,7 +938,7 @@ export class EngineeringService {
         canonical(matches[0].path?.slice(0,-1))!==canonical(appPath))
         throw new DomainError('unsupported','MEMBER_TYPE_NOT_UNIQUE','类型名未唯一绑定同一Application根节点的原生结构体，未修改');
       const typeDir=path.join(dir,'type-read');op.bridge={directory:typeDir};await this.store.saveOp(op);
-      const typed=replySchema.parse(await this.adapter.execute({operationId:op.operationId,command:'read',projectPath:s.workingPath,
+      const typed=replySchema.parse(await this.executeNative(op,{operationId:op.operationId,command:'read',projectPath:s.workingPath,
         args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.typeObjectId},
         ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},typeDir,
         async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));

@@ -129,8 +129,8 @@ async function localEntries(store:Store):Promise<Entry[]> {
       const op=await store.operation(b.operationId);
       if(!op || !p.operationIds.includes(op.operationId))problem('ISOLATION_OWNERSHIP','隔离原操作记录缺失');
       const {session:s,basis}=resolveOwnership(op,registry.projects);
-      // A late, independently reconciled result may publish exactly the same
-      // tentative identity. The committed isolation still protects that file.
+      // Older versions may already have reconciled the same tentative identity.
+      // Read compatibility does not authorize new reconciliation after isolation.
       const recordedBasis=p.version===2&&basis==='registered'?'provisional-direct':basis;
       if((p.version===1&&basis!=='registered')||(p.version===2&&!['provisional-direct','registered'].includes(basis))||
         s.projectId!==p.projectId || canonical(binding(op,s,recordedBasis))!==canonical(b))

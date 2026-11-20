@@ -7,6 +7,24 @@ export function isTaskAppendCall(row:unknown):row is [string,string] {
   return Array.isArray(row)&&row.length===2&&typeof row[0]==='string'&&row[0].length>0&&typeof row[1]==='string';
 }
 
+// task_create only: tasks are an identity set, while every nested array (especially
+// rawCalls) remains ordered. Keep the original inventory and all unknown fields intact.
+export function taskCreateInventoryView(inventory:any):any|undefined {
+  const fields=['kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'];
+  const watchdog=['enabled','time','time_unit','sensitivity'];
+  if(!Array.isArray(inventory?.tasks)||inventory.coverageComplete!==true||
+     inventory.enumerationFailures?.length!==0||inventory.resolutionReadFailures?.length!==0)return;
+  const entries=inventory.tasks;
+  if(entries.some((t:any)=>!t||typeof t.taskId!=='string'||!t.taskId||
+     !Array.isArray(t.path)||!t.path.length||t.path.some((x:unknown)=>typeof x!=='string'||!x)||
+     t.callsComplete!==true||t.unavailableFields?.length!==0||
+     !Array.isArray(t.rawCalls)||!t.rawCalls.every(isTaskAppendCall)||
+     fields.some(k=>typeof t.rawFields?.[k]!=='string')||
+     watchdog.some(k=>typeof t.watchdog?.[k]!=='string'))||
+     new Set(entries.map((t:any)=>t.taskId)).size!==entries.length)return;
+  return {...inventory,tasks:Object.fromEntries(entries.map((t:any)=>[t.taskId,t]))};
+}
+
 // The task version covers the full ordered inventory; the caller also identifies
 // the exact raw row and both definitions. A qualified lookalike blocks the edit.
 export function validReplacement(inv:any,a:any,old:any,next:any):boolean {

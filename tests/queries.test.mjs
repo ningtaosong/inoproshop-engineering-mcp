@@ -1,3 +1,4 @@
+import {processObservations,requestBinding} from './process-double.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,writeFile,copyFile} from 'node:fs/promises';
@@ -93,11 +94,11 @@ test('只读前登记磁盘变化拒绝，读取中变化 unknown 冻结，不�
 test('真实适配器在 IDE 退出后发现文件变化保留原结果并冻结；不 kill、不复编、不保存',async()=>{
  const e=await setup(),dir=path.join(e.dir,'read-ipc'),before=digest(await readFile(e.source));let kills=0;
  const adapter=new IdeAdapter({executable:process.execPath,profile:'test',timeoutMs:1000},()=>{
-  const child=new EventEmitter();child.kill=()=>{kills++;};setTimeout(async()=>{const request=JSON.parse(await readFile(path.join(dir,'request.json'),'utf8'));
-   await atomicJson(path.join(dir,'result.json'),{contractVersion:'1.0.0',status:'succeeded',summary:'test',operationId:request.operationId,data:{diskHash:before,readOnlyEvidence:{beforeDiskHash:before,afterCloseDiskHash:before,unchanged:true}}});
+  const child=new EventEmitter(); child.pid=12345;child.kill=()=>{kills++;};setTimeout(async()=>{const request=JSON.parse(await readFile(path.join(dir,'request.json'),'utf8'));
+   await atomicJson(path.join(dir,'dispatched.json'),{operationId:request.operationId,pid:12345});await atomicJson(path.join(dir,'result.json'),{contractVersion:'1.0.0',status:'succeeded',summary:'test',operationId:request.operationId,data:{diskHash:before,readOnlyEvidence:{beforeDiskHash:before,afterCloseDiskHash:before,unchanged:true}}});
    await writeFile(e.source,(await readFile(e.source,'utf8'))+' ');child.emit('exit',0);},20);return child;
- });
- const r=await adapter.execute({operationId:randomUUID(),command:'search',projectPath:e.source,args:{readDiskHash:before}},dir,async()=>{});assert.equal(r.status,'unknown');assert.equal(r.error.code,'READ_ONLY_FILE_CHANGED');assert.equal(kills,0);
+ },processObservations);
+ const r=await adapter.execute({...requestBinding,operationId:randomUUID(),command:'search',projectPath:e.source,args:{readDiskHash:before}},dir,async()=>{});assert.equal(r.status,'unknown');assert.equal(r.error.code,'READ_ONLY_FILE_CHANGED');assert.equal(kills,0);
  const again=await adapter.reconcile(dir);assert.deepEqual(again,r);
 });
 test('新增输入边界拒绝正则/池任务/错误分页/未知参数，旧十三工具的输入仍兼容',()=>{

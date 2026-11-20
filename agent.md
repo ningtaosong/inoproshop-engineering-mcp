@@ -2,7 +2,11 @@
 
 规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-20。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-当前版本为 0.34.0 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+当前版本为 0.34.2 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+
+0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，日常入口未部署本补丁。
+
+0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因、默认环境性能与追加／替换的任务集合顺序风险仍未解决。
 
 在已验 AM610 设备描述 `3.5.11.11` 的 Application 中，[`task_create`](docs/task-create.md) 新建周期任务并绑定第一个已有根级 ST PROGRAM。[`task_call_append`](docs/task-call-append.md) 给已有周期任务末尾追加一个已有根级 ST PROGRAM，保留原调用顺序和注释。本机 InoProShop 1.9.1.6 的单条调用移除探测受阻，未提供移除工具。限定的单条调用替换已交付。对本机已核查的公开接口，尚无符合要求的行级重排入口，暂不开发。
 
