@@ -1,7 +1,7 @@
 {
-  "serverVersion": "0.33.0",
+  "serverVersion": "0.34.0",
   "contractVersion": "1.0.0",
-  "toolCount": 36,
+  "toolCount": 37,
   "tools": [
     {
       "name": "environment_inspect",
@@ -10093,6 +10093,194 @@
               }
             },
             "additionalProperties": false
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "status",
+          "summary"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "io_mapping_inspect",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "default": 24,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          },
+          "expectedVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "detail": {
+            "type": "object",
+            "properties": {
+              "deviceGuid": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "connectorId": {
+                "type": "number",
+                "const": 2
+              },
+              "parameterId": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^-?[0-9]+$"
+                  }
+                ]
+              },
+              "memberPath": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "deviceGuid",
+              "connectorId",
+              "parameterId",
+              "memberPath"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "projectId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "conflict",
+              "unsupported",
+              "unknown"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "projectId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "diskHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "channels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                }
+              },
+              "device": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "connector": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "coverage": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "page": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              }
+            },
+            "additionalProperties": {}
           },
           "error": {
             "type": "object",

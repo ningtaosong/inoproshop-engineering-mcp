@@ -94,7 +94,7 @@ export class IdeAdapter implements Adapter {
       response.data.postExitDiskHashObserved=true;
       await atomicJson(path.join(directory,'observed-after-exit.json'),response);
     }
-    if(['search','tasks','structure','device','libraries','compare_capture'].includes(request.command) || request.fileGuard&&['inspect','list','read'].includes(request.command)) {
+    if(['search','tasks','structure','device','io_mapping','libraries','compare_capture'].includes(request.command) || request.fileGuard&&['inspect','list','read'].includes(request.command)) {
       if(response.status==='unknown'&&response.error?.code==='READ_ONLY_FILE_CHANGED')return response;
       const after=digest(await fs.readFile(request.projectPath)),e=response.data?.readOnlyEvidence;
       const expected=request.fileGuard?.expectedDiskHash??request.args.readDiskHash;

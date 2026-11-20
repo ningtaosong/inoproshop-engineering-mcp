@@ -1617,10 +1617,10 @@ def dispatch(req):
     command, args = req["command"], req["args"]
     prompt_rejection=configure_prompt(lifecycle,req)
     if prompt_rejection is not None:return prompt_rejection
-    read_only = command in ("search","tasks","structure","device","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
+    read_only = command in ("search","tasks","structure","device","io_mapping","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "task_call_append", "task_call_replace", "structure", "device", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "task_call_append", "task_call_replace", "structure", "device", "io_mapping", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1640,6 +1640,12 @@ def dispatch(req):
         if command == "structure":
             tree,native=native_structure(project,args)
             response = success(u"已只读枚举原生工程结构",attach_organization_versions(project,tree,native,args))
+        elif command == "io_mapping":
+            sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+            from io_inventory import inventory
+            from System.Diagnostics import Process
+            ide_version=text(Process.GetCurrentProcess().MainModule.FileVersionInfo.FileVersion)
+            response=inventory(project,args,os.path.dirname(req['resultPath']),ide_version,success,failure)
         elif command == "device":
             response = device_inventory(project,args)
         elif command == "inspect":

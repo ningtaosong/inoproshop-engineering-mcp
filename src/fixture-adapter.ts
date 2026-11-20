@@ -350,12 +350,16 @@ export class FixtureAdapter implements Adapter {
             changed,noOp:!changed,reopened:changed,...(changed?{checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true}:{}),snapshot:snapshot(),diskHash:digest(await fs.readFile(req.projectPath)),testMode:true});
       }
     }
-    else if(req.command==='structure'||req.command==='device') {
+    else if(['structure','device','io_mapping'].includes(req.command)) {
       const all=p.nativeNodes || [],cap=req.command==='structure'?a.maxNodes:20000,nodes=all.slice(0,cap);
       const treeScope={description:'fixture native tree, not real IDE',maxNodes:cap,capturedNodes:nodes.length,treeComplete:!p.treeReadError&&nodes.length===all.length,
         coverageComplete:!p.treeReadError&&nodes.length===all.length&&!nodes.some((n:any)=>n.unavailableFields.length),truncated:nodes.length<all.length,
         enumerationFailures:p.treeReadError?[{path:[],stage:'children-enumeration',reason:p.treeReadError}]:[]};
       if(req.command==='structure')result=reply('succeeded','测试原生结构替身',{projectId:a.projectId,projectPath:req.projectPath,nodes,scope:treeScope,identityLimitations:'fixture observed native GUIDs',organizationScheme:'application-organization-v1',organizationVersions:Object.fromEntries(p.applications.map((app:any)=>[app.applicationId,fixtureOrganization(p,app.applicationId,a.projectId).version]))});
+      else if(req.command==='io_mapping'){
+        result=p.ioInventory?reply('succeeded','测试通道清单',{...p.ioInventory,projectId:a.projectId,projectPath:req.projectPath}):
+          {...reply('unsupported','测试夹具缺少 I/O 采集'),error:{code:'IO_DEVICE_SCOPE',message:'No fixture inventory'}};
+      }
       else {
         const found=nodes.filter((n:any)=>n.objectId===a.deviceId);
         if(found.length!==1)result={...reply('conflict','测试设备目标不唯一'),error:{code:'DEVICE_ID_NOT_UNIQUE',message:'No unique native device'}};
@@ -544,7 +548,7 @@ export class FixtureAdapter implements Adapter {
     result.operationId=req.operationId;
     if(result.data) result.data.diskHash=digest(await fs.readFile(req.projectPath));
     await atomicJson(path.join(dir,'result.json'),result);
-    if(['search','structure','device','libraries','compare_capture'].includes(req.command))await atomicJson(path.join(dir,'observed-after-exit.json'),result);
+    if(['search','structure','device','io_mapping','libraries','compare_capture'].includes(req.command))await atomicJson(path.join(dir,'observed-after-exit.json'),result);
     return result;
   }
 }

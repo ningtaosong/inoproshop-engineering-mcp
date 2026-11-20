@@ -19,6 +19,7 @@ import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {organizationResult} from './organization.js';
+import {ioMappingPage} from './io-mapping.js';
 import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
@@ -302,6 +303,7 @@ export class EngineeringService {
   }
   private prepareResult(op:Operation,result:Reply):Reply {
     if(op.tool==='library_catalog')return catalogResult(result,op.args);
+    if(op.tool==='io_mapping_inspect')return ioMappingPage(result,op.args);
     if(op.tool==='device_catalog')return deviceCatalogResult(result,op.args);
     if(op.tool==='variable_edit'&&result.status==='succeeded'&&(op as any).variableOriginal){
       const before=(op as any).variableOriginal;
@@ -324,7 +326,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.tool==='variable_edit'?(op as any).effectiveArgs??op.args:op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',task_create:'task_create',task_call_append:'task_call_append',task_call_replace:'task_call_replace',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',task_create:'task_create',task_call_append:'task_call_append',task_call_replace:'task_call_replace',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',io_mapping_inspect:'io_mapping',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -339,6 +341,12 @@ export class EngineeringService {
           declarationMatches(v.objectType,v.path?.at(-1) || '',v.declaration);
       };
       if(!d) invalid();
+      if(command==='io_mapping'){
+        const io=d as any,e=io.readOnlyEvidence;
+        if(!session||io.projectId!==args.projectId||pathKey(io.projectPath)!==pathKey(session.workingPath)||
+          io.diskHash!==session.diskHash||e?.unchanged!==true||e.beforeDiskHash!==io.diskHash||
+          e.afterCloseDiskHash!==io.diskHash||e.postExitDiskHash!==io.diskHash||!isHash(io.version))invalid();
+      }
       if(command==='device_catalog'){
         if(!isHash(d!.version)||d!.projectOpened!==false||d!.firmwareStatus!=='not-read'||!Array.isArray(d!.entries)||!d!.scope||
           (args.detail?d!.detailVerified!==true||d!.entries.length!==1:!d!.page))invalid();
@@ -681,7 +689,7 @@ export class EngineeringService {
     const s=await this.store.session();
     if(!s || !op.project || s.projectId!==op.project.projectId || s.projectId!==a.projectId)
       throw new DomainError('conflict','PROJECT_NOT_ACTIVE','排队请求的原工程已非活动工程，未派发');
-    const nativeQuery=['project_structure','device_inspect'].includes(op.tool);
+    const nativeQuery=['project_structure','device_inspect','io_mapping_inspect'].includes(op.tool);
     if(!nativeQuery&&(s.applicationId!==a.applicationId || (s.targetKind || 'application')!==(a.targetKind || 'application') ||
       (a.targetKind==='pool'?a.applicationId!==null:typeof a.applicationId!=='string')))
       throw new DomainError('conflict','TARGET_MISMATCH','projectId / applicationId 与受管理会话不匹配');
@@ -742,7 +750,7 @@ export class EngineeringService {
       if(currentHash!==expected)throw new DomainError('conflict','COMPARE_DISK_CHANGED','采集前文件与登记版本不一致；未启动 IDE 或保存');
       return this.bridge(op,'compare_capture',{...s,workingPath:projectPath,diskHash:expected,...(s.editMode==='direct'?{directPath:await fs.realpath(projectPath)}:{})},{...a,readDiskHash:currentHash});
     }
-    if(['project_search','variable_inspect','task_inspect','project_structure','device_inspect','library_inspect','variable_usages'].includes(op.tool)) {
+    if(['project_search','variable_inspect','task_inspect','project_structure','device_inspect','library_inspect','variable_usages','io_mapping_inspect'].includes(op.tool)) {
       if(op.tool==='project_search' && (a.offset>0&&!a.expectedVersion || new Set(a.areas).size!==a.areas.length))
         throw new DomainError('failed','SEARCH_PAGE_VERSION_REQUIRED','续页必须携带首个结果版本，搜索区域不能重复');
       if(op.tool==='project_search'&&a.matchMode==='identifier'&&(!singleIdentifier(a.query)||a.areas.includes('name')))
@@ -753,7 +761,7 @@ export class EngineeringService {
       if(op.tool==='project_search'&&a.expectedVersion)return this.searchPage(op,s,currentHash);
       if((a.valueRead||a.fieldRead||a.sourceRead)&&a.offset!==0)throw new DomainError('conflict','VALUE_PAGE_OFFSET','原文详情读取时外层offset必须为0');
       if((nativeQuery||op.tool==='library_inspect'||op.tool==='variable_inspect')&&(a.offset>0||a.expectedVersion||a.valueRead||a.fieldRead||a.sourceRead))return this.nativePage(op,s,currentHash);
-      return this.bridge(op,({project_search:'search',variable_inspect:'search',task_inspect:'tasks',library_inspect:'libraries',project_structure:'structure',device_inspect:'device'} as Record<string,string>)[op.tool],s,{...a,readDiskHash:currentHash});
+      return this.bridge(op,({project_search:'search',variable_inspect:'search',task_inspect:'tasks',library_inspect:'libraries',project_structure:'structure',io_mapping_inspect:'io_mapping',device_inspect:'device'} as Record<string,string>)[op.tool],s,{...a,readDiskHash:currentHash});
     }
     if(op.tool==='declaration_create') {
       if(s.targetKind==='pool' || a.parentId!==s.applicationId)throw new DomainError('conflict','PARENT_MISMATCH','仅允许选定 Application 根节点');
@@ -1004,7 +1012,7 @@ export class EngineeringService {
         throw new DomainError('conflict','VARIABLE_PARSER_VERSION_CHANGED','声明解析器已升级，原版本不能续页或读详情；请显式从首个查询重新开始，未冻结、未派发IDE');
       throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原变量表解析器版本记录无法确认，保持冻结');
     }
-    const result=op.tool==='variable_inspect'?variableResult({...raw,operationId:op.operationId},a,{kind:'recorded-inventory',inventoryOperationId:source.operationId}):nativeInventoryResult({...raw,operationId:op.operationId},a,op.tool,{kind:'recorded-inventory',inventoryOperationId:source.operationId});
+    const result=op.tool==='io_mapping_inspect'?ioMappingPage({...raw,operationId:op.operationId},a,{kind:'recorded-inventory',inventoryOperationId:source.operationId}):op.tool==='variable_inspect'?variableResult({...raw,operationId:op.operationId},a,{kind:'recorded-inventory',inventoryOperationId:source.operationId}):nativeInventoryResult({...raw,operationId:op.operationId},a,op.tool,{kind:'recorded-inventory',inventoryOperationId:source.operationId});
     if(result.status==='conflict'&&result.error?.code==='NATIVE_VERSION_CHANGED')throw new DomainError('unknown','NATIVE_INVENTORY_UNCONFIRMED','原清单证据与已记录版本不一致，保持冻结');
     const after=digest(await fs.readFile(s.workingPath));
     if(after!==currentHash)throw new DomainError('unknown','READ_ONLY_FILE_CHANGED','分页读取期间文件变化，未启动 IDE，保持冻结');

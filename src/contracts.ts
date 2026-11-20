@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.33.0';
+export const VERSION = '0.34.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -127,6 +127,10 @@ export const schemas = {
     detail:deviceCatalogIdentity.optional().describe('使用已返回的原生 type、id、deviceDescriptionVersion 原值，重新核对同一条描述。')
   }).strict().refine(a=>(a.offset===0||!!a.expectedVersion)&&(!a.field||!!a.query)&&
     (!a.detail||(!a.query&&a.offset===0)),'续页必须传 expectedVersion；field 仅用于带 query 的筛选；详情不能和筛选或翻页同时使用'),
+  io_mapping_inspect:z.object({projectId:uuid,deviceId:uuid.optional(),offset:z.number().int().nonnegative().default(0),
+    limit:z.number().int().min(1).max(64).default(24),expectedVersion:hash.optional(),
+    detail:z.object({deviceGuid:uuid,connectorId:z.literal(2),parameterId:z.union([z.number().int(),z.string().regex(/^-?[0-9]+$/)]),memberPath:z.array(z.string())}).strict().optional()
+  }).strict().refine(a=>(!a.offset||!!a.expectedVersion)&&(!a.detail||!!a.expectedVersion&&!a.offset),'续页和详情须携带原 version'),
   device_inspect:z.object({projectId:uuid,deviceId:uuid,offset:z.number().int().min(0).default(0),limit:z.number().int().min(1).max(200).default(100),
     maxParameters:z.number().int().min(1).max(20000).default(5000),expectedVersion:hash.optional(),
     valueRead:z.object({parameterIndex:z.number().int().min(0).max(19999),offset:z.number().int().min(0).default(0),
@@ -363,6 +367,9 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
       hasMore:z.boolean(),nextOffset:z.number().int().nullable(),query:z.string().nullable(),
       field:z.enum(['name','vendor','type','id','deviceDescriptionVersion','source']).nullable()})
   }).partial(),
+  io_mapping_inspect:z.object({projectId:uuid,diskHash:hash,version:hash,channels:z.array(z.record(z.string(),z.unknown())),
+    device:z.record(z.string(),z.unknown()),connector:z.record(z.string(),z.unknown()),coverage:z.record(z.string(),z.unknown()),
+    page:z.record(z.string(),z.unknown())}).partial().passthrough(),
   device_inspect:deviceDataSchema.partial().passthrough(),
   declaration_create:z.object({...objectFields,...snapshotFields,name:z.string().optional(),parentId:uuid.optional(),
     created:z.boolean().optional(),beforeSnapshot:hash.optional(),checkpoint:z.string().optional(),persistedToWorkingCopy:z.boolean().optional(),reopened:z.boolean().optional(),
