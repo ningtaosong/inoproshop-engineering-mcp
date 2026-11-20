@@ -1,6 +1,6 @@
 # 0.34.2：隔离操作观察保护与 IDE 退出证据
 
-本补修在 `codex/operation-reconcile-exit-guard` 开发，基于 `c9ea1a6f4086c97f4a7ccb1addb27e8601b55faf`，包含 0.34.1 的 task_create 任务集合比较补修（实现 `bd10bbfd47b34da8ab3c6a0c58d2e4aa441ce19c`）。不是从 main 单独摘取的两处改动。保留原候选分支，不合并、不部署。
+本补修在 `codex/operation-reconcile-exit-guard` 开发，基于 `c9ea1a6f4086c97f4a7ccb1addb27e8601b55faf`，包含 0.34.1 的 task_create 任务集合比较补修（实现 `bd10bbfd47b34da8ab3c6a0c58d2e4aa441ce19c`）。不是从 main 单独摘取的两处改动。原补修阶段保留候选分支、未合并或部署；后续整体纳入 main，见[合并及固定入口记录](operation-guard-0342-merge.md)，不改写原阶段验收归属。
 
 ## 原问题及证据边界
 
