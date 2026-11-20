@@ -73,3 +73,7 @@
 
 - [0.34.1 task_create 补修](task-create-inventory-order.md)
 - [原真实复验及首败](task-create-revalidation-0341.md)
+
+## 补充：最小真实只读复验
+
+后续在同一固定候选上完成[隔离查询保全、正常 IDE 退出与一次 CLI 只读复验](operation-guard-readonly-revalidation-0342.md)。本节不回填上述离线阶段；真实操作和 CLI 协议取证缺口分别归档，原综合任务未改判。
