@@ -4,7 +4,7 @@
 
 当前版本为 0.34.1 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
 
-0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。仅完成离线验证，真实工程复验另行安排；原综合验收 unknown 不变，日常入口未部署本补丁。
+0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，日常入口未部署本补丁。
 
 在已验 AM610 设备描述 `3.5.11.11` 的 Application 中，[`task_create`](docs/task-create.md) 新建周期任务并绑定第一个已有根级 ST PROGRAM。[`task_call_append`](docs/task-call-append.md) 给已有周期任务末尾追加一个已有根级 ST PROGRAM，保留原调用顺序和注释。本机 InoProShop 1.9.1.6 的单条调用移除探测受阻，未提供移除工具。限定的单条调用替换已交付。对本机已核查的公开接口，尚无符合要求的行级重排入口，暂不开发。
 
