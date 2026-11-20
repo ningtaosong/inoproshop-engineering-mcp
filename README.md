@@ -2,6 +2,8 @@
 
 **当前版本为 0.34.0 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
+S8b 的三项状态分别记录：`io_mapping_inspect` 已交付，范围为已验 AM610 的 HIGH_SPEED_IO 连接器 2；单个 BOOL 通道已有设置、保存、独立重开及保存版编译的原生正例；映射写工具仍未开发。当前尚缺可信、可调用的完整有效 I/O Application 选择入口，应用级重复映射覆盖和输入变量的程序写引用也是独立缺口。现阶段保持只读评估，`writeAuthorized=false`。见[前置探测收尾与恢复条件](docs/io-mapping-write-probe-closeout.md)。
+
 S8a 已交付单条任务调用替换。在已验 AM610 设备描述 `3.5.11.11` 的普通周期任务中，可将一条调用改为同一 Application 内另一个唯一的根级 ST PROGRAM。该行的位置和备注、其余调用及旧 PROGRAM 定义均保留。[替换说明](docs/task-call-replace.md) · [工程验收与限制](docs/task-call-replace-acceptance.md)
 
 > 在指定 AM610 工程中，把 MainTask 调用 PRG_ReplaceMe 的那一条改为调用已有的 PRG_Replacement，保留备注和其他调用顺序，编译并保存重开核对。
@@ -45,7 +47,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 
 ## 已完成功能（main）
 
-下表列出 main 已合并的 34 项工具及其能力。具体受验版本和未验事项见[验证范围](#能力与验证边界)。
+下表列出 main 已合并的 37 项工具及其能力。具体受验版本和未验事项见[验证范围](#能力与验证边界)。
 
 | 功能 | 已实现范围 | 对应工具 | 完成阶段 |
 | --- | --- | --- | --- |
@@ -97,8 +99,8 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 移除已有任务中的单条调用 | S8a 移除 | 取得修正后的受支持公开接口或厂商修复，在独立夹具验证只少目标行、剩余调用顺序和注释保持、保存重开及保存版编译 | 本机 1.9.1.6 探测受阻 |
 | 替换已有任务中的一条 PROGRAM 调用 | S8a 替换 | 原位置替换一个目标，保存重开核对备注、新旧定义和完整调用顺序 | [0.33.0 已交付](docs/task-call-replace.md) |
 | 重排已有任务的调用 | S8a 重排 | 取得可核验的公开入口或厂商确认的等价操作，明确源行、目标位置、备注保留和异常语义，再独立验证读回、保存重开及保存版编译 | [本机 1.9.1.6 已查入口不满足要求](docs/task-call-reorder-probe.md)，暂不开发 |
-| I/O 通道与变量映射 | S8b | 已验 AM610 的 HIGH_SPEED_IO 连接器 2，参数及复合成员 | [只读工具](docs/io-mapping-inspect.md)已交付；映射写入未开发 |
-| EtherCAT PDO 映射 | S8c | 核实具体设备的索引、子索引、位宽、方向和可编辑性；依赖 S6，必要时依赖 S8b | 未开始，接口可行性待确认 |
+| I/O 通道与变量映射 | S8b | 已验 AM610 的 HIGH_SPEED_IO 连接器 2，参数及复合成员 | [只读工具](docs/io-mapping-inspect.md)已交付；[限定写入前置核查](docs/io-mapping-write-precheck.md)只支持只读评估；有效 Application 入口、重复映射覆盖及程序写引用仍缺证，[写工具暂不开发](docs/io-mapping-write-probe-closeout.md) |
+| EtherCAT PDO 映射 | S8c | 后续独立只读可行性候选；须有已安装且身份明确的设备描述、已有正常设备实例及可信公开只读接口，先核实索引、子索引、位宽和方向；需要新增设备时仍受 S6b 挂接证据缺口约束 | 未开始，不代表已具备 PDO 或映射写入能力 |
 | PLC 在线连接、状态和变量实际值读取 | S9a | 使用明确型号、固件的独立测试 PLC，验证只读连接、目标身份、采样及正常断开 | 仅规划，未实现或实机验收 |
 | 限定运行参数写值及读回 | S9b | S9a 通过后，绑定目标、类型、范围和预期旧值；验证写后读回及不确定结果处理 | 仅规划；不含强制，不默认改源码初值 |
 | 程序在线更改（Online Change） | S9c | 在可信在线会话和应用版本对应关系下，验证限定代码更改及控制器端生效 | 仅规划；不能自动退化为完整下载、启停或复位 |
