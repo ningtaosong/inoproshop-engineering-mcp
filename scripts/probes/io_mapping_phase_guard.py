@@ -43,8 +43,6 @@ def derived(st):
             and n['name']==NAME and n['identity']==DESC and n['nativeType']==DEVICE_TYPE
             and n['path']==root['path']+[NAME] and n['parentGuid']==root['guid'] and n['device'] and not n['explicit']
             and not any(child['parentGuid']==guid for child in tree), 'Compiled device identity, parent or leaf differs')
-    siblings = [v for v in tree if v['parentGuid']==root['guid']]
-    require(siblings[-1]==n and n['index']==len(siblings)-1,'Compiled device is not the appended child')
     ports = [v for v in snap['connectors'] if v['enumeratedFromDeviceGuid']==guid]
     require(len(ports)==2, 'Compiled device connector count differs')
     for port,(cid,role,iface,name,host) in zip(ports,PORTS):
@@ -73,18 +71,52 @@ def retained(st, guid):
     return row
 
 
+def parent_children(tree, guid):
+    node = unique((n for n in tree if n['guid']==guid), 'Derived GUID not unique')
+    siblings = [n for n in tree if n['parentGuid']==node['parentGuid']]
+    require([n['index'] for n in siblings]==list(range(len(siblings))), 'Native sibling indices inconsistent')
+    return siblings
+
+
+def saved_placement_tree(tree, guid):
+    """Project the one archived B-to-C move on a copy; keep every node and subtree."""
+    siblings = parent_children(tree,guid)
+    require(len(siblings)==9 and siblings[8]['guid']==guid, 'Unexpected pre-save derived position')
+    crossed = siblings[6:8]
+    require([(n['name'],n['nativeType']) for n in crossed]==[
+        ('Resources List','c3ac3f32-605b-4001-a449-9dbff0a9b9e1'),
+        ('HardWare Configuration','ed103b54-add2-4aaa-8e19-1402c5a26800')],
+        'Saved position would cross different siblings')
+    projected = list(tree)
+    leaf = projected.pop(projected.index(siblings[8]))
+    for n in crossed:
+        i = projected.index(n)
+        projected[i] = dict(n,index=n['index']+1)
+    projected.insert(tree.index(crossed[0]),dict(leaf,index=crossed[0]['index']))
+    return projected
+
+
 def transition(before, after, positive=False, setting=False, cross=False, shape='same'):
     for st, pos in ((before,positive and not setting),(after,positive)):
         validate_state(st,pos,mapping_matches)
+        snap = st['snapshot']
+        cov = snap['coverage']
+        require(snap['scans'] and cov['totalInTraversedViews']==cov['observedMappableRows']==26,
+                'Missing or inconsistent coverage totals')
     a,b = derived(before),derived(after)
     if shape=='appear':
         require(a is None and b is not None,'Expected exactly one compiled device to appear')
+        require(parent_children(after['nativeTree'],b)[-1]['guid']==b, 'New compiled device is not the appended child')
+    elif shape=='saved-placement':
+        require(cross and not setting and a and a==b,'Saved placement requires the same identified device across reopen')
+        parent_children(after['nativeTree'],b)
     elif shape=='disappear':
         require(a is not None and b is None,'Expected the compiled device to be absent on reopen')
     else:
         require(shape=='same' and a==b,'Derived device GUID or presence changed within a matched stage')
-    left,right = (retained(before,a),retained(after,b)) if shape!='same' else (before,after)
-    change = tree_difference(left['nativeTree'], right['nativeTree'], cross_open=cross)
+    left,right = (retained(before,a),retained(after,b)) if shape in ('appear','disappear') else (before,after)
+    tree = saved_placement_tree(left['nativeTree'],a) if shape=='saved-placement' else left['nativeTree']
+    change = tree_difference(tree, right['nativeTree'], cross_open=cross)
     require(change is None, 'Non-authorized native tree difference: '+str(change))
     for field in ('sourceSnapshot','sources','tasks','applications','applicationId','declaration'):
         require(left[field]==right[field], 'Changed '+field)
@@ -98,9 +130,17 @@ def transition(before, after, positive=False, setting=False, cross=False, shape=
             require(left[section][key]==right[section][key], 'Changed '+key+' across stages')
 
 
+def reopen_shape(before,after):
+    guid = derived(after)
+    if guid is None:
+        return 'disappear'
+    pos = lambda st: unique((n['index'] for n in st['nativeTree'] if n['guid']==guid),'Saved device identity differs')
+    return 'same' if pos(before)==pos(after) else 'saved-placement'
+
+
 def control_pattern(a,b,c,d):
     transition(a,b,shape='appear')
-    reopen = 'disappear' if derived(c) is None else 'same'
+    reopen = reopen_shape(b,c)
     transition(b,c,cross=True,shape=reopen)
     rebuild = 'appear' if reopen=='disappear' else 'same'
     transition(c,d,shape=rebuild)

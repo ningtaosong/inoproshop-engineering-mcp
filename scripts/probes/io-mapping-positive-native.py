@@ -22,8 +22,12 @@ def run():
     root, repo, mode = env['INOPRO_S8B_ROOT'], env['INOPRO_S8B_REPO'], env['INOPRO_S8B_PASS']
     expected, operation = env['INOPRO_S8B_EXPECTED_SHA256'], env['INOPRO_S8B_OPERATION']
     fixture_root = env.get('INOPRO_S8B_FIXTURE_ROOT',root)
-    assert root in (fixture_root,os.path.join(fixture_root,'confirmed-preflight-followup'))
-    staged = mode in ('setup','control','controlread','mapping','mappedread')
+    if mode=='supplement':
+        assert fixture_root==r'D:\InoPro-S8b-Positive-20261120-091939'
+        assert re.match(r'^D:\\InoPro-S8b-Supplement-\d{8}-\d{6}$',root,re.I)
+    else:
+        assert root in (fixture_root,os.path.join(fixture_root,'confirmed-preflight-followup'))
+    staged = mode in ('setup','control','controlread','mapping','mappedread','supplement')
     assert re.match(r'^D:\\InoPro-S8b-Positive-\d{8}-\d{6}$',fixture_root,re.I) and (staged or mode in ('prepare','map','verify'))
     origin = load(os.path.join(root,'fixture-origin.json'))
     path = os.path.join(fixture_root,'engineering','AM610_IO_Positive.project')
@@ -182,6 +186,30 @@ def run():
             expect(disk!=expected,'Fixture preparation did not change the project')
             if mode=='prepare':
                 check_build(project,baseline,'baseline-build',disk,True)
+        elif mode=='supplement':
+            history=load(os.path.join(root,'historical-control.json'))
+            expect(history['project']==path and history['disk']==expected and
+                   history['operationId']!=operation, 'Supplement control binding differs')
+            def archived(label):
+                name=label+'-state.json'
+                source=os.path.join(fixture_root,name)
+                expect(sha(source)==history['rawEvidenceHashes'][name],'Archived control state fingerprint changed')
+                return load(source)
+            a=archived('control-open-uncompiled')
+            b=archived('control-compiled-unsaved')
+            c=archived('controlread-reopened-uncompiled')
+            now=gather(project,'saved-before-build')
+            phases.transition(b,c,cross=True,shape='saved-placement')
+            phases.transition(c,now,cross=True)
+            check_build(project,now,'saved-build',expected,True)
+            final=gather(project,'saved-after-build')
+            phases.transition(now,final)
+            phases.transition(a,b,shape='appear')
+            behavior=dict(reopen='saved-placement',rebuild='same',
+                          guids=[phases.derived(st) for st in (a,b,c,now,final)])
+            record('behavior',dict(behavior,oldOperationId=history['operationId'],
+                   supplementOperationId=operation,input=expected))
+            disk=expected
         elif mode in ('control','controlread'):
             disk=expected
             if mode=='control':
@@ -199,7 +227,7 @@ def run():
                 a=load(os.path.join(root,'control-open-uncompiled-state.json'))
                 b=load(os.path.join(root,'control-compiled-unsaved-state.json'))
                 c=gather(project,'reopened-uncompiled')
-                phases.transition(b,c,cross=True,shape='disappear' if phases.derived(c) is None else 'same')
+                phases.transition(b,c,cross=True,shape=phases.reopen_shape(b,c))
                 check_build(project,c,'saved-build',disk,True)
                 d=gather(project,'saved-compiled')
                 record('behavior',phases.control_pattern(a,b,c,d))

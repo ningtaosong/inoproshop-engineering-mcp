@@ -6,6 +6,7 @@ resolved through the package's export-index.json (deduplicated XML payloads).
 import hashlib
 import json
 import sys
+import zipfile
 from pathlib import Path
 from io_mapping_export_guard import parse_export, mapping_matches
 from io_mapping_positive_guard import mapping_expression,validate_state,index,rowkey,xmlkey
@@ -57,7 +58,7 @@ def review(folder):
     compiles={}
     for f in sorted(folder.glob('*-build.json')):
         b=read(f);data=b['reply']['data'];diag=data['diagnostics']
-        label={'control-baseline-build':'control-open-uncompiled','controlread-saved-build':'controlread-reopened-uncompiled',
+        label={'supplement-saved-build':'supplement-saved-before-build','control-baseline-build':'control-open-uncompiled','controlread-saved-build':'controlread-reopened-uncompiled',
                'mapping-baseline-build':'mapping-before','mapping-mapped-build':'mapping-after-setter','mappedread-saved-build':'mappedread-saved-reopen'}[f.stem]
         assert b['inputMappingIndex']==states[label]['export']['exportSha256']
         capture=observations[label]['capture']
@@ -89,6 +90,27 @@ def review(folder):
                                         'controlread-reopened-uncompiled','controlread-saved-compiled')))
             assert behavior==get('controlread-behavior')
             assert results['control']['afterClose']==results['controlread']['afterClose']==finish['mainFileSha256']==compiles['controlread-saved-build']['disk']
+        elif finish['scenario']=='supplement':
+            history=get('historical-control')
+            packaged_history=folder.parent/'history'/'control.zip'
+            arc=packaged_history if packaged_history.is_file() else Path(history['archive'])
+            assert sha(arc)==history['archiveSha256']
+            with zipfile.ZipFile(arc) as z:
+                def historical(label):
+                    name=label+'-state.json'
+                    data=z.read('control/'+name)
+                    assert hashlib.sha256(data).hexdigest()==history['rawEvidenceHashes'][name]
+                    return json.loads(data)
+                a,b,c=[historical(l) for l in ('control-open-uncompiled','control-compiled-unsaved','controlread-reopened-uncompiled')]
+            now=states['supplement-saved-before-build']; final=states['supplement-saved-after-build']
+            transition(a,b,shape='appear'); transition(b,c,cross=True,shape='saved-placement')
+            transition(c,now,cross=True); transition(now,final)
+            behavior=get('supplement-behavior')
+            assert behavior['guids']==[derived(v) for v in (a,b,c,now,final)]
+            assert behavior['supplementOperationId']==origin['operationId'] and behavior['oldOperationId']==history['operationId']
+            result=results['supplement']
+            assert result['save']==result['setter']==0 and result['compile']==1
+            assert result['afterClose']==result['diskBefore']==history['disk']==finish['mainFileSha256']==compiles['supplement-saved-build']['disk']
         else:
             behavior=get('control-proof')['behavior']
             a,b,pre,imm,saved,c,d=[states[k] for k in ('mapping-before','mapping-compiled-baseline','mapping-same-handle-prewrite',
@@ -108,7 +130,11 @@ def review(folder):
         assert rr['setter']==rr['compile']==rr['save']==0 and rr['closed'] and rr['exit']['code']==0
         assert rr['diskBefore']==rr['afterClose']==results['control']['afterClose']
         issue=observations['controlread-reopened-uncompiled']['admissionIssue']
-        assert rr['error']['message']==issue and issue
+        if issue is None and rr['error']['message']=='Compiled device is not the appended child':
+            transition(states['control-compiled-unsaved'],states['controlread-reopened-uncompiled'],cross=True,shape='saved-placement')
+            comparisons['oldRejection']='Archived position refusal; re-evaluated offline by the corrected guard'
+        else:
+            assert rr['error']['message']==issue and issue
         assert not (folder/'controlread-saved-build.json').exists()
         stop=get('probe-stopped')
         assert stop['uncertain'] is False and not passes
@@ -128,6 +154,52 @@ def review(folder):
             sameGetterFields={k:before['snapshot'][k]==after['snapshot'][k] for k in ('devices','connectors','channels','coverage')},
             sameExportFields={k:before['export'][k]==after['export'][k] for k in ('devices','rows')},
             sameProgramFields={k:before[k]==after[k] for k in ('sources','tasks','sourceSnapshot','declaration','applications')})
+    if 'mappedread-saved-reopen' in states:
+        key_names=('mapping-before','mapping-compiled-baseline','mapping-same-handle-prewrite',
+                   'mapping-after-setter','mapping-before-save','mappedread-saved-reopen')
+        a,b,pre,imm,presave,reopened=[states[n] for n in key_names]
+        transition(a,b,shape='appear')
+        transition(b,pre)
+        transition(pre,imm,positive=True,setting=True)
+        transition(imm,presave,positive=True)
+        receipt=results['mapping']
+        checking=results['mappedread']
+        disk=receipt['afterClose']
+        assert receipt['status']=='succeeded' and receipt['closed'] and receipt['exit']['code']==0
+        assert receipt['setter']==receipt['save']==1 and receipt['compile']==2
+        assert receipt['diskBefore']!=disk==checking['diskBefore']==checking['afterClose']
+        assert observations['mappedread-saved-reopen']['capture']['disk']==disk
+        assert get('mapping-dispatch')['expression']==mapping_expression(pre)
+        behavior=get('control-proof')['behavior']
+        actual_refusal=None
+        try:
+            transition(presave,reopened,positive=True,cross=True,shape=behavior['reopen'])
+        except ValueError as err:
+            actual_refusal=str(err)
+        if checking['status']=='failed':
+            assert actual_refusal and actual_refusal==checking['error']['message']
+            assert checking['closed'] and checking['exit']['code']==checking['save']==checking['setter']==checking['compile']==0
+            assert not passes and not (folder/'mappedread-saved-build.json').exists()
+            assert get('probe-stopped')['uncertain'] is False
+        else:
+            assert actual_refusal is None
+        gid=derived(presave)
+        assert gid==derived(reopened)
+        parent=next(n['parentGuid'] for n in presave['nativeTree'] if n['guid']==gid)
+        comparisons['mappingReopen']={
+            'beforeChildren':[n for n in presave['nativeTree'] if n['parentGuid']==parent],
+            'afterChildren':[n for n in reopened['nativeTree'] if n['parentGuid']==parent],
+            'mappingExportShaBefore':presave['export']['exportSha256'],
+            'mappingExportShaReopened':reopened['export']['exportSha256'],
+            'channelRowsIdentical':presave['snapshot']['channels']==reopened['snapshot']['channels'],
+            'completeMappingListsIdentical':presave['export']['rows']==reopened['export']['rows'],
+            'programEvidence':{k:presave[k]==reopened[k] for k in ('tasks','sources','sourceSnapshot','declaration','applications')},
+            'byNativeIdentity':{},'fullScanOrderIdentical':{},'reopenRefusal':actual_refusal}
+        for section,key in (('devices',lambda d:d['guid']['value']),
+                            ('connectors',lambda c:(c['enumeratedFromDeviceGuid'],c['fields']['connector_id']['value']))):
+            old,new=presave['snapshot'][section],reopened['snapshot'][section]
+            comparisons['mappingReopen']['byNativeIdentity'][section]=index(old,key)==index(new,key)
+            comparisons['mappingReopen']['fullScanOrderIdentical'][section]=old==new
     files={}
     for mode in results:
         pre=get(mode+'-preflight')['files']

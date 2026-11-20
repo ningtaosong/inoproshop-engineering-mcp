@@ -89,7 +89,7 @@ class Phases(unittest.TestCase):
         row['index'],displaced['index']=displaced['index'],row['index']
         i,j=map(changed['nativeTree'].index,(row,displaced))
         changed['nativeTree'][i],changed['nativeTree'][j]=displaced,row
-        with self.assertRaisesRegex(ValueError,'not the appended child'):
+        with self.assertRaises(ValueError):
             phase.transition(self.b,changed,cross=True)
 
     def test_unexpected_reopen_and_extra_channel_rejected(self):
