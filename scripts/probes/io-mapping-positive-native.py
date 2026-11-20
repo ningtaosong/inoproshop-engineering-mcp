@@ -22,12 +22,13 @@ def run():
     root, repo, mode = env['INOPRO_S8B_ROOT'], env['INOPRO_S8B_REPO'], env['INOPRO_S8B_PASS']
     expected, operation = env['INOPRO_S8B_EXPECTED_SHA256'], env['INOPRO_S8B_OPERATION']
     fixture_root = env.get('INOPRO_S8B_FIXTURE_ROOT',root)
-    if mode=='supplement':
-        assert fixture_root==r'D:\InoPro-S8b-Positive-20261120-091939'
+    if mode in ('supplement','mapped-supplement'):
+        assert fixture_root==(r'D:\InoPro-S8b-Positive-20261120-094036' if mode=='mapped-supplement' else
+                              r'D:\InoPro-S8b-Positive-20261120-091939')
         assert re.match(r'^D:\\InoPro-S8b-Supplement-\d{8}-\d{6}$',root,re.I)
     else:
         assert root in (fixture_root,os.path.join(fixture_root,'confirmed-preflight-followup'))
-    staged = mode in ('setup','control','controlread','mapping','mappedread','supplement')
+    staged = mode in ('setup','control','controlread','mapping','mappedread','supplement','mapped-supplement')
     assert re.match(r'^D:\\InoPro-S8b-Positive-\d{8}-\d{6}$',fixture_root,re.I) and (staged or mode in ('prepare','map','verify'))
     origin = load(os.path.join(root,'fixture-origin.json'))
     path = os.path.join(fixture_root,'engineering','AM610_IO_Positive.project')
@@ -186,27 +187,34 @@ def run():
             expect(disk!=expected,'Fixture preparation did not change the project')
             if mode=='prepare':
                 check_build(project,baseline,'baseline-build',disk,True)
-        elif mode=='supplement':
-            history=load(os.path.join(root,'historical-control.json'))
+        elif mode in ('supplement','mapped-supplement'):
+            mapped=mode=='mapped-supplement'
+            history=load(os.path.join(root,'historical-mapping.json' if mapped else 'historical-control.json'))
             expect(history['project']==path and history['disk']==expected and
-                   history['operationId']!=operation, 'Supplement control binding differs')
+                   history['operationId']!=operation, 'Supplement file binding differs')
             def archived(label):
                 name=label+'-state.json'
                 source=os.path.join(fixture_root,name)
-                expect(sha(source)==history['rawEvidenceHashes'][name],'Archived control state fingerprint changed')
+                expect(sha(source)==history['rawEvidenceHashes'][name],'Archived state fingerprint changed')
                 return load(source)
-            a=archived('control-open-uncompiled')
-            b=archived('control-compiled-unsaved')
-            c=archived('controlread-reopened-uncompiled')
+            if mapped:
+                b=archived('mapping-before-save')
+                c=archived('mappedread-saved-reopen')
+                chain=[b,c]
+            else:
+                a=archived('control-open-uncompiled')
+                b=archived('control-compiled-unsaved')
+                c=archived('controlread-reopened-uncompiled')
+                phases.transition(a,b,shape='appear')
+                chain=[a,b,c]
+            phases.transition(b,c,positive=mapped,cross=True,shape='saved-placement')
             now=gather(project,'saved-before-build')
-            phases.transition(b,c,cross=True,shape='saved-placement')
-            phases.transition(c,now,cross=True)
+            phases.transition(c,now,positive=mapped,cross=True,shape='saved-placement' if mapped else 'same')
             check_build(project,now,'saved-build',expected,True)
             final=gather(project,'saved-after-build')
-            phases.transition(now,final)
-            phases.transition(a,b,shape='appear')
+            phases.transition(now,final,positive=mapped)
             behavior=dict(reopen='saved-placement',rebuild='same',
-                          guids=[phases.derived(st) for st in (a,b,c,now,final)])
+                          guids=[phases.derived(st) for st in chain+[now,final]])
             record('behavior',dict(behavior,oldOperationId=history['operationId'],
                    supplementOperationId=operation,input=expected))
             disk=expected

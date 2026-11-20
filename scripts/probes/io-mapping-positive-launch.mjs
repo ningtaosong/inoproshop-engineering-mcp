@@ -8,14 +8,16 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import path from 'node:path';
 
 const args = process.argv.slice(2);
-const supplement=args[0]==='--control-supplement';
+const mappedSupplement=args[0]==='--mapped-supplement';
+const supplement=mappedSupplement || args[0]==='--control-supplement';
 const oldControl='D:\\InoPro-S8b-Positive-20261120-091939';
-const scenario = supplement ? 'supplement' : args[0]==='--control' ? 'control' : args[0]==='--after-control' ? 'mapping' : null;
+const oldMapping='D:\\InoPro-S8b-Positive-20261120-094036';
+const scenario = mappedSupplement ? 'mapped-supplement' : supplement ? 'supplement' : args[0]==='--control' ? 'control' : args[0]==='--after-control' ? 'mapping' : null;
 const input = scenario ? args.slice(1,4) : args;
 if (scenario && args.length!==(scenario==='mapping'?6:4)) throw Error('Malformed independent stage invocation');
 const followup = input[0]==='--after-preflight';
 if(supplement && !/^D:\\InoPro-S8b-Supplement-\d{8}-\d{6}$/i.test(input[0]))throw Error('Independent supplement log root required');
-const fixtureRoot = supplement ? oldControl : input[followup ? 1 : 0];
+const fixtureRoot = supplement ? (mappedSupplement ? oldMapping : oldControl) : input[followup ? 1 : 0];
 if(!/^D:\\InoPro-S8b-Positive-\d{8}-\d{6}$/i.test(fixtureRoot ?? '') ||
    input.length !== (followup ? 2 : 3))throw Error('Unsupported invocation or fixture root');
 const root = supplement ? input[0] : followup ? path.join(fixtureRoot,'confirmed-preflight-followup') : fixtureRoot;
@@ -154,7 +156,7 @@ async function witness(mode,suffix) {
   return current;
 }
 const methods={prepare:{save:1,compile:1,dispatch:0},map:{save:1,compile:1,dispatch:1},verify:{save:0,compile:1,dispatch:0}};
-Object.assign(methods,{supplement:{save:0,compile:1,dispatch:0},setup:{save:1,compile:0,dispatch:0},control:{save:1,compile:1,dispatch:0},
+Object.assign(methods,{'mapped-supplement':{save:0,compile:1,dispatch:0},supplement:{save:0,compile:1,dispatch:0},setup:{save:1,compile:0,dispatch:0},control:{save:1,compile:1,dispatch:0},
   controlread:{save:0,compile:1,dispatch:0},mapping:{save:1,compile:2,dispatch:1},mappedread:{save:0,compile:1,dispatch:0}});
 let uncertain=false, acquireAttempted=false;
 async function nativePass(mode, disk, fileId, codeIdentity) {
@@ -264,12 +266,12 @@ async function validatePreflight() {
     throw Error('Original keyed observations, independent export or disk identity diverge');
   return {prep,manifest,previousOperationId:op};
 }
-async function historicalControl() {
+async function historicalFixture(mapped=false) {
   const scriptPath=path.join(repo,'scripts','probes','io_mapping_control_history.py');
-  const {stdout}=await run('python',['-B','-X','utf8',scriptPath],{windowsHide:true,timeout:45000});
+  const {stdout}=await run('python',['-B','-X','utf8',scriptPath,...(mapped?['mapped']:[])],{windowsHide:true,timeout:45000});
   const ref=JSON.parse(stdout);
-  if(ref.root!==oldControl||ref.fileId!==await identity(ref.project)||ref.disk!==await sha(ref.project)||
-     pathKey(await realpath(ref.project))!==pathKey(ref.project))throw Error('Original control file identity changed');
+  if(ref.root!==(mapped ? oldMapping : oldControl)||ref.fileId!==await identity(ref.project)||ref.disk!==await sha(ref.project)||
+     pathKey(await realpath(ref.project))!==pathKey(ref.project))throw Error('Original saved file identity changed');
   return ref;
 }
 async function controlProof() {
@@ -286,7 +288,7 @@ async function controlProof() {
   if(o.operationId!==r.operationId||JSON.stringify(o.scripts)!==await fingerprints()||o.seedSha256!==seed||
      await sha(o.project)!==r.mainFileSha256)throw Error('Control file, seed or probe source changed');
   if(r.scenario==='supplement'){
-    const old=await historicalControl(), reference=await readJson(path.join(dir,'historical-control.json'));
+    const old=await historicalFixture(), reference=await readJson(path.join(dir,'historical-control.json'));
     const behavior=await readJson(path.join(dir,'supplement-behavior.json'));
     if(!isDeepStrictEqual(old,reference)||behavior.oldOperationId!==old.operationId||
        behavior.supplementOperationId!==r.operationId||behavior.input!==old.disk||
@@ -298,7 +300,7 @@ async function controlProof() {
           behavior:await readJson(path.join(dir,'controlread-behavior.json'))};
 }
 const proof=scenario==='mapping' ? await controlProof() : null;
-const historical=supplement ? await historicalControl() : null;
+const historical=supplement ? await historicalFixture(mappedSupplement) : null;
 const bound=followup ? await validatePreflight() : null;
 await mkdir(root); // Exclusive creation also prevents replay or continuation of old attempts.
 try {
@@ -319,8 +321,8 @@ try {
   const held=await checkRegistry();
   await publish('lease-acquired.json',{operationId,time:now(),before,held,...await leasesHeld()});
   if(supplement) {
-    if(!isDeepStrictEqual(historical,await historicalControl()))throw Error('Closed control changed during acquisition');
-    await publish('historical-control.json',historical);
+    if(!isDeepStrictEqual(historical,await historicalFixture(mappedSupplement)))throw Error('Historical fixture changed during acquisition');
+    await publish(mappedSupplement?'historical-mapping.json':'historical-control.json',historical);
   } else if(followup) {
     if(!isDeepStrictEqual(bound,await validatePreflight()))throw Error('Original evidence changed during acquisition');
     await publish('original-proof.json',bound);
@@ -334,12 +336,12 @@ try {
       await sha(project)!==(supplement ? historical.disk : followup ? bound.prep.disk : seed))throw Error('Fixture/version changed or aliases source');
   await publish('fixture-origin.json',{operationId,source,project,sha256:seed,sourceId:held.sourceId,projectFileId:fileId,
     archive,archiveSha256,member:seedMember,runtime:fixed,seedSha256:seed,preparedDisk:bound?.prep.disk,
-    originalOperationId:bound?.previousOperationId,scripts:JSON.parse(codeIdentity)});
+    originalOperationId:historical?.operationId ?? bound?.previousOperationId,inputDisk:historical?.disk,scripts:JSON.parse(codeIdentity)});
   if(scenario) {
     if(proof)await publish('control-proof.json',proof);
     let prep,middle,verified;
     if(supplement) {
-      verified=await nativePass('supplement',historical.disk,historical.fileId,codeIdentity);
+      verified=await nativePass(scenario,historical.disk,historical.fileId,codeIdentity);
       if(historical.starts.includes(verified.process.creationUtcTicks))throw Error('Supplement lacks independent process identity');
     } else {
       prep=await nativePass('setup',seed,fileId,codeIdentity);

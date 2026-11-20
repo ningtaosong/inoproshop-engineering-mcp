@@ -71,9 +71,75 @@ class SavedPlacement(unittest.TestCase):
             if kind=='export':c['export']['rows'][1]['rawMappings']=[{'variable':'other'}]
             with self.subTest(kind=kind),self.assertRaises(ValueError):compare(self.b,c)
 
+class MappedPlacement(unittest.TestCase):
+    def setUp(self):
+        self.before,self.after=copy.deepcopy(MAPPED)
+
+    def check(self,after):
+        transition(self.before,after,positive=True,cross=True,shape='saved-placement')
+
+    def test_mapped_archive_and_round_trip(self):
+        before,after=copy.deepcopy((self.before,self.after))
+        gid=derived(before)
+        self.assertEqual([8,5],[next(n['index'] for n in s['nativeTree'] if n['guid']==gid) for s in (before,after)])
+        self.check(after)
+        transition(after,before,positive=True,cross=True,shape='saved-placement')
+        self.check(before)
+        self.assertEqual((self.before,self.after),(before,after))
+        with self.assertRaises(ValueError):
+            transition(before,after,positive=True)
+
+    def test_unordered_views_remain_strict_within_handle(self):
+        changed=copy.deepcopy(self.before)
+        changed['snapshot']['connectors'].reverse()
+        self.check(changed)
+        with self.assertRaises(ValueError):
+            transition(self.before,changed,positive=True)
+
+    def test_missing_or_duplicate_observations(self):
+        for section,field in [('snapshot','devices'),('snapshot','connectors'),('export','devices'),('snapshot','scans')]:
+            for how in ('missing','duplicate'):
+                changed=copy.deepcopy(self.after)
+                rows=changed[section][field]
+                if how=='missing':rows.pop()
+                else:rows.append(copy.deepcopy(rows[0]))
+                with self.subTest(section=section,field=field,how=how),self.assertRaises(ValueError):
+                    self.check(changed)
+
+    def test_connector_reassigned_and_incomplete_handling(self):
+        c=self.after['snapshot']['connectors'][0]
+        c['enumeratedFromDeviceGuid']='other'
+        with self.assertRaises(ValueError):self.check(self.after)
+        changed=copy.deepcopy(self.before)
+        dev=next(d for d in changed['export']['devices'] if d['connectorHandling'])
+        dev['connectorHandling'].pop()
+        with self.assertRaises(ValueError):self.check(changed)
+
+    def test_bad_ordinals_outside_moved_leaf(self):
+        for value in (0,-1,8,True):
+            changed=copy.deepcopy(self.after)
+            row=next(n for n in changed['nativeTree'] if n['index']==1 and len(n['path'])>2)
+            row['index']=value
+            with self.subTest(value=value),self.assertRaises(ValueError):self.check(changed)
+
+    def test_changed_subtree_source_task_or_mapping(self):
+        for which in ('tree','source','task','mapping'):
+            changed=copy.deepcopy(self.after)
+            if which=='tree':
+                row=next(n for n in changed['nativeTree'] if len(n['path'])>2 and not n['device'])
+                row['explicit']=not row['explicit']
+            elif which=='source':changed['sources'].pop()
+            elif which=='task':changed['tasks']['tasks'].pop()
+            else:next(row for row in changed['export']['rows'] if row['rawMappings'])['rawMappings'].clear()
+            with self.subTest(which=which),self.assertRaises(ValueError):self.check(changed)
+
 if __name__=='__main__':
     archive=Path(sys.argv[1])
     assert hashlib.sha256(archive.read_bytes()).hexdigest()=='3326c57ba07f6e21e38ea9d8e265d1bf8658d2e9b6c1be215b46564b6498f9a1'
     with ZipFile(archive) as z:
         STATES=[json.loads(z.read('control/'+label+'-state.json')) for label in ('control-compiled-unsaved','controlread-reopened-uncompiled')]
+    mapped=Path(sys.argv[2]) if len(sys.argv)>2 else archive.with_name('InoPro-review-20261120-094734.zip')
+    assert hashlib.sha256(mapped.read_bytes()).hexdigest()=='75fbe4f6c15a8000fceec1d98c3814efa02864342c28db164b5c7d07864f1b77'
+    with ZipFile(mapped) as z:
+        MAPPED=[json.loads(z.read('mapping/'+label+'-state.json')) for label in ('mapping-before-save','mappedread-saved-reopen')]
     unittest.main(argv=[sys.argv[0]],verbosity=2)

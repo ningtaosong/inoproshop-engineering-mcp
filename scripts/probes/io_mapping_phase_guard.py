@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import copy
 import re
 from device_add_preflight import tree_difference
+from io_mapping_read import int_types
 from io_mapping_positive_guard import (require, raw, unique, index, rowkey, xmlkey,
     validate_state, change_only)
 from io_mapping_export_guard import mapping_matches
@@ -45,7 +46,10 @@ def derived(st):
             and not any(child['parentGuid']==guid for child in tree), 'Compiled device identity, parent or leaf differs')
     ports = [v for v in snap['connectors'] if v['enumeratedFromDeviceGuid']==guid]
     require(len(ports)==2, 'Compiled device connector count differs')
-    for port,(cid,role,iface,name,host) in zip(ports,PORTS):
+    port_ids = index(ports, lambda port: raw(port['fields'],'connector_id'))
+    for cid,role,iface,name,host in PORTS:
+        require(cid in port_ids,'Compiled device connector ID missing')
+        port = port_ids[cid]
         expected = dict(connector_id=cid, connector_role=role, interface=iface, interface_name=name,
                         host_path=host, ownerGuid=guid)
         require(port['path']==n['path']+['connectors',cid] and
@@ -53,8 +57,10 @@ def derived(st):
                 'Compiled device connector identity, owner or metadata differs')
     handling = dict(ioApplicationSet=False,ioApplicationId=ZERO)
     dev = xml_devs[guid]
-    require(dev==dict(handling,guid=guid,name=NAME,deviceDescription={'Type':DESC['type'],'Id':DESC['id'],'Version':DESC['deviceDescriptionVersion']},
-                      connectorHandling=[dict(handling,connectorId=i) for i in (1,2)]),
+    handling_by_id = index(dev['connectorHandling'], lambda c:c['connectorId'])
+    require(dict(dev, connectorHandling=handling_by_id)==dict(handling,guid=guid,name=NAME,
+                deviceDescription={'Type':DESC['type'],'Id':DESC['id'],'Version':DESC['deviceDescriptionVersion']},
+                connectorHandling=dict((i,dict(handling,connectorId=i)) for i in (1,2))),
             'Compiled device export handling differs')
     return guid
 
@@ -78,22 +84,61 @@ def parent_children(tree, guid):
     return siblings
 
 
-def saved_placement_tree(tree, guid):
-    """Project the one archived B-to-C move on a copy; keep every node and subtree."""
-    siblings = parent_children(tree,guid)
-    require(len(siblings)==9 and siblings[8]['guid']==guid, 'Unexpected pre-save derived position')
-    crossed = siblings[6:8]
-    require([(n['name'],n['nativeType']) for n in crossed]==[
-        ('Resources List','c3ac3f32-605b-4001-a449-9dbff0a9b9e1'),
-        ('HardWare Configuration','ed103b54-add2-4aaa-8e19-1402c5a26800')],
-        'Saved position would cross different siblings')
-    projected = list(tree)
-    leaf = projected.pop(projected.index(siblings[8]))
-    for n in crossed:
-        i = projected.index(n)
-        projected[i] = dict(n,index=n['index']+1)
-    projected.insert(tree.index(crossed[0]),dict(leaf,index=crossed[0]['index']))
-    return projected
+def check_preorder(tree):
+    """Validate parentage and every sibling ordinal against the raw traversal."""
+    parents = []
+    seen = set()
+    counts = {}
+    for row in tree:
+        parent, guid, path = row['parentGuid'], row['guid'], row['path']
+        require(guid and guid not in seen and path, 'Missing or duplicate native node GUID/path')
+        depth = len(path)-1
+        parents = parents[:depth]
+        require(len(parents)==depth and (parents[-1]['guid'] if parents else None)==parent and
+                path==(parents[-1]['path'] if parents else [])+[row['name']], 'Invalid native subtree traversal')
+        ordinal = counts.get(parent,0)
+        require(isinstance(row['index'],int_types) and not isinstance(row['index'],bool) and
+                ordinal==row['index'], 'Native sibling indices inconsistent')
+        counts[parent]=ordinal+1
+        seen.add(guid)
+        parents.append(row)
+
+
+def saved_placement_tree(before, after, guid):
+    """Move a copy of just the identified leaf to the observed ordinal; compare the entire projected tree."""
+    check_preorder(before)
+    check_preorder(after)
+    old = parent_children(before,guid)
+    new = parent_children(after,guid)
+    leaf = unique((n for n in old if n['guid']==guid),'Missing pre-save leaf')
+    landed = unique((n for n in new if n['guid']==guid),'Missing reopened leaf')
+    require(leaf['parentGuid']==landed['parentGuid'] and len(old)==len(new), 'Derived parent or sibling count changed')
+    target = landed['index']
+    siblings = [n for n in old if n['guid']!=guid]
+    siblings.insert(target,leaf)
+    ordinals = dict((n['guid'],i) for i,n in enumerate(siblings))
+    expected = [dict(n,index=ordinals[n['guid']]) if n['guid'] in ordinals else n
+                for n in before if n['guid']!=guid]
+    expected.insert(after.index(landed),dict(leaf,index=target))
+    return expected
+
+
+def keyed_views(state):
+    snap = state['snapshot']
+    devices = index(snap['devices'],lambda d:raw(d,'guid'))
+    connectors = index(snap['connectors'],lambda c:(raw(c['fields'],'ownerGuid'),raw(c['fields'],'connector_id')))
+    require(all(owner in devices and c['enumeratedFromDeviceGuid']==owner
+                for (owner,cid),c in connectors.items()), 'Connector owner differs from enumerating device')
+    exports = index(state['export']['devices'],lambda d:d['guid'])
+    require(set(devices)==set(exports),'Incomplete exported device set')
+    by_device = {}
+    for guid, dev in exports.items():
+        ports = index(dev['connectorHandling'],lambda c:c['connectorId'])
+        require(set(ports)==set(cid for owner,cid in connectors if owner==guid),'Getter/export connector keys differ')
+        by_device[guid]=dict(dev, connectorHandling=ports)
+    scans = index(snap['scans'],lambda s:tuple(s['path']))
+    extras = dict((k,v) for k,v in snap.items() if k not in ('devices','connectors','scans','channels'))
+    return devices,connectors,by_device,scans,extras
 
 
 def transition(before, after, positive=False, setting=False, cross=False, shape='same'):
@@ -103,6 +148,11 @@ def transition(before, after, positive=False, setting=False, cross=False, shape=
         cov = snap['coverage']
         require(snap['scans'] and cov['totalInTraversedViews']==cov['observedMappableRows']==26,
                 'Missing or inconsistent coverage totals')
+        states = {}
+        for row in snap['channels']:
+            label = row['mappingState']
+            states[label] = states.get(label,0)+1
+        require(cov['mappingStates']==states,'Mapping state totals disagree with channel rows')
     a,b = derived(before),derived(after)
     if shape=='appear':
         require(a is None and b is not None,'Expected exactly one compiled device to appear')
@@ -115,14 +165,22 @@ def transition(before, after, positive=False, setting=False, cross=False, shape=
     else:
         require(shape=='same' and a==b,'Derived device GUID or presence changed within a matched stage')
     left,right = (retained(before,a),retained(after,b)) if shape in ('appear','disappear') else (before,after)
-    tree = saved_placement_tree(left['nativeTree'],a) if shape=='saved-placement' else left['nativeTree']
+    tree = saved_placement_tree(left['nativeTree'],right['nativeTree'],a) if shape=='saved-placement' else left['nativeTree']
     change = tree_difference(tree, right['nativeTree'], cross_open=cross)
     require(change is None, 'Non-authorized native tree difference: '+str(change))
     for field in ('sourceSnapshot','sources','tasks','applications','applicationId','declaration'):
         require(left[field]==right[field], 'Changed '+field)
-    for field in ('devices','connectors'):
-        require(left['snapshot'][field]==right['snapshot'][field], 'Changed existing '+field+' or order')
-    require(left['export']['devices']==right['export']['devices'], 'Changed existing exported device handling')
+    if shape=='saved-placement':
+        require(keyed_views(left)==keyed_views(right),'Changed device or connector evidence by native identity')
+    else:
+        for field in ('devices','connectors'):
+            require(left['snapshot'][field]==right['snapshot'][field], 'Changed existing '+field+' or order')
+        require(left['export']['devices']==right['export']['devices'], 'Changed existing exported device handling')
+        if shape=='same' and not cross and not setting:
+            for key in left['snapshot']:
+                require(key in right['snapshot'] and left['snapshot'][key]==right['snapshot'][key],
+                        'Changed same-handle getter field '+key)
+            require(set(left['snapshot'])==set(right['snapshot']),'Same-handle getter field set changed')
     if setting:
         change_only(left,right,mapping_matches,cross)
     else:
