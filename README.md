@@ -124,6 +124,14 @@ S8c 当前仅取得设备描述文件分析结果；描述版本、RevisionNo �
 3. 在客户端指定 `.project` 文件或提供完整路径，说明要改什么，按[日常修改闭环](docs/getting-started.md#日常修改闭环)执行；有原值条件或保留项时一并说明。也可先做[只读解释](docs/getting-started.md#首次试用)，但不是修改前置任务。
 4. 遇到运行中、冲突、unknown 或冻结，按[停止与保全](docs/getting-started.md#停止与保全)处理。切换客户端先走[正常服务移交](docs/startup-handoff.md#正常移交步骤与停止条件)，保留用户输入，确认原服务退出。
 
+### 已验综合流程
+
+可以通过 DSH CLI 用自然语言要求：在指定路径原生新建 AM610 工程、编写双路延时报警、创建任务并绑定 PROGRAM、编译及保存关闭重开。见 [0.34.2 单次综合工程验收](docs/offline-alarm-acceptance-0342.md)。
+
+> 请在指定新路径创建 AM610 离线报警工程：两路延时分别为 7 秒、8 秒，功能块延时输入初值为 3 秒；保留 MainTask 的 20 ms 周期及 PLC_PRG 调用，创建 50 ms 的 StatusTask 调用 PRG_Status。编译、保存关闭重开并读回核对，不连接 PLC。
+
+本机限定场景的工程闭环通过：两次编译各 0 错误、0 警告，22 次 IDE 操作均有可信正常退出证据。流程与展示部分通过，参数拒绝、额外查询和输出截断等记录保留。该结果不代表全部 37 项工具或所有工程均已全面验证，也不证明实际计时、调度、完整设备/I/O、桌面交互或链接点击；此前失败、勘误及历史限制不变。
+
 配置模板：[DSH](config/dsh.example.patch.yml)、[Codex 当前 0.16.0](config/codex-direct-edit.example.toml)。[Codex 0.14.0](config/codex.example.toml)和[0.15.0](config/codex-write-validation.example.toml)仅保留历史用途，不能接管登记 v2。模板路径是需替换的示例，固定构建的本机位置和已执行命令保留在本地复核包，不提交私人配置。
 
 ## 直接编辑指定工程
