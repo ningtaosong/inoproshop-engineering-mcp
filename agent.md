@@ -2,7 +2,9 @@
 
 规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-20。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-当前版本为 0.34.0 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+当前版本为 0.34.1 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+
+0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。仅完成离线验证，真实工程复验另行安排；原综合验收 unknown 不变，日常入口未部署本补丁。
 
 在已验 AM610 设备描述 `3.5.11.11` 的 Application 中，[`task_create`](docs/task-create.md) 新建周期任务并绑定第一个已有根级 ST PROGRAM。[`task_call_append`](docs/task-call-append.md) 给已有周期任务末尾追加一个已有根级 ST PROGRAM，保留原调用顺序和注释。本机 InoProShop 1.9.1.6 的单条调用移除探测受阻，未提供移除工具。限定的单条调用替换已交付。对本机已核查的公开接口，尚无符合要求的行级重排入口，暂不开发。
 

@@ -1,6 +1,8 @@
 # InoProShop Engineering MCP
 
-**当前版本为 0.34.0 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+**当前版本为 0.34.1 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+
+0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。仅完成离线验证，真实工程复验另行安排；原综合验收 unknown 不变，日常入口未部署本补丁。
 
 S8b 的三项状态分别记录：`io_mapping_inspect` 已交付，范围为已验 AM610 的 HIGH_SPEED_IO 连接器 2；单个 BOOL 通道已有设置、保存、独立重开及保存版编译的原生正例；映射写工具仍未开发。当前尚缺可信、可调用的完整有效 I/O Application 选择入口，应用级重复映射覆盖和输入变量的程序写引用也是独立缺口。现阶段保持只读评估，`writeAuthorized=false`。见[前置探测收尾与恢复条件](docs/io-mapping-write-probe-closeout.md)。
 
