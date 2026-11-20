@@ -1,0 +1,341 @@
+{
+  "provenance": {
+    "operationId": "78715c58-ce22-44e9-9a98-ca87ef41c04e",
+    "archiveSha256": "661f97b0d6ae3c4b2fbf16c6bcca72e0195d52c3426f1814e6d515885be0c4aa",
+    "note": "exceptionPartial is captured AFTER the error, NOT the unpublished immediate reopened inventory. Offline replay injects it at reopen to test the production comparison, not reconstruct historical timing."
+  },
+  "before": {
+    "programEmbeddedObjectTypes": [
+      "3b83b776-fb25-43b8-99f2-3c507c9143fc",
+      "a9ed5b7e-75c5-4651-af16-d2c27e98cb94"
+    ],
+    "checkpoint": "D:\\InoPro\\.local\\dsh-phase4-repair-20261028-A1\\ipc\\78715c58-ce22-44e9-9a98-ca87ef41c04e\\checkpoint.project",
+    "actions": [],
+    "taskConfigurationPath": [
+      "Device",
+      "Plc Logic",
+      "Application",
+      "Task Configuration"
+    ],
+    "intervalMs": 50,
+    "controller": {
+      "version": "3.5.11.11",
+      "id": "10f4 0002",
+      "type": 4102
+    },
+    "applicationId": "a65c2dde-18ae-45e0-9e12-04d8c3c8a6a9",
+    "projectId": "01543e33-4334-4166-b66a-afb58ff4f056",
+    "configurationOnly": true,
+    "program": {
+      "objectId": "5aa8f4dd-0e3a-4308-9820-b10c4080bb7f",
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "PRG_Status"
+      ],
+      "contentHash": "6a3cea3a53682aab3956b3c3e392dc6be05161112ff34bf9abececb766e54181",
+      "applicationId": "a65c2dde-18ae-45e0-9e12-04d8c3c8a6a9"
+    },
+    "before": {
+      "resolutionReadFailures": [],
+      "projectId": "01543e33-4334-4166-b66a-afb58ff4f056",
+      "projectPath": "D:\\InoPro-OfflineAcceptance-20261120\\AM610_AlarmAcceptance.project",
+      "targetKind": "application",
+      "applicationId": "a65c2dde-18ae-45e0-9e12-04d8c3c8a6a9",
+      "coverageComplete": true,
+      "enumerationFailures": [],
+      "applicationPath": [
+        "Device",
+        "Plc Logic",
+        "Application"
+      ],
+      "tasks": [
+        {
+          "rawCalls": [
+            [
+              "PLC_PRG",
+              ""
+            ]
+          ],
+          "taskId": "75595af4-3351-4f7a-9752-d8cbcd25328c",
+          "callsComplete": true,
+          "watchdog": {
+            "time_unit": "ms",
+            "time": "",
+            "sensitivity": "1",
+            "enabled": "False"
+          },
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask"
+          ],
+          "rawFields": {
+            "core_binding": "-2",
+            "external_event": "",
+            "interval": "t#20ms",
+            "priority": "1",
+            "event_pou_guid": "393b52f9-1264-42f8-b094-16a8df0ddaed",
+            "parent_synchron_task": "",
+            "kind_of_task": "Cyclic",
+            "interval_unit": "ms",
+            "event": ""
+          },
+          "unavailableFields": []
+        }
+      ],
+      "programs": [
+        {
+          "objectId": "bb1c3fa9-a7bc-4e07-bd76-00faaaecb9fb",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "PLC_PRG"
+          ]
+        },
+        {
+          "objectId": "5aa8f4dd-0e3a-4308-9820-b10c4080bb7f",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "PRG_Status"
+          ]
+        }
+      ]
+    },
+    "taskConfigurationId": "04d5c870-b7dc-4f2d-8d48-c148e7db5c98",
+    "runtimeObserved": false,
+    "snapshot": "dc34b212873cb0ca0bc81ca24107153e42272fb43d83a009e77ae459ad10765d",
+    "configurationVersionScheme": "task-configuration-v1"
+  },
+  "afterBind": {
+    "resolutionReadFailures": [],
+    "projectId": "01543e33-4334-4166-b66a-afb58ff4f056",
+    "projectPath": "D:\\InoPro-OfflineAcceptance-20261120\\AM610_AlarmAcceptance.project",
+    "targetKind": "application",
+    "applicationId": "a65c2dde-18ae-45e0-9e12-04d8c3c8a6a9",
+    "coverageComplete": true,
+    "enumerationFailures": [],
+    "applicationPath": [
+      "Device",
+      "Plc Logic",
+      "Application"
+    ],
+    "tasks": [
+      {
+        "rawCalls": [
+          [
+            "PLC_PRG",
+            ""
+          ]
+        ],
+        "taskId": "75595af4-3351-4f7a-9752-d8cbcd25328c",
+        "callsComplete": true,
+        "watchdog": {
+          "time_unit": "ms",
+          "time": "",
+          "sensitivity": "1",
+          "enabled": "False"
+        },
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "Task Configuration",
+          "MainTask"
+        ],
+        "rawFields": {
+          "core_binding": "-2",
+          "external_event": "",
+          "interval": "t#20ms",
+          "priority": "1",
+          "event_pou_guid": "393b52f9-1264-42f8-b094-16a8df0ddaed",
+          "parent_synchron_task": "",
+          "kind_of_task": "Cyclic",
+          "interval_unit": "ms",
+          "event": ""
+        },
+        "unavailableFields": []
+      },
+      {
+        "rawCalls": [
+          [
+            "PRG_Status",
+            ""
+          ]
+        ],
+        "taskId": "a0166924-044b-41c4-a74a-64b90ffa7871",
+        "callsComplete": true,
+        "watchdog": {
+          "time_unit": "ms",
+          "time": "",
+          "sensitivity": "1",
+          "enabled": "False"
+        },
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "Task Configuration",
+          "StatusTask"
+        ],
+        "rawFields": {
+          "core_binding": "-2",
+          "external_event": "",
+          "interval": "t#50ms",
+          "priority": "1",
+          "event_pou_guid": "f3afd90b-1ee1-4fdf-bff7-b34f09f02b17",
+          "parent_synchron_task": "",
+          "kind_of_task": "Cyclic",
+          "interval_unit": "ms",
+          "event": ""
+        },
+        "unavailableFields": []
+      }
+    ],
+    "programs": [
+      {
+        "objectId": "bb1c3fa9-a7bc-4e07-bd76-00faaaecb9fb",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PLC_PRG"
+        ]
+      },
+      {
+        "objectId": "5aa8f4dd-0e3a-4308-9820-b10c4080bb7f",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Status"
+        ]
+      }
+    ]
+  },
+  "exceptionPartial": {
+    "resolutionReadFailures": [],
+    "projectId": "01543e33-4334-4166-b66a-afb58ff4f056",
+    "projectPath": "D:\\InoPro-OfflineAcceptance-20261120\\AM610_AlarmAcceptance.project",
+    "targetKind": "application",
+    "applicationId": "a65c2dde-18ae-45e0-9e12-04d8c3c8a6a9",
+    "coverageComplete": true,
+    "enumerationFailures": [],
+    "applicationPath": [
+      "Device",
+      "Plc Logic",
+      "Application"
+    ],
+    "tasks": [
+      {
+        "rawCalls": [
+          [
+            "PRG_Status",
+            ""
+          ]
+        ],
+        "taskId": "a0166924-044b-41c4-a74a-64b90ffa7871",
+        "callsComplete": true,
+        "watchdog": {
+          "time_unit": "ms",
+          "time": "",
+          "sensitivity": "1",
+          "enabled": "False"
+        },
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "Task Configuration",
+          "StatusTask"
+        ],
+        "rawFields": {
+          "core_binding": "-2",
+          "external_event": "",
+          "interval": "t#50ms",
+          "priority": "1",
+          "event_pou_guid": "f3afd90b-1ee1-4fdf-bff7-b34f09f02b17",
+          "parent_synchron_task": "",
+          "kind_of_task": "Cyclic",
+          "interval_unit": "ms",
+          "event": ""
+        },
+        "unavailableFields": []
+      },
+      {
+        "rawCalls": [
+          [
+            "PLC_PRG",
+            ""
+          ]
+        ],
+        "taskId": "75595af4-3351-4f7a-9752-d8cbcd25328c",
+        "callsComplete": true,
+        "watchdog": {
+          "time_unit": "ms",
+          "time": "",
+          "sensitivity": "1",
+          "enabled": "False"
+        },
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "Task Configuration",
+          "MainTask"
+        ],
+        "rawFields": {
+          "core_binding": "-2",
+          "external_event": "",
+          "interval": "t#20ms",
+          "priority": "1",
+          "event_pou_guid": "393b52f9-1264-42f8-b094-16a8df0ddaed",
+          "parent_synchron_task": "",
+          "kind_of_task": "Cyclic",
+          "interval_unit": "ms",
+          "event": ""
+        },
+        "unavailableFields": []
+      }
+    ],
+    "programs": [
+      {
+        "objectId": "bb1c3fa9-a7bc-4e07-bd76-00faaaecb9fb",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PLC_PRG"
+        ]
+      },
+      {
+        "objectId": "5aa8f4dd-0e3a-4308-9820-b10c4080bb7f",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Status"
+        ]
+      }
+    ]
+  },
+  "args": {
+    "requestId": "task-status-50ms-20261120-a1",
+    "projectId": "01543e33-4334-4166-b66a-afb58ff4f056",
+    "targetKind": "application",
+    "applicationId": "a65c2dde-18ae-45e0-9e12-04d8c3c8a6a9",
+    "taskConfigurationId": "04d5c870-b7dc-4f2d-8d48-c148e7db5c98",
+    "name": "StatusTask",
+    "intervalMs": 50,
+    "programId": "5aa8f4dd-0e3a-4308-9820-b10c4080bb7f",
+    "expectedProgramHash": "6a3cea3a53682aab3956b3c3e392dc6be05161112ff34bf9abececb766e54181",
+    "expectedTaskVersion": "c7e10786bd48094bca5e2f30765f3fb219f4e2723133353430f7fce9626b9634",
+    "expectedDiskHash": "260ad5ab96124e5e8a4e3fde0ffcac80f74fa4e2cffa333be311964e5424ff2e"
+  }
+}

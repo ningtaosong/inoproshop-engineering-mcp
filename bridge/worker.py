@@ -781,9 +781,10 @@ def task_program_evidence(rows,aid,app_path,before,program_id,expected_hash):
     return {key:actual[key] for key in ('objectId','applicationId','path','contentHash')},embedded_types
 
 
-def task_create_context(project,args,read_call=None):
+def task_create_context(project,args,read_call=None,observe=None):
     """Read only identity/configuration within the same owned native handle."""
     before=task_inventory(project,args,read_call)
+    if observe is not None:observe(before)
     required=set(('kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'))
     if (not before['coverageComplete'] or len(set(t['taskId'] for t in before['tasks']))!=len(before['tasks']) or
         any(not t['callsComplete'] or not required.issubset(t['rawFields']) or
@@ -998,6 +999,50 @@ def task_call_replace(project,req,args,state):
                        dict(common,primaryException=exception_evidence(error),automaticRollback=False)),state['project']
 
 
+def task_create_task_set(rows):
+    """Comparison-only view. Never reorder or coerce captured rows/calls."""
+    if not isinstance(rows,list):raise ValueError('Task inventory is not a list')
+    result={}
+    for row in rows:
+        if not isinstance(row,dict):raise ValueError('Task inventory row is not a record')
+        identity=row.get('taskId')
+        if not isinstance(identity,basestring) or not identity or identity in result:
+            raise ValueError('Task inventory identity is missing or duplicated')
+        result[identity]=row
+    return result
+
+
+def task_create_inventory_view(inventory):
+    return dict(inventory,tasks=task_create_task_set(inventory['tasks']))
+
+
+def task_create_difference(expected,actual,path=None):
+    """First exact difference; every array remains ordered, including PROGRAM calls."""
+    path=[] if path is None else path
+    def mismatch(kind,**values):
+        return dict(path=path,kind=kind,**values)
+    if isinstance(expected,dict) and isinstance(actual,dict):
+        for key in sorted(set(expected)|set(actual)):
+            if key not in expected or key not in actual:
+                return mismatch('field-presence',field=key,expectedPresent=key in expected,
+                                actualPresent=key in actual,expected=expected.get(key),actual=actual.get(key))
+            found=task_create_difference(expected[key],actual[key],path+[key])
+            if found is not None:return found
+        return None
+    if isinstance(expected,list) and isinstance(actual,list):
+        if len(expected)!=len(actual):return mismatch('length',expected=len(expected),actual=len(actual))
+        for index in range(len(expected)):
+            found=task_create_difference(expected[index],actual[index],path+[index])
+            if found is not None:return found
+        return None
+    same_type=(type(expected)==type(actual) or
+               isinstance(expected,basestring) and isinstance(actual,basestring))
+    if not same_type:return mismatch('type',expectedType=type(expected).__name__,
+                                    actualType=type(actual).__name__,expected=expected,actual=actual)
+    if expected!=actual:return mismatch('value',expected=expected,actual=actual)
+    return None
+
+
 def task_create(project,req,args,state):
     """Create once; errors after the factory is dispatched never trigger a save or rollback."""
     from System.IO import File,FileAttributes,FileStream,FileMode,FileAccess,FileShare
@@ -1008,7 +1053,8 @@ def task_create(project,req,args,state):
     if file_hash(req['projectPath'])!=expected_disk:
         return failure('conflict','TASK_DISK_CHANGED',u'磁盘工程与预期不符，未写入'),project
     try:
-        before,config,facts=task_create_context(project,args)
+        before,config,facts=task_create_context(project,args,task_append_call_row)
+        task_create_task_set(before['tasks'])
     except Exception as e:
         return failure('conflict','TASK_CREATE_IDENTITY_OR_COVERAGE',text(e),{'primaryException':exception_evidence(e)}),project
     if task_configuration_version(before)!=args['expectedTaskVersion']:
@@ -1042,18 +1088,62 @@ def task_create(project,req,args,state):
         publish(os.path.join(directory,'task-create-'+stage+'-end.json'),row)
         return value
 
-    def verify(opened,task_id):
-        inventory,unused,observed=task_create_context(opened,args)
-        new=[row for row in inventory['tasks'] if row['taskId']==task_id]
-        if (len(new)!=1 or [row for row in inventory['tasks'] if row['taskId']!=task_id]!=before['tasks'] or
-            sorted(inventory['programs'],key=lambda p:p['objectId'])!=sorted(before['programs'],key=lambda p:p['objectId']) or
-            observed!=facts or snapshot(opened)!=old_snapshot):
-            raise ValueError('Created task identity or preserved task/program evidence differs')
-        row=new[0]
-        if (row['path']!=facts['taskConfigurationPath']+[name] or row['rawFields']['kind_of_task']!='Cyclic' or
-            configured_interval_ms(row['rawFields'])!=interval or row['rawCalls']!=[[facts['program']['path'][-1],'']]):
-            raise ValueError('Native cyclic configuration or ordered program call readback differs')
-        return inventory,row
+    diagnostic_errors=[]
+    def evidence(filename,data):
+        try:publish(os.path.join(directory,filename),data)
+        except Exception as error:
+            diagnostic_errors.append({'file':filename,'exception':exception_evidence(error)})
+
+    def verify(opened,task_id,stage,expected_inventory=None):
+        difference=None
+        observed_inventory=[]
+        def observe(value):
+            observed_inventory.append(value)
+            evidence('task-create-'+stage+'-observed.json',value)
+        def check(expected,actual,message):
+            found=task_create_difference(expected,actual)
+            if found is not None:
+                return found,message
+            return None,None
+        try:
+            inventory,unused,observed=task_create_context(opened,args,task_append_call_row,observe=observe)
+            by_id=task_create_task_set(inventory['tasks'])
+            if task_id not in by_id:raise ValueError('Created task identity missing from inventory')
+            # Only the top-level task collection has no execution-order semantics.
+            # Retain the existing PROGRAM-set check here; reopen still compares the full inventory.
+            retained=dict(inventory,tasks=[r for r in inventory['tasks'] if r['taskId']!=task_id],
+                          programs=sorted(inventory['programs'],key=lambda p:p['objectId']))
+            previous=dict(before,programs=sorted(before['programs'],key=lambda p:p['objectId']))
+            for expected,actual,message in (
+                (task_create_inventory_view(previous),task_create_inventory_view(retained),
+                 'Preserved task/program inventory differs'),
+                (facts,observed,'PROGRAM identity, native ST or configuration ownership differs'),
+                (old_snapshot,snapshot(opened),'Preserved source snapshot differs')):
+                difference,message=check(expected,actual,message)
+                if difference is not None:raise ValueError(message)
+            row=by_id[task_id]
+            expected_new={'path':facts['taskConfigurationPath']+[name],'kind':'Cyclic','intervalMs':interval,
+                          'rawCalls':[[facts['program']['path'][-1],'']]}
+            actual_new={'path':row['path'],'kind':row['rawFields']['kind_of_task'],
+                        'intervalMs':configured_interval_ms(row['rawFields']),'rawCalls':row['rawCalls']}
+            difference,message=check(expected_new,actual_new,'Native cyclic configuration or ordered program call readback differs')
+            if difference is not None:raise ValueError(message)
+            if expected_inventory is not None:
+                difference,message=check(task_create_inventory_view(expected_inventory),task_create_inventory_view(inventory),
+                                         'Reopened inventory differs from the task binding readback')
+                if difference is not None:raise ValueError(message)
+            if diagnostic_errors:raise ValueError('Task verification evidence could not be published')
+            evidence('task-create-'+stage+'-verification.json',{'stage':stage,'status':'succeeded','difference':None})
+            if diagnostic_errors:raise ValueError('Task verification evidence could not be published')
+            return inventory,row
+        except Exception as error:
+            # Record the exact compared read BEFORE the caller's separate exception-time partial read.
+            # A publication failure must not replace the first native/validation exception.
+            evidence('task-create-'+stage+'-verification.json',{'stage':stage,'status':'failed',
+                'difference':difference,'primaryException':exception_evidence(error),
+                'inventoryObserved':bool(observed_inventory),
+                'expectedInventory':expected_inventory if expected_inventory is not None else before})
+            raise
 
     try:
         created=action('create',lambda:config.create_task(name))
@@ -1071,14 +1161,12 @@ def task_create(project,req,args,state):
                 raise ValueError('Native cycle readback differs')
         action('period',set_period)
         action('bind',lambda:created.pous.add(facts['program']['path'][-1],''))
-        after_binding,row=verify(project,task_id)
+        after_binding,row=verify(project,task_id,'after-bind')
         publish(os.path.join(directory,'task-after-bind.json'),after_binding)
         if file_hash(req['projectPath'])!=expected_disk:
             raise ValueError('Disk file changed before authorized save')
         project=lifecycle_save_reopen(state)
-        after,reopened_row=verify(project,task_id)
-        if after!=after_binding:
-            raise ValueError('Reopened inventory differs from the task binding readback')
+        after,reopened_row=verify(project,task_id,'reopen',after_binding)
         version=task_configuration_version(after);saved_hash=file_hash(req['projectPath'])
         if saved_hash==expected_disk:raise ValueError('No saved disk revision was observed')
         publish(os.path.join(directory,'task-after-reopen.json'),after)
@@ -1090,10 +1178,11 @@ def task_create(project,req,args,state):
         primary=exception_evidence(e)
         partial=None
         if state['project'] is not None:
-            try:partial=task_inventory(state['project'],args)
-            except Exception:pass
+            try:partial=task_inventory(state['project'],args,task_append_call_row)
+            except Exception as error:
+                diagnostic_errors.append({'stage':'exception-partial-read','exception':exception_evidence(error)})
         return failure('unknown','TASK_CREATE_INCOMPLETE',text(e),dict(common,partial=partial,primaryException=primary,
-            automaticRollback=False)),state['project']
+            automaticRollback=False,diagnosticErrors=diagnostic_errors)),state['project']
 
 
 def native_structure(project, args):

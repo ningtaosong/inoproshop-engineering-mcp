@@ -17,7 +17,7 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
-import {taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {organizationResult} from './organization.js';
 import {ioMappingPage} from './io-mapping.js';
 import {deviceCatalogResult} from './device-catalog.js';
@@ -614,10 +614,15 @@ export class EngineeringService {
           return;
         }
         const row=d.task;
+        const beforeView=taskCreateInventoryView(before),afterView=taskCreateInventoryView(after);
+        if(!beforeView||!afterView)invalid();
+        const preservedView=taskCreateInventoryView({...after,tasks:after.tasks.filter((t:any)=>t.taskId!==d.taskId)});
+        if(!preservedView||canonical(preservedView)!==canonical(beforeView)||
+           before.tasks.some((t:any)=>canonical(t.path.slice(0,-1))!==canonical(d.taskConfigurationPath)))invalid();
         if(d.created!==true||d.intervalMs!==args.intervalMs||!row||d.taskId!==row.taskId||before.tasks.some((t:any)=>t.taskId===d.taskId)||
           canonical(row.path)!==canonical([...d.taskConfigurationPath,args.name])||
           row.rawFields?.kind_of_task!=='Cyclic'||configuredIntervalMs(row.rawFields)!==args.intervalMs||
-          canonical(row.rawCalls)!==canonical(raw)||canonical(after.tasks.filter((t:any)=>t.taskId!==d.taskId))!==canonical(before.tasks)||
+          canonical(row.rawCalls)!==canonical(raw)||
           canonical(after.tasks.filter((t:any)=>t.taskId===d.taskId))!==canonical([row])||
           canonical(after.programs)!==canonical(before.programs)||
           canonical(after.programs.filter((p:any)=>p.path?.at(-1)?.toLowerCase()===targetName?.toLowerCase()))!==
