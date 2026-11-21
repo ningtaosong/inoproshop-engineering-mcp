@@ -1,0 +1,59 @@
+# DSH Desktop-installed CLI 0.2.1-rc.5 / --profile headless incremental patch.
+# No credentials. Requires an already authenticated local deepseek-account.
+# Copy to a PRIVATE file and replace every <...> placeholder with verified paths.
+# Merge by id into your existing temporary patch; do not duplicate mcp-inoproshop.
+# This public template was parsed/static-checked; the real test used the existing
+# private account patch. It is not a replacement for daily Desktop configuration.
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-account
+    model: deepseek-flash
+    reasoningEffort: max
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+  disabled: false
+- id: deepseek-account
+  name: '@deepseek-ai/dsh-deepseek-account-platform'
+  disabled: false
+- id: authorization
+  disabled: false
+- id: tools
+  config:
+    mode: native
+# Limit this trial to MCP; retain the local account and authorization services.
+- { id: tool-working-directory, disabled: true }
+- { id: tool-bash, disabled: true }
+- { id: tool-pwsh, disabled: true }
+- { id: tool-jobs, disabled: true }
+- { id: tool-fs, disabled: true }
+- { id: tool-fs-search, disabled: true }
+- { id: tool-skill, disabled: true }
+- { id: tool-subagent-control, disabled: true }
+- { id: tool-subagent-list-agents, disabled: true }
+- { id: tool-subagent, disabled: true }
+- { id: tool-subagent-fork, disabled: true }
+- { id: tool-workflow, disabled: true }
+- { id: tool-todo, disabled: true }
+- { id: tool-goal, disabled: true }
+- { id: tool-web, disabled: true }
+- { id: mcp-resources, disabled: true }
+- { id: plan-mode, disabled: true }
+- { id: session-title-llm, disabled: true }
+- insert:
+    - id: mcp-inoproshop
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: inoproshop
+        transport: stdio
+        command: '<ABSOLUTE_NODE_EXE>'
+        args: ['<FIXED_ROOT>\dist\server.js']
+        cwd: '<FIXED_ROOT>'
+        env:
+          INOPRO_DATA_DIR: '<EXISTING_REGISTRY_ROOT>'
+          INOPRO_EXE: '<ABSOLUTE_INOPROSHOP_EXE>'
+          INOPRO_PROFILE: 'InoProShop(V1.9.1.6)'
+          INOPRO_NO_UI: 'false'
+          INOPRO_TIMEOUT_MS: '120000'
+          INOPRO_RESPONSE_WAIT_MS: '15000'
+        maxInstructionBytes: 65536
