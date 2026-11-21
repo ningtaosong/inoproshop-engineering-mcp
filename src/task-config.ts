@@ -7,13 +7,26 @@ export function isTaskAppendCall(row:unknown):row is [string,string] {
   return Array.isArray(row)&&row.length===2&&typeof row[0]==='string'&&row[0].length>0&&typeof row[1]==='string';
 }
 
-// task_create only: tasks are an identity set, while every nested array (especially
-// rawCalls) remains ordered. Keep the original inventory and all unknown fields intact.
+// Only tasks and the PROGRAM definition directory are identity sets.
+// Every nested array (especially rawCalls) and every unknown field remain strict.
+function programIdentitySet(rows:any):Record<string,any>|undefined {
+  if(!Array.isArray(rows))return;
+  const ids=new Set<string>(),entries:[string,any][]=[];
+  for(const row of rows){
+    const id=row?.objectId;
+    if(typeof id!=='string'||id.length!==36||!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)||
+       id==='00000000-0000-0000-0000-000000000000'||ids.has(id.toLowerCase())||
+       !Array.isArray(row.path)||!row.path.length||row.path.some((part:unknown)=>typeof part!=='string'||!part))return;
+    ids.add(id.toLowerCase());entries.push([id,row]);
+  }
+  return Object.fromEntries(entries);
+}
 export function taskCreateInventoryView(inventory:any):any|undefined {
   const fields=['kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'];
   const watchdog=['enabled','time','time_unit','sensitivity'];
   if(!Array.isArray(inventory?.tasks)||inventory.coverageComplete!==true||
      inventory.enumerationFailures?.length!==0||inventory.resolutionReadFailures?.length!==0)return;
+  const programs=programIdentitySet(inventory.programs);if(!programs)return;
   const entries=inventory.tasks;
   if(entries.some((t:any)=>!t||typeof t.taskId!=='string'||!t.taskId||
      !Array.isArray(t.path)||!t.path.length||t.path.some((x:unknown)=>typeof x!=='string'||!x)||
@@ -22,7 +35,7 @@ export function taskCreateInventoryView(inventory:any):any|undefined {
      fields.some(k=>typeof t.rawFields?.[k]!=='string')||
      watchdog.some(k=>typeof t.watchdog?.[k]!=='string'))||
      new Set(entries.map((t:any)=>t.taskId)).size!==entries.length)return;
-  return {...inventory,tasks:Object.fromEntries(entries.map((t:any)=>[t.taskId,t]))};
+  return {...inventory,tasks:Object.fromEntries(entries.map((t:any)=>[t.taskId,t])),programs};
 }
 
 // Append/replace reuse task_create's comparison view, with native GUID validation.

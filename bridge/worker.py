@@ -785,6 +785,7 @@ def task_create_context(project,args,read_call=None,observe=None):
     """Read only identity/configuration within the same owned native handle."""
     before=task_inventory(project,args,read_call)
     if observe is not None:observe(before)
+    task_program_identity_set(before.get('programs'))
     required=set(('kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'))
     if (not before['coverageComplete'] or len(set(t['taskId'] for t in before['tasks']))!=len(before['tasks']) or
         any(not t['callsComplete'] or not required.issubset(t['rawFields']) or
@@ -1100,8 +1101,27 @@ def task_create_task_set(rows):
     return result
 
 
+def task_program_identity_set(rows):
+    """PROGRAM definition directory, not task execution order. Keep every raw field."""
+    if not isinstance(rows,list):raise ValueError('PROGRAM inventory is not a list')
+    result={};identities=set()
+    for row in rows:
+        if not isinstance(row,dict):raise ValueError('PROGRAM inventory row is not a record')
+        identity=row.get('objectId')
+        if (not isinstance(identity,basestring) or
+            not re.match(r'^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z',identity) or
+            identity=='00000000-0000-0000-0000-000000000000' or identity.lower() in identities):
+            raise ValueError('PROGRAM inventory identity is missing, invalid or duplicated')
+        if (not isinstance(row.get('path'),list) or not row['path'] or
+            any(not isinstance(part,basestring) or not part for part in row['path'])):
+            raise ValueError('PROGRAM inventory path is missing or invalid')
+        identities.add(identity.lower());result[identity]=row
+    return result
+
+
 def task_create_inventory_view(inventory):
-    return dict(inventory,tasks=task_create_task_set(inventory['tasks']))
+    return dict(inventory,tasks=task_create_task_set(inventory['tasks']),
+                programs=task_program_identity_set(inventory.get('programs')))
 
 
 def task_create_difference(expected,actual,path=None):
@@ -1197,11 +1217,10 @@ def task_create(project,req,args,state):
             inventory,unused,observed=task_create_context(opened,args,task_append_call_row,observe=observe)
             by_id=task_create_task_set(inventory['tasks'])
             if task_id not in by_id:raise ValueError('Created task identity missing from inventory')
-            # Only the top-level task collection has no execution-order semantics.
-            # Retain the existing PROGRAM-set check here; reopen still compares the full inventory.
-            retained=dict(inventory,tasks=[r for r in inventory['tasks'] if r['taskId']!=task_id],
-                          programs=sorted(inventory['programs'],key=lambda p:p['objectId']))
-            previous=dict(before,programs=sorted(before['programs'],key=lambda p:p['objectId']))
+            # Only task and PROGRAM definition directories are identity sets.
+            # Calls, paths and all other arrays retain their original strict order.
+            retained=dict(inventory,tasks=[r for r in inventory['tasks'] if r['taskId']!=task_id])
+            previous=before
             for expected,actual,message in (
                 (task_create_inventory_view(previous),task_create_inventory_view(retained),
                  'Preserved task/program inventory differs'),

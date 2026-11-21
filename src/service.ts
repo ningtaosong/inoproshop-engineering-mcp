@@ -701,7 +701,6 @@ export class EngineeringService {
           row.rawFields?.kind_of_task!=='Cyclic'||configuredIntervalMs(row.rawFields)!==args.intervalMs||
           canonical(row.rawCalls)!==canonical(raw)||
           canonical(after.tasks.filter((t:any)=>t.taskId===d.taskId))!==canonical([row])||
-          canonical(after.programs)!==canonical(before.programs)||
           canonical(after.programs.filter((p:any)=>p.path?.at(-1)?.toLowerCase()===targetName?.toLowerCase()))!==
             canonical([{objectId:args.programId,path:program.path}])||
           canonical(d.calls)!==canonical([{order:0,applicationId:args.applicationId,programId:args.programId,raw:raw[0]}])||

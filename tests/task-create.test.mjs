@@ -420,7 +420,6 @@ const callInventoryFaults={
   'comment':i=>i.tasks[0].rawCalls[0][1]='Wrong',
   'None versus null':i=>i.tasks[0].rawCalls[2][1]=null,
   'binding':i=>i.programs[0].objectId=randomUUID(),
-  'program order':i=>i.programs.reverse(),
   'priority':i=>i.tasks[0].rawFields.priority='9',
   'interval':i=>i.tasks[0].rawFields.interval='t#99ms',
   'watchdog':i=>i.tasks[0].watchdog.enabled='True',
@@ -535,3 +534,61 @@ for(const tool of ['append','replace'])test('call inventory '+tool+' publication
   assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
   assert.match(r.error.message,/桥接结果/);assert.match(r.error.message,/secondary publication error/);
 });
+
+
+// PROGRAM catalog ordering has no task execution semantics (0.34.3 supplement).
+for(const tool of ['create','append','replace'])
+for(const stage of tool==='create'?['reopened']:['immediate','reopened'])
+for(const order of ['programs','tasks','both']){
+ test('program directory '+tool+' '+stage+' accepts '+order,async t=>{
+  const key=stage==='immediate'?(tool==='append'?'afterAppend':'afterReplace'):'after';
+  const x=await context(t,callInventorySeed,r=>{
+   if(order!=='tasks')r.data[key].programs.reverse();
+   if(order!=='programs')r.data[key].tasks.reverse();
+   return r;
+  });
+  const args=tool==='create'?x.args:callInventoryArgs(x,tool);
+  const r=await x.call('task_'+(tool==='create'?'create':'call_'+tool),args);
+  assert.equal(r.status,'succeeded',JSON.stringify(r));
+  const secondary=r.data.after.tasks.find(row=>row.path.at(-1)==='Secondary');
+  assert.deepEqual(secondary.rawCalls,[['Other','保留'],['Last','None']]);
+  const expected=structuredClone(r.data.before.tasks.find(row=>row.taskId===x.appendArgs.taskId).rawCalls);
+  if(tool==='append')expected.push(['PRG_S8Probe','']);
+  if(tool==='replace')expected[0]=['PRG_S8Probe','中文'];
+  assert.deepEqual(r.data.after.tasks.find(row=>row.taskId===x.appendArgs.taskId).rawCalls,expected);
+ });
+}
+const programCatalogFaults={
+ 'missing directory':i=>delete i.programs,
+ 'null directory':i=>i.programs=null,
+ 'add':i=>i.programs.push({...i.programs[0],objectId:randomUUID()}),
+ 'remove':i=>i.programs.pop(),
+ 'identity':i=>i.programs[0].objectId=randomUUID(),
+ 'duplicate':i=>i.programs.push(structuredClone(i.programs[0])),
+ 'case duplicate':i=>i.programs.push({...i.programs[0],objectId:i.programs[0].objectId.toUpperCase()}),
+ 'missing id':i=>delete i.programs[0].objectId,
+ 'invalid id':i=>i.programs[0].objectId='invalid',
+ 'zero id':i=>i.programs[0].objectId='00000000-0000-0000-0000-000000000000',
+ 'null id':i=>i.programs[0].objectId=null,
+ 'path':i=>i.programs[0].path.push('Wrong'),
+ 'missing path':i=>delete i.programs[0].path,
+ 'path type':i=>i.programs[0].path='Wrong',
+ 'unknown field':i=>i.programs[0].future=[null,'','None']
+};
+for(const tool of ['create','append','replace'])
+for(const stage of tool==='create'?['reopened']:['immediate','reopened'])
+for(const [label,change] of Object.entries(programCatalogFaults)){
+ test('program directory '+tool+' '+stage+' refuses '+label,async t=>{
+  const key=stage==='immediate'?(tool==='append'?'afterAppend':'afterReplace'):'after';
+  const x=await context(t,callInventorySeed,r=>{
+   // JSON IPC yields separate captured paths; do not mutate the baseline through fixture aliases.
+   const reply=JSON.parse(JSON.stringify(r));change(reply.data[key]);return reply;
+  });
+  const name='task_'+(tool==='create'?'create':'call_'+tool),args=tool==='create'?x.args:callInventoryArgs(x,tool);
+  const r=await x.call(name,args);assert.equal(r.status,'unknown',JSON.stringify(r));
+  assert.deepEqual(await x.call(name,args),r);
+  const bytes=await readFile(x.file);
+  await assert.rejects(x.call(name,{...args,requestId:randomUUID()}),{code:'PENDING_UNKNOWN'});
+  assert.equal(x.writes.length,1);assert.deepEqual(await readFile(x.file),bytes);
+ });
+}
