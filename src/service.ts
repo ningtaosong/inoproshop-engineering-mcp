@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { type Config, type Adapter, type BridgeRequest, ROOT } from './adapter.js';
-import { Store, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
+import { Store, atomicJson, digest, canonical, alive, codeHash, pathKey, readJson, type Operation, type Session } from './storage.js';
 import { CONTRACT, VERSION, DomainError, reply, replySchema, schemas, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, searchDataSchema,taskDataSchema,structureDataSchema,deviceDataSchema,libraryDataSchema,variableDataSchema,variableUsagesDataSchema, type Reply } from './contracts.js';
 import {propertyEvidence,propertyCreationEvidence,propertyPreservationEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE,PROPERTY_COVERAGE_VERSION} from './properties.js';
 import {searchResult,taskResult,nativeInventoryResult,SEARCH_RESULT_VERSION} from './queries.js';
@@ -17,7 +17,7 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
-import {taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {taskCallInventoryDifference,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {organizationResult} from './organization.js';
 import {ioMappingPage} from './io-mapping.js';
 import {deviceCatalogResult} from './device-catalog.js';
@@ -138,7 +138,7 @@ export class EngineeringService {
         if(observed) {
           this.validateDirect(observed,op.tool==='project_compare'&&op.args.origin==='registered-source'?{...project,workingPath:project.sourcePath,diskHash:project.sourceHash}:project);
           const parsed=this.prepareResult(op,replySchema.parse(observed));
-          this.validateEvidence(op,parsed,project);
+          await this.validateCallEvidence(op,parsed,project);
           if(parsed.status==='succeeded' && op.tool!=='project_compare' && parsed.data?.diskHash && parsed.data.diskHash!==digest(await fs.readFile(project.workingPath)))
             throw new DomainError('unknown','RESULT_DISK_CHANGED','原操作结果与其工作副本当前磁盘内容不一致，保持冻结');
           await this.finish(op,boundNativeReply(parsed));
@@ -331,8 +331,44 @@ export class EngineeringService {
     });
     this.validateDirect(result,session);
     const parsed=this.prepareResult(op,replySchema.parse(result));
-    this.validateEvidence(op,parsed,session);
+    await this.validateCallEvidence(op,parsed,session);
     return boundNativeReply(parsed);
+  }
+  private publishTaskCallEvidence(file:string,value:unknown) {return atomicJson(file,value);}
+  private async validateCallEvidence(op:Operation,parsed:Reply,session?:Session) {
+    if(!['task_call_append','task_call_replace'].includes(op.tool)||parsed.status!=='succeeded')
+      return this.validateEvidence(op,parsed,session);
+    const directory=path.join(op.bridge!.directory,'task-call-service',randomUUID()),publicationErrors:any[]=[];
+    const errorInfo=(e:any)=>({name:e?.name,message:e?.message,code:e?.code,stack:e?.stack});
+    const publish=async (name:string,value:unknown)=>{
+      try{await this.publishTaskCallEvidence(path.join(directory,name),value);}
+      catch(e){publicationErrors.push({file:name,error:errorInfo(e)});}
+    };
+    // Preserve the exact received snapshots before any validation/derived result fields.
+    await publish('task-call-service-observed.json',{operationId:op.operationId,requestId:op.requestId,result:parsed});
+    let primary:any,checks:any;
+    try{
+      const d=parsed.data as any,expected=structuredClone(d.before);
+      const target=expected?.tasks?.filter((t:any)=>t.taskId===op.args.taskId);
+      if(target?.length===1&&Array.isArray(target[0].rawCalls)){
+        if(op.tool==='task_call_append')target[0].rawCalls.push([d.program?.path?.at(-1),'']);
+        else target[0].rawCalls[op.args.expectedCallOrder]=[d.program?.path?.at(-1),op.args.expectedCall?.[1]];
+        const stage=op.tool==='task_call_append'?'afterAppend':'afterReplace';
+        checks={expected,[stage]:taskCallInventoryDifference(expected,d[stage])??null,
+          after:taskCallInventoryDifference(expected,d.after)??null};
+      }
+      this.validateEvidence(op,parsed,session);
+    }catch(e){primary=e;}
+    await publish('task-call-service-verification.json',{operationId:op.operationId,requestId:op.requestId,
+      status:primary||publicationErrors.length?'failed':'succeeded',checks,
+      primaryException:primary?errorInfo(primary):undefined,publicationErrors});
+    if(primary){
+      // Publication failure must not replace the first validation exception.
+      if(publicationErrors.length)primary.message+='; diagnostic publication failed: '+JSON.stringify(publicationErrors);
+      throw primary;
+    }
+    if(publicationErrors.length)throw new DomainError('unknown','TASK_CALL_EVIDENCE_PUBLICATION_FAILED',
+      '任务调用核对证据发布失败，保持冻结；'+JSON.stringify(publicationErrors));
   }
   private validateDirect(result:Reply,session:Session) {
     if(session.editMode!=='direct'||result.status!=='succeeded')return;
@@ -613,6 +649,8 @@ export class EngineeringService {
           d.configurationVersionScheme!==TASK_CONFIGURATION_SCHEME||taskConfigurationVersion(before)!==args.expectedTaskVersion||
           taskConfigurationVersion(after)!==d.configurationVersion||d.taskConfigurationVersion!==d.configurationVersion)invalid();
         const targetName=program.path.at(-1),raw=[[targetName,'']];
+        if(command!=='task_create'&&before.tasks.some((t:any)=>
+          canonical(t.path.slice(0,-1))!==canonical(d.taskConfigurationPath)))invalid();
         if(command==='task_call_replace'){
           const old=d.oldProgram;
           const facts={taskConfigurationPath:d.taskConfigurationPath,controller:d.controller,program,
@@ -629,8 +667,8 @@ export class EngineeringService {
           row.rawCalls[args.expectedCallOrder]=newRow;
           const change={order:args.expectedCallOrder,oldProgramId:old.objectId,programId:program.objectId,
             previousRaw:args.expectedCall,raw:newRow};
-          if(canonical(d.replacedCall)!==canonical(change)||canonical(d.afterReplace)!==canonical(expected)||
-            canonical(after)!==canonical(expected))invalid();
+          if(canonical(d.replacedCall)!==canonical(change)||taskCallInventoryDifference(expected,d.afterReplace)||
+            taskCallInventoryDifference(expected,after))invalid();
           d.buildApplicable=false;
           return;
         }
@@ -647,7 +685,7 @@ export class EngineeringService {
               canonical([{objectId:args.programId,path:program.path}]))invalid();
           const order=row.rawCalls.length;
           row.rawCalls.push(raw[0]);
-          if(canonical(expected)!==canonical(after)||canonical(d.afterAppend)!==canonical(after)||
+          if(taskCallInventoryDifference(expected,after)||taskCallInventoryDifference(expected,d.afterAppend)||
             canonical(d.appendedCall)!==canonical({order,programId:args.programId,raw:raw[0]}))invalid();
           d.buildApplicable=false;
           return;
@@ -663,7 +701,6 @@ export class EngineeringService {
           row.rawFields?.kind_of_task!=='Cyclic'||configuredIntervalMs(row.rawFields)!==args.intervalMs||
           canonical(row.rawCalls)!==canonical(raw)||
           canonical(after.tasks.filter((t:any)=>t.taskId===d.taskId))!==canonical([row])||
-          canonical(after.programs)!==canonical(before.programs)||
           canonical(after.programs.filter((p:any)=>p.path?.at(-1)?.toLowerCase()===targetName?.toLowerCase()))!==
             canonical([{objectId:args.programId,path:program.path}])||
           canonical(d.calls)!==canonical([{order:0,applicationId:args.applicationId,programId:args.programId,raw:raw[0]}])||

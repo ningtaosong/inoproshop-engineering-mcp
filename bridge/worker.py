@@ -785,6 +785,7 @@ def task_create_context(project,args,read_call=None,observe=None):
     """Read only identity/configuration within the same owned native handle."""
     before=task_inventory(project,args,read_call)
     if observe is not None:observe(before)
+    task_program_identity_set(before.get('programs'))
     required=set(('kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task'))
     if (not before['coverageComplete'] or len(set(t['taskId'] for t in before['tasks']))!=len(before['tasks']) or
         any(not t['callsComplete'] or not required.issubset(t['rawFields']) or
@@ -818,8 +819,9 @@ def task_writable_probe(project_path):
     handle.Dispose()
 
 
-def task_call_target(opened,args):
-    inventory,config,facts=task_create_context(opened,args,task_append_call_row)
+def task_call_target(opened,args,observe=None):
+    inventory,config,facts=task_create_context(opened,args,task_append_call_row,observe)
+    task_call_inventory_view(inventory)
     rows=[row for row in inventory['tasks'] if row['taskId']==args['taskId']]
     handles=[item for item in config.get_children(False) if getattr(item,'is_task',False) and
              text(item.guid).lower()==args['taskId']]
@@ -868,26 +870,38 @@ def task_call_append(project, req, args, state):
                 taskConfigurationId=args['taskConfigurationId'],snapshot=old_snapshot,before=before,checkpoint=checkpoint,
                 configurationOnly=True,runtimeObserved=False,configurationVersionScheme='task-configuration-v1')
 
-    def verify(opened):
-        inventory,unused_row,unused_handle,observed=task_call_target(opened,args)
-        if inventory!=expected or observed!=facts or snapshot(opened)!=old_snapshot:
-            raise ValueError('Tail call, native identity or preserved task/source evidence differs')
-        return inventory
+    diagnostic_errors=[]
+    def identify(opened,observe=None):
+        return task_call_target(opened,args,observe)
+    def verify(opened,stage,expected_inventory):
+        return task_call_verify(opened,identify,expected_inventory,facts,old_snapshot,
+                                directory,stage,diagnostic_errors,
+                                (lambda handle:dict(disk=file_hash(req['projectPath']),
+                                    checkpoint=file_hash(checkpoint),
+                                    calls=[task_append_call_row(handle.pous[i]) for i in range(len(handle.pous))]))
+                                if stage=='predispatch' else None,
+                                dict(disk=disk_before,checkpoint=disk_before,calls=live))
 
     shutil.copyfile(req['projectPath'],checkpoint)
     if file_hash(checkpoint)!=disk_before or file_hash(req['projectPath'])!=disk_before:
         return failure('conflict','TASK_DISK_CHANGED',u'检查点或磁盘版本变化，未写入'),project
     publish(os.path.join(directory,'task-before.json'),common)
     try:
+        unused_inventory,unused_row,task,unused_facts=verify(project,'predispatch',before)
+        calls=task.pous
+    except Exception as error:
+        return failure('conflict','TASK_APPEND_CHANGED',text(error),
+                       dict(primaryException=exception_evidence(error),diagnosticErrors=diagnostic_errors)),project
+    try:
         publish(os.path.join(directory,'task-append-dispatched.json'),
                 dict(taskId=args['taskId'],programId=args['programId'],order=len(live),raw=[name,'']))
         calls.add(name,'')
-        common['afterAppend']=verify(project)
+        common['afterAppend']=verify(project,'afterAppend',expected)[0]
         publish(os.path.join(directory,'task-after-append.json'),common['afterAppend'])
         if file_hash(req['projectPath'])!=disk_before:
             raise ValueError('Disk file changed before authorized save')
         project=lifecycle_save_reopen(state)
-        after=verify(project)
+        after=verify(project,'reopened',expected)[0]
         saved_hash=file_hash(req['projectPath'])
         if saved_hash==disk_before:raise ValueError('No saved disk revision was observed')
         publish(os.path.join(directory,'task-after-reopen.json'),after)
@@ -901,9 +915,10 @@ def task_call_append(project, req, args, state):
         partial=None
         if state['project'] is not None:
             try:partial=task_inventory(state['project'],args,task_append_call_row)
-            except Exception:pass
+            except Exception as partial_error:
+                diagnostic_errors.append(dict(stage='partial',exception=exception_evidence(partial_error)))
         return failure('unknown','TASK_APPEND_INCOMPLETE',text(error),dict(common,partial=partial,
-                       primaryException=primary,automaticRollback=False)),state['project']
+                       primaryException=primary,diagnosticErrors=diagnostic_errors,automaticRollback=False)),state['project']
 
 
 def task_replace_ide_version():
@@ -916,8 +931,8 @@ def task_call_replace(project,req,args,state):
     disk=args['expectedDiskHash']
     checkpoint=req['checkpointPath']
 
-    def identify(opened):
-        inventory,row,task,facts=task_call_target(opened,args)
+    def identify(opened,observe=None):
+        inventory,row,task,facts=task_call_target(opened,args,observe)
         old,types=task_program_evidence(list(walk(opened)),args['applicationId'],inventory['applicationPath'],
                                         inventory,args['oldProgramId'],args['expectedOldProgramHash'])
         facts.update(oldProgram=old,oldProgramEmbeddedObjectTypes=types)
@@ -961,32 +976,33 @@ def task_call_replace(project,req,args,state):
                 taskConfigurationId=args['taskConfigurationId'],snapshot=original_snapshot,before=before,checkpoint=checkpoint,
                 replacedCall=change,configurationOnly=True,runtimeObserved=False,configurationVersionScheme='task-configuration-v1')
     common['programReads']={}
-    def verify(opened,stage):
-        observed,unused,handle,identities=identify(opened)
-        common['programReads'][stage]=identities
-        if observed!=expected or identities!=facts or snapshot(opened)!=original_snapshot:
-            raise ValueError(u'调用列表、PROGRAM 身份、ST 证据、任务字段或源码发生非预期变化')
-        return observed
+    diagnostic_errors=[]
+    def verify(opened,stage,expected_inventory):
+        result=task_call_verify(opened,identify,expected_inventory,facts,original_snapshot,
+                               directory,stage,diagnostic_errors,
+                               (lambda handle:dict(disk=file_hash(req['projectPath']),
+                                   checkpoint=file_hash(checkpoint),
+                                   calls=[task_append_call_row(handle.pous[i]) for i in range(len(handle.pous))]))
+                               if stage=='predispatch' else None,
+                               dict(disk=disk,checkpoint=disk,calls=live))
+        common['programReads'][stage]=result[3]
+        return result
 
     shutil.copyfile(req['projectPath'],checkpoint)
     publish(os.path.join(directory,'task-before.json'),common)
     try:
-        final_inventory,unused,task,final_facts=identify(project)
+        final_inventory,unused,task,final_facts=verify(project,'predispatch',before)
         calls=task.pous
-        if (final_inventory!=before or final_facts!=facts or snapshot(project)!=original_snapshot or
-            file_hash(checkpoint)!=disk or file_hash(req['projectPath'])!=disk or
-            [task_append_call_row(calls[i]) for i in range(len(calls))]!=live):
-            raise ValueError(u'派发前工程、程序身份或调用行变化')
     except Exception as error:
-        return failure('conflict','TASK_REPLACE_CHANGED',text(error),{'primaryException':exception_evidence(error)}),project
+        return failure('conflict','TASK_REPLACE_CHANGED',text(error),dict(primaryException=exception_evidence(error),diagnosticErrors=diagnostic_errors)),project
     publish(os.path.join(directory,'task-replace-dispatched.json'),dict(change,taskId=args['taskId']))
     try:
         calls.replace(index,name,live[index][1])
-        common['afterReplace']=verify(project,'afterReplace')
+        common['afterReplace']=verify(project,'afterReplace',expected)[0]
         publish(os.path.join(directory,'task-after-replace.json'),common['afterReplace'])
         if file_hash(req['projectPath'])!=disk:raise ValueError('Disk changed before save')
         project=lifecycle_save_reopen(state)
-        after=verify(project,'reopened')
+        after=verify(project,'reopened',expected)[0]
         saved=file_hash(req['projectPath'])
         if saved==disk:raise ValueError('No new saved revision')
         publish(os.path.join(directory,'task-after-reopen.json'),after)
@@ -996,7 +1012,80 @@ def task_call_replace(project,req,args,state):
                             configurationVersion=version,taskConfigurationVersion=version)),project
     except Exception as error:
         return failure('unknown','TASK_REPLACE_INCOMPLETE',text(error),
-                       dict(common,primaryException=exception_evidence(error),automaticRollback=False)),state['project']
+                       dict(common,primaryException=exception_evidence(error),diagnosticErrors=diagnostic_errors,automaticRollback=False)),state['project']
+
+
+def task_call_inventory_view(inventory):
+    """Only the task set is unordered. Preserve raw snapshots and all nested arrays."""
+    view=task_create_inventory_view(inventory)
+    identities=set()
+    if (inventory.get('coverageComplete') is not True or inventory.get('enumerationFailures')!=[] or
+        inventory.get('resolutionReadFailures')!=[]):
+        raise ValueError('Task inventory coverage is incomplete')
+    for identity,row in view['tasks'].items():
+        if (not re.match(r'^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z',identity) or
+            identity.lower() in identities or identity=='00000000-0000-0000-0000-000000000000'):
+            raise ValueError('Task inventory taskId is not a unique native GUID')
+        identities.add(identity.lower())
+        if (not isinstance(row.get('path'),list) or not row['path'] or
+            any(not isinstance(x,basestring) or not x for x in row['path']) or
+            row.get('callsComplete') is not True or row.get('unavailableFields')!=[] or
+            not isinstance(row.get('rawCalls'),list)):
+            raise ValueError('Task identity/path/call coverage is incomplete')
+        for call in row['rawCalls']:task_append_call_row(call)
+        for field in ['kind_of_task','priority','interval','interval_unit','event_pou_guid',
+                      'event','external_event','core_binding','parent_synchron_task']:
+            if not isinstance(row.get('rawFields',{}).get(field),basestring):
+                raise ValueError('Task rawFields.'+field+' is missing or not text')
+        for field in ['enabled','time','time_unit','sensitivity']:
+            if not isinstance(row.get('watchdog',{}).get(field),basestring):
+                raise ValueError('Task watchdog.'+field+' is missing or not text')
+    return view
+
+
+def task_call_verify(opened,identify,expected,facts,source,directory,stage,diagnostic_errors,
+                     extra_read=None,extra_expected=None):
+    """Publish the exact observation before validation, including failures inside context reads."""
+    captured={};difference=None
+    def evidence(suffix,value):
+        try:publish(os.path.join(directory,'task-call-'+stage+'-'+suffix+'.json'),value)
+        except Exception as error:
+            diagnostic_errors.append(dict(stage=stage,file=suffix,exception=exception_evidence(error)))
+    def observe(value):
+        captured['inventory']=value
+        evidence('observed',value)
+    try:
+        result=identify(opened,observe)
+        inventory,row,handle,observed_facts=result
+        captured.update(facts=observed_facts,snapshot=snapshot(opened))
+        difference=task_create_difference(task_call_inventory_view(expected),
+                                          task_call_inventory_view(inventory),['inventory'])
+        if difference is None:difference=task_create_difference(facts,observed_facts,['facts'])
+        if difference is None:difference=task_create_difference(source,captured['snapshot'],['snapshot'])
+        if extra_read is not None:
+            captured['preDispatch']=extra_read(handle)
+            if difference is None:
+                difference=task_create_difference(extra_expected,captured['preDispatch'],['preDispatch'])
+        if difference is not None:raise ValueError('Task call verification differs: '+encode(difference))
+        if diagnostic_errors:raise ValueError('Task call observation could not be published')
+        evidence('verification',dict(status='succeeded',stage=stage,observed=captured,
+                                      expectedInventory=expected,difference=None))
+        if diagnostic_errors:raise ValueError('Task call verification could not be published')
+        return result
+    except Exception as error:
+        primary=exception_evidence(error)
+        if difference is None and 'inventory' in captured:
+            try:
+                difference=task_create_difference(task_call_inventory_view(expected),
+                    task_call_inventory_view(captured['inventory']),['inventory'])
+            except Exception as invalid_inventory:
+                difference=dict(kind='invalid-inventory',reason=text(invalid_inventory),
+                    rawDifference=task_create_difference(expected,captured['inventory'],['inventory']))
+        # If validation failed before a comparison was possible, retain the actual
+        # invalid inventory and the precise native/coverage error, never a later partial.
+        evidence('verification',dict(status='failed',stage=stage,observed=captured,
+                  expectedInventory=expected,difference=difference,primaryException=primary))
+        raise
 
 
 def task_create_task_set(rows):
@@ -1012,8 +1101,27 @@ def task_create_task_set(rows):
     return result
 
 
+def task_program_identity_set(rows):
+    """PROGRAM definition directory, not task execution order. Keep every raw field."""
+    if not isinstance(rows,list):raise ValueError('PROGRAM inventory is not a list')
+    result={};identities=set()
+    for row in rows:
+        if not isinstance(row,dict):raise ValueError('PROGRAM inventory row is not a record')
+        identity=row.get('objectId')
+        if (not isinstance(identity,basestring) or
+            not re.match(r'^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z',identity) or
+            identity=='00000000-0000-0000-0000-000000000000' or identity.lower() in identities):
+            raise ValueError('PROGRAM inventory identity is missing, invalid or duplicated')
+        if (not isinstance(row.get('path'),list) or not row['path'] or
+            any(not isinstance(part,basestring) or not part for part in row['path'])):
+            raise ValueError('PROGRAM inventory path is missing or invalid')
+        identities.add(identity.lower());result[identity]=row
+    return result
+
+
 def task_create_inventory_view(inventory):
-    return dict(inventory,tasks=task_create_task_set(inventory['tasks']))
+    return dict(inventory,tasks=task_create_task_set(inventory['tasks']),
+                programs=task_program_identity_set(inventory.get('programs')))
 
 
 def task_create_difference(expected,actual,path=None):
@@ -1109,11 +1217,10 @@ def task_create(project,req,args,state):
             inventory,unused,observed=task_create_context(opened,args,task_append_call_row,observe=observe)
             by_id=task_create_task_set(inventory['tasks'])
             if task_id not in by_id:raise ValueError('Created task identity missing from inventory')
-            # Only the top-level task collection has no execution-order semantics.
-            # Retain the existing PROGRAM-set check here; reopen still compares the full inventory.
-            retained=dict(inventory,tasks=[r for r in inventory['tasks'] if r['taskId']!=task_id],
-                          programs=sorted(inventory['programs'],key=lambda p:p['objectId']))
-            previous=dict(before,programs=sorted(before['programs'],key=lambda p:p['objectId']))
+            # Only task and PROGRAM definition directories are identity sets.
+            # Calls, paths and all other arrays retain their original strict order.
+            retained=dict(inventory,tasks=[r for r in inventory['tasks'] if r['taskId']!=task_id])
+            previous=before
             for expected,actual,message in (
                 (task_create_inventory_view(previous),task_create_inventory_view(retained),
                  'Preserved task/program inventory differs'),

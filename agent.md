@@ -1,12 +1,14 @@
 # InoProShop MCP 后续开发计划
 
-规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-20。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
+规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-21。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-当前版本为 0.34.2 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+当前版本为 0.34.3 修复候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
 
-0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，日常入口未部署本补丁。
+0.34.1 当时在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，该轮日常入口未部署本补丁；后续已随 0.34.2 合并。
 
-0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因、默认环境性能与追加／替换的任务集合顺序风险仍未解决。
+0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因与默认环境性能问题仍未解决。该段保留 0.34.2 的验收归属；后续任务集合及 PROGRAM 目录补修见下段。
+
+0.34.3 已完成[任务集合与 PROGRAM 目录比较补修及真实复验](docs/task-program-inventory-order.md)，纳入本次 main 收尾。仅顶层任务集合按唯一 taskId、PROGRAM 身份目录按唯一 objectId 对齐；任务内部调用顺序、备注、绑定、源码、配置及其他字段仍严格核对，不提供调用重排能力。追加、替换各一次真实闭环通过，保存版各编译一次、均 0 错误／0 警告；替换重开实际出现 PROGRAM 目录换序，两套任务集合未换序。task_create 同类路径已补修并离线回归，本轮无其真实写入复验。Node 802/802 与 Python 616/616 分别记录；原失败、附属文件变化和历史限制保留。[合并与固定入口说明](docs/task-inventory-0343-merge.md)区分配置、独立连接与最终日常连接。
 
 0.34.2 已完成[一次 DSH CLI 双路报警综合工程验收](docs/offline-alarm-acceptance-0342.md)：限定离线工程闭环通过，流程与展示部分通过；本次未出现任务集合枚举换序，不能据此宣称复现原故障。原 0.34.0／0.34.1 综合验收失败及勘误保留，不扩大为全部工具或运行验收。
 
@@ -60,10 +62,10 @@ S4b 第二子阶段在 `codex/fb-interface-variable-edit` 功能分支完成限�
 | S6 后续独立项 | 离线设备参数写入 | 另行限定参数和原生字段范围 | 真实参数身份、离线可写语义及持久化证据 | 未开发 |
 | S7a | 按声明查询限定 ST 用法 | 普通 ST `PROGRAM` 简单赋值中的局部变量、根 GVL 和结构体直接字段 | 已核对保守静态推导、无法确认的位置和分页一致性 | 已交付，0.30.0／33 项工具，见[说明与验收归属](docs/variable-usages.md) |
 | S7 后续 | 原生语义引用及其他来源 | 原生双向绑定及其余引用来源另行验证 | 可复查的真实符号接口和覆盖范围 | 未启动。重命名或删除需另行评估 |
-| S8a 首项 | 新建周期任务并绑定一个已有程序 | 已验 AM610 设备描述 `3.5.11.11` 的 Application、一个已有根级 ST PROGRAM | 原生任务工厂、目标身份及保存重开读回 | [已交付](docs/task-create.md)，0.31.0 候选版／34 项工具 |
-| S8a 追加 | 已有周期任务末尾追加一个已有程序 | 已验 AM610、同一 Application 根级 ST PROGRAM | 完整有序原生元组、追加与保存重开读回 | [已交付](docs/task-call-append.md)，0.32.0 候选版／35 项工具 |
+| S8a 首项 | 新建周期任务并绑定一个已有程序 | 已验 AM610 设备描述 `3.5.11.11` 的 Application、一个已有根级 ST PROGRAM | 原生任务工厂、目标身份及保存重开读回 | [已交付](docs/task-create.md)，初版 0.31.0／34 工具；0.34.3 目录核对补修见[记录](docs/task-program-inventory-order.md) |
+| S8a 追加 | 已有周期任务末尾追加一个已有程序 | 已验 AM610、同一 Application 根级 ST PROGRAM | 完整有序原生元组、追加与保存重开读回 | [已交付](docs/task-call-append.md)，初版 0.32.0／35 工具；0.34.3 清单补修及真实闭环通过 |
 | S8a 移除 | 从已有任务移除一个调用，保留 PROGRAM 定义 | 本机 InoProShop 1.9.1.6 | 修正后的受支持公开接口或厂商修复，独立夹具验收 | [探测受阻，无产品能力](docs/task-call-remove-diagnosis.md) |
-| S8a 替换 | 替换已有任务中的一条 PROGRAM 调用 | 已验 AM610、周期任务、根级 ST PROGRAM | 备注、顺序、定义及保存重开读回 | [0.33.0 已交付](docs/task-call-replace.md) |
+| S8a 替换 | 替换已有任务中的一条 PROGRAM 调用 | 已验 AM610、周期任务、根级 ST PROGRAM | 备注、顺序、定义及保存重开读回 | [0.33.0 已交付](docs/task-call-replace.md)；0.34.3 清单补修及真实闭环通过 |
 | S8a 重排 | 调整已有任务的调用顺序 | 本机 InoProShop 1.9.1.6 | 需公开行级移动入口，再验证绑定、备注和保存持久化 | [已查公开接口不满足要求，暂不开发](docs/task-call-reorder-probe.md) |
 | S8b 首版 | 限定 I/O 通道与现有映射只读查询 | 通道身份、方向、数据类型及当前变量映射 | 独立工程中的原生字段、覆盖范围和缺口 | 只读已交付；原生单通道保存正例保留；写入前置探测受阻，写工具未开发 |
 | S8c | EtherCAT PDO 接口探索 | 当前仅分析精确安装描述；后续工程只读验证另行安排 | 已正常保存关闭且获准读取的主从站实例，及当前 PDO 配置的可信读取对应 | [首轮前置核查暂停](docs/ethercat-pdo-inspect-probe.md)：IS620N 11 个 PDO 定义、83 条直接 Entry；正常实例与当前启用/分配读取入口缺证，未提供 PDO 查询或编辑 MCP 工具 |

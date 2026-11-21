@@ -1,10 +1,12 @@
 # InoProShop Engineering MCP
 
-**当前版本为 0.34.2 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+**当前版本为 0.34.3 修复候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
-0.34.1 在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，日常入口未部署本补丁。
+0.34.1 当时在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，该轮日常入口未部署本补丁；后续已随 0.34.2 合并。
 
-0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因、默认环境性能与追加／替换的任务集合顺序风险仍未解决。
+0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因与默认环境性能问题仍未解决。该段保留 0.34.2 的验收归属；后续任务集合及 PROGRAM 目录补修见下段。
+
+0.34.3 已完成[任务集合与 PROGRAM 目录比较补修及真实复验](docs/task-program-inventory-order.md)，纳入本次 main 收尾。仅顶层任务集合按唯一 taskId、PROGRAM 身份目录按唯一 objectId 对齐；任务内部调用顺序、备注、绑定、源码、配置及其他字段仍严格核对，不提供调用重排能力。追加、替换各一次真实闭环通过，保存版各编译一次、均 0 错误／0 警告；替换重开实际出现 PROGRAM 目录换序，两套任务集合未换序。task_create 同类路径已补修并离线回归，本轮无其真实写入复验。Node 802/802 与 Python 616/616 分别记录；原失败、附属文件变化和历史限制保留。[合并与固定入口说明](docs/task-inventory-0343-merge.md)区分配置、独立连接与最终日常连接。
 
 S8b 的三项状态分别记录：`io_mapping_inspect` 已交付，范围为已验 AM610 的 HIGH_SPEED_IO 连接器 2；单个 BOOL 通道已有设置、保存、独立重开及保存版编译的原生正例；映射写工具仍未开发。当前尚缺可信、可调用的完整有效 I/O Application 选择入口，应用级重复映射覆盖和输入变量的程序写引用也是独立缺口。现阶段保持只读评估，`writeAuthorized=false`。见[前置探测收尾与恢复条件](docs/io-mapping-write-probe-closeout.md)。
 
@@ -75,7 +77,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 库使用证据收集 | 读取直接引用和命名空间，检索并核对可读源码中的调用，报告实际检查范围和缺口 | 复用 `library_inspect`、`project_search`、`object_read` | [只读用法](docs/getting-started.md#只读检查库的使用情况)，[移除可行性探测](docs/library-reference-remove-probe.md) |
 | 已有周期任务配置 | 读取任务和调用顺序；仅编辑已有周期任务的整数毫秒周期 1..60000 及优先级 0..31，不创建任务或编辑调用列表 | `task_inspect`、`task_config_update` | 查询已有；**S1 / 0.18.0** 写入，见[说明](docs/task-config.md) |
 | 创建周期任务并绑定程序 | AM610（设备描述 `3.5.11.11`）Application 内新建一个周期任务，绑定一个已有根级 ST PROGRAM；创建前、绑定后及重开后核验原生 ST 标识，保留原任务和调用顺序 | `task_create` | **S8a 首项 / 0.31.0，已交付**，见[说明](docs/task-create.md) |
-| 追加已有周期任务调用 | AM610（设备描述 `3.5.11.11`）Application 内给已有普通周期任务末尾追加一个已有根级 ST PROGRAM，保留原调用名称、注释和顺序，保存重开核对 | `task_call_append` | **S8a 追加 / 0.32.0，已交付**，见[说明](docs/task-call-append.md) |
+| 追加已有周期任务调用 | AM610（设备描述 `3.5.11.11`）Application 内给已有普通周期任务末尾追加一个已有根级 ST PROGRAM，保留原调用名称、注释和顺序，保存重开核对 | `task_call_append` | **S8a 追加已交付**；0.34.3 清单补修已验，见[说明](docs/task-call-append.md) |
 | 替换周期任务的一条调用 | 在原位置换成同一 Application 的唯一根级 ST PROGRAM，保留备注和其余调用 | `task_call_replace` | **S8a 替换 / 0.33.0，已交付**，见[说明](docs/task-call-replace.md) |
 | 从已有任务移除单条调用 | 本机 InoProShop 1.9.1.6 的唯一一次真实移除调用抛出异常，工程中的移除结果仍为 `unknown` | 无 | **S8a 移除探测受阻，未提供产品能力**，见[原生接口诊断](docs/task-call-remove-diagnosis.md) |
 | 重排已有任务调用 | 在本机 InoProShop 1.9.1.6 已核查的公开接口中，未找到能连同备注移动一条调用的入口 | 无 | **S8a 重排暂不开发**，见[探测依据与恢复条件](docs/task-call-reorder-probe.md) |
@@ -93,7 +95,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 
 | 尚未完成的能力 | 计划阶段 | 下一步及完成条件 | 当前状态 |
 | --- | --- | --- | --- |
-| 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 前两个限定子阶段已合并；成员新增、嵌套成员、数组、类型修改及其他声明区未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
+| 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 三个限定子阶段已合并；普通 VAR／根 GVL VAR_GLOBAL 已有单变量的 BOOL、DINT、TIME set-type 已交付。成员新增、嵌套成员、数组、更广类型及其他声明区仍未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
 | 普通直接库引用移除 | S5 后续范围 | 写入前将原生选择条件与选中引用唯一绑定，并说明使用关系和反向依赖的实际覆盖 | [可行性探测已完成](docs/library-reference-remove-probe.md)，目前仅适合只读评估，未提供删除能力 |
 | 清除占位符显式覆盖 | S5 后续独立项 | 单独确认原生清除语义和读回结果 | 未实现；已合并的 S5b 仅支持设置显式覆盖 |
 | 限定设备添加 | S6b | 先在已知正确挂接的现有实例上读回对端连接器 ID 和所属父设备，并区分同接口的不同连接器 | [单一组合的可行性探测已完成](docs/device-add-probe.md#探测结论与证据入口)，只读选址评估，无添加工具 |

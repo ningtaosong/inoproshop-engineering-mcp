@@ -68,8 +68,8 @@ class TaskCreateTest(unittest.TestCase):
         logic = Node('Plc Logic','logic','logic-type',device)
         self.app = Node('Application','app','app-type',logic,is_application=True)
         self.config = Node('Task Configuration','config','task-config-type',self.app,is_task_configuration=True)
-        self.main = self.make_task('MainTask','main',[['PLC_PRG','']])
-        self.program = Node('PRG_S8Probe','program','6f9dac99-8de1-4efc-8465-68ac443b7d08',self.app,
+        self.main = self.make_task('MainTask','11111111-1111-4111-8111-111111111111',[['PLC_PRG','']])
+        self.program = Node('PRG_S8Probe','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','6f9dac99-8de1-4efc-8465-68ac443b7d08',self.app,
                             has_textual_declaration=True,has_textual_implementation=True,language='ST',pou_type='program',
                             embedded_object_types=[ST_IMPLEMENTATION_TYPE.upper()])
         # The call wrapper is not a second PROGRAM, though its displayed name matches.
@@ -90,7 +90,7 @@ class TaskCreateTest(unittest.TestCase):
         modules.start()
         self.addCleanup(modules.stop)
         self.args=dict(projectId='project',applicationId='app',targetKind='application',name='ProbeTask',intervalMs=50,
-                       taskConfigurationId='config',programId='program',expectedProgramHash=program_hash,
+                       taskConfigurationId='config',programId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',expectedProgramHash=program_hash,
                        expectedDiskHash=self.e['file_hash'](str(self.project_file)))
         self.refresh_version()
         self.req=dict(projectPath=str(self.project_file),resultPath=str(self.path/'result.json'),checkpointPath=str(self.path/'checkpoint.project'))
@@ -115,18 +115,18 @@ class TaskCreateTest(unittest.TestCase):
         return self.e['task_create'](self.project,self.req,dict(self.args,**overrides),{'project':self.project})[0]
 
     def append(self, **overrides):
-        args=dict(self.args,taskId='main',**overrides)
+        args=dict(self.args,taskId=self.main.guid,**overrides)
         return self.e['task_call_append'](self.project,self.req,args,{'project':self.project})[0]
 
     def prepare_replace(self):
-        old=Node('Old','old',self.program.type,self.app,has_textual_declaration=True,
+        old=Node('Old','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',self.program.type,self.app,has_textual_declaration=True,
                  has_textual_implementation=True,embedded_object_types=[ST_IMPLEMENTATION_TYPE],
                  textual_declaration=S(text='PROGRAM Old\\nVAR\\nEND_VAR'),textual_implementation=S(text=''))
         self.main.pous[:]=[['First',''],['Middle','中文'],['Old','None']]
         self.main.pous.replace=lambda i,n,c:self.main.pous.__setitem__(i,[n,c])
         self.e['task_replace_ide_version']=lambda:'1.9.1.6'
         self.refresh_version()
-        self.args.update(taskId='main',oldProgramId='old',expectedOldProgramHash=self.e['content_hash'](old.textual_declaration.text,''),
+        self.args.update(taskId=self.main.guid,oldProgramId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',expectedOldProgramHash=self.e['content_hash'](old.textual_declaration.text,''),
                          expectedCallOrder=2,expectedCall=['Old','None'],expectedSourceSnapshot='source-hash')
         return old
 
@@ -135,7 +135,7 @@ class TaskCreateTest(unittest.TestCase):
 
     def test_replace_last_row_preserves_native_comments_both_programs_and_other_tasks(self):
         self.prepare_replace()
-        self.make_task('OtherTask','other',[['First','keep']])
+        self.make_task('OtherTask','22222222-2222-4222-8222-222222222222',[['First','keep']])
         self.refresh_version()
         r=self.replace()
         self.assertEqual(r['status'],'succeeded',r)
@@ -155,7 +155,7 @@ class TaskCreateTest(unittest.TestCase):
             ('different comment',original,dict(expectedCall=['Old',''])),('new already exists',original+[['prg_s8probe','']],{}),
             ('malformed',[['First',None]]+original[1:],{}),('string row',['AB']+original[1:],{}),
             ('native null',[[None,'']]+original[1:],{}),('short row',[['First']]+original[1:],{}),
-            ('old==new',original,dict(oldProgramId='program',expectedOldProgramHash=self.args['expectedProgramHash'])),
+            ('old==new',original,dict(oldProgramId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',expectedOldProgramHash=self.args['expectedProgramHash'])),
             ('wrong ID',original,dict(programId='wrapper')),('task version',original,dict(expectedTaskVersion='stale')),
             ('changed old source',original,dict(expectedOldProgramHash='stale')),('changed new source',original,dict(expectedProgramHash='stale')),
             ('snapshot',original,dict(expectedSourceSnapshot='changed')),('disk',original,dict(expectedDiskHash='stale'))]:
@@ -210,13 +210,13 @@ class TaskCreateTest(unittest.TestCase):
     def test_append_preserves_multiple_calls_comments_and_other_tasks(self):
         prefix=[['PLC_PRG',''],['Other','保留中文注释'],['Third','None']]
         self.main.pous[:]=[tuple(row) for row in prefix]
-        self.make_task('Secondary','secondary',[['Other','unchanged']])
+        self.make_task('Secondary','33333333-3333-4333-8333-333333333333',[['Other','unchanged']])
         self.refresh_version()
         result=self.append()
         self.assertEqual(result['status'],'succeeded',result)
         self.assertEqual(result['data']['after']['tasks'][0]['rawCalls'],prefix+[['PRG_S8Probe','']])
         self.assertEqual((self.main.pous.add_calls,self.factory_calls,self.saves),(1,0,1))
-        self.assertEqual(result['data']['appendedCall'],dict(order=3,programId='program',raw=['PRG_S8Probe','']))
+        self.assertEqual(result['data']['appendedCall'],dict(order=3,programId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',raw=['PRG_S8Probe','']))
         self.assertEqual(result['data']['afterAppend'],result['data']['after'])
 
     def test_append_rejects_repeated_target_even_if_qualified(self):
@@ -340,7 +340,7 @@ class TaskCreateTest(unittest.TestCase):
         self.assertEqual(result['data']['task']['rawFields']['interval'],'t#50ms')
         self.assertEqual(result['data']['programEmbeddedObjectTypes'],[ST_IMPLEMENTATION_TYPE])
         self.assertEqual(result['data']['task']['rawCalls'],[['PRG_S8Probe','']])
-        self.assertEqual(result['data']['calls'],[dict(order=0,applicationId='app',programId='program',raw=['PRG_S8Probe',''])])
+        self.assertEqual(result['data']['calls'],[dict(order=0,applicationId='app',programId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',raw=['PRG_S8Probe',''])])
         self.assertEqual([event[0] for event in self.events if '-end' in event[0]],
                          ['task-create-create-end.json','task-create-period-end.json','task-create-bind-end.json'])
         self.assertEqual(Path(self.req['checkpointPath']).read_bytes(),b'unsaved probe fixture')

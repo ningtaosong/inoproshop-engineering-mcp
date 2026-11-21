@@ -1,0 +1,320 @@
+{
+  "provenance": {
+    "priorCommit": "f286e08d92b94dd967c23de1e71bbcfe61a19e92",
+    "archiveSha256": "7f7b8550b69cb15f7489235fc36ac99e82f4367c194c1f4b5c531a2d3deb3834",
+    "beforeFile": "D:\\InoPro-TaskCallOrder-Real-20261120-234907\\append\\prepare-saved.json",
+    "beforeSha256": "765a927a0a4e1ceff7606e975e316ff0c5e6632f07a34671e86125a4ab405b81",
+    "afterFile": "D:\\InoPro-TaskCallOrder-Real-20261120-234907\\current-operation-evidence\\5263cd7e-d2fb-4ba1-8f21-b4bff95cbe38\\result.json",
+    "afterSha256": "cca7ec4fcc62ada46ba12000515365a2ea1e191d403a5143d4b2216f2cb524ee",
+    "comparisonSetup": "Only projectId rebound from preparation operation identity to actual MCP registration identity, exactly as prior acceptance script. Metadata outside inventory excluded by original field boundary.",
+    "originalPreparationProjectId": "7995de1d-6223-44d2-82ce-41f3e207b459"
+  },
+  "before": {
+    "resolutionReadFailures": [],
+    "projectId": "a32ac7ca-9ee6-405b-aaca-e90e30f7ec07",
+    "projectPath": "D:\\InoPro-TaskCallOrder-Real-20261120-234907\\append\\engineering\\AM610_TaskCall_append.project",
+    "targetKind": "application",
+    "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+    "coverageComplete": true,
+    "enumerationFailures": [],
+    "applicationPath": [
+      "Device",
+      "Plc Logic",
+      "Application"
+    ],
+    "tasks": [
+      {
+        "rawCalls": [
+          [
+            "PLC_PRG",
+            ""
+          ],
+          [
+            "PRG_Keep",
+            "中文保留"
+          ],
+          [
+            "PRG_Existing",
+            "None"
+          ]
+        ],
+        "taskId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+        "callsComplete": true,
+        "watchdog": {
+          "time_unit": "ms",
+          "time": "",
+          "sensitivity": "1",
+          "enabled": "False"
+        },
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "Task Configuration",
+          "MainTask"
+        ],
+        "rawFields": {
+          "core_binding": "-2",
+          "external_event": "",
+          "interval": "t#20ms",
+          "priority": "1",
+          "event_pou_guid": "e323573b-bb6f-457c-a753-f8fcab0feee4",
+          "parent_synchron_task": "",
+          "kind_of_task": "Cyclic",
+          "interval_unit": "ms",
+          "event": ""
+        },
+        "unavailableFields": []
+      },
+      {
+        "rawCalls": [
+          [
+            "PRG_Secondary",
+            "辅助任务中文"
+          ],
+          [
+            "PRG_SecondaryKeep",
+            ""
+          ]
+        ],
+        "taskId": "3ebfaac4-040b-4ea9-98eb-554a532125c3",
+        "callsComplete": true,
+        "watchdog": {
+          "time_unit": "ms",
+          "time": "",
+          "sensitivity": "1",
+          "enabled": "False"
+        },
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "Task Configuration",
+          "SecondaryTask"
+        ],
+        "rawFields": {
+          "core_binding": "-2",
+          "external_event": "",
+          "interval": "t#50ms",
+          "priority": "1",
+          "event_pou_guid": "8900282d-269d-40d8-bda1-f2b3ab1a21b7",
+          "parent_synchron_task": "",
+          "kind_of_task": "Cyclic",
+          "interval_unit": "ms",
+          "event": ""
+        },
+        "unavailableFields": []
+      }
+    ],
+    "programs": [
+      {
+        "objectId": "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PLC_PRG"
+        ]
+      },
+      {
+        "objectId": "b36d29ef-74be-4684-a486-693f67dd57a8",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Keep"
+        ]
+      },
+      {
+        "objectId": "637ac973-7cd4-45b2-9d72-d61537c61b90",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Existing"
+        ]
+      },
+      {
+        "objectId": "e4628492-6054-4d34-9b01-1f499ac0d722",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Append"
+        ]
+      },
+      {
+        "objectId": "c20e71f0-f767-4eff-b4c6-8b9fdddc5b30",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Secondary"
+        ]
+      },
+      {
+        "objectId": "a313fac0-8738-415d-b8a9-f7ce27135717",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_SecondaryKeep"
+        ]
+      }
+    ]
+  },
+  "after": {
+    "resolutionReadFailures": [],
+    "projectId": "a32ac7ca-9ee6-405b-aaca-e90e30f7ec07",
+    "projectPath": "D:\\InoPro-TaskCallOrder-Real-20261120-234907\\append\\engineering\\AM610_TaskCall_append.project",
+    "targetKind": "application",
+    "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+    "coverageComplete": true,
+    "enumerationFailures": [],
+    "applicationPath": [
+      "Device",
+      "Plc Logic",
+      "Application"
+    ],
+    "tasks": [
+      {
+        "rawCalls": [
+          [
+            "PLC_PRG",
+            ""
+          ],
+          [
+            "PRG_Keep",
+            "中文保留"
+          ],
+          [
+            "PRG_Existing",
+            "None"
+          ]
+        ],
+        "taskId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+        "callsComplete": true,
+        "watchdog": {
+          "time_unit": "ms",
+          "time": "",
+          "sensitivity": "1",
+          "enabled": "False"
+        },
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "Task Configuration",
+          "MainTask"
+        ],
+        "rawFields": {
+          "core_binding": "-2",
+          "external_event": "",
+          "interval": "t#20ms",
+          "priority": "1",
+          "event_pou_guid": "e323573b-bb6f-457c-a753-f8fcab0feee4",
+          "parent_synchron_task": "",
+          "kind_of_task": "Cyclic",
+          "interval_unit": "ms",
+          "event": ""
+        },
+        "unavailableFields": []
+      },
+      {
+        "rawCalls": [
+          [
+            "PRG_Secondary",
+            "辅助任务中文"
+          ],
+          [
+            "PRG_SecondaryKeep",
+            ""
+          ]
+        ],
+        "taskId": "3ebfaac4-040b-4ea9-98eb-554a532125c3",
+        "callsComplete": true,
+        "watchdog": {
+          "time_unit": "ms",
+          "time": "",
+          "sensitivity": "1",
+          "enabled": "False"
+        },
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "Task Configuration",
+          "SecondaryTask"
+        ],
+        "rawFields": {
+          "core_binding": "-2",
+          "external_event": "",
+          "interval": "t#50ms",
+          "priority": "1",
+          "event_pou_guid": "8900282d-269d-40d8-bda1-f2b3ab1a21b7",
+          "parent_synchron_task": "",
+          "kind_of_task": "Cyclic",
+          "interval_unit": "ms",
+          "event": ""
+        },
+        "unavailableFields": []
+      }
+    ],
+    "programs": [
+      {
+        "objectId": "a313fac0-8738-415d-b8a9-f7ce27135717",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_SecondaryKeep"
+        ]
+      },
+      {
+        "objectId": "e4628492-6054-4d34-9b01-1f499ac0d722",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Append"
+        ]
+      },
+      {
+        "objectId": "637ac973-7cd4-45b2-9d72-d61537c61b90",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Existing"
+        ]
+      },
+      {
+        "objectId": "b36d29ef-74be-4684-a486-693f67dd57a8",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Keep"
+        ]
+      },
+      {
+        "objectId": "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PLC_PRG"
+        ]
+      },
+      {
+        "objectId": "c20e71f0-f767-4eff-b4c6-8b9fdddc5b30",
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application",
+          "PRG_Secondary"
+        ]
+      }
+    ]
+  }
+}
