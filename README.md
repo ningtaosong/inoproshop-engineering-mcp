@@ -2,6 +2,8 @@
 
 **当前版本为 0.34.3 修复候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
+**开始离线试用：** [简明使用指南与三条示例](docs/getting-started.md) · [headless 脱敏模板](config/dsh.headless-trial.example.patch.yml) · [本次 CLI 接入记录](docs/offline-trial-readiness-0343.md)。固定 0.34.3 已由一次 DSH CLI 模型任务实际调用 environment_inspect，同一正式连接取得 37 项工具；没有打开工程。Desktop 日常握手、指令全文进入模型上下文与运行效果未验，环境能力审计的未验证项保留。
+
 0.34.1 当时在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，该轮日常入口未部署本补丁；后续已随 0.34.2 合并。
 
 0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因与默认环境性能问题仍未解决。该段保留 0.34.2 的验收归属；后续任务集合及 PROGRAM 目录补修见下段。
