@@ -92,3 +92,8 @@ SHA-256：`62bd95cdc822e94ffe96c76241397bd5e258328bbc5528cadfce07d2e3ed543b`
 6. `historical-final-stopped.json`、`final-fixture-fingerprints.json`：保全与附属文件证据缺口。
 
 本轮不修产品、不调整守卫后继续执行。后续应先独立复核 PROGRAM 清单枚举顺序与可信身份比较范围，并完善附属文件事前取证，再决定新的正式验收。原固定构建、首次失败及两份已正常关闭的准备工程保持原状；本记录不宣称任务集合补修已完成真实验收。
+
+
+## 后续 PROGRAM 目录补修与复验
+
+[2026-11-21 补修和最小真实闭环](task-program-inventory-order.md)单独记录产品提交、两套真实结果及枚举变化。本页原失败、当时范围和缺口均保留，不由后续结果回填。
