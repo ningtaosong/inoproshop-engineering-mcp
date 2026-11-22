@@ -600,3 +600,5 @@ codex/library-placeholder-resolve 已正常合入 main 的登记前直接打开�
 variable_edit 的 add-initializer 仅支持已有唯一 BOOL／DINT／TIME 单变量，普通原生 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的 VAR 或 Application 根 GVL 的普通 VAR_GLOBAL，完整原文确认尚无显式初值。只在可信分号前插入初始化片段；原类型、声明、空白注释、原生换行和实现区原文保留。类型来自原声明，禁止借此新增变量或改类型；已有初值即拒绝，旧 set-initializer 语义不变。
 
 完整解析、对象及原生 ST 证据、队列／同句柄版本复查、检查点、去重、保存重开、可信退出及 unknown 冻结适用。接口区、Method／Property、联合、特殊声明、别名、聚合及数组不支持。直接和旧副本模式均不反向修改或恢复性保存。详见[本轮记录](docs/variable-initializer-add.md)，不代表整个 S4b 完成，不改变日常或 Codex 入口。
+
+本分支补写初值的真实 MCP（两作用域三类型）及唯一一次 CLI 已通过工程闭环；受验产品 ea3d08a9b33943cb96985b7fe4efb1a2cc7bdaae。正式各两次编译0错误／0警告；47次状态查询、一条输出截断与首败保留，效率及展示部分通过。详见[验收归属](docs/variable-initializer-add.md)。不得写成已合并、部署或S4b全部完成。
