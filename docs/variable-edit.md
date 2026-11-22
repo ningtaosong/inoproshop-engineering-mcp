@@ -64,7 +64,7 @@ Agent 读取 GVL、DUT、工程和磁盘版本，提交 name、memberName、init
 
 单点插入保留原成员顺序、原值、空白、注释与原生换行；原文、DUT 或磁盘变化拒绝。写后和保存重开同时核对规范化声明、原生原文哈希与 DUT 版本。部分写入、证据发布失败或无法确认时保留首次异常并冻结，不反向编辑或恢复性保存。源码初值不是运行值。本功能不新建结构体字段；其他 S4b 范围未随本阶段交付。
 
-## 给已有普通变量补写初值（0.36.0 候选）
+## 给已有普通变量补写初值（0.36.0 已合并候选）
 
 add-initializer 只处理普通原生 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的普通 VAR，或 Application 根 GVL 的普通 VAR_GLOBAL。目标必须是已存在、唯一的单变量，实际类型为 BOOL、DINT 或 TIME，完整原文确认没有显式初始化。BOOL 限 TRUE/FALSE，DINT 为 -2147483648..2147483647，TIME 沿用 0..60000ms 的限定字面量。
 
@@ -75,3 +75,5 @@ Agent 查询内部对象身份及当前 expectedHash、expectedSnapshot、expect
 服务完整解析声明和可信分号边界，原生句柄核实对象／Application 及 ST 实现标识；仅作一次原文插入，不重写整个块。原有名称、类型、分号、空白、注释、CRLF、其他声明和实现区保持。写后和保存重开核对原文、对象及 ST 证据；不确定时保留首次异常并冻结，不回滚或恢复性保存。
 
 不支持 VAR_INPUT／VAR_OUTPUT、Method／Property、无变量时创建、类型别名、数组、聚合、联合声明、AT、RETAIN／PERSISTENT、特殊修饰、重复块和解析缺口。分页零命中或缺少 initializerRaw 不能证明无初值。源码初值不是运行值。验证与限制见[本轮记录](variable-initializer-add.md)。
+
+0.36.0真实工程覆盖PROGRAM VAR与根GVL；FUNCTION、FUNCTION_BLOCK普通VAR的保护有离线测试，本轮没有其新增真实工程验收。构建、入口和连接状态见[合并收尾](variable-initializer-0360-merge.md)，不代表整个S4b完成。
