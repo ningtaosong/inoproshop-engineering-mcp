@@ -592,3 +592,5 @@ codex/library-placeholder-resolve 已正常合入 main 的登记前直接打开�
 ## S4b 缺失显式成员初始化（0.35.0 功能分支）
 
 本阶段只在根 GVL 普通 VAR_GLOBAL 的唯一单变量、已有完整非空具名聚合中补写同 Application 根 ST 结构体 DUT 的已有直接 BOOL/DINT/TIME 字段。旧 set-member-initializer 仍只修改已有显式成员。完整源文缺失判定、队列和原生边界版本核对、单点插入与原文保全、保存重开、退出证据和 unknown 冻结适用；不增加 DUT 字段，也不代表 S4b 全部完成。[实现与验收归属](docs/aggregate-member-initializer-add.md)。日常 0.34.3 与 Codex 入口保持不变。
+
+本子阶段真实验收归属49c51727b5aa178fa45d27d411b0d4738352cebd：MCP分别补写BOOL／DINT／TIME，CLI单次任务实际使用新动作补写BOOL；两套正式编译及保存版复编各0错误／0警告。55次真实IDE正常退出证据通过，原文、DUT及任务读回符合保留要求。Node860/860、Python619/619分别记录；CLI29次状态查询、两条截断、发现连接拒绝和退出缺口保留。候选不合并、不部署，运行及整个S4b未宣称完成。

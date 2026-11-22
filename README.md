@@ -2,7 +2,7 @@
 
 **当前功能分支为 0.35.0 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
-S4b 本分支新增 variable_edit 的 add-member-initializer：只向根 GVL 已有完整具名聚合补写缺失的直接 BOOL／DINT／TIME 字段初值，字段须已在同 Application 的根结构体 DUT 中声明。不创建 DUT 字段，不覆盖已有成员，保留其他原文。[范围与示例](docs/variable-edit.md#补写缺失的显式成员初始化0350候选)；验收与交付见[本轮记录](docs/aggregate-member-initializer-add.md)。S4b 其他范围仍未完成。
+S4b 本分支新增 variable_edit 的 add-member-initializer：只向根 GVL 已有完整具名聚合补写缺失的直接 BOOL／DINT／TIME 字段初值，字段须已在同 Application 的根结构体 DUT 中声明。不创建 DUT 字段，不覆盖已有成员，保留其他原文。[范围与示例](docs/variable-edit.md)；真实 MCP 三种字段及一次 CLI 新动作闭环通过，正式各两次编译均0错误／0警告；29次状态查询与两条CLI输出截断保留。验收归属见[本轮记录](docs/aggregate-member-initializer-add.md)。S4b 其他范围仍未完成。
 
 **已部署 0.34.3 的离线试用：** [简明使用指南与三条示例](docs/getting-started.md) · [headless 脱敏模板](config/dsh.headless-trial.example.patch.yml) · [本次 CLI 接入记录](docs/offline-trial-readiness-0343.md)。固定 0.34.3 已由一次 DSH CLI 模型任务实际调用 environment_inspect，同一正式连接取得 37 项工具；没有打开工程。Desktop 日常握手、指令全文进入模型上下文与运行效果未验，环境能力审计的未验证项保留。
 
@@ -70,7 +70,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 创建 GVL 和 DUT | Application 根节点 GVL、结构体、普通枚举、一维定长 DINT 数组；枚举显式值 -32768..32767，数组显式边界 0..255、最多 256 项 | `declaration_create` | 0.4.0、0.11.0–0.12.0 |
 | 变量表与初始化成员定位 | 查询声明的类型、显式初始化值及原文位置；可提取最外层命名初始化成员，提供分页、详情和解析缺口 | `variable_inspect` | 0.13.0、0.15.0 |
 | 按声明查询限定 ST 用法 | 以精确声明为目标，推导普通 ST `PROGRAM` 简单赋值中的局部变量、根 GVL 和结构体直接字段用法，分别报告未知候选和覆盖缺口 | `variable_usages` | **S7a / 0.30.0，已交付**，见[分页和适用范围](docs/variable-usages.md) |
-| 限定变量级编辑 | S4a：普通 POU VAR 或根 GVL VAR_GLOBAL 的 BOOL／DINT／TIME 单变量新增及显式字面初值修改；S4b 第一子阶段：根 GVL 已有聚合直接成员；第二子阶段：普通 ST FB 已有唯一 VAR_INPUT／VAR_OUTPUT 的单变量新增与显式初值修改。TIME 限 0..60000 ms，名称在写入前校验 | `variable_edit` | **S4a / 0.23.0；S4b 第一、第二子阶段 / 0.24.0、0.25.0**，见[范围](docs/variable-edit.md) |
+| 限定变量级编辑 | S4a：普通 POU VAR 或根 GVL VAR_GLOBAL 的 BOOL／DINT／TIME 单变量新增及显式字面初值修改；S4b 第一子阶段：根 GVL 已有聚合直接成员；第二子阶段：普通 ST FB 已有唯一 VAR_INPUT／VAR_OUTPUT 的单变量新增与显式初值修改；本分支 0.35.0 支持向已有聚合补写缺失的直接字段初值。TIME 限 0..60000 ms，名称在写入前校验 | `variable_edit` | **S4a / 0.23.0；S4b 第一、第二子阶段 / 0.24.0、0.25.0；本分支补写聚合成员 / 0.35.0**，见[范围](docs/variable-edit.md) |
 | 源码检索 | 字面子串和完整标识符词元检索；支持分页、原文位置和缺口报告。词元检索不是语义交叉引用 | `project_search` | 基础检索、0.14.0 标识符扩展 |
 | 本机设备描述只读目录 | 不打开工程；查询精确原生设备类型、ID、型号、厂商、仓库来源及描述版本。支持过滤、分页和按身份读回 | `device_catalog` | **S6a / 0.29.0，已完成**，见[查询示例和说明](docs/device-catalog.md) |
 | 查询已验 HIGH_SPEED_IO 通道与现有映射 | 查看工程内的通道身份、原生字段、首项及完整映射列表 | `io_mapping_inspect` | S8b 首版 / 0.34.0，已交付 |
@@ -99,7 +99,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 
 | 尚未完成的能力 | 计划阶段 | 下一步及完成条件 | 当前状态 |
 | --- | --- | --- | --- |
-| 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 三个限定子阶段已合并；普通 VAR／根 GVL VAR_GLOBAL 已有单变量的 BOOL、DINT、TIME set-type 已交付。成员新增、嵌套成员、数组、更广类型及其他声明区仍未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
+| 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 三个限定子阶段已合并；普通 VAR／根 GVL VAR_GLOBAL 已有单变量的 BOOL、DINT、TIME set-type 已交付。本分支 0.35.0 增加已有聚合中缺失直接字段的显式初始化；新建 DUT 字段、嵌套成员、数组、更广类型及其他声明区仍未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
 | 普通直接库引用移除 | S5 后续范围 | 写入前将原生选择条件与选中引用唯一绑定，并说明使用关系和反向依赖的实际覆盖 | [可行性探测已完成](docs/library-reference-remove-probe.md)，目前仅适合只读评估，未提供删除能力 |
 | 清除占位符显式覆盖 | S5 后续独立项 | 单独确认原生清除语义和读回结果 | 未实现；已合并的 S5b 仅支持设置显式覆盖 |
 | 限定设备添加 | S6b | 先在已知正确挂接的现有实例上读回对端连接器 ID 和所属父设备，并区分同接口的不同连接器 | [单一组合的可行性探测已完成](docs/device-add-probe.md#探测结论与证据入口)，只读选址评估，无添加工具 |
