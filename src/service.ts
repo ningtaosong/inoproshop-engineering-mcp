@@ -22,7 +22,7 @@ import {organizationResult} from './organization.js';
 import {ioMappingPage} from './io-mapping.js';
 import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
-import {planVariableEdit,planMemberInitializerEdit} from './variable-edit.js';
+import {planVariableEdit,planMemberInitializerEdit,isMemberInitializerAction} from './variable-edit.js';
 
 // Only allowlisted direct-project operations opt in. A native command always
 // opens once; the write commands below additionally save and reopen.
@@ -383,7 +383,7 @@ export class EngineeringService {
     if(op.tool==='variable_edit'&&result.status==='succeeded'&&(op as any).variableOriginal){
       const before=(op as any).variableOriginal;
       const type=(op as any).variableTypeOriginal;
-      const plan=op.args.action==='set-member-initializer'?
+      const plan=isMemberInitializerAction(op.args.action)?
         planMemberInitializerEdit(before.declaration,type.declaration,before.path.at(-1),type.path.at(-1),op.args):
         planVariableEdit(before.declaration,before.objectType,before.path.at(-1),op.args,(op as any).variableDirectChildNames);
       return {...result,data:{...result.data,editEvidence:{action:op.args.action,name:op.args.name,
@@ -552,19 +552,25 @@ export class EngineeringService {
             original.implementation!==d!.implementation)invalid();
           let plan;
           const type=(op as any).variableTypeOriginal;
-          try {plan=op.args.action==='set-member-initializer'?
+          try {plan=isMemberInitializerAction(op.args.action)?
             planMemberInitializerEdit(original.declaration,type.declaration,original.path.at(-1),type.path.at(-1),op.args):
             planVariableEdit(original.declaration,original.objectType,original.path.at(-1),op.args,(op as any).variableDirectChildNames);}catch{return invalid();}
           if(plan.declaration!==args.declaration||d!.declaration!==plan.declaration||d!.implementation!==original.implementation)invalid();
           if(type){const e=d!.variableTypeEvidence as any;
             if(!e||e.objectId!==type.objectId||e.applicationId!==type.applicationId||e.contentHash!==type.contentHash||
               e.beforeContentHash!==type.contentHash||e.afterContentHash!==type.contentHash||canonical(e.path)!==canonical(type.path))invalid();}
+          if(op.args.action==='add-member-initializer'){
+            const e=d!.memberInsertionEvidence as any;
+            if(!e||e.startOffset!==plan.range.startOffset||e.endOffset!==plan.range.endOffset||e.text!==plan.after||
+              !isHash(e.beforeRawHash)||!isHash(e.afterRawHash)||e.immediateRawHash!==e.afterRawHash||
+              e.reopenedRawHash!==e.afterRawHash||e.preservedRawSurroundings!==true)invalid();
+          }
           const childGuard=(op as any).variableChildGuard;
           if(childGuard){const e=d!.variableChildEvidence as any;
             if(!e||canonical(e.before)!==canonical(childGuard)||canonical(e.after)!==canonical(childGuard))invalid();}
           const parsed=parseDeclaration(d!.declaration as string,d!.objectType as string,(d!.path as string[]).at(-1)!);
           const target=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===(op.args.section??(d!.objectType==='gvl'?'VAR_GLOBAL':'VAR'))&&r.name.toLowerCase()===op.args.name.toLowerCase());
-          if(!parsed.complete||target.length!==1||op.args.action!=='set-member-initializer'&&target[0].initializerRaw!==op.args.initializer||
+          if(!parsed.complete||target.length!==1||!isMemberInitializerAction(op.args.action)&&target[0].initializerRaw!==op.args.initializer||
             op.args.action==='set-type'&&target[0].typeRaw.toUpperCase()!==op.args.type)invalid();
         }
       }
@@ -938,7 +944,7 @@ export class EngineeringService {
       }
     }
     let typeOriginal:any;
-    if(a.action==='set-member-initializer'){
+    if(isMemberInitializerAction(a.action)){
       if(before.objectType!=='gvl')throw new DomainError('unsupported','MEMBER_SCOPE_UNSUPPORTED','成员初值修改仅支持Application根GVL，未修改');
       const parents=parseDeclaration(before.declaration,'gvl',before.path.at(-1));
       const rows=parents.rows.filter((r:any)=>r.category==='variable'&&r.section==='VAR_GLOBAL'&&r.name.toLowerCase()===a.name.toLowerCase());
@@ -947,6 +953,9 @@ export class EngineeringService {
       const typeName=rows[0].typeRaw.toLowerCase();
       const appPath=s.applications?.find(x=>x.applicationId===a.applicationId)?.path;
       if(!appPath)throw new DomainError('conflict','MEMBER_APPLICATION_CHANGED','Application身份无法确认，未修改');
+      if(a.action==='add-member-initializer'&&(before.nativeTypeId!=='ffbfa93a-b94d-45fc-a329-229860183b1d'||
+        before.hasImplementation!==false||before.implementation!==''||canonical(before.path.slice(0,-1))!==canonical(appPath)))
+        throw new DomainError('conflict','MEMBER_GVL_IDENTITY_CHANGED','GVL原生身份或Application归属无法确认，未修改');
       const inventory:any[]=[];let offset=0,total:number|undefined;
       do {
         const pageDir=path.join(dir,'type-list-'+offset);op.bridge={directory:pageDir};await this.store.saveOp(op);
@@ -1000,6 +1009,7 @@ export class EngineeringService {
         ...('typeRange' in plan?{typeRange:plan.typeRange,beforeType:plan.beforeType,afterType:plan.afterType}:{})}});
     if(digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)throw new DomainError('conflict','VARIABLE_DISK_CHANGED','定位后磁盘版本改变，未修改');
     const effective={...a,declaration:plan.declaration,implementation:before.implementation,objectType:before.objectType,variableEdit:true,
+      ...(a.action==='add-member-initializer'?{memberInsertion:{...plan.range,text:plan.after}}:{}),
       ...(childGuard?{variableChildGuard:childGuard}:{}),
       ...(typeOriginal?{variableTypeGuard:{objectId:typeOriginal.objectId,applicationId:typeOriginal.applicationId,
         contentHash:typeOriginal.contentHash,path:typeOriginal.path}}:{})};

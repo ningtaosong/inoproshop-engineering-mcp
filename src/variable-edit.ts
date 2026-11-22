@@ -8,7 +8,8 @@ import {parseInitializerMembers} from './initializer-members.js';
 export type VariableType='BOOL'|'DINT'|'TIME';
 export type VariableSection='VAR_INPUT'|'VAR_OUTPUT';
 export type VariableEdit={action:'add'|'set-initializer'|'set-type';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string;expectedOldType?:VariableType;section?:VariableSection};
-export type MemberInitializerEdit={action:'set-member-initializer';name:string;memberName:string;initializer:string;expectedOldInitializer:string};
+export type MemberInitializerEdit={action:'set-member-initializer'|'add-member-initializer';name:string;memberName:string;initializer:string;expectedOldInitializer?:string};
+export const isMemberInitializerAction=(action:string)=>['set-member-initializer','add-member-initializer'].includes(action);
 const ident=/^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
 // CODESYS ST keywords and reserved IEC names are not plain variable identifiers.
 // Match whole tokens only; a name such as IfEnabled remains a valid identifier.
@@ -191,6 +192,39 @@ export function planMemberInitializerEdit(declaration:string,typeDeclaration:str
      !['BOOL','DINT','TIME'].includes(field.typeRaw.toUpperCase()))throw new Error('Unsupported structure field declaration or type');
   const members=parseInitializerMembers(source,parent.initializerPosition.startOffset,parent.initializerPosition.endOffset,2000);
   if(members.status!=='parsed'||!members.complete||members.gaps.length)throw new Error('Named aggregate initializer boundary incomplete or unsupported');
+  if(edit.action==='add-member-initializer'){
+    // New action only: no implicit declaration/block/member creation or repair.
+    const scan=lexSt(source),tokens=scan.tokens;
+    if(scan.error||tokens[0]?.text.toUpperCase()!=='VAR_GLOBAL'||tokens.at(-1)?.text.toUpperCase()!=='END_VAR'||
+      tokens.filter(t=>t.text.toUpperCase()==='VAR_GLOBAL').length!==1||
+      tokens.filter(t=>t.text.toUpperCase()==='END_VAR').length!==1||
+      parsed.rows.some((r:any)=>r.category==='variable'&&(r.section!=='VAR_GLOBAL'||r.modifiers?.length||r.addressRaw)))
+      throw new Error('Add member requires a unique ordinary VAR_GLOBAL block');
+    const declarations=fields.rows.filter((r:any)=>r.category==='type-field');
+    if(new Set(declarations.map((r:any)=>r.name.toLowerCase())).size!==declarations.length)
+      throw new Error('Duplicate structure field identity');
+    for(const member of members.rows){
+      const matches=declarations.filter((r:any)=>r.name.toLowerCase()===member.name.toLowerCase());
+      const value=lexSt(member.valueRaw);
+      if(matches.length!==1||value.error||value.tokens.some(t=>['(',')','[',']','{','}'].includes(t.text))||
+        /^(ARRAY|POINTER|REFERENCE)\b/i.test(matches[0].typeRaw))
+        throw new Error('Existing member has unknown, nested or array coverage');
+    }
+    if(members.rows.some((r:any)=>r.name.toLowerCase()===edit.memberName.toLowerCase()))
+      throw new Error('Explicit member already exists; add never overwrites');
+    if(edit.expectedOldInitializer!==undefined)throw new Error('Add member does not accept an old member value');
+    const value=checkedInitializer(field.typeRaw.toUpperCase() as VariableType,edit.initializer);
+    const init=lexSt(source.slice(parent.initializerPosition.startOffset,parent.initializerPosition.endOffset));
+    const close=init.tokens.at(-1)!;
+    if(init.error||close.text!==')'||!members.rows.length)throw new Error('Complete nonempty aggregate required');
+    const at=parent.initializerPosition.startOffset+close.start;
+    // One insertion immediately before the real outer close; comments and
+    // whitespace (including a final line comment's newline) remain untouched.
+    const insertion=', '+field.name+' := '+value;
+    return {declaration:source.slice(0,at)+insertion+source.slice(at),range:{startOffset:at,endOffset:at},
+      before:'',after:insertion,parentName:parent.name,memberName:field.name,
+      fieldType:field.typeRaw.toUpperCase() as VariableType,typeName};
+  }
   const hits=members.rows.filter((r:any)=>r.name.toLowerCase()===edit.memberName.toLowerCase());
   if(hits.length!==1)throw new Error('Explicit member initializer missing or ambiguous');
   const member=hits[0],raw=member.valueRaw as string,scan=lexSt(raw);
@@ -203,4 +237,18 @@ export function planMemberInitializerEdit(declaration:string,typeDeclaration:str
   const value=checkedInitializer(field.typeRaw.toUpperCase() as VariableType,edit.initializer);
   return {declaration:source.slice(0,start)+value+source.slice(end),range:{startOffset:start,endOffset:end},before:old,after:value,
     parentName:parent.name,memberName:member.name,fieldType:field.typeRaw.toUpperCase() as VariableType,typeName};
+}
+
+// Native text adapter mirror for fixture testing; offsets remain LF UTF-16.
+// This is an insertion view, not a change to the public source-read contract.
+export function applyMemberInitializerInsertion(raw:string,declaration:string,guard:any){
+  if(!guard||!Number.isSafeInteger(guard.startOffset)||guard.startOffset<0||guard.endOffset!==guard.startOffset||
+    typeof guard.text!=='string'||!guard.text||/[\r\n]/.test(guard.text))throw new Error('Invalid member insertion guard');
+  const source=normalize(raw),at=guard.startOffset;
+  if(source[at]!==')'||source.slice(0,at)+guard.text+source.slice(at)!==normalize(declaration))
+    throw new Error('Member insertion source mismatch');
+  let index=0,consumed=0;
+  while(consumed<at){index+=raw.slice(index,index+2)==='\r\n'?2:1;consumed++;}
+  if(normalize(raw.slice(0,index))!==source.slice(0,at))throw new Error('Raw member insertion boundary mismatch');
+  return raw.slice(0,index)+guard.text+raw.slice(index);
 }
