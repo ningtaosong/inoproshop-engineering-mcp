@@ -63,3 +63,15 @@ S4a 的 `set-initializer` 仅替换一个已明确声明的显式字面初值。
 Agent 读取 GVL、DUT、工程和磁盘版本，提交 name、memberName、initializer、typeObjectId、expectedTypeHash 等内部证据。新动作不传 expectedOldInitializer；旧 set-member-initializer 必须传旧值，仍拒绝缺失成员。成员分页零结果不能证明不存在：服务完整解析当前父声明与 DUT，拒绝大小写重复、未知字段、缺失/空/不完整聚合、嵌套、数组、特殊声明和其他声明区。
 
 单点插入保留原成员顺序、原值、空白、注释与原生换行；原文、DUT 或磁盘变化拒绝。写后和保存重开同时核对规范化声明、原生原文哈希与 DUT 版本。部分写入、证据发布失败或无法确认时保留首次异常并冻结，不反向编辑或恢复性保存。源码初值不是运行值。本功能不新建结构体字段；其他 S4b 范围未随本阶段交付。
+
+## 给已有普通变量补写初值（0.36.0 候选）
+
+add-initializer 只处理普通原生 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的普通 VAR，或 Application 根 GVL 的普通 VAR_GLOBAL。目标必须是已存在、唯一的单变量，实际类型为 BOOL、DINT 或 TIME，完整原文确认没有显式初始化。BOOL 限 TRUE/FALSE，DINT 为 -2147483648..2147483647，TIME 沿用 0..60000ms 的限定字面量。
+
+> 在指定工程中，读取已有 TIME 变量 Delay；仅在它没有显式初值时补写 T#8s，保留其他源码，编译、保存关闭重开并读回。条件不符或出现冲突、unknown 时停止。
+
+Agent 查询内部对象身份及当前 expectedHash、expectedSnapshot、expectedDiskHash，提交 action、name、initializer。新动作不接收 type、section、expectedOldInitializer、expectedOldType 或成员参数。已有初值即使等于请求值也拒绝；同一 requestId 返回原结果。旧 set-initializer 仍仅替换已有显式值。
+
+服务完整解析声明和可信分号边界，原生句柄核实对象／Application 及 ST 实现标识；仅作一次原文插入，不重写整个块。原有名称、类型、分号、空白、注释、CRLF、其他声明和实现区保持。写后和保存重开核对原文、对象及 ST 证据；不确定时保留首次异常并冻结，不回滚或恢复性保存。
+
+不支持 VAR_INPUT／VAR_OUTPUT、Method／Property、无变量时创建、类型别名、数组、聚合、联合声明、AT、RETAIN／PERSISTENT、特殊修饰、重复块和解析缺口。分页零命中或缺少 initializerRaw 不能证明无初值。源码初值不是运行值。验证与限制见[本轮记录](variable-initializer-add.md)。

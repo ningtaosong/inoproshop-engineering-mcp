@@ -2,7 +2,7 @@
 
 规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-22。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-当前版本为 0.35.0 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+main 与日常固定入口为 0.35.0 候选版、37 项工具；当前功能分支为 0.36.0 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
 
 0.34.1 当时在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，该轮日常入口未部署本补丁；后续已随 0.34.2 合并。
 
@@ -594,3 +594,9 @@ codex/library-placeholder-resolve 已正常合入 main 的登记前直接打开�
 本阶段只在根 GVL 普通 VAR_GLOBAL 的唯一单变量、已有完整非空具名聚合中补写同 Application 根 ST 结构体 DUT 的已有直接 BOOL/DINT/TIME 字段。旧 set-member-initializer 仍只修改已有显式成员。完整源文缺失判定、队列和原生边界版本核对、单点插入与原文保全、保存重开、退出证据和 unknown 冻结适用；不增加 DUT 字段，也不代表 S4b 全部完成。[实现与验收归属](docs/aggregate-member-initializer-add.md)。开发验收时日常 0.34.3 与 Codex 入口保持不变；本次合并后的固定构建及连接状态见[收尾说明](docs/aggregate-member-0350-merge.md)，Codex 不随本次升级。
 
 本子阶段真实验收归属49c51727b5aa178fa45d27d411b0d4738352cebd：MCP分别补写BOOL／DINT／TIME，CLI单次任务实际使用新动作补写BOOL；两套正式编译及保存版复编各0错误／0警告。55次真实IDE正常退出证据通过，原文、DUT及任务读回符合保留要求。Node860/860、Python619/619分别记录；CLI29次状态查询、两条截断、发现连接拒绝和退出缺口保留。该次开发验收未合并或部署；本轮正常合并，只做构建、入口和独立初始化核对，不重放工程或模型任务。运行及整个S4b未宣称完成。
+
+## S4b 普通变量缺失初值补写（0.36.0 功能分支）
+
+variable_edit 的 add-initializer 仅支持已有唯一 BOOL／DINT／TIME 单变量，普通原生 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的 VAR 或 Application 根 GVL 的普通 VAR_GLOBAL，完整原文确认尚无显式初值。只在可信分号前插入初始化片段；原类型、声明、空白注释、原生换行和实现区原文保留。类型来自原声明，禁止借此新增变量或改类型；已有初值即拒绝，旧 set-initializer 语义不变。
+
+完整解析、对象及原生 ST 证据、队列／同句柄版本复查、检查点、去重、保存重开、可信退出及 unknown 冻结适用。接口区、Method／Property、联合、特殊声明、别名、聚合及数组不支持。直接和旧副本模式均不反向修改或恢复性保存。详见[本轮记录](docs/variable-initializer-add.md)，不代表整个 S4b 完成，不改变日常或 Codex 入口。

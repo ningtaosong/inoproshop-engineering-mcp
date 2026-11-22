@@ -10,7 +10,7 @@ import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './
 import {taskCallInventoryView,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
-import {isMemberInitializerAction,applyMemberInitializerInsertion} from './variable-edit.js';
+import {isMemberInitializerAction,applyMemberInitializerInsertion,initializerTargetEvidence} from './variable-edit.js';
 
 export class FixtureAdapter implements Adapter {
   async reconcile(directory:string) { return readJson(path.join(directory,'result.json')); }
@@ -413,7 +413,12 @@ export class FixtureAdapter implements Adapter {
     else if(req.command==='list') result=reply('succeeded','测试对象列表',{objects:objects.slice(a.offset,a.offset+a.limit).map(({declaration,implementation,...o}:any)=>o),total:objects.length,complete:a.offset+a.limit>=objects.length,nextOffset:a.offset+a.limit<objects.length?a.offset+a.limit:null,testMode:true});
     else if(req.command==='read') {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','未找到精确对象');
-      result=reply('succeeded','测试对象已读取',{...object,contentHash:codeHash(object.declaration,object.implementation),testMode:true});
+      const data={...object,contentHash:codeHash(object.declaration,object.implementation),testMode:true};
+      if(a.initializerTarget){
+        try {data.initializerTargetEvidence=fixtureInitializerTarget(object,p.applications);}
+        catch(e:any){return reply('unsupported',e.message);}
+      }
+      result=reply('succeeded','测试对象已读取',data);
     } else if(req.command==='create_method'){
       const parent=objects.find((o:any)=>o.objectId===a.parentId),beforeSnapshot=snapshot();
       if(!parent||!/^\s*FUNCTION_BLOCK\s+[A-Za-z_][A-Za-z0-9_]*\s*(?=VAR(?:_INPUT|_OUTPUT|_IN_OUT)?\b|$)/i.test(parent.declaration))result={...reply('unsupported','测试非FB父对象'),error:{code:'METHOD_PARENT_OR_PERMISSION',message:'Not exact user FB'}};
@@ -490,6 +495,15 @@ export class FixtureAdapter implements Adapter {
         insertionEvidence={...a.memberInsertion,beforeRawHash:digest(old.declaration),afterRawHash:digest(insertionRaw),preservedRawSurroundings:true};
       }catch(e){insertionError=e;}
 
+      let initializerEvidence:any;
+      if(a.action==='add-initializer')try {
+        const native=fixtureInitializerTarget(old,p.applications);
+        if(canonical(native)!==canonical(a.initializerTargetGuard))throw new Error('Initializer native identity changed');
+        insertionRaw=applyMemberInitializerInsertion(old.declaration,a.declaration,a.initializerInsertion,';');
+        insertionEvidence={...a.initializerInsertion,beforeRawHash:digest(old.declaration),afterRawHash:digest(insertionRaw),preservedRawSurroundings:true,
+          beforeImplementationRawHash:digest(old.implementation),immediateImplementationRawHash:digest(old.implementation),reopenedImplementationRawHash:digest(old.implementation)};
+        initializerEvidence={before:native,immediate:native,reopened:native};
+      }catch(e){insertionError=e;}
       const childGuard=a.variableChildGuard;
       const directChildren=()=>p.objects.filter((o:any)=>o.parentId===object.objectId).map((o:any)=>({objectId:o.objectId,name:o.path.at(-1),nativeTypeId:o.nativeTypeId})).sort((x:any,y:any)=>x.objectId.localeCompare(y.objectId));
       const childValid=!!childGuard&&childGuard.fbId===object.objectId&&object.objectType==='function_block'&&
@@ -516,7 +530,7 @@ export class FixtureAdapter implements Adapter {
         await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(path.join(dir,'before.json'),old);
         object.declaration=insertionRaw??normalize(a.declaration);
-        if(p.failImplementation && (req.fileGuard||isMemberInitializerAction(a.action)||a.action==='set-type'||['method','property_get','property_set'].includes(object.objectType))) {
+        if(p.failImplementation && (req.fileGuard||isMemberInitializerAction(a.action)||['set-type','add-initializer'].includes(a.action)||['method','property_get','property_set'].includes(object.objectType))) {
           await atomicJson(req.projectPath,p);
           result={...reply('unknown',a.action==='set-type'?'变量类型修改部分失败，未自动回滚':'直接编辑部分失败，未自动回滚',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_WRITE',message:'Injected failure; preserve state'}};
         } else if(p.failImplementation) {
@@ -524,11 +538,12 @@ export class FixtureAdapter implements Adapter {
           await atomicJson(req.projectPath,p);
           result=reply('failed','实现写入失败，已读回恢复',{partialContent:observed,recovery:{status:'succeeded',contentHash:codeHash(object.declaration,object.implementation)}});
         } else {
-          object.implementation=normalize(a.implementation ?? ''); await atomicJson(req.projectPath,p);
+          if(a.action!=='add-initializer')object.implementation=normalize(a.implementation ?? ''); await atomicJson(req.projectPath,p);
           const persisted=await readJson(req.projectPath);
           const observed=persisted.objects.find((o:any)=>o.objectId===a.objectId);
-          result=reply('succeeded','测试写后读回一致',{...observed,declaration:a.action==='add-member-initializer'?normalize(observed.declaration):observed.declaration,
-            ...(insertionEvidence?{memberInsertionEvidence:{...insertionEvidence,immediateRawHash:digest(object.declaration),reopenedRawHash:digest(observed.declaration)}}:{}),contentHash:codeHash(observed.declaration,observed.implementation),snapshot:snapshot(),checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true,reopened:true,
+          result=reply('succeeded','测试写后读回一致',{...observed,declaration:['add-member-initializer','add-initializer'].includes(a.action)?normalize(observed.declaration):observed.declaration,
+            ...(insertionEvidence?{[a.action==='add-initializer'?'initializerInsertionEvidence':'memberInsertionEvidence']:{...insertionEvidence,immediateRawHash:digest(object.declaration),reopenedRawHash:digest(observed.declaration)}}:{}),
+            ...(initializerEvidence?{initializerTargetReadback:initializerEvidence}:{}),contentHash:codeHash(observed.declaration,observed.implementation),snapshot:snapshot(),checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true,reopened:true,
             ...(guard?{variableTypeEvidence:{objectId:guard.objectId,applicationId:guard.applicationId,path:guard.path,contentHash:guard.contentHash,beforeContentHash:guard.contentHash,afterContentHash:guard.contentHash}}:{}),
             ...(childGuard?{variableChildEvidence:{before:childGuard,after:childGuard}}:{}),
             ...(relatedIds.length?{relatedSourceEvidence:{before:relatedBefore,after:related(persisted.objects)}}:{}),testMode:true});
@@ -562,4 +577,13 @@ export class FixtureAdapter implements Adapter {
     if(['search','structure','device','io_mapping','libraries','compare_capture'].includes(req.command))await atomicJson(path.join(dir,'observed-after-exit.json'),result);
     return result;
   }
+}
+
+function fixtureInitializerTarget(o:any,apps:any[]){
+  if(o.embeddedObjectTypesError)throw new Error(o.embeddedObjectTypesError);
+  const appPath=apps.find(x=>x.applicationId===o.applicationId)?.path;
+  const e={source:'native-object-application-and-embedded-types',objectId:o.objectId,applicationId:o.applicationId,path:o.path,
+    parentId:o.parentId??(o.path?.length===appPath?.length+1?o.applicationId:undefined),nativeTypeId:o.nativeTypeId,
+    pouType:o.objectType==='gvl'?null:o.pouType,embeddedObjectTypes:o.objectType==='gvl'?null:o.embeddedObjectTypes};
+  return initializerTargetEvidence({...o,initializerTargetEvidence:e},appPath);
 }

@@ -1,6 +1,8 @@
 # InoProShop Engineering MCP
 
-**当前 main 为 0.35.0 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+**当前功能分支为 0.36.0 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+
+本分支 variable_edit 新增 add-initializer：只给普通原生 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的 VAR 或 Application 根 GVL 的 VAR_GLOBAL 中已有、唯一且无显式初值的 BOOL／DINT／TIME 单变量补写初值。不创建变量或改变类型；已有初值即拒绝，旧 set-initializer 仍拒绝缺初值。[范围和示例](docs/variable-edit.md) · [实现与验收归属](docs/variable-initializer-add.md)。日常固定入口仍为已合并的 0.35.0，本分支不自动部署。
 
 S4b 已交付 variable_edit 的 add-member-initializer：只向根 GVL 已有完整具名聚合补写缺失的直接 BOOL／DINT／TIME 字段初值，字段须已在同 Application 的根结构体 DUT 中声明。不创建 DUT 字段，不覆盖已有成员，保留其他原文。[范围与示例](docs/variable-edit.md)；真实 MCP 三种字段及一次 CLI 新动作闭环通过，正式各两次编译均0错误／0警告；29次状态查询与两条CLI输出截断保留。验收归属见[本轮记录](docs/aggregate-member-initializer-add.md)。S4b 其他范围仍未完成。[0.35.0 合并与固定入口说明](docs/aggregate-member-0350-merge.md)分别记录仓库、入口和连接状态。
 
@@ -99,7 +101,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 
 | 尚未完成的能力 | 计划阶段 | 下一步及完成条件 | 当前状态 |
 | --- | --- | --- | --- |
-| 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 此前三个限定子阶段已合并；普通 VAR／根 GVL VAR_GLOBAL 已有单变量的 BOOL、DINT、TIME set-type 已交付。已交付 0.35.0 增加已有聚合中缺失直接字段的显式初始化；新建 DUT 字段、嵌套成员、数组、更广类型及其他声明区仍未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
+| 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 此前三个限定子阶段已合并；普通 VAR／根 GVL VAR_GLOBAL 已有单变量的 BOOL、DINT、TIME set-type 已交付。已交付 0.35.0 增加已有聚合中缺失直接字段的显式初始化；本分支 0.36.0 增加普通 VAR／根 VAR_GLOBAL 已有无初值单变量的初值补写；新建 DUT 字段、嵌套成员、数组、更广类型及其他声明区仍未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
 | 普通直接库引用移除 | S5 后续范围 | 写入前将原生选择条件与选中引用唯一绑定，并说明使用关系和反向依赖的实际覆盖 | [可行性探测已完成](docs/library-reference-remove-probe.md)，目前仅适合只读评估，未提供删除能力 |
 | 清除占位符显式覆盖 | S5 后续独立项 | 单独确认原生清除语义和读回结果 | 未实现；已合并的 S5b 仅支持设置显式覆盖 |
 | 限定设备添加 | S6b | 先在已知正确挂接的现有实例上读回对端连接器 ID 和所属父设备，并区分同接口的不同连接器 | [单一组合的可行性探测已完成](docs/device-add-probe.md#探测结论与证据入口)，只读选址评估，无添加工具 |

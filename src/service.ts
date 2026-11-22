@@ -22,7 +22,7 @@ import {organizationResult} from './organization.js';
 import {ioMappingPage} from './io-mapping.js';
 import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
-import {planVariableEdit,planMemberInitializerEdit,isMemberInitializerAction} from './variable-edit.js';
+import {initializerTargetEvidence,planVariableEdit,planMemberInitializerEdit,isMemberInitializerAction} from './variable-edit.js';
 
 // Only allowlisted direct-project operations opt in. A native command always
 // opens once; the write commands below additionally save and reopen.
@@ -559,11 +559,19 @@ export class EngineeringService {
           if(type){const e=d!.variableTypeEvidence as any;
             if(!e||e.objectId!==type.objectId||e.applicationId!==type.applicationId||e.contentHash!==type.contentHash||
               e.beforeContentHash!==type.contentHash||e.afterContentHash!==type.contentHash||canonical(e.path)!==canonical(type.path))invalid();}
-          if(op.args.action==='add-member-initializer'){
-            const e=d!.memberInsertionEvidence as any;
+          if(['add-member-initializer','add-initializer'].includes(op.args.action)){
+            const e=d![op.args.action==='add-initializer'?'initializerInsertionEvidence':'memberInsertionEvidence'] as any;
             if(!e||e.startOffset!==plan.range.startOffset||e.endOffset!==plan.range.endOffset||e.text!==plan.after||
               !isHash(e.beforeRawHash)||!isHash(e.afterRawHash)||e.immediateRawHash!==e.afterRawHash||
               e.reopenedRawHash!==e.afterRawHash||e.preservedRawSurroundings!==true)invalid();
+          }
+          if(op.args.action==='add-initializer'){
+            const expected=original.initializerTargetEvidence,e=d!.initializerTargetReadback as any;
+            const raw=d!.initializerInsertionEvidence as any;
+            if(!raw||!isHash(raw.beforeImplementationRawHash)||raw.immediateImplementationRawHash!==raw.beforeImplementationRawHash||
+              raw.reopenedImplementationRawHash!==raw.beforeImplementationRawHash)invalid();
+            if(!e||canonical(e.before)!==canonical(expected)||canonical(e.immediate)!==canonical(expected)||canonical(e.reopened)!==canonical(expected))invalid();
+            try {initializerTargetEvidence({...d,initializerTargetEvidence:e.reopened},session!.applications!.find(x=>x.applicationId===args.applicationId)!.path);}catch{invalid();}
           }
           const childGuard=(op as any).variableChildGuard;
           if(childGuard){const e=d!.variableChildEvidence as any;
@@ -890,7 +898,7 @@ export class EngineeringService {
     const dir=this.store.file('ipc/'+op.operationId),pre=path.join(dir,'preflight');
     op.bridge={directory:pre};await this.store.saveOp(op);
     const raw=replySchema.parse(await this.executeNative(op,{operationId:op.operationId,command:'read',projectPath:s.workingPath,
-      args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.objectId},
+      args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.objectId,...(a.action==='add-initializer'?{initializerTarget:true}:{})},
       ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pre,
       async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
     if(raw.status!=='succeeded')return raw;
@@ -906,6 +914,11 @@ export class EngineeringService {
         before.pouTypeSource!=='native-pou-type-id-and-declaration-header'||
         !['program','function','function_block'].includes(before.pouType)))
       throw new DomainError('unsupported','VARIABLE_TYPE_SCOPE','类型修改仅支持原生普通 ST POU 的 VAR 或Application根GVL，未修改');
+    let initializerGuard:any;
+    if(a.action==='add-initializer'){
+      try {initializerGuard=initializerTargetEvidence(before,s.applications!.find(x=>x.applicationId===a.applicationId)!.path);}
+      catch(e:any){throw new DomainError('unsupported','VARIABLE_INITIALIZER_SCOPE',e.message);}
+    }
     let childGuard:any;
     if(a.section){
       if(before.objectType!=='function_block'||before.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||
@@ -1010,6 +1023,7 @@ export class EngineeringService {
     if(digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)throw new DomainError('conflict','VARIABLE_DISK_CHANGED','定位后磁盘版本改变，未修改');
     const effective={...a,declaration:plan.declaration,implementation:before.implementation,objectType:before.objectType,variableEdit:true,
       ...(a.action==='add-member-initializer'?{memberInsertion:{...plan.range,text:plan.after}}:{}),
+      ...(initializerGuard?{initializerInsertion:{...plan.range,text:plan.after},initializerTargetGuard:initializerGuard}:{}),
       ...(childGuard?{variableChildGuard:childGuard}:{}),
       ...(typeOriginal?{variableTypeGuard:{objectId:typeOriginal.objectId,applicationId:typeOriginal.applicationId,
         contentHash:typeOriginal.contentHash,path:typeOriginal.path}}:{})};
