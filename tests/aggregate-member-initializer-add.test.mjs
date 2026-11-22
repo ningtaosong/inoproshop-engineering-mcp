@@ -178,7 +178,7 @@ test('37 tools: other 36 input/output schemas unchanged; variable_edit only adds
  assert.equal(Object.keys(schemas).length,37);
  for(const [name,entry] of Object.entries(baseline.tools)){
   const input=z.toJSONSchema(schemas[name]);
-  if(name==='variable_edit')input.properties.action.enum=input.properties.action.enum.filter(x=>x!=='add-member-initializer');
+  if(name==='variable_edit')input.properties.action.enum=input.properties.action.enum.filter(x=>!['add-member-initializer','add-initializer'].includes(x));
   assert.equal(digest(JSON.stringify(input)),entry.input,name+' input');
   assert.equal(digest(JSON.stringify(z.toJSONSchema(outputSchemas[name]))),entry.output,name+' output');
  }

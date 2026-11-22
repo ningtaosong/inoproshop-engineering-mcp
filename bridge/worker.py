@@ -203,7 +203,30 @@ def read_object(item, names, app_id):
     if object_kind(item) in ('property','property_get','property_set'):result.update(property_metadata(item,names))
     return result
 
-def member_initializer_insertion(raw, before, args):
+def initializer_target_evidence(project,item,names,aid):
+    # Only the new action requests this evidence; language='ST' is not proof.
+    observed=read_object(item,names,aid);kind=observed['objectType']
+    app=application(project,aid)
+    if kind=='gvl':
+        if text(item.type).lower()!='ffbfa93a-b94d-45fc-a329-229860183b1d' or not any(text(x.guid).lower()==text(item.guid).lower() for x in app.get_children(False)):
+            raise ValueError('Initializer target is not an Application root GVL')
+        parent_id=aid;embedded=None;pou=None
+    elif kind in ('st_pou','function_block'):
+        embedded=sorted(text(t).lower() for t in item.embedded_object_types)
+        pou=observed.get('pouType')
+        if (text(item.type).lower()!='6f9dac99-8de1-4efc-8465-68ac443b7d08' or
+            observed.get('pouTypeSource')!='native-pou-type-id-and-declaration-header' or
+            pou not in ('program','function','function_block') or
+            '3b83b776-fb25-43b8-99f2-3c507c9143fc' not in embedded):
+            raise ValueError('Initializer target lacks native ordinary ST POU identity')
+        parent_id=text(item.parent.guid).lower()
+    else:raise ValueError('Unsupported initializer target')
+    return {'source':'native-object-application-and-embedded-types','objectId':observed['objectId'],
+            'applicationId':aid,'path':names,'parentId':parent_id,'nativeTypeId':observed['nativeTypeId'],
+            'pouType':pou,'embeddedObjectTypes':embedded}
+
+
+def member_initializer_insertion(raw, before, args, delimiter=u')'):
     """Map the verified LF/UTF-16 insertion to untouched native CRLF/text."""
     guard=args.get('memberInsertion')
     if not isinstance(guard,dict):raise ValueError('Member insertion guard missing')
@@ -217,7 +240,7 @@ def member_initializer_insertion(raw, before, args):
     if source!=before['declaration'] or start*2>len(encoded):raise ValueError('Native source changed before insertion')
     prefix=encoded[:start*2].decode('utf-16-le')
     suffix=encoded[start*2:].decode('utf-16-le')
-    if source!=prefix+suffix or source[len(prefix):len(prefix)+1]!=u')':
+    if source!=prefix+suffix or source[len(prefix):len(prefix)+1]!=delimiter:
         raise ValueError('Member insertion is not at the verified closing delimiter')
     if prefix+added+suffix!=normalize(args['declaration']):raise ValueError('Insertion does not reproduce authorized source')
     consumed=0;index=0
@@ -1914,7 +1937,12 @@ def dispatch(req):
                     "complete": offset+limit >= len(objects), "nextOffset": offset+limit if offset+limit < len(objects) else None})
                 if unsupported_children:response['data']['scope']={'enumerationComplete':True,'supportedSourceCoverageComplete':False,'unsupportedChildren':unsupported_children}
             elif command == "read":
-                response = success(u"已读取精确 ST 对象", read_object(*locate(project, app_id, args["objectId"])))
+                located=locate(project,app_id,args["objectId"])
+                observed=read_object(*located)
+                if args.get('initializerTarget'):
+                    try:observed['initializerTargetEvidence']=initializer_target_evidence(project,*located)
+                    except Exception as e:lifecycle_reject(lifecycle,failure('unsupported','VARIABLE_INITIALIZER_SCOPE',text(e),{'primaryException':exception_evidence(e)}))
+                response = success(u"已读取精确 ST 对象", observed)
             elif command == "create":
                 response, project = create_pou(project,req,args,lifecycle)
             elif command == "create_declaration":
@@ -1932,6 +1960,19 @@ def dispatch(req):
                 guarded_type=variable_type_guard(project,app_id,args['variableTypeGuard']) if args.get('variableTypeGuard') else None
                 guarded_children=variable_child_guard(project,app_id,args['variableChildGuard']) if args.get('variableChildGuard') else None
                 insertion_raw=None;insertion_evidence=None;insertion_error=None
+                initializer_evidence=None
+                insertion_field='initializerInsertionEvidence' if args.get('action')=='add-initializer' else 'memberInsertionEvidence'
+                insertion_prefix='initializer-insertion' if args.get('action')=='add-initializer' else 'member-insertion'
+                if args.get('action')=='add-initializer':
+                    try:
+                        actual=initializer_target_evidence(project,item,names,aid)
+                        if actual!=args.get('initializerTargetGuard'):raise ValueError('Initializer native target changed')
+                        insertion_raw,insertion_evidence=member_initializer_insertion(text(item.textual_declaration.text),before,dict(args,memberInsertion=args.get('initializerInsertion')),u';')
+                        initializer_evidence={'before':actual}
+                        initializer_implementation=text(item.textual_implementation.text) if before['hasImplementation'] else u''
+                        if normalize(args.get('implementation',u''))!=before['implementation']:raise ValueError('Unauthorized implementation change')
+                        insertion_evidence['beforeImplementationRawHash']=sha(initializer_implementation)
+                    except Exception as e:insertion_error=exception_evidence(e)
                 if args.get('action')=='add-member-initializer':
                     try:
                         if kind!='gvl' or before['hasImplementation'] or before['implementation']:
@@ -1967,7 +2008,7 @@ def dispatch(req):
                     response = failure('conflict','VARIABLE_VERSION_CHANGED',u'变量修改前工程或磁盘版本已变化，未写入')
                 elif args.get('action') in ('set-member-initializer','add-member-initializer') and not args.get('variableTypeGuard'):
                     response = failure('conflict','MEMBER_TYPE_GUARD_MISSING',u'成员修改缺少结构体原版本保护，未写入')
-                elif args.get('action')=='add-member-initializer' and insertion_error is not None:
+                elif args.get('action') in ('add-member-initializer','add-initializer') and insertion_error is not None:
                     response = failure('conflict','MEMBER_INSERTION_CHANGED',insertion_error['message'],{'primaryException':insertion_error})
                 elif args.get('variableTypeGuard') and guarded_type is None:
                     response = failure('conflict','MEMBER_TYPE_CHANGED',u'结构体身份、源码或原生类型已变化，未写入')
@@ -1978,29 +2019,42 @@ def dispatch(req):
                 else:
                     publish(os.path.join(os.path.dirname(req["resultPath"]), "before.json"), before)
                     try:
-                        if insertion_evidence:publish(os.path.join(os.path.dirname(req['resultPath']),'member-insertion-plan.json'),insertion_evidence)
+                        if insertion_evidence:publish(os.path.join(os.path.dirname(req['resultPath']),insertion_prefix+'-plan.json'),insertion_evidence)
                         item.textual_declaration.replace(insertion_raw if insertion_evidence else normalize(args["declaration"]))
-                        if before["hasImplementation"]:item.textual_implementation.replace(normalize(args["implementation"]))
+                        if before["hasImplementation"] and args.get('action')!='add-initializer':item.textual_implementation.replace(normalize(args["implementation"]))
                         observed = read_object(item, names, aid)
                         if observed["objectType"]!=kind or observed["contentHash"] != content_hash(args["declaration"], args.get("implementation","")):
                             raise ValueError("Write readback does not match requested content")
                         if insertion_evidence:
                             immediate=text(item.textual_declaration.text)
-                            if immediate!=insertion_raw or variable_type_guard(project,app_id,args['variableTypeGuard']) is None:
+                            if immediate!=insertion_raw or guarded_type and variable_type_guard(project,app_id,args['variableTypeGuard']) is None:
                                 raise ValueError('Member insertion immediate raw text or DUT mismatch')
+                            if initializer_evidence is not None:
+                                impl=text(item.textual_implementation.text) if before['hasImplementation'] else u''
+                                if impl!=initializer_implementation:raise ValueError('Initializer insertion changed implementation raw text')
+                                insertion_evidence['immediateImplementationRawHash']=sha(impl)
+                                initializer_evidence['immediate']=initializer_target_evidence(project,item,names,aid)
+                                if initializer_evidence['immediate']!=initializer_evidence['before']:raise ValueError('Initializer native identity changed after insertion')
                             insertion_evidence['immediateRawHash']=sha(immediate)
-                            publish(os.path.join(os.path.dirname(req['resultPath']),'member-insertion-immediate.json'),dict(observed,memberInsertionEvidence=insertion_evidence))
+                            publish(os.path.join(os.path.dirname(req['resultPath']),insertion_prefix+'-immediate.json'),dict(observed,**{insertion_field:insertion_evidence}))
                         project = lifecycle_save_reopen(lifecycle)
                         reopened = read_object(*locate(project, app_id, args["objectId"]))
                         if insertion_evidence:
                             reopened_item=locate(project,app_id,args['objectId'])[0]
                             native_raw=text(reopened_item.textual_declaration.text)
                             if native_raw!=insertion_raw:raise ValueError('Member insertion raw source changed across reopen')
+                            if initializer_evidence is not None:
+                                impl=text(reopened_item.textual_implementation.text) if before['hasImplementation'] else u''
+                                if impl!=initializer_implementation:raise ValueError('Initializer implementation changed across reopen')
+                                insertion_evidence['reopenedImplementationRawHash']=sha(impl)
+                                initializer_evidence['reopened']=initializer_target_evidence(project,*locate(project,app_id,args['objectId']))
+                                if initializer_evidence['reopened']!=initializer_evidence['before']:raise ValueError('Initializer native identity changed across reopen')
                             insertion_evidence['reopenedRawHash']=sha(native_raw)
-                            publish(os.path.join(os.path.dirname(req['resultPath']),'member-insertion-reopened.json'),dict(reopened,memberInsertionEvidence=insertion_evidence))
+                            publish(os.path.join(os.path.dirname(req['resultPath']),insertion_prefix+'-reopened.json'),dict(reopened,**{insertion_field:insertion_evidence}))
                         if reopened["objectType"]!=kind or reopened["contentHash"] != observed["contentHash"] or reopened["path"]!=before["path"]:
                             raise ValueError("Disk reopen does not match write readback")
-                        type_evidence={'memberInsertionEvidence':insertion_evidence} if insertion_evidence else {}
+                        type_evidence={insertion_field:insertion_evidence} if insertion_evidence else {}
+                        if initializer_evidence is not None:type_evidence['initializerTargetReadback']=initializer_evidence
                         if guarded_type:
                             after_type=variable_type_guard(project,app_id,args['variableTypeGuard'])
                             if after_type is None:raise ValueError('Structure type changed across member write/save/reopen')
@@ -2024,7 +2078,7 @@ def dispatch(req):
                         recovery = {"status": "unknown"}
                         detail = exception_evidence(e)
                         try:
-                            if args.get('action')=='set-type':
+                            if args.get('action') in ('set-type','add-initializer'):
                                 raise ValueError("Set-type partial write is uncertain; preserve checkpoint and freeze without rollback writes or another open")
                             if kind in ('method','property_get','property_set') or args.get('action') in ('set-member-initializer','add-member-initializer') or args.get('section') or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")

@@ -1,8 +1,8 @@
 # InoProShop MCP 后续开发计划
 
-规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-22。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
+规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-23。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-当前版本为 0.35.0 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+main 为 0.36.0 候选版、37 项工具；固定入口与实际连接分别见[收尾说明](docs/variable-initializer-0360-merge.md)，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
 
 0.34.1 当时在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，该轮日常入口未部署本补丁；后续已随 0.34.2 合并。
 
@@ -55,7 +55,7 @@ S4b 第二子阶段在 `codex/fb-interface-variable-edit` 功能分支完成限�
 | S2 | 功能块方法与属性 | 先 Method，再 Property 的 Get/Set | S1 收尾；分别核实原生子对象接口 | S2a及只读Get已合并；S2b可读写PUBLIC DINT已合并：0.21.0候选/25工具；原分支codex/fb-property-set验收记录保留。仅明确Get/Set范围，不含其他类型、转换或后续阶段；流程/展示偏差保留 |
 | S3 | 文件夹和对象移动 | Application 内文件夹、受支持对象移动 | 移动后对象仍能被现有工具定位和读取 | 已合并：0.22.0候选/27工具；限定PROGRAM/FUNCTION/FB及支持子对象整体移动；流程和展示部分通过；最终守护版未重跑完整真实移动闭环，详见本轮实施记录 |
 | S4a | 结构化变量新增与显式初始化编辑 | 普通POU VAR和根GVL VAR_GLOBAL，BOOL/DINT/TIME | 现有变量解析及源码修改机制 | 0.23.0候选/28工具，限定范围已复核并纳入本次main合并；日常部署状态见收尾记录，运行值与其他声明区仍未支持 |
-| S4b | 分项变量编辑 | 第一子阶段为根GVL已有具名聚合直接成员；第二子阶段为普通FB已有VAR_INPUT／VAR_OUTPUT的单变量新增和显式初值修改 | S4a解析保护、本地结构体DUT及原生FB身份依据 | 前两个限定子阶段分别以0.24.0/28工具、0.25.0/28工具合并；第三子阶段限定类型/初值同步修改已合并为0.26.0候选；0.35.0功能分支新增已有聚合缺失直接字段的显式初始化；更广类型、声明区和复杂对象仍未开始 |
+| S4b | 分项变量编辑 | 第一子阶段为根GVL已有具名聚合直接成员；第二子阶段为普通FB已有VAR_INPUT／VAR_OUTPUT的单变量新增和显式初值修改 | S4a解析保护、本地结构体DUT及原生FB身份依据 | 前两个限定子阶段分别以0.24.0/28工具、0.25.0/28工具合并；第三子阶段限定类型/初值同步修改已合并为0.26.0候选；0.35.0已合并新增已有聚合缺失直接字段的显式初始化；0.36.0已合并补写普通变量缺失的显式初值；更广类型、声明区和复杂对象仍未开始 |
 | S5 | 库引用管理 | 已安装库的精确添加、普通占位符显式覆盖 | 原生库查询和可验证的引用身份 | S5a、限定 S5b 已合并（0.28.0 候选版、31 项工具）。普通直接引用移除[可行性探测已完成](docs/library-reference-remove-probe.md)，仅适合只读评估，未提供删除能力；清除显式覆盖是单独的未实现项 |
 | S6a | 只读查询本机已安装设备描述 | 原生身份、型号、厂商、描述版本和来源 | InoProShop 本机设备仓库，无需工程 | 已交付于 0.29.0 候选版，新增 `device_catalog`，见[设备目录说明](docs/device-catalog.md) |
 | S6b | 限定设备添加可行性 | AM610 夹具上的 `SMC_FreeEncoder` 和 `Device` 父连接器 `0 / Common.SoftMotion.General` | 已知正确挂接的实例能原生读回对端连接器 ID 及所属父设备，并区分同接口的不同连接器 | [该组合的探测已完成](docs/device-add-probe.md#探测结论与证据入口)，只读选址评估，无添加工具 |
@@ -594,3 +594,11 @@ codex/library-placeholder-resolve 已正常合入 main 的登记前直接打开�
 本阶段只在根 GVL 普通 VAR_GLOBAL 的唯一单变量、已有完整非空具名聚合中补写同 Application 根 ST 结构体 DUT 的已有直接 BOOL/DINT/TIME 字段。旧 set-member-initializer 仍只修改已有显式成员。完整源文缺失判定、队列和原生边界版本核对、单点插入与原文保全、保存重开、退出证据和 unknown 冻结适用；不增加 DUT 字段，也不代表 S4b 全部完成。[实现与验收归属](docs/aggregate-member-initializer-add.md)。开发验收时日常 0.34.3 与 Codex 入口保持不变；本次合并后的固定构建及连接状态见[收尾说明](docs/aggregate-member-0350-merge.md)，Codex 不随本次升级。
 
 本子阶段真实验收归属49c51727b5aa178fa45d27d411b0d4738352cebd：MCP分别补写BOOL／DINT／TIME，CLI单次任务实际使用新动作补写BOOL；两套正式编译及保存版复编各0错误／0警告。55次真实IDE正常退出证据通过，原文、DUT及任务读回符合保留要求。Node860/860、Python619/619分别记录；CLI29次状态查询、两条截断、发现连接拒绝和退出缺口保留。该次开发验收未合并或部署；本轮正常合并，只做构建、入口和独立初始化核对，不重放工程或模型任务。运行及整个S4b未宣称完成。
+
+## S4b 普通变量缺失初值补写（0.36.0 已合并候选）
+
+variable_edit 的 add-initializer 仅支持已有唯一 BOOL／DINT／TIME 单变量，普通原生 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的 VAR 或 Application 根 GVL 的普通 VAR_GLOBAL，完整原文确认尚无显式初值。只在可信分号前插入初始化片段；原类型、声明、空白注释、原生换行和实现区原文保留。类型来自原声明，禁止借此新增变量或改类型；已有初值即拒绝，旧 set-initializer 语义不变。
+
+完整解析、对象及原生 ST 证据、队列／同句柄版本复查、检查点、去重、保存重开、可信退出及 unknown 冻结适用。接口区、Method／Property、联合、特殊声明、别名、聚合及数组不支持。直接和旧副本模式均不反向修改或恢复性保存。详见[本轮记录](docs/variable-initializer-add.md)，不代表整个 S4b 完成；原开发验收未改变日常或 Codex 入口，本次固定入口与连接状态见[收尾说明](docs/variable-initializer-0360-merge.md)，Codex不随本次更新。
+
+本子阶段补写初值的真实 MCP（两作用域三类型）及唯一一次 CLI 已通过工程闭环；受验产品 ea3d08a9b33943cb96985b7fe4efb1a2cc7bdaae。正式各两次编译0错误／0警告；47次状态查询、一条输出截断与首败保留，效率及展示部分通过。详见[验收归属](docs/variable-initializer-add.md)。以上保留开发验收时点；本轮仅正常合并和固定入口收尾，不重放工程或模型任务，不代表S4b全部完成。真实POU覆盖PROGRAM VAR和根GVL；FUNCTION／FUNCTION_BLOCK普通VAR的保护仅由本轮离线测试核对。

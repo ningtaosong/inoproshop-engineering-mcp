@@ -7,7 +7,7 @@ import {parseInitializerMembers} from './initializer-members.js';
 
 export type VariableType='BOOL'|'DINT'|'TIME';
 export type VariableSection='VAR_INPUT'|'VAR_OUTPUT';
-export type VariableEdit={action:'add'|'set-initializer'|'set-type';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string;expectedOldType?:VariableType;section?:VariableSection};
+export type VariableEdit={action:'add'|'set-initializer'|'set-type'|'add-initializer';name:string;type?:VariableType;initializer:string;expectedOldInitializer?:string;expectedOldType?:VariableType;section?:VariableSection};
 export type MemberInitializerEdit={action:'set-member-initializer'|'add-member-initializer';name:string;memberName:string;initializer:string;expectedOldInitializer?:string};
 export const isMemberInitializerAction=(action:string)=>['set-member-initializer','add-member-initializer'].includes(action);
 const ident=/^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
@@ -104,7 +104,7 @@ export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'functio
     // An explicit interface section must count every matching block, including
     // empty and modified ones. Otherwise a later unsupported block can hide a
     // duplicate while the first ordinary block is still writable.
-    if(!edit.section&&edit.action!=='set-type'&&modified)continue;
+    if(!edit.section&&!['set-type','add-initializer'].includes(edit.action)&&modified)continue;
     const stop=tokens.tokens.find((v,j)=>j>i&&(v.text.toUpperCase()==='END_VAR'||blockHead.has(v.text.toUpperCase())));
     if(edit.section&&(!stop||stop.text.toUpperCase()!=='END_VAR'))throw new Error('Declaration block boundary incomplete');
     if(stop?.text.toUpperCase()==='END_VAR')blocks.push({head:t.start,body:t.end,end:stop.start,unsupportedHeader:modified});
@@ -139,9 +139,27 @@ export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'functio
   if(edit.section&&parsed.rows.some((r:any)=>r.category==='variable'&&r.section!==section&&r.name.toLowerCase()===edit.name.toLowerCase()))
     throw new Error('Variable name ambiguous across FB sections');
   const row=hits[0];
-  if(edit.action==='set-type'&&parsed.rows.some((r:any)=>r!==row&&r.category!=='comment'&&
+  if(['set-type','add-initializer'].includes(edit.action)&&parsed.rows.some((r:any)=>r!==row&&r.category!=='comment'&&
       r.name?.toLowerCase()===edit.name.toLowerCase()))
     throw new Error('Variable name ambiguous across declaration scopes or function return');
+  if(edit.action==='add-initializer'){
+    if(edit.section||edit.type!==undefined||edit.expectedOldType!==undefined||edit.expectedOldInitializer!==undefined||
+      blocks.length!==1||blocks[0].unsupportedHeader)
+      throw new Error('Add initializer requires one ordinary VAR or root VAR_GLOBAL block and no type/old value');
+    if(row.modifiers?.length||row.addressRaw||row.hasExplicitInitializer!==false||
+      row.initializerRaw!==null||row.initializerPosition!==null)
+      throw new Error('Explicit initializer already exists or declaration is special/uncertain');
+    if(parsed.rows.filter((r:any)=>r.category==='variable'&&r.position.startOffset===row.position.startOffset).length!==1)
+      throw new Error('Shared declaration');
+    const parts=tokens.tokens.filter(t=>t.start>=row.position.startOffset&&t.end<=row.position.endOffset);
+    if(parts.length!==4||parts[0].text!==row.name||parts[1].text!==':'||parts[2].text!==row.typeRaw||
+      parts[3].text!==';'||parts[3].end!==row.position.endOffset||!['BOOL','DINT','TIME'].includes(row.typeRaw.toUpperCase())||
+      row.position.startOffset<blocks[0].body||row.position.endOffset>blocks[0].end)
+      throw new Error('No complete ordinary uninitialized scalar declaration');
+    const value=checkedInitializer(row.typeRaw.toUpperCase() as VariableType,edit.initializer);
+    const at=parts[3].start,insertion=' := '+value;
+    return {declaration:source.slice(0,at)+insertion+source.slice(at),range:{startOffset:at,endOffset:at},before:'',after:insertion};
+  }
   if(row.modifiers?.length||row.addressRaw||!row.hasExplicitInitializer||!row.initializerPosition)throw new Error('Unsupported existing declaration');
   if(parsed.rows.filter((r:any)=>r.category==='variable'&&r.position.startOffset===row.position.startOffset).length!==1)throw new Error('Shared declaration');
   if(!['BOOL','DINT','TIME'].includes(row.typeRaw.toUpperCase())||row.typeRaw!==row.typeRaw.trim())throw new Error('Unsupported variable type');
@@ -241,14 +259,36 @@ export function planMemberInitializerEdit(declaration:string,typeDeclaration:str
 
 // Native text adapter mirror for fixture testing; offsets remain LF UTF-16.
 // This is an insertion view, not a change to the public source-read contract.
-export function applyMemberInitializerInsertion(raw:string,declaration:string,guard:any){
+export function applyMemberInitializerInsertion(raw:string,declaration:string,guard:any,delimiter=')'){
   if(!guard||!Number.isSafeInteger(guard.startOffset)||guard.startOffset<0||guard.endOffset!==guard.startOffset||
     typeof guard.text!=='string'||!guard.text||/[\r\n]/.test(guard.text))throw new Error('Invalid member insertion guard');
   const source=normalize(raw),at=guard.startOffset;
-  if(source[at]!==')'||source.slice(0,at)+guard.text+source.slice(at)!==normalize(declaration))
+  if(source[at]!==delimiter||source.slice(0,at)+guard.text+source.slice(at)!==normalize(declaration))
     throw new Error('Member insertion source mismatch');
   let index=0,consumed=0;
   while(consumed<at){index+=raw.slice(index,index+2)==='\r\n'?2:1;consumed++;}
   if(normalize(raw.slice(0,index))!==source.slice(0,at))throw new Error('Raw member insertion boundary mismatch');
   return raw.slice(0,index)+guard.text+raw.slice(index);
+}
+
+// Native object identity and ST implementation evidence, separate from source syntax.
+export function initializerTargetEvidence(before:any,appPath:string[]){
+  const e=before?.initializerTargetEvidence;
+  if(!e||e.source!=='native-object-application-and-embedded-types'||!Array.isArray(appPath)||
+    e.objectId!==before.objectId||e.applicationId!==before.applicationId||
+    JSON.stringify(e.path)!==JSON.stringify(before.path)||e.nativeTypeId!==before.nativeTypeId||
+    typeof e.parentId!=='string'||!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(e.parentId)||
+    JSON.stringify(before.path?.slice(0,appPath.length))!==JSON.stringify(appPath))
+    throw new Error('Native initializer target identity unavailable');
+  if(before.objectType==='gvl'){
+    if(e.nativeTypeId!=='ffbfa93a-b94d-45fc-a329-229860183b1d'||e.parentId!==before.applicationId||
+      before.hasImplementation!==false||before.implementation!==''||before.path.length!==appPath.length+1||
+      e.pouType!==null||e.embeddedObjectTypes!==null)throw new Error('Not a native Application root GVL');
+  }else if(!['st_pou','function_block'].includes(before.objectType)||e.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||
+    before.hasImplementation!==true||!['program','function','function_block'].includes(before.pouType)||
+    before.pouTypeSource!=='native-pou-type-id-and-declaration-header'||e.pouType!==before.pouType||
+    !Array.isArray(e.embeddedObjectTypes)||!e.embeddedObjectTypes.every((x:any)=>typeof x==='string')||
+    !e.embeddedObjectTypes.includes('3b83b776-fb25-43b8-99f2-3c507c9143fc'))
+    throw new Error('Ordinary native ST POU implementation not confirmed');
+  return e;
 }
