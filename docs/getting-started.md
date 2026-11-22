@@ -1,35 +1,35 @@
 # 安装、接入与日常离线试用
 
-适用于 **InoProShop MCP 0.34.3 修复候选版、37 项工具**。确认客户端实际加载版本后，给出工程路径和需求；内部身份、哈希和操作引用由 Agent 获取。
+适用于 **InoProShop MCP 0.35.0 候选版、37 项工具**。确认客户端实际加载版本后，给出工程路径和需求；内部身份、哈希和操作引用由 Agent 获取。
 
-本机已完成[一次 DSH CLI 最小模型接入](offline-trial-readiness-0343.md)：同一正式连接取得 37 项工具，模型实际调用一次 environment_inspect，返回 0.34.3。本次未打开工程，不代表 Desktop 握手、指令全文进入模型上下文、桌面交互或链接点击通过。已有工程闭环见 [0.34.2 双路报警](offline-alarm-acceptance-0342.md)与 [0.34.3 追加／替换复验](task-program-inventory-order.md)，各自保留原归属。
+0.34.3 时已完成[一次 DSH CLI 最小模型接入](offline-trial-readiness-0343.md)：同一正式连接取得 37 项工具，模型实际调用一次 environment_inspect，返回 0.34.3。本次未打开工程，不代表 Desktop 握手、指令全文进入模型上下文、桌面交互或链接点击通过。已有工程闭环见 [0.34.2 双路报警](offline-alarm-acceptance-0342.md)与 [0.34.3 追加／替换复验](task-program-inventory-order.md)，各自保留原归属。
 
 ## 先确认环境
 
 - Windows，安装 **InoProShop 1.9.1.6**、对应 Profile 和所需设备描述／库。已验 AM610 描述为 4102 / 10f4 0002 / 3.5.11.11，这是设备描述版本，不是现场固件。
-- Node.js 22 或以上；本次实读 24.15.0。仓库不附带厂商软件或设备包。
+- Node.js 22 或以上；0.34.3 接入时实读 24.15.0。仓库不附带厂商软件或设备包。
 - 使用支持工具调用的 MCP 客户端。本机 DSH 文件版本为 0.2.1-rc.5；CLI 使用已有账号的 deepseek-account / deepseek-flash、headless 预设。
 - 一个登记目录同一时刻只让一个工程服务占用。已有部署沿用原目录，不换空目录或复制故障工程绕过 unknown／隔离。
 - 确需移交时先保留未发送内容，使用[正常移交步骤](startup-handoff.md#正常移交步骤与停止条件)。无法确认安全退出就停止，不强杀、不删锁、不修改执行策略。
 
-本次环境查询确认 IDE 和 Profile 存在，但能力审计仍返回“未验证：当前可执行文件/Profile 与已有证据未匹配”。安装存在不能证明工程能力已在本次重验，这项返回也不覆盖历史工程验收。
+0.34.3 接入的环境查询确认 IDE 和 Profile 存在，但能力审计仍返回“未验证：当前可执行文件/Profile 与已有证据未匹配”。安装存在不能证明工程能力已在本次重验，这项返回也不覆盖历史工程验收。
 
 ## 接入 DSH
 
 1. 使用已核验的固定构建，确认 Node、dist/server.js 和工作目录存在，不指向正在变化的开发目录。
 2. 备份现有配置，只调整 InoProShop 条目，不覆盖账号或其他插件。参考[普通 MCP 模板](../config/dsh.example.patch.yml)及[headless 增量模板](../config/dsh.headless-trial.example.patch.yml)。模板没有凭证。
-3. maxInstructionBytes: 65536 放在 MCP 客户端 config 层，与 serverName、transport 同级。本机已验含标题大小 **63,036 字节**；换构建须重新核对，不截断指令或盲目提高上限。
+3. maxInstructionBytes: 65536 放在 MCP 客户端 config 层，与 serverName、transport 同级。0.35.0 受验固定构建含标题为 **63,474 字节**；换构建须重新核对，不截断指令或盲目提高上限。
 4. CLI 最终合成配置中 credentials、authorization、deepseek-account 必须启用，模型保持原账号配置；只启用一个目标 MCP 条目。Desktop 已登录不等于 headless 自动可用，不把凭证写入模板。
 5. 从连接／会话记录确认实际版本和完整工具清单，再按需要进行一次只读查询。不要让模型凭记忆列举工具；启动成功或退出码 0 单独不算接通。
 
-本机日常入口和原登记目录：
+0.34.3 原入口（本次保留为回退）和沿用的登记目录：
 
 ~~~text
 D:\InoPro-Fixed\0.34.3-0a927d857681\dist\server.js
 D:\InoPro\.local\dsh-phase4-repair-20261028-A1
 ~~~
 
-本轮临时 CLI 使用同一固定构建及登记目录，日常配置未改，0.34.2 回退保留。Desktop 欢迎页未处理，最终日常握手仍未验证。其他电脑填写自己的已核实路径，不原样套用本机目录。
+该次 0.34.3 临时 CLI 使用上述固定构建及登记目录，日常配置当时未改，0.34.2 回退保留。当前 0.35.0 新增已有聚合缺失成员初始化，见[范围与示例](variable-edit.md)及[真实 MCP／一次 CLI 验收](aggregate-member-initializer-add.md)。本次 main 合并后的入口和独立连接检查见[收尾说明](aggregate-member-0350-merge.md)及本地复核包，不把旧路径当作新版入口。Desktop 欢迎页未处理，最终日常握手仍未验证。其他电脑填写自己的已核实路径，不原样套用本机目录。
 
 先准备并核对私有 patch，安装版 CLI 的一次标准输入调用格式如下；不要重复发送同一业务任务：
 

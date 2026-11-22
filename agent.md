@@ -1,14 +1,14 @@
 # InoProShop MCP 后续开发计划
 
-规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-21。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
+规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-22。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-当前版本为 0.34.3 修复候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+当前版本为 0.35.0 候选版、37 项工具，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
 
 0.34.1 当时在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，该轮日常入口未部署本补丁；后续已随 0.34.2 合并。
 
 0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因与默认环境性能问题仍未解决。该段保留 0.34.2 的验收归属；后续任务集合及 PROGRAM 目录补修见下段。
 
-0.34.3 已完成[任务集合与 PROGRAM 目录比较补修及真实复验](docs/task-program-inventory-order.md)，纳入本次 main 收尾。仅顶层任务集合按唯一 taskId、PROGRAM 身份目录按唯一 objectId 对齐；任务内部调用顺序、备注、绑定、源码、配置及其他字段仍严格核对，不提供调用重排能力。追加、替换各一次真实闭环通过，保存版各编译一次、均 0 错误／0 警告；替换重开实际出现 PROGRAM 目录换序，两套任务集合未换序。task_create 同类路径已补修并离线回归，本轮无其真实写入复验。Node 802/802 与 Python 616/616 分别记录；原失败、附属文件变化和历史限制保留。[合并与固定入口说明](docs/task-inventory-0343-merge.md)区分配置、独立连接与最终日常连接。
+0.34.3 已完成[任务集合与 PROGRAM 目录比较补修及真实复验](docs/task-program-inventory-order.md)，已随 0.34.3 合入 main。仅顶层任务集合按唯一 taskId、PROGRAM 身份目录按唯一 objectId 对齐；任务内部调用顺序、备注、绑定、源码、配置及其他字段仍严格核对，不提供调用重排能力。追加、替换各一次真实闭环通过，保存版各编译一次、均 0 错误／0 警告；替换重开实际出现 PROGRAM 目录换序，两套任务集合未换序。task_create 同类路径已补修并离线回归，本轮无其真实写入复验。Node 802/802 与 Python 616/616 分别记录；原失败、附属文件变化和历史限制保留。[合并与固定入口说明](docs/task-inventory-0343-merge.md)区分配置、独立连接与最终日常连接。
 
 0.34.2 已完成[一次 DSH CLI 双路报警综合工程验收](docs/offline-alarm-acceptance-0342.md)：限定离线工程闭环通过，流程与展示部分通过；本次未出现任务集合枚举换序，不能据此宣称复现原故障。原 0.34.0／0.34.1 综合验收失败及勘误保留，不扩大为全部工具或运行验收。
 
@@ -589,8 +589,8 @@ codex/library-placeholder-resolve 已正常合入 main 的登记前直接打开�
 
 本轮仅合并复核及日常入口移交，部署和最终连接独立取证。不开始库移除或 S6–S9。
 
-## S4b 缺失显式成员初始化（0.35.0 功能分支）
+## S4b 缺失显式成员初始化（0.35.0 已合并候选）
 
-本阶段只在根 GVL 普通 VAR_GLOBAL 的唯一单变量、已有完整非空具名聚合中补写同 Application 根 ST 结构体 DUT 的已有直接 BOOL/DINT/TIME 字段。旧 set-member-initializer 仍只修改已有显式成员。完整源文缺失判定、队列和原生边界版本核对、单点插入与原文保全、保存重开、退出证据和 unknown 冻结适用；不增加 DUT 字段，也不代表 S4b 全部完成。[实现与验收归属](docs/aggregate-member-initializer-add.md)。日常 0.34.3 与 Codex 入口保持不变。
+本阶段只在根 GVL 普通 VAR_GLOBAL 的唯一单变量、已有完整非空具名聚合中补写同 Application 根 ST 结构体 DUT 的已有直接 BOOL/DINT/TIME 字段。旧 set-member-initializer 仍只修改已有显式成员。完整源文缺失判定、队列和原生边界版本核对、单点插入与原文保全、保存重开、退出证据和 unknown 冻结适用；不增加 DUT 字段，也不代表 S4b 全部完成。[实现与验收归属](docs/aggregate-member-initializer-add.md)。开发验收时日常 0.34.3 与 Codex 入口保持不变；本次合并后的固定构建及连接状态见[收尾说明](docs/aggregate-member-0350-merge.md)，Codex 不随本次升级。
 
-本子阶段真实验收归属49c51727b5aa178fa45d27d411b0d4738352cebd：MCP分别补写BOOL／DINT／TIME，CLI单次任务实际使用新动作补写BOOL；两套正式编译及保存版复编各0错误／0警告。55次真实IDE正常退出证据通过，原文、DUT及任务读回符合保留要求。Node860/860、Python619/619分别记录；CLI29次状态查询、两条截断、发现连接拒绝和退出缺口保留。候选不合并、不部署，运行及整个S4b未宣称完成。
+本子阶段真实验收归属49c51727b5aa178fa45d27d411b0d4738352cebd：MCP分别补写BOOL／DINT／TIME，CLI单次任务实际使用新动作补写BOOL；两套正式编译及保存版复编各0错误／0警告。55次真实IDE正常退出证据通过，原文、DUT及任务读回符合保留要求。Node860/860、Python619/619分别记录；CLI29次状态查询、两条截断、发现连接拒绝和退出缺口保留。该次开发验收未合并或部署；本轮正常合并，只做构建、入口和独立初始化核对，不重放工程或模型任务。运行及整个S4b未宣称完成。

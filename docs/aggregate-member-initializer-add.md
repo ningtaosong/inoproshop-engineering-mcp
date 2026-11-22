@@ -1,6 +1,6 @@
 # 已有聚合补写显式成员初始化（0.35.0 候选）
 
-分支 codex/aggregate-member-initializer-add，37 项工具；未合并 main、未部署。产品及本轮离线、真实验收归属 **49c51727b5aa178fa45d27d411b0d4738352cebd**，基线 cda49335cac0790edf2b40e8a0cc87380411f724。后续提交只整理文档。
+本页记录 2026-11-22 开发验收时的分支 codex/aggregate-member-initializer-add，37 项工具；当时未合并 main、未部署。产品及本轮离线、真实验收归属 **49c51727b5aa178fa45d27d411b0d4738352cebd**，基线 cda49335cac0790edf2b40e8a0cc87380411f724。后续提交只整理文档。本轮已按正常流程合入 main，固定入口与连接结论另见[收尾说明](aggregate-member-0350-merge.md)，不回填本页原验收。
 
 ## 范围与实现
 
