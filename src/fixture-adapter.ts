@@ -10,6 +10,8 @@ import { atomicJson, readJson, codeHash, digest, canonical, normalize } from './
 import {taskCallInventoryView,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,LIB_CATALOG_SCHEME,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 
+import {isMemberInitializerAction,applyMemberInitializerInsertion} from './variable-edit.js';
+
 export class FixtureAdapter implements Adapter {
   async reconcile(directory:string) { return readJson(path.join(directory,'result.json')); }
   async execute(req:BridgeRequest, dir:string, onStart:(pid:number)=>Promise<void>):Promise<Reply> {
@@ -482,6 +484,12 @@ export class FixtureAdapter implements Adapter {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','对象不在选定 Application');
       const old={...object};
       const guard=a.variableTypeGuard;
+      let insertionRaw:string|undefined,insertionEvidence:any,insertionError:unknown;
+      if(a.action==='add-member-initializer')try {
+        insertionRaw=applyMemberInitializerInsertion(old.declaration,a.declaration,a.memberInsertion);
+        insertionEvidence={...a.memberInsertion,beforeRawHash:digest(old.declaration),afterRawHash:digest(insertionRaw),preservedRawSurroundings:true};
+      }catch(e){insertionError=e;}
+
       const childGuard=a.variableChildGuard;
       const directChildren=()=>p.objects.filter((o:any)=>o.parentId===object.objectId).map((o:any)=>({objectId:o.objectId,name:o.path.at(-1),nativeTypeId:o.nativeTypeId})).sort((x:any,y:any)=>x.objectId.localeCompare(y.objectId));
       const childValid=!!childGuard&&childGuard.fbId===object.objectId&&object.objectType==='function_block'&&
@@ -500,14 +508,15 @@ export class FixtureAdapter implements Adapter {
       else if(['property_get','property_set'].includes(object.objectType)&&(a.expectedPropertyHash!==object.propertyContentHash||a.expectedAccessorVersion!==object.accessorVersion||a.expectedSnapshot!==snapshot()))result={...reply('conflict','Get结构或内容版本冲突'),error:{code:'PROPERTY_VERSION_CHANGED',message:'Not written'}};
       else if(codeHash(old.declaration,old.implementation)!==a.expectedHash) result=reply('conflict','旧哈希不一致',{actualHash:codeHash(old.declaration,old.implementation)});
       else if(a.variableEdit&&(a.expectedSnapshot!==snapshot()||a.expectedDiskHash!==digest(await fs.readFile(req.projectPath))))result={...reply('conflict','变量工程或磁盘版本变化'),error:{code:'VARIABLE_VERSION_CHANGED',message:'Not written'}};
-      else if(a.action==='set-member-initializer'&&!guard||guard&&!typeValid)result={...reply('conflict','结构体版本变化'),error:{code:'MEMBER_TYPE_CHANGED',message:'Not written'}};
+      else if(isMemberInitializerAction(a.action)&&!guard||guard&&!typeValid)result={...reply('conflict','结构体版本变化'),error:{code:'MEMBER_TYPE_CHANGED',message:'Not written'}};
+      else if(insertionError)result={...reply('conflict','插入位置或原文变化'),error:{code:'MEMBER_INSERTION_CHANGED',message:'Not written'}};
       else if(a.section&&(object.objectType!=='function_block'||a.action==='add'&&!childGuard))result={...reply('unsupported','输入输出区对象不支持'),error:{code:'VARIABLE_INTERFACE_SCOPE',message:'Not written'}};
       else if(childGuard&&!childValid)result={...reply('conflict','子对象结构变化'),error:{code:'VARIABLE_CHILD_CHANGED',message:'Not written'}};
       else {
         await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(path.join(dir,'before.json'),old);
-        object.declaration=normalize(a.declaration);
-        if(p.failImplementation && (req.fileGuard||a.action==='set-member-initializer'||a.action==='set-type'||['method','property_get','property_set'].includes(object.objectType))) {
+        object.declaration=insertionRaw??normalize(a.declaration);
+        if(p.failImplementation && (req.fileGuard||isMemberInitializerAction(a.action)||a.action==='set-type'||['method','property_get','property_set'].includes(object.objectType))) {
           await atomicJson(req.projectPath,p);
           result={...reply('unknown',a.action==='set-type'?'变量类型修改部分失败，未自动回滚':'直接编辑部分失败，未自动回滚',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_WRITE',message:'Injected failure; preserve state'}};
         } else if(p.failImplementation) {
@@ -518,7 +527,8 @@ export class FixtureAdapter implements Adapter {
           object.implementation=normalize(a.implementation ?? ''); await atomicJson(req.projectPath,p);
           const persisted=await readJson(req.projectPath);
           const observed=persisted.objects.find((o:any)=>o.objectId===a.objectId);
-          result=reply('succeeded','测试写后读回一致',{...observed,contentHash:codeHash(observed.declaration,observed.implementation),snapshot:snapshot(),checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true,reopened:true,
+          result=reply('succeeded','测试写后读回一致',{...observed,declaration:a.action==='add-member-initializer'?normalize(observed.declaration):observed.declaration,
+            ...(insertionEvidence?{memberInsertionEvidence:{...insertionEvidence,immediateRawHash:digest(object.declaration),reopenedRawHash:digest(observed.declaration)}}:{}),contentHash:codeHash(observed.declaration,observed.implementation),snapshot:snapshot(),checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true,reopened:true,
             ...(guard?{variableTypeEvidence:{objectId:guard.objectId,applicationId:guard.applicationId,path:guard.path,contentHash:guard.contentHash,beforeContentHash:guard.contentHash,afterContentHash:guard.contentHash}}:{}),
             ...(childGuard?{variableChildEvidence:{before:childGuard,after:childGuard}}:{}),
             ...(relatedIds.length?{relatedSourceEvidence:{before:relatedBefore,after:related(persisted.objects)}}:{}),testMode:true});

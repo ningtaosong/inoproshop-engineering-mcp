@@ -1,8 +1,10 @@
 # InoProShop Engineering MCP
 
-**当前版本为 0.34.3 修复候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+**当前功能分支为 0.35.0 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
-**开始离线试用：** [简明使用指南与三条示例](docs/getting-started.md) · [headless 脱敏模板](config/dsh.headless-trial.example.patch.yml) · [本次 CLI 接入记录](docs/offline-trial-readiness-0343.md)。固定 0.34.3 已由一次 DSH CLI 模型任务实际调用 environment_inspect，同一正式连接取得 37 项工具；没有打开工程。Desktop 日常握手、指令全文进入模型上下文与运行效果未验，环境能力审计的未验证项保留。
+S4b 本分支新增 variable_edit 的 add-member-initializer：只向根 GVL 已有完整具名聚合补写缺失的直接 BOOL／DINT／TIME 字段初值，字段须已在同 Application 的根结构体 DUT 中声明。不创建 DUT 字段，不覆盖已有成员，保留其他原文。[范围与示例](docs/variable-edit.md#补写缺失的显式成员初始化0350候选)；验收与交付见[本轮记录](docs/aggregate-member-initializer-add.md)。S4b 其他范围仍未完成。
+
+**已部署 0.34.3 的离线试用：** [简明使用指南与三条示例](docs/getting-started.md) · [headless 脱敏模板](config/dsh.headless-trial.example.patch.yml) · [本次 CLI 接入记录](docs/offline-trial-readiness-0343.md)。固定 0.34.3 已由一次 DSH CLI 模型任务实际调用 environment_inspect，同一正式连接取得 37 项工具；没有打开工程。Desktop 日常握手、指令全文进入模型上下文与运行效果未验，环境能力审计的未验证项保留。
 
 0.34.1 当时在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，该轮日常入口未部署本补丁；后续已随 0.34.2 合并。
 
