@@ -42,26 +42,13 @@ def load(p):
 
 def run(root, fixed, mode, script_dir):
     intent = load(os.path.join(root, mode + '-intent.json'))
-    _trace.record('project-helpers-start')
-    helper_files = {'guardSha256':os.path.join(script_dir,'library_placeholder_clear_guard.py'),
-                    'bridgeSha256':os.path.join(fixed,'bridge','worker.py'),
-                    'libraryHelperSha256':os.path.join(fixed,'bridge','library_reference.py'),
-                    'recorderSha256':os.path.join(script_dir,'probe_startup_trace.py')}
-    actual_helpers = {}
-    for key, helper_path in helper_files.items():
-        with open(helper_path,'rb') as helper_file: actual_helpers[key] = hashlib.sha256(helper_file.read()).hexdigest()
-        if actual_helpers[key] != intent[key]: raise ValueError('Helper fingerprint changed: '+key)
-    guard = imp.load_source('placeholder_clear_guard', os.path.join(script_dir, 'library_placeholder_clear_guard.py'))
-    _trace.record('guard-helper-loaded')
-    api = dict(__file__=os.path.join(fixed, 'bridge', 'worker.py'), projects=projects, system=system, librarymanager=librarymanager)
-    with io.open(api['__file__'], 'r', encoding='utf-8') as f: source = f.read()
-    marker = '# Fixed helper code only; request text is never evaluated.'
-    guard.require(source.count(marker) == 1, 'Fixed worker helper boundary changed')
-    exec(compile(source.split(marker)[0], api['__file__'], 'exec'), api)
-    _trace.record('worker-helpers-loaded')
-    with io.open(os.path.join(fixed, 'bridge', 'library_reference.py'), 'r', encoding='utf-8') as f:
-        exec(compile(f.read(), 'library_reference.py', 'exec'), api)
-    _trace.record('project-helpers-complete', fingerprints=actual_helpers)
+    loader_path = os.path.join(script_dir,'probe_fixed_helpers.py')
+    with open(loader_path,'rb') as loader_file: loader_hash=hashlib.sha256(loader_file.read()).hexdigest()
+    if loader_hash != intent['loaderSha256']: raise ValueError('Helper fingerprint changed: loaderSha256')
+    _trace.record('fixed-loader-import-start')
+    loader = imp.load_source('probe_fixed_helpers',loader_path)
+    guard,api,actual_helpers = loader.load_fixed_helpers(fixed,script_dir,intent,_trace,
+        dict(projects=projects,system=system,librarymanager=librarymanager))
     publish, sha = api['publish'], api['file_hash']
     path = intent['project'];disk = intent['expectedDisk']
     proc = Process.GetCurrentProcess()

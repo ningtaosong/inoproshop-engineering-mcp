@@ -37,7 +37,8 @@ async function check(label){
   const lease=raw?JSON.parse(raw.toString('utf8')):null,owner=lease?await observeLeaseOwner(lease):{state:'absent'};
   if(label==='before-acquire')assert(['stale','absent'].includes(owner.state),'Lease owner is active or unconfirmed');
   await publish('exclusive-'+label+'.json',{processes,leaseSha256:raw?sha(raw):null,lease,owner,unknownCount:ops.filter(x=>x.status==='unknown').length,
-    independentOriginalUnknown:'96060196-cd1b-4a03-97ed-92e6785d5350 remains unknown; no original project/request replay',scope:'no project; service lease only'});
+    independentOriginalUnknown:['96060196-cd1b-4a03-97ed-92e6785d5350','cef2a565-4b8e-432c-a9b3-d398e5ae4ef3'],
+    originalUnknownsUnchanged:true,scope:'no project; service lease only'});
 }
 
 await check('before-acquire');
@@ -47,7 +48,13 @@ assert.equal(version,'1.9.1.6');
 const operationId=randomUUID(),launchId=randomUUID(),scriptSha256=await hash(script);
 const argv=['--profile="InoProShop(V1.9.1.6)"','--runscript="'+script+'"'];
 const binding={operationId,launchId,scriptSha256};
+const fixedRoot='D:/InoPro-Fixed/0.36.0-da87ac1d553a';
+const helperFiles={guardSha256:path.join(directory,'library_placeholder_clear_guard.py'),
+  bridgeSha256:path.join(fixedRoot,'bridge','worker.py'),libraryHelperSha256:path.join(fixedRoot,'bridge','library_reference.py'),
+  recorderSha256:path.join(directory,'probe_startup_trace.py'),loaderSha256:path.join(directory,'probe_fixed_helpers.py')};
+const helperFingerprints=Object.fromEntries(await Promise.all(Object.entries(helperFiles).map(async([key,file])=>[key,await hash(file)])));
 const intent={...binding,exe,exeSha256:await hash(exe),argv,cwd:path.dirname(exe),version,
+  fixedRoot,...helperFingerprints,
   helperSha256:await hash(path.join(directory,'probe_startup_trace.py')),observerSha256:await hash(path.join(directory,'probe-exit-observer.mjs')),
   dataDir:data,resultFile:path.join(root,'startup-result.json'),noProject:true,businessMs:240000,graceMs:60000,
   suppliedEnvironment:{INOPRO_TRACE_ROOT:root,INOPRO_TRACE_MODE:'startup',INOPRO_TRACE_OPERATION:operationId,INOPRO_TRACE_LAUNCH:launchId,INOPRO_TRACE_SCRIPT_SHA:scriptSha256},
@@ -66,18 +73,23 @@ try{
     const observed=await observeProbe(child,{binding,birth:probeProcess(child.pid),publish:(name,v)=>publish(name+'.json',v),resultFile:intent.resultFile,businessMs:240000,graceMs:60000});
     assert.equal(observed.status,'succeeded','Startup completion uncertain; stop, preserve bounded observations, no retry');
     const result=observed.result.value;
-    assert.equal(result.noProject,true);assert.equal(result.message,'无工程启动取证：主线程往返完成。');
+    assert.equal(result.noProject,true);assert.equal(result.message,'无工程辅助模块加载：主线程往返完成。');
+    assert.deepEqual(result.loadedHelpers,helperFingerprints);
+    const expectedFunctions=['text','normalize','sha','encode','content_hash','library_inventory','installed_inventory','task_call_inventory_view'];
+    assert.deepEqual(Object.keys(result.namespaceEvidence).sort(),expectedFunctions.sort());
+    assert(Object.values(result.namespaceEvidence).every(v=>v===true));
     for(const n of ['projectCalls','placeholderCalls','compileCalls','saveCalls'])assert.equal(result[n],0);
     const names=(await fs.readdir(root)).filter(n=>/^startup-trace-\d+\.json$/.test(n)).sort();
     const events=await Promise.all(names.map(async n=>JSON.parse(await fs.readFile(path.join(root,n),'utf8'))));
     const stages=events.map(e=>e.stage);
-    for(const stage of ['process-identity','necessary-modules-complete','primary-thread-entered','primary-thread-returned','result-publication-complete','exit-requested'])assert(stages.includes(stage),'Missing '+stage);
+    for(const stage of ['process-identity','necessary-modules-complete','fixed-loader-import-start','guard-helper-loaded','worker-helpers-loaded','project-helpers-complete','helper-namespace-verified','primary-thread-entered','primary-thread-returned','result-publication-complete','exit-requested'])assert(stages.includes(stage),'Missing '+stage);
     assert(!stages.includes('failure'),'Native recorder reported a failure');
     for(const e of events.filter(x=>x.stage!=='necessary-modules-start')){
       assert.equal(e.binding.creationUtcTicks,observed.birth.identity.startId);assert.equal(e.binding.launchId,launchId);
     }
     await publish('startup-verification.json',{status:'succeeded',binding,stages,process:observed.birth,exit:observed.exit,resultSha256:observed.result.sha256,
-      noProject:true,originalUnknownUnchanged:true,meaning:'Only this new no-project startup and evidence chain; not placeholder clearing or original prepare success'});
+      noProject:true,loadedHelpers:result.loadedHelpers,namespaceEvidence:result.namespaceEvidence,originalUnknownsUnchanged:true,
+      meaning:'Only actual helper loading and no-project startup/exit; not placeholder clearing or either original prepare success'});
     confirmed=true;
   }catch(error){streamError=error;throw error;}finally{await closeProbeHandles([out,err],streamError);}
 }catch(error){

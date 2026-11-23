@@ -79,33 +79,33 @@ class StartupTrace(unittest.TestCase):
         source=(SCRIPTS/'library-placeholder-clear-native.py').read_text(encoding='utf-8')
         tree=ast.parse(source);fn=next(x for x in tree.body if isinstance(x,ast.FunctionDef) and x.name=='run')
         class Importer:
-            def load_source(self,*a):raise ImportError('project guard import failure')
+            def load_source(self,*a):raise ImportError('fixed loader import failure')
         fixed=SCRIPTS.parents[1]
         paths={'guardSha256':SCRIPTS/'library_placeholder_clear_guard.py',
                'bridgeSha256':fixed/'bridge/worker.py','libraryHelperSha256':fixed/'bridge/library_reference.py',
-               'recorderSha256':SCRIPTS/'probe_startup_trace.py'}
+               'recorderSha256':SCRIPTS/'probe_startup_trace.py','loaderSha256':SCRIPTS/'probe_fixed_helpers.py'}
         intent={k:hashlib.sha256(p.read_bytes()).hexdigest() for k,p in paths.items()}
         scope={'_trace':self.trace,'imp':Importer(),'os':os,'hashlib':hashlib,'load':lambda p:intent}
         exec(compile(ast.Module(body=[fn],type_ignores=[]),'actual-probe-run','exec'),scope)
         try:scope['run'](str(self.root),str(fixed),'prepare',str(SCRIPTS))
         except ImportError as error:self.trace.fail('outer-startup-envelope',error)
-        self.assertEqual(self.trace.primary['message'],'project guard import failure')
+        self.assertEqual(self.trace.primary['message'],'fixed loader import failure')
         stages=[json.loads(p.read_text())['stage'] for p in self.root.glob('unit-trace-*.json')]
-        self.assertIn('project-helpers-start',stages);self.assertNotIn('primary-thread-requested',stages)
+        self.assertIn('fixed-loader-import-start',stages);self.assertNotIn('primary-thread-requested',stages)
     def test_changed_helper_rejected_before_import_or_dispatch(self):
         tree=ast.parse((SCRIPTS/'library-placeholder-clear-native.py').read_text(encoding='utf-8'))
         fn=next(x for x in tree.body if isinstance(x,ast.FunctionDef) and x.name=='run')
         class Importer:
             def load_source(self,*a):raise AssertionError('must not import changed helpers')
         scope={'_trace':self.trace,'imp':Importer(),'os':os,'hashlib':hashlib,
-               'load':lambda p:{k:'changed' for k in ['guardSha256','bridgeSha256','libraryHelperSha256','recorderSha256']}}
+               'load':lambda p:{k:'changed' for k in ['guardSha256','bridgeSha256','libraryHelperSha256','recorderSha256','loaderSha256']}}
         exec(compile(ast.Module(body=[fn],type_ignores=[]),'actual-probe-run','exec'),scope)
         with self.assertRaisesRegex(ValueError,'Helper fingerprint changed'):
             scope['run'](str(self.root),str(SCRIPTS.parents[1]),'prepare',str(SCRIPTS))
-    def test_smoke_has_no_engineering_imports_or_calls(self):
+    def test_smoke_has_no_engineering_calls(self):
         tree=ast.parse((SCRIPTS/'native-startup-smoke.py').read_text(encoding='utf-8'))
         for node in ast.walk(tree):
-            if isinstance(node,ast.ImportFrom) and node.module=='scriptengine':self.assertEqual([a.name for a in node.names],['system'])
+            if isinstance(node,ast.ImportFrom) and node.module=='scriptengine':self.assertEqual([a.name for a in node.names],['system','projects','librarymanager'])
             if isinstance(node,ast.Attribute):self.assertNotIn(node.attr,{'projects','save','compile','librarymanager','set_redirection'})
 
 if __name__=='__main__':unittest.main(verbosity=2)

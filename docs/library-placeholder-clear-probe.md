@@ -1,5 +1,7 @@
 # 普通占位符应用级显式覆盖清除探测
 
+后续定位（2026-11-23）：[同版 IronPython 解析缺陷已复现并补修](library-placeholder-ironpython-compatibility.md)，一次新的无工程操作已验证实际固定辅助模块加载与正常退出。下述原探测及第二次 prepare 仍为 unknown，清除和工程持久化未验；旧记录保持原时点。
+
 2026-11-23，基线 main 为 da87ac1d553a3a009a5bdb170b47a370924a0d3a；独立分支 codex/library-placeholder-clear-probe。产品保持 0.36.0 候选版、37 项工具，未注册清除工具。
 
 后续已另行授权一份新夹具，但[本轮准备启动再次止于 unknown](library-placeholder-clear-attempt-20261123.md)，正式清除、独立重开和编译仍未派发。新增记录与下述首次失败分别保留，不回填原结果。

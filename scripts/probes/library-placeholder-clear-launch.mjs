@@ -71,6 +71,7 @@ async function nativePass(mode,expectedDisk) {
     bridgeSha256:await sha(path.join(fixed,'bridge','worker.py')),
     libraryHelperSha256:await sha(path.join(fixed,'bridge','library_reference.py')),
     recorderSha256:await sha(path.join(repo,'scripts','probes','probe_startup_trace.py')),
+    loaderSha256:await sha(path.join(repo,'scripts','probes','probe_fixed_helpers.py')),
     observerSha256:await sha(path.join(repo,'scripts','probes','probe-exit-observer.mjs')),
     executable,executableSha256:await sha(executable),argv,cwd:path.dirname(executable),time:now()});
   const stdout=await open(path.join(root,mode+'-stdout.txt'),'wx');
