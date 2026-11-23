@@ -1,5 +1,7 @@
 # InoProShop MCP 后续开发计划
 
+本分支开展 [FB 输入／输出缺失初值补写](docs/fb-interface-initializer-add.md)，0.38.0 候选／38 工具，限定 S4b 子阶段；尚未合并或部署。只在明确 section 的 add-initializer 路径补写，其他动作及范围保持。
+
 规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-23。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
 main 为 0.37.0 候选版、38 项工具；固定入口与实际连接分别见[收尾说明](docs/library-placeholder-clear-0370-merge.md)，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。

@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.37.0 候选版的三十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。已登记工程的 HIGH_SPEED_IO 通道及映射用 io_mapping_inspect，以实际 nextOffset 和 version 取完各页；只读任务无需编译或保存。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
+你通过本地 InoProShop MCP 0.38.0 候选版的三十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。已登记工程的 HIGH_SPEED_IO 通道及映射用 io_mapping_inspect，以实际 nextOffset 和 version 取完各页；只读任务无需编译或保存。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
 
 问这条声明在哪里使用时，用 variable_inspect 定位精确条目，再把 objectId、section、name、contentHash 和 namePosition 的两个 UTF-16 偏移传给 variable_usages，用户无需提供内部 ID。处理全部实际 nextOffset，分别报告 usages（限定 ST 静态推导）、unknown（未绑定）和 coverage。不要把同名词元、声明本身或数组成员算入目标。零结果只限已读且受支持范围。全程只读，不编译、保存或判断重命名删除安全。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
@@ -11,7 +11,7 @@
 
 ## S4a 变量级限定编辑
 
-普通 ST POU 的 VAR 局部变量及 Application 根 GVL 的 VAR_GLOBAL 普通变量，在新建单变量、补写缺失初值或替换已有显式初值时，优先使用 variable_edit。先按需查询变量、读取目标完整源码，取得当前 objectId、contentHash、工程 snapshot 和 diskHash；目标、旧值、作用域或解析覆盖不明时停止。服务会重新读取原生声明、计算最小差异；不要传旧变量表行号，也不要用 code_apply_change 冒充变量级编辑成功。仅 BOOL、DINT、TIME 的限定字面量；补写用 add-initializer：完整原文确认普通 VAR／根 VAR_GLOBAL 已有唯一单变量尚无显式初值，类型来自原声明，不传 type、section、旧值或成员参数；已有值即拒绝，旧 set-initializer 仍拒绝缺初值。不处理接口区补写、Method／Property、联合、AT/RETAIN、别名、数组或聚合。修改后读回目标并真实编译、保存重开；比较仍只在明确要求时执行。其他已授权的源码修改仍可用现有工具；变量级能力不代表运行值写入或自动回滚。
+普通 ST POU 的 VAR 局部变量及 Application 根 GVL 的 VAR_GLOBAL 普通变量，在新建单变量、补写缺失初值或替换已有显式初值时，优先使用 variable_edit。先按需查询变量、读取目标完整源码，取得当前 objectId、contentHash、工程 snapshot 和 diskHash；目标、旧值、作用域或解析覆盖不明时停止。服务会重新读取原生声明、计算最小差异；不要传旧变量表行号，也不要用 code_apply_change 冒充变量级编辑成功。仅 BOOL、DINT、TIME 的限定字面量；补写用 add-initializer：完整原文确认普通 VAR／根 VAR_GLOBAL 已有唯一单变量尚无显式初值，类型来自原声明，不传 type、旧值或成员参数；已有值即拒绝，旧 set-initializer 仍拒绝缺初值。显式 section=VAR_INPUT/VAR_OUTPUT 可补写普通原生ST FB已有唯一完整无修饰区的缺失初值，其他源码及子对象保持。不处理 Method／Property、联合、AT/RETAIN、别名、数组或聚合。修改后读回目标并真实编译、保存重开；比较仍只在明确要求时执行。其他已授权的源码修改仍可用现有工具；变量级能力不代表运行值写入或自动回滚。
 
 用户明确要求普通 POU VAR 或 Application 根 GVL VAR_GLOBAL 的已有 BOOL／DINT／TIME 单变量同时改类型与显式初值时，先必要读取声明和相关调用；用 variable_edit 的 set-type 明确提供新 type、initializer，并绑定 expectedOldType、expectedOldInitializer 与当前对象/工程/磁盘版本。服务重读原文只改类型及初值，不转换旧值、不自动改使用位置或做语义引用分析。必要调用调整沿用原源码工具，真实编译失败时报告已写入内容与诊断，不擅自扩围或回滚；unknown 停止。VAR_INPUT／VAR_OUTPUT、成员、数组、特殊或缺初值声明不使用 set-type。
 普通 ST FUNCTION_BLOCK 已有且唯一的 VAR_INPUT 或 VAR_OUTPUT 声明块，也可对普通 BOOL／DINT／TIME 单变量使用 variable_edit 的 add 或 set-initializer；必须显式给出 section。新增前核对同一 FB 其他声明区及直接 Method／Property 名称，不凭同名或旧偏移推断目标区。缺失、重复、联合、特殊或解析不全时停止。输入初值在实例初始化时生效；调用显式传参会为该次调用赋值，不能把源码初值当作该调用或运行时实测值。省略 section 时继续使用旧 VAR／VAR_GLOBAL 范围；两种聚合成员动作均不接收 section。

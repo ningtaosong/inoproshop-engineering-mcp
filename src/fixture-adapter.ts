@@ -417,7 +417,7 @@ export class FixtureAdapter implements Adapter {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','未找到精确对象');
       const data={...object,contentHash:codeHash(object.declaration,object.implementation),testMode:true};
       if(a.initializerTarget){
-        try {data.initializerTargetEvidence=fixtureInitializerTarget(object,p.applications);}
+        try {data.initializerTargetEvidence=fixtureInitializerTarget(object,p.applications,a.initializerSection,p.objects);}
         catch(e:any){return reply('unsupported',e.message);}
       }
       result=reply('succeeded','测试对象已读取',data);
@@ -499,7 +499,7 @@ export class FixtureAdapter implements Adapter {
 
       let initializerEvidence:any;
       if(a.action==='add-initializer')try {
-        const native=fixtureInitializerTarget(old,p.applications);
+        const native=fixtureInitializerTarget(old,p.applications,a.section,p.objects);
         if(canonical(native)!==canonical(a.initializerTargetGuard))throw new Error('Initializer native identity changed');
         insertionRaw=applyMemberInitializerInsertion(old.declaration,a.declaration,a.initializerInsertion,';');
         insertionEvidence={...a.initializerInsertion,beforeRawHash:digest(old.declaration),afterRawHash:digest(insertionRaw),preservedRawSurroundings:true,
@@ -581,11 +581,17 @@ export class FixtureAdapter implements Adapter {
   }
 }
 
-function fixtureInitializerTarget(o:any,apps:any[]){
+function fixtureInitializerTarget(o:any,apps:any[],section?:'VAR_INPUT'|'VAR_OUTPUT',objects:any[]=[] ){
   if(o.embeddedObjectTypesError)throw new Error(o.embeddedObjectTypesError);
   const appPath=apps.find(x=>x.applicationId===o.applicationId)?.path;
-  const e={source:'native-object-application-and-embedded-types',objectId:o.objectId,applicationId:o.applicationId,path:o.path,
+  const e:any={source:'native-object-application-and-embedded-types',objectId:o.objectId,applicationId:o.applicationId,path:o.path,
     parentId:o.parentId??(o.path?.length===appPath?.length+1?o.applicationId:undefined),nativeTypeId:o.nativeTypeId,
     pouType:o.objectType==='gvl'?null:o.pouType,embeddedObjectTypes:o.objectType==='gvl'?null:o.embeddedObjectTypes};
-  return initializerTargetEvidence({...o,initializerTargetEvidence:e},appPath);
+  if(section){
+    const rows=objects.filter(x=>x.objectId!==o.objectId&&canonical(x.path?.slice(0,o.path.length))===canonical(o.path)).map(x=>({...x,
+      declaration:normalize(x.declaration),implementation:normalize(x.implementation),contentHash:codeHash(x.declaration,x.implementation),
+      declarationRawHash:digest(x.declaration),implementationRawHash:digest(x.implementation),embeddedObjectTypes:x.embeddedObjectTypes??[]})).sort((x,y)=>x.objectId.localeCompare(y.objectId));
+    e.interfaceChildren={source:'native-fb-subtree-raw-source',complete:true,rows};
+  }
+  return initializerTargetEvidence({...o,initializerTargetEvidence:e},appPath,section);
 }
