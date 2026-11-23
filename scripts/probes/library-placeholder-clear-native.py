@@ -1,14 +1,38 @@
 # -*- coding: utf-8 -*-
 """Disposable fixture only. Four distinct native processes; never a product entry."""
-import imp
-import io
-import json
 import os
 import sys
-from System import DateTime
-from System.Diagnostics import Process
-from System.IO import File
-from scriptengine import projects, system, librarymanager
+try:
+    _root = os.environ.get('INOPRO_TRACE_ROOT') or os.environ['INOPRO_CLEAR_ROOT']
+    _mode = os.environ.get('INOPRO_TRACE_MODE') or os.environ['INOPRO_CLEAR_MODE']
+    _fd = os.open(os.path.join(_root, _mode+'-bootstrap-entered.txt'), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(_fd, 'wb') as _f:
+        _f.write(('pid=%d\nname=%s\n'%(os.getpid(),__name__)).encode('ascii'));_f.flush();os.fsync(_f.fileno())
+except Exception:
+    import traceback
+    sys.stderr.write('EARLIEST_ENTRY_FAILURE\n'+traceback.format_exc());sys.stderr.flush()
+    raise
+_trace = None
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import probe_startup_trace
+    _trace = probe_startup_trace.bootstrap(globals())
+    _trace.record('necessary-modules-start')
+    import imp
+    import io
+    import json
+    from System import DateTime
+    from System.Diagnostics import Process
+    from System.IO import File
+    from scriptengine import projects, system, librarymanager
+    _trace.bind_process(Process.GetCurrentProcess())
+    _trace.record('necessary-modules-complete')
+except Exception as _error:
+    if _trace is not None: _trace.fail('necessary-modules', _error)
+    else:
+        import traceback
+        sys.stderr.write('RECORDER_IMPORT_FAILURE\n'+traceback.format_exc());sys.stderr.flush()
+    raise
 
 
 def load(p):
@@ -16,6 +40,7 @@ def load(p):
 
 
 def run(root, fixed, mode, script_dir):
+    _trace.record('project-helpers-start')
     guard = imp.load_source('placeholder_clear_guard', os.path.join(script_dir, 'library_placeholder_clear_guard.py'))
     api = dict(__file__=os.path.join(fixed, 'bridge', 'worker.py'), projects=projects, system=system, librarymanager=librarymanager)
     with io.open(api['__file__'], 'r', encoding='utf-8') as f: source = f.read()
@@ -24,6 +49,7 @@ def run(root, fixed, mode, script_dir):
     exec(compile(source.split(marker)[0], api['__file__'], 'exec'), api)
     with io.open(os.path.join(fixed, 'bridge', 'library_reference.py'), 'r', encoding='utf-8') as f:
         exec(compile(f.read(), 'library_reference.py', 'exec'), api)
+    _trace.record('project-helpers-complete')
     publish, sha = api['publish'], api['file_hash']
     intent = load(os.path.join(root, mode + '-intent.json'))
     path = intent['project'];disk = intent['expectedDisk']
@@ -178,6 +204,7 @@ def run(root, fixed, mode, script_dir):
     def guarded():
         try: work()
         except Exception as error:
+            _trace.fail(stage[0], error)
             result['primaryException']=dict(api['exception_evidence'](error),stage=stage[0])
             try: emit('first-failure',result['primaryException'])
             except Exception as cleanup: result['evidenceError']=api['exception_evidence'](cleanup)
@@ -186,13 +213,19 @@ def run(root, fixed, mode, script_dir):
             if result['fixtureMutationCount']==0 and result['clearDispatchCount']==0 and handle[0] is not None:
                 try: step('close-read-only-stop',close);result['status']='failed'
                 except Exception as cleanup: result['cleanupException']=api['exception_evidence'](cleanup)
-    system.execute_on_primary_thread(guarded)
-    publish(os.path.join(root,mode+'-result.json'),result)
-    if result['closed'] or handle[0] is None: system.exit()
+    _trace.primary_call(system, guarded)
+    _trace.publish_result(result, os.path.join(root,mode+'-result.json'))
+    if result['closed'] or handle[0] is None: _trace.request_exit(system)
 
 
-if __name__=='__main__':
-    root=os.environ['INOPRO_CLEAR_ROOT'];mode=os.environ['INOPRO_CLEAR_MODE']
-    if not os.path.basename(root).startswith('InoPro-PlaceholderClear-') or mode not in ('prepare','baseline','clear','verify'):
-        raise ValueError('Dedicated probe required')
-    run(root,os.environ['INOPRO_CLEAR_FIXED'],mode,os.path.dirname(os.path.abspath(__file__)))
+try:
+    if __name__=='__main__':
+        root=os.environ['INOPRO_CLEAR_ROOT'];mode=os.environ['INOPRO_CLEAR_MODE']
+        if not os.path.basename(root).startswith('InoPro-PlaceholderClear-') or mode not in ('prepare','baseline','clear','verify'):
+            raise ValueError('Dedicated probe required')
+        run(root,os.environ['INOPRO_CLEAR_FIXED'],mode,os.path.dirname(os.path.abspath(__file__)))
+    else:
+        _trace.record('business-entry-not-selected', entryName=__name__)
+except Exception as _error:
+    _trace.fail('outer-startup-envelope', _error)
+    raise

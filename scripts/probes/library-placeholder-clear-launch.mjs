@@ -1,3 +1,4 @@
+import {observeProbe,closeProbeHandles} from './probe-exit-observer.mjs';
 import {execFile, spawn} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
 import {open, readFile, realpath} from 'node:fs/promises';
@@ -24,8 +25,10 @@ const sha=async file=>createHash('sha256').update(await readFile(file)).digest('
 const load=async name=>JSON.parse(await readFile(path.join(root,name),'utf8'));
 const publish=async(name,value)=>{
   const file=await open(path.join(root,name),'wx');
+  let first=null;
   try {await file.writeFile(JSON.stringify(value,null,2)+'\n','utf8');await file.sync();}
-  finally {await file.close();}
+  catch(error){first=error;throw error;}
+  finally {await closeProbeHandles([file],first);}
 };
 const now=()=>new Date().toISOString();
 const origin=await load('fixture-origin.json');
@@ -61,28 +64,27 @@ let dispatched=false;
 async function nativePass(mode,expectedDisk) {
   if(await sha(project)!==expectedDisk)throw Error('Fixture changed before native pass');
   await checkHandoff();
-  await publish(mode+'-intent.json',{operationId,mode,project,expectedDisk,sha256:await sha(script),guardSha256:await sha(path.join(repo,'scripts','probes','library_placeholder_clear_guard.py')),bridgeSha256:await sha(path.join(fixed,'bridge','worker.py')),time:now()});
+  const launchId=randomUUID(),scriptSha256=await sha(script);
+  await publish(mode+'-intent.json',{operationId,launchId,mode,project,expectedDisk,sha256:scriptSha256,guardSha256:await sha(path.join(repo,'scripts','probes','library_placeholder_clear_guard.py')),bridgeSha256:await sha(path.join(fixed,'bridge','worker.py')),time:now()});
   const stdout=await open(path.join(root,mode+'-stdout.txt'),'wx');
   const stderr=await open(path.join(root,mode+'-stderr.txt'),'wx');
+  let first=null;
   try {
     const child=spawn(executable,['--profile="InoProShop(V1.9.1.6)"','--runscript="'+script+'"'],{
       cwd:path.dirname(executable),windowsHide:true,windowsVerbatimArguments:true,
-      env:{...process.env,INOPRO_CLEAR_ROOT:root,INOPRO_CLEAR_FIXED:fixed,INOPRO_CLEAR_MODE:mode},
+      env:{...process.env,INOPRO_CLEAR_ROOT:root,INOPRO_CLEAR_FIXED:fixed,INOPRO_CLEAR_MODE:mode,
+        INOPRO_TRACE_ROOT:root,INOPRO_TRACE_MODE:mode,INOPRO_TRACE_OPERATION:operationId,
+        INOPRO_TRACE_LAUNCH:launchId,INOPRO_TRACE_SCRIPT_SHA:scriptSha256},
       stdio:['ignore',stdout.fd,stderr.fd]
     });
     dispatched=true;
-    const exit=new Promise(resolve=>{
-      child.once('error',error=>resolve({error:error.message}));
-      child.once('close',(code,signal)=>resolve({code,signal}));
+    const observed=await observeProbe(child,{
+      binding:{operationId,launchId,scriptSha256},birth:probeProcess(child.pid),
+      resultFile:path.join(root,mode+'-result.json'),publish:(name,value)=>publish(mode+'-'+name+'.json',value),
+      businessMs:240000,graceMs:60000
     });
-    const birth=await probeProcess(child.pid);
-    await publish(mode+'-start.json',{operationId,mode,pid:child.pid,birth,time:now()});
-    let timer;
-    const ended=await Promise.race([exit,new Promise(resolve=>{timer=setTimeout(()=>resolve({timeout:true}),240000);})]);
-    clearTimeout(timer);
-    if(ended.timeout){child.unref();await publish(mode+'-unconfirmed.json',{operationId,stage:'native-exit',pid:child.pid,birth,time:now()});}
-    else await publish(mode+'-exit.json',{operationId,pid:child.pid,...ended,time:now()});
-    if(ended.code!==0||birth.state!=='running')throw Error('Native completion could not be confirmed; retain evidence and lease');
+    if(observed.status!=='succeeded')throw Error('Native completion uncertain; original timeout and bounded exit observations retained');
+    const birth=observed.birth;
     const result=await load(mode+'-result.json');
     if(result.engine.pid!==child.pid||result.engine.creationUtcTicks!==birth.identity.startId||
        !result.closed||pathKey(result.projectPath)!==pathKey(project)||
@@ -95,7 +97,7 @@ async function nativePass(mode,expectedDisk) {
     if(result.status!=='succeeded')throw Error('Native result unconfirmed; retain evidence and lease');
     dispatched=false;
     return result;
-  } finally {await stdout.close();await stderr.close();}
+  } catch(error){first=error;throw error;} finally {await closeProbeHandles([stdout,stderr],first);}
 }
 
 await checkHandoff();
