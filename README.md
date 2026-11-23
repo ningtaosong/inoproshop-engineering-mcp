@@ -44,7 +44,7 @@ S8a 已交付单条任务调用替换。在已验 AM610 设备描述 `3.5.11.11`
 
 **S6b 已完成一个组合的可行性探测。** AM610 夹具上的 `SMC_FreeEncoder` 与 `Device` 父连接器 `0 / Common.SoftMotion.General` 目前只适合用独立脚本做只读选址评估。尚无设备添加或选址评估 MCP 工具，离线设备参数写入未开发。结论仅适用于该组合。见 [S6b 探测结论与证据入口](docs/device-add-probe.md#探测结论与证据入口)。
 
-S5a 精确添加直接引用、S5b 设置普通库占位符的显式覆盖均已合并。`library_inspect` 能分别读回显式覆盖和当前有效解析。普通直接引用移除已完成可行性探测，目前只适合只读评估，未提供删除能力。清除占位符覆盖仍是单独的未实现项。详见[库引用添加](docs/library-reference-add.md)、[占位符解析](docs/library-placeholder-resolve.md)和[直接引用移除探测](docs/library-reference-remove-probe.md)。
+S5a 精确添加直接引用、S5b 设置普通库占位符的显式覆盖均已合并。`library_inspect` 能分别读回显式覆盖和当前有效解析。普通直接引用移除已完成可行性探测，目前只适合只读评估，未提供删除能力。[清除占位符覆盖探测](docs/library-placeholder-clear-probe.md)已确认本机公开接口的 null 清除语义，但夹具准备启动未取得阶段及退出回执，独立探测为 unknown；正式清除、保存持久化及编译未执行，目前仅适合只读评估，未提供清除工具。详见[库引用添加](docs/library-reference-add.md)、[占位符解析](docs/library-placeholder-resolve.md)和[直接引用移除探测](docs/library-reference-remove-probe.md)。
 
 真实 MCP 和一次真实 DSH CLI 工程闭环均已通过编译、保存重开、保存版复编及最终读回；真实模型在冲突后继续写入，流程未通过。补修后，独立替身正例观察到正确的分页/写入字段映射，负例观察到在首次冲突后不再写入或保存。这不构成任务级强制阻断，不等于验证完整依赖或 PLC 运行。证据归属见[合并复核](docs/s5b-merge-review.md)；早期失败和隔离历史见[真实 MCP 复核](docs/s5b-final-mcp-review.md)、[CLI 首次尝试](docs/s5b-cli-acceptance-20261117.md)及[隔离维护](docs/direct-open-isolation.md)。
 
