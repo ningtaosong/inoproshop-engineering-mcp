@@ -21,6 +21,7 @@ try:
     import imp
     import io
     import json
+    import hashlib
     from System import DateTime
     from System.Diagnostics import Process
     from System.IO import File
@@ -40,24 +41,35 @@ def load(p):
 
 
 def run(root, fixed, mode, script_dir):
+    intent = load(os.path.join(root, mode + '-intent.json'))
     _trace.record('project-helpers-start')
+    helper_files = {'guardSha256':os.path.join(script_dir,'library_placeholder_clear_guard.py'),
+                    'bridgeSha256':os.path.join(fixed,'bridge','worker.py'),
+                    'libraryHelperSha256':os.path.join(fixed,'bridge','library_reference.py'),
+                    'recorderSha256':os.path.join(script_dir,'probe_startup_trace.py')}
+    actual_helpers = {}
+    for key, helper_path in helper_files.items():
+        with open(helper_path,'rb') as helper_file: actual_helpers[key] = hashlib.sha256(helper_file.read()).hexdigest()
+        if actual_helpers[key] != intent[key]: raise ValueError('Helper fingerprint changed: '+key)
     guard = imp.load_source('placeholder_clear_guard', os.path.join(script_dir, 'library_placeholder_clear_guard.py'))
+    _trace.record('guard-helper-loaded')
     api = dict(__file__=os.path.join(fixed, 'bridge', 'worker.py'), projects=projects, system=system, librarymanager=librarymanager)
     with io.open(api['__file__'], 'r', encoding='utf-8') as f: source = f.read()
     marker = '# Fixed helper code only; request text is never evaluated.'
     guard.require(source.count(marker) == 1, 'Fixed worker helper boundary changed')
     exec(compile(source.split(marker)[0], api['__file__'], 'exec'), api)
+    _trace.record('worker-helpers-loaded')
     with io.open(os.path.join(fixed, 'bridge', 'library_reference.py'), 'r', encoding='utf-8') as f:
         exec(compile(f.read(), 'library_reference.py', 'exec'), api)
-    _trace.record('project-helpers-complete')
+    _trace.record('project-helpers-complete', fingerprints=actual_helpers)
     publish, sha = api['publish'], api['file_hash']
-    intent = load(os.path.join(root, mode + '-intent.json'))
     path = intent['project'];disk = intent['expectedDisk']
     proc = Process.GetCurrentProcess()
     result = dict(status='unknown', mode=mode, projectPath=path, operationId=intent['operationId'],
                   engine=dict(pid=proc.Id, creationUtcTicks=unicode(proc.StartTime.ToUniversalTime().Ticks),
                               version=unicode(proc.MainModule.FileVersionInfo.FileVersion)),
-                  diskBefore=disk, clearDispatchCount=0, fixtureMutationCount=0, saveCount=0, closed=False)
+                  diskBefore=disk, clearDispatchCount=0, fixtureMutationCount=0, saveCount=0,
+                  compileCount=0, compileCompletedCount=0, closed=False)
     handle, stage, seq = [None], ['start'], [0]
     placeholder = u'ClearProbeOwned'
 
@@ -104,7 +116,9 @@ def run(root, fixed, mode, script_dir):
 
     def build(name, state, persisted):
         before_hash = sha(path)
+        result['compileCount'] += 1
         reply = step(name,lambda:api['compile_application'](handle[0],state['applicationId'],'application'))
+        result['compileCompletedCount'] += 1
         emit(name,dict(reply=reply,diskAtBuild=before_hash,diskAfterBuild=sha(path),persistedInput=persisted,
                        libraryVersion=state['library']['configurationVersion'],sourceSnapshot=state['sourceSnapshot']))
         guard.require(reply['status']=='succeeded' and reply['data']['buildPassed'] is True and
@@ -114,6 +128,7 @@ def run(root, fixed, mode, script_dir):
         guard.equal(state,after,'Compilation changed checked library/source/task state')
 
     def save():
+        guard.require(sha(path)==result.get('savedHash',disk),'Disk changed before save')
         result['saveCount'] += 1
         handle[0].save()
         result['savedHash'] = sha(path)

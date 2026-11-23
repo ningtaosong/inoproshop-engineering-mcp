@@ -65,12 +65,19 @@ async function nativePass(mode,expectedDisk) {
   if(await sha(project)!==expectedDisk)throw Error('Fixture changed before native pass');
   await checkHandoff();
   const launchId=randomUUID(),scriptSha256=await sha(script);
-  await publish(mode+'-intent.json',{operationId,launchId,mode,project,expectedDisk,sha256:scriptSha256,guardSha256:await sha(path.join(repo,'scripts','probes','library_placeholder_clear_guard.py')),bridgeSha256:await sha(path.join(fixed,'bridge','worker.py')),time:now()});
+  const argv=['--profile="InoProShop(V1.9.1.6)"','--runscript="'+script+'"'];
+  await publish(mode+'-intent.json',{operationId,launchId,mode,project,expectedDisk,sha256:scriptSha256,
+    guardSha256:await sha(path.join(repo,'scripts','probes','library_placeholder_clear_guard.py')),
+    bridgeSha256:await sha(path.join(fixed,'bridge','worker.py')),
+    libraryHelperSha256:await sha(path.join(fixed,'bridge','library_reference.py')),
+    recorderSha256:await sha(path.join(repo,'scripts','probes','probe_startup_trace.py')),
+    observerSha256:await sha(path.join(repo,'scripts','probes','probe-exit-observer.mjs')),
+    executable,executableSha256:await sha(executable),argv,cwd:path.dirname(executable),time:now()});
   const stdout=await open(path.join(root,mode+'-stdout.txt'),'wx');
   const stderr=await open(path.join(root,mode+'-stderr.txt'),'wx');
   let first=null;
   try {
-    const child=spawn(executable,['--profile="InoProShop(V1.9.1.6)"','--runscript="'+script+'"'],{
+    const child=spawn(executable,argv,{
       cwd:path.dirname(executable),windowsHide:true,windowsVerbatimArguments:true,
       env:{...process.env,INOPRO_CLEAR_ROOT:root,INOPRO_CLEAR_FIXED:fixed,INOPRO_CLEAR_MODE:mode,
         INOPRO_TRACE_ROOT:root,INOPRO_TRACE_MODE:mode,INOPRO_TRACE_OPERATION:operationId,
@@ -109,23 +116,26 @@ try {
   const held=await verifyRegistry(store);
   await publish('lease-acquired.json',{operationId,ownerPid:process.pid,before,held,time:now()});
   const prepared=await nativePass('prepare',seed);
-  if(prepared.saveCount!==1||prepared.fixtureMutationCount!==2||prepared.clearDispatchCount!==0)
+  if(prepared.saveCount!==1||prepared.fixtureMutationCount!==2||prepared.clearDispatchCount!==0||prepared.compileCount!==0)
     throw Error('Fixture preparation not confirmed');
   const baseline=await nativePass('baseline',prepared.diskAfterClose);
-  if(baseline.saveCount!==0||baseline.clearDispatchCount!==0||baseline.diskAfterClose!==prepared.diskAfterClose)
+  if(baseline.saveCount!==0||baseline.clearDispatchCount!==0||baseline.compileCount!==1||baseline.compileCompletedCount!==1||baseline.diskAfterClose!==prepared.diskAfterClose)
     throw Error('Saved baseline verification failed');
   const write=await nativePass('clear',baseline.diskAfterClose);
-  if(write.saveCount!==1||write.clearDispatchCount!==1)throw Error('Single clear/save not confirmed');
+  if(write.saveCount!==1||write.clearDispatchCount!==1||write.compileCount!==1||write.compileCompletedCount!==1)throw Error('Single clear/save/build not confirmed');
   const verify=await nativePass('verify',write.diskAfterClose);
-  if(verify.saveCount!==0||verify.clearDispatchCount!==0||verify.diskAfterClose!==write.diskAfterClose)
+  if(verify.saveCount!==0||verify.clearDispatchCount!==0||verify.compileCount!==1||verify.compileCompletedCount!==1||verify.diskAfterClose!==write.diskAfterClose)
     throw Error('Saved version changed during verification');
   const births=[prepared,baseline,write,verify].map(r=>r.engine.creationUtcTicks);
   if(new Set(births).size!==4)throw Error('Four independent native processes not confirmed');
   await publish('probe-succeeded.json',{operationId,project,savedDiskSha256:verify.diskAfterClose,time:now(),
-    clearDispatchCount:1,preparationSaveCount:1,formalSaveCount:1,independentProcesses:4});
+    clearDispatchCount:1,preparationSaveCount:1,formalSaveCount:1,preparationCompileCount:1,formalCompileCount:2,independentProcesses:4});
 
 } catch(error) {
-  await publish('probe-stopped.json',{operationId,uncertain:dispatched,error:error.message,time:now()});
+  try {await publish('probe-stopped.json',{operationId,uncertain:dispatched,error:error.message,
+    primaryException:{name:error.name,message:error.message,stack:error.stack},time:now()});}
+  catch(logger){process.stderr.write(JSON.stringify({primaryException:{name:error.name,message:error.message,stack:error.stack},
+    loggerException:{name:logger.name,message:logger.message,stack:logger.stack}})+'\n');}
   throw error;
 } finally {
   if(!dispatched) {
