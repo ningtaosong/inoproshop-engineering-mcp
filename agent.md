@@ -4,6 +4,9 @@
 
 main 为 0.36.0 候选版、37 项工具；固定入口与实际连接分别见[收尾说明](docs/variable-initializer-0360-merge.md)，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
 
+当前功能分支 `codex/library-placeholder-clear` 实现限定普通占位符覆盖清除，预计 0.37.0／38 项工具。[设计与守卫](docs/library-placeholder-clear-design.md)区分覆盖清除和实际解析，不预测默认回退。原生正例归属探测提交 `7c700dc77783354816570a129b631a3b785227c2`；真实 MCP/CLI 产品验收尚待执行。S9 暂缓，不连接 PLC。
+
+
 0.34.1 当时在功能分支补修 [task_create 任务清单换序核对](docs/task-create-inventory-order.md)。[独立 MCP 最小复验通过，CLI 最终工程核对成立，但流程与完整正常退出验收未通过](docs/task-create-revalidation-0341.md)。原 unknown 未改判；CLI 历史 reconcile 引起的账本变化单列，该轮日常入口未部署本补丁；后续已随 0.34.2 合并。
 
 0.34.2 已合入 main，包含 0.34.1 task_create 任务集合核对补修，以及[正式隔离仅观察、终态幂等和 IDE 退出证据保护](docs/operation-reconcile-exit-guard.md)。[最小真实只读复验](docs/operation-guard-readonly-revalidation-0342.md)已完成；CLI 原始协议握手缺证单列。[合并与固定入口记录](docs/operation-guard-0342-merge.md)区分配置更新、独立初始化和最终日常连接。历史账本未恢复，IDE 崩溃根因与默认环境性能问题仍未解决。该段保留 0.34.2 的验收归属；后续任务集合及 PROGRAM 目录补修见下段。

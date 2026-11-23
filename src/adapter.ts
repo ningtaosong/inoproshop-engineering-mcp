@@ -137,6 +137,20 @@ export class IdeAdapter implements Adapter {
     if(!response)return uncertain('RESULT_MISSING');
     if(!dispatched)return uncertain('DISPATCH_EVIDENCE_MISSING');
     if(previous?.operationId===request.operationId&&previous.status==='unknown'&&previous.error?.code==='READ_ONLY_FILE_CHANGED')return previous;
+    if(request.command==='clear_placeholder'&&previous?.operationId===request.operationId&&
+      previous.status==='unknown'&&previous.error?.code==='CLEAR_SAVED_DISK_CHANGED')return previous;
+    if(request.command==='clear_placeholder'&&response.status==='succeeded'){
+      const current=digest(await fs.readFile(request.projectPath));
+      if(response.data?.diskHash!==current){
+        const failed:Reply={contractVersion:'1.0.0',operationId:request.operationId,status:'unknown',
+          summary:'占位符清除保存读回与可信退出后的文件不同；保留现场，不恢复或重放',
+          error:{code:'CLEAR_SAVED_DISK_CHANGED',message:'Saved clear evidence differs from the post-exit file'},
+          data:{priorResult:response,workerDiskHash:response.data?.diskHash,observedDiskHash:current,processExitEvidence:verdict}};
+        await atomicJson(path.join(directory,'observed-after-exit.json'),failed);return failed;
+      }
+      response.data.workerDiskHash=current;response.data.postExitDiskHashObserved=true;
+      await atomicJson(path.join(directory,'observed-after-exit.json'),response);
+    }
     if(request.command==='new_project'&&response.status==='succeeded') {
       const current=digest(await fs.readFile(request.projectPath));
       if(response.data?.diskHash!==current||response.data?.creationEvidence?.savedDiskHash!==current)

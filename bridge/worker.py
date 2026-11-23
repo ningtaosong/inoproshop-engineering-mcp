@@ -1563,6 +1563,7 @@ PROMPT_COMMAND_STAGES={
     'inspect':['initial-open'],'structure':['initial-open'],'list':['initial-open'],
     'libraries':['initial-open'],'search':['initial-open'],'read':['initial-open'],
     'resolve_placeholder':['initial-open','reopen'],'change':['initial-open','reopen'],
+    'clear_placeholder':['initial-open','reopen'],
     'task_create':['initial-open','reopen'],
     'task_call_append':['initial-open','reopen'],
     'task_call_replace':['initial-open','reopen'],
@@ -1866,7 +1867,7 @@ def dispatch(req):
     read_only = command in ("search","tasks","structure","device","io_mapping","libraries","compare_capture") or bool(req.get("fileGuard") and command in ("inspect","list","read"))
     direct_evidence = None
     before_hash = None
-    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "task_call_append", "task_call_replace", "structure", "device", "io_mapping", "libraries", "add_library", "resolve_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
+    if command not in ("inspect", "list", "read", "search", "tasks", "task_update", "task_create", "task_call_append", "task_call_replace", "structure", "device", "io_mapping", "libraries", "add_library", "resolve_placeholder", "clear_placeholder", "compare_capture", "create", "create_declaration", "create_method", "create_property", "create_folder", "move_object", "change", "build", "save"):
         return failure("unsupported", "COMMAND_UNSUPPORTED", u"未支持的固定桥接操作")
     try:
         direct_evidence=direct_file_guard(req,lifecycle)
@@ -1876,7 +1877,7 @@ def dispatch(req):
                 lifecycle_reject(lifecycle,failure("conflict","READ_DISK_CHANGED",u"正式读取前工程文件已变化，未打开或保存",{"beforeDiskHash":before_hash}))
         if projects.primary is not None:
             lifecycle_reject(lifecycle,failure("conflict", "UNOWNED_PROJECT", u"新启动实例已有工程；拒绝接管"))
-        if command in ("change", "create", "create_declaration", "create_method", "create_property", "add_library", "resolve_placeholder") or req.get("fileGuard") and command=="save":
+        if command in ("change", "create", "create_declaration", "create_method", "create_property", "add_library", "resolve_placeholder", "clear_placeholder") or req.get("fileGuard") and command=="save":
             shutil.copyfile(req["projectPath"], req["checkpointPath"])
         project = lifecycle_open(lifecycle,req["projectPath"])
         if direct_evidence and file_hash(req["projectPath"])!=direct_evidence["beforeDiskHash"]:
@@ -1920,6 +1921,8 @@ def dispatch(req):
                 response,project=library_reference_add(project,req,args,lifecycle)
             elif command == "resolve_placeholder":
                 response,project=library_placeholder_resolve(project,req,args,lifecycle)
+            elif command == "clear_placeholder":
+                response,project=library_placeholder_clear(project,req,args,lifecycle)
             elif command == "list":
                 objects,unsupported_children = [],[]
                 for item, names, aid in walk(project):
@@ -2147,6 +2150,8 @@ with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'organizati
     exec(compile(organization_file.read(),'organization.py','exec'))
 with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'library_reference.py'),'r',encoding='utf-8') as library_reference_file:
     exec(compile(library_reference_file.read(),'library_reference.py','exec'))
+with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'library_placeholder_clear.py'),'r',encoding='utf-8') as library_clear_file:
+    exec(compile(library_clear_file.read(),'library_placeholder_clear.py','exec'))
 
 request_path = os.environ.get("INOPRO_BRIDGE_REQUEST")
 if not request_path:

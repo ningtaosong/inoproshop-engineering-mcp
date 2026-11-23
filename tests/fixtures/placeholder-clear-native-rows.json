@@ -1,0 +1,788 @@
+{
+  "origin": {
+    "source": "clear-initial.json, independent probe 0cf29f90-cda7-4024-b949-eb337cbd8c3e",
+    "sha256": "d75ef6555e4101e87b0f903e0021eb3f702fe2a58fc948d402657ea4fb74ad69",
+    "qualification": "Archived actual 19-reference rows; owner GUIDs/paths remapped to offline fixture only"
+  },
+  "references": [
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 0,
+      "order": 0,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#IoStandard",
+        "optional": false,
+        "id": "1217811713",
+        "qualified_only": false,
+        "effective_resolution": "IoStandard, 3.5.10.0 (System)",
+        "resolution_info": "设备解析",
+        "default_resolution": "IoStandard, 3.5.10.0 (System)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "IoStandard",
+        "system_library": true,
+        "placeholder_name": "IoStandard"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "0"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 1,
+      "order": 1,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": true,
+        "explicit_redirection": "CmpHCUtils, 1.3.2.0 (Inovance)",
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#CmpHCUtils",
+        "optional": false,
+        "id": "677195365",
+        "qualified_only": false,
+        "effective_resolution": "CmpHCUtils, 1.3.2.0 (Inovance)",
+        "resolution_info": "占位符重定向解析",
+        "default_resolution": "CmpHCUtils, * (Inovance)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "CmpHCUtils",
+        "system_library": true,
+        "placeholder_name": "CmpHCUtils"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "1"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 2,
+      "order": 2,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": true,
+        "explicit_redirection": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#SysHCPlcInfo",
+        "optional": false,
+        "id": "1168205964",
+        "qualified_only": false,
+        "effective_resolution": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+        "resolution_info": "占位符重定向解析",
+        "default_resolution": "SysHCPlcInfo, * (Inovance)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "SysHCPlcInfo",
+        "system_library": true,
+        "placeholder_name": "SysHCPlcInfo"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "2"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 3,
+      "order": 3,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#3SLicense",
+        "optional": false,
+        "id": "2391188751",
+        "qualified_only": false,
+        "effective_resolution": "3SLicense, 3.5.10.0 (3S - Smart Software Solutions GmbH)",
+        "resolution_info": "许可机制解析",
+        "default_resolution": "3SLicense, 0.0.0.0 (3S - Smart Software Solutions GmbH)",
+        "resolver_guid": "97c3b452-d9fa-4ac2-9d0c-3d420aa6d95b",
+        "namespace": "_3S_LICENSE",
+        "system_library": true,
+        "placeholder_name": "3SLicense"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "3"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 4,
+      "order": 4,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#Standard",
+        "optional": false,
+        "id": "1554848619",
+        "qualified_only": false,
+        "effective_resolution": "Standard, 3.5.9.0 (System)",
+        "resolution_info": "库配置文件解析",
+        "default_resolution": "Standard, * (System)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "Standard",
+        "system_library": false,
+        "placeholder_name": "Standard"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "4"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 5,
+      "order": 5,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": true,
+        "explicit_redirection": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#InoParamsConfigLib",
+        "optional": false,
+        "id": "688251431",
+        "qualified_only": false,
+        "effective_resolution": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+        "resolution_info": "占位符重定向解析",
+        "default_resolution": "InoParamsConfigLib, * (Inovance)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "InoParamsConfigLib",
+        "system_library": true,
+        "placeholder_name": "InoParamsConfigLib"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "5"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 6,
+      "order": 6,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#BreakpointLogging",
+        "optional": false,
+        "id": "2510197305",
+        "qualified_only": false,
+        "effective_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+        "resolution_info": "库配置文件解析",
+        "default_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "BPLog",
+        "system_library": true,
+        "placeholder_name": "BreakpointLogging"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "6"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 7,
+      "order": 7,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#CmpEventMgr",
+        "optional": false,
+        "id": "3602500822",
+        "qualified_only": false,
+        "effective_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+        "resolution_info": "设备解析",
+        "default_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "CmpEventMgr",
+        "system_library": false,
+        "placeholder_name": "CmpEventMgr"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "7"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 8,
+      "order": 8,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#Component Manager",
+        "optional": false,
+        "id": "2121407659",
+        "qualified_only": false,
+        "effective_resolution": "Component Manager, 3.5.9.0 (System)",
+        "resolution_info": "设备解析",
+        "default_resolution": "Component Manager, 3.5.9.0 (System)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "Component_Manager",
+        "system_library": false,
+        "placeholder_name": "Component Manager"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "8"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 9,
+      "order": 9,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#CmpApp",
+        "optional": false,
+        "id": "3235431135",
+        "qualified_only": false,
+        "effective_resolution": "CmpApp, 3.5.11.0 (System)",
+        "resolution_info": "设备解析",
+        "default_resolution": "CmpApp, 3.5.11.0 (System)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "CmpApp",
+        "system_library": false,
+        "placeholder_name": "CmpApp"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "9"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 10,
+      "order": 10,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#CmpIecTask",
+        "optional": false,
+        "id": "551989543",
+        "qualified_only": false,
+        "effective_resolution": "CmpIecTask, 3.5.9.0 (System)",
+        "resolution_info": "设备解析",
+        "default_resolution": "CmpIecTask, 3.5.9.0 (System)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "CmpIecTask",
+        "system_library": false,
+        "placeholder_name": "CmpIecTask"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "10"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 11,
+      "order": 11,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#CmpHSIO",
+        "optional": false,
+        "id": "2432838545",
+        "qualified_only": false,
+        "effective_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+        "resolution_info": "库配置文件解析",
+        "default_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "CmpHSIO",
+        "system_library": true,
+        "placeholder_name": "CmpHSIO"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "11"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 12,
+      "order": 12,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#SM3_Basic",
+        "optional": false,
+        "id": "2050205063",
+        "qualified_only": false,
+        "effective_resolution": "SM3_Basic, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+        "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+        "default_resolution": "SM3_Basic, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "SM3_Basic",
+        "system_library": true,
+        "placeholder_name": "SM3_Basic"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "12"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 13,
+      "order": 13,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#SM3_CNC",
+        "optional": false,
+        "id": "3136870067",
+        "qualified_only": false,
+        "effective_resolution": "SM3_CNC, 4.2.1.1 (3S - Smart Software Solutions GmbH)",
+        "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+        "default_resolution": "SM3_CNC, 4.2.1.1 (3S - Smart Software Solutions GmbH)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "SM3_CNC",
+        "system_library": true,
+        "placeholder_name": "SM3_CNC"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "13"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 14,
+      "order": 14,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#SM3_Robotics",
+        "optional": false,
+        "id": "2696647887",
+        "qualified_only": false,
+        "effective_resolution": "SM3_Robotics, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+        "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+        "default_resolution": "SM3_Robotics, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "SM3_Robotics",
+        "system_library": true,
+        "placeholder_name": "SM3_Robotics"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "14"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 15,
+      "order": 15,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#SM3_Robotics_Visu",
+        "optional": false,
+        "id": "94293855",
+        "qualified_only": false,
+        "effective_resolution": "SM3_Robotics_Visu, 4.2.0.0 (3S - Smart Software Solutions GmbH)",
+        "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+        "default_resolution": "SM3_Robotics_Visu, 4.2.0.0 (3S - Smart Software Solutions GmbH)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "SM3_Robotics_Visu",
+        "system_library": true,
+        "placeholder_name": "SM3_Robotics_Visu"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "15"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 16,
+      "order": 16,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#SM3_Transformation",
+        "optional": false,
+        "id": "3830663797",
+        "qualified_only": false,
+        "effective_resolution": "SM3_Transformation, 4.2.1.0 (3S - Smart Software Solutions GmbH)",
+        "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+        "default_resolution": "SM3_Transformation, 4.2.1.0 (3S - Smart Software Solutions GmbH)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "TRAFO",
+        "system_library": true,
+        "placeholder_name": "SM3_Transformation"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "16"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 17,
+      "order": 17,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": false,
+        "explicit_redirection": null,
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#IecVarAccess",
+        "optional": false,
+        "id": "1043091537",
+        "qualified_only": false,
+        "effective_resolution": "IecVarAccess, 3.5.11.0 (System)",
+        "resolution_info": "库配置文件解析",
+        "default_resolution": "IecVarAccess, 3.3.1.20 (System)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "IecVarAccessLibrary",
+        "system_library": true,
+        "placeholder_name": "IecVarAccess"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "17"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    },
+    {
+      "resolutionBasis": "Native effective_resolution string only; not an independent loaded/missing flag",
+      "unavailableFields": [],
+      "installedStatus": "not-queried",
+      "index": 18,
+      "order": 18,
+      "managerId": "40000000-0000-4000-8000-000000000001",
+      "rawFields": {
+        "is_redirected": true,
+        "explicit_redirection": "CAA Mathematics, 3.5.7.0 (CAA Technical Workgroup)",
+        "is_managed": false,
+        "is_placeholder": true,
+        "name": "#CAA Mathematics",
+        "optional": false,
+        "id": "3880672626",
+        "qualified_only": false,
+        "effective_resolution": "CAA Mathematics, 3.5.7.0 (CAA Technical Workgroup)",
+        "resolution_info": "占位符重定向解析",
+        "default_resolution": "CAA Mathematics, 3.5.11.0 (CAA Technical Workgroup)",
+        "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+        "namespace": "MATH",
+        "system_library": false,
+        "placeholder_name": "CAA Mathematics"
+      },
+      "managerPath": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager"
+      ],
+      "path": [
+        "Device",
+        "Plc Logic",
+        "Application",
+        "Library Manager",
+        "references",
+        "18"
+      ],
+      "resolutionStatus": "effective-resolution-reported",
+      "parentIndex": null
+    }
+  ]
+}
