@@ -1,6 +1,6 @@
 # InoProShop Engineering MCP
 
-本功能分支为 **0.38.0 候选版、38 项工具**：`variable_edit.add-initializer` 可在普通原生 ST FUNCTION_BLOCK 的唯一完整 `VAR_INPUT`／`VAR_OUTPUT` 区为已有 BOOL／DINT／TIME 单变量补写缺失初值。[范围与证据](docs/fb-interface-initializer-add.md)。不创建变量、不覆盖已有值、不改变显式调用实参；日常 main 仍为下述 0.37.0。
+本功能分支为 **0.38.0 候选版、38 项工具**：`variable_edit.add-initializer` 可在普通原生 ST FUNCTION_BLOCK 的唯一完整 `VAR_INPUT`／`VAR_OUTPUT` 区为已有 BOOL／DINT／TIME 单变量补写缺失初值。[范围与证据](docs/fb-interface-initializer-add.md)。不创建变量、不覆盖已有值、不改变显式调用实参；日常 main 仍为下述 0.37.0。实现与离线验证通过；真实 MCP 第二次补写后遇到 IDE 异常退出，工程验收未通过，CLI 未发送，现场按 unknown 保留。
 
 **当前 main 为 0.37.0 候选版、38 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
