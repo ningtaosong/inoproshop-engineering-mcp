@@ -44,7 +44,7 @@ S8a 已交付单条任务调用替换。在已验 AM610 设备描述 `3.5.11.11`
 
 **S6b 已完成一个组合的可行性探测。** AM610 夹具上的 `SMC_FreeEncoder` 与 `Device` 父连接器 `0 / Common.SoftMotion.General` 目前只适合用独立脚本做只读选址评估。尚无设备添加或选址评估 MCP 工具，离线设备参数写入未开发。结论仅适用于该组合。见 [S6b 探测结论与证据入口](docs/device-add-probe.md#探测结论与证据入口)。
 
-S5a 精确添加直接引用、S5b 设置普通库占位符的显式覆盖均已合并。`library_inspect` 能分别读回显式覆盖和当前有效解析。普通直接引用移除已完成可行性探测，目前只适合只读评估，未提供删除能力。[清除占位符覆盖探测](docs/library-placeholder-clear-probe.md)已确认本机公开接口的 null 清除语义，但夹具准备启动未取得阶段及退出回执，独立探测为 unknown；正式清除、保存持久化及编译未执行，目前仅适合只读评估，未提供清除工具。详见[库引用添加](docs/library-reference-add.md)、[占位符解析](docs/library-placeholder-resolve.md)和[直接引用移除探测](docs/library-reference-remove-probe.md)。
+S5a 精确添加直接引用、S5b 设置普通库占位符的显式覆盖均已合并。`library_inspect` 能分别读回显式覆盖和当前有效解析。普通直接引用移除已完成可行性探测，目前只适合只读评估，未提供删除能力。[清除占位符覆盖探测](docs/library-placeholder-normal-baseline-probe.md)已取得限定原生清除、保存独立重开和保存版编译正例；早期 unknown 与失败保留。普通工程的写前恢复解析证据仍需单独解决，尚未提供清除产品工具。详见[库引用添加](docs/library-reference-add.md)、[占位符解析](docs/library-placeholder-resolve.md)和[直接引用移除探测](docs/library-reference-remove-probe.md)。
 
 真实 MCP 和一次真实 DSH CLI 工程闭环均已通过编译、保存重开、保存版复编及最终读回；真实模型在冲突后继续写入，流程未通过。补修后，独立替身正例观察到正确的分页/写入字段映射，负例观察到在首次冲突后不再写入或保存。这不构成任务级强制阻断，不等于验证完整依赖或 PLC 运行。证据归属见[合并复核](docs/s5b-merge-review.md)；早期失败和隔离历史见[真实 MCP 复核](docs/s5b-final-mcp-review.md)、[CLI 首次尝试](docs/s5b-cli-acceptance-20261117.md)及[隔离维护](docs/direct-open-isolation.md)。
 
@@ -103,7 +103,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | --- | --- | --- | --- |
 | 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 此前三个限定子阶段已合并；普通 VAR／根 GVL VAR_GLOBAL 已有单变量的 BOOL、DINT、TIME set-type 已交付。已交付 0.35.0 增加已有聚合中缺失直接字段的显式初始化；已合并 0.36.0 增加普通 VAR／根 VAR_GLOBAL 已有无初值单变量的初值补写；新建 DUT 字段、嵌套成员、数组、更广类型及其他声明区仍未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
 | 普通直接库引用移除 | S5 后续范围 | 写入前将原生选择条件与选中引用唯一绑定，并说明使用关系和反向依赖的实际覆盖 | [可行性探测已完成](docs/library-reference-remove-probe.md)，目前仅适合只读评估，未提供删除能力 |
-| 清除占位符显式覆盖 | S5 后续独立项 | 单独确认原生清除语义和读回结果 | 未实现；已合并的 S5b 仅支持设置显式覆盖 |
+| 清除占位符显式覆盖 | S5 后续独立项 | 单独确认原生清除语义和读回结果 | 限定原生正例已通过；产品工具未实现，原 S5b 设置语义不变 |
 | 限定设备添加 | S6b | 先在已知正确挂接的现有实例上读回对端连接器 ID 和所属父设备，并区分同接口的不同连接器 | [单一组合的可行性探测已完成](docs/device-add-probe.md#探测结论与证据入口)，只读选址评估，无添加工具 |
 | 离线设备参数写入 | S6 后续独立项 | 核实参数身份、离线可写语义和持久化 | 未开发 |
 | 按声明查询限定 ST 用法 | S7a | 在已读取的普通 ST `PROGRAM` 简单赋值中做保守静态推导 | [已交付](docs/variable-usages.md)，含绑定证据变化时的分页校验 |

@@ -1,7 +1,7 @@
 """Synthetic evidence only; does not open an IDE or prove native persistence."""
 import copy
 import unittest
-from library_placeholder_clear_guard import preflight, after_clear, clear_once
+from library_placeholder_clear_guard import preflight, after_clear, clear_once, NORMAL_RESOLVER
 
 
 def fixture():
@@ -11,8 +11,8 @@ def fixture():
     fields = dict(id='123',name='#Owned',namespace='MATH',is_placeholder=True,is_managed=False,system_library=False,
                   optional=False,qualified_only=False,placeholder_name='Owned',default_resolution=plan['defaultResolution'],
                   explicit_redirection=plan['explicitResolution'],effective_resolution=plan['explicitResolution'],
-                  is_redirected=True,resolution_info='application override',resolver_guid='resolver')
-    row = dict(managerId='manager',order=0,unavailableFields=[],rawFields=fields)
+                  is_redirected=True,resolution_info='application override',resolver_guid=NORMAL_RESOLVER)
+    row = dict(managerId='manager',order=0,unavailableFields=[],rawFields=fields,resolutionStatus='effective-resolution-reported')
     other = dict(managerId='manager',order=1,unavailableFields=[],rawFields=dict(id='456',name='DirectLib',namespace='OTHER',
                  is_placeholder=False,is_managed=True,system_library=False,optional=False,qualified_only=False))
     state = dict(projectPath='fixture.project',applicationId='app',managerId='manager',
@@ -21,6 +21,7 @@ def fixture():
                      configurationVersion='v1',placeholderConfigurationVersion='p1'),
         targetRedirection=dict(available=True,value=plan['explicitResolution'],nativeType='string'),
         sources=[dict(text='PROGRAM x')],tasks=dict(MainTask=dict(calls=[['PLC_PRG','中文'],['Keep','None']])) )
+    plan.update(normalSavedReopened=True,normalInstalled=dict(displayName=plan['defaultResolution']),normalBaseline=cleared(state))
     return plan,state
 
 

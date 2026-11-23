@@ -37,3 +37,15 @@ test('cleanup failure preserves first error and attempts both handles',async()=>
   assert.equal(count,2);assert.match(logs.join(''),/original failure/);assert.match(logs.join(''),/close failed/);
 });
 test('cleanup failure without first error fails conservatively',async()=>assert.rejects(closeProbeHandles([{close:async()=>{throw Error('close failed');}}],null,()=>{}),/close failed/));
+
+test('failed closed native result with exit zero remains unknown with accurate diagnosis',async()=>{
+  const p={...value(),status:'failed',closed:true,primaryException:{message:'original compile comparison',stage:'baseline-build'}};
+  const x=await scenario({payload:p});assert.equal(x.answer.status,'unknown');assert.equal(x.answer.timedOut,false);
+  assert.equal(x.answer.diagnostic.kind,'native-failed-closed-exit-zero');
+  assert.deepEqual(x.answer.diagnostic.nativePrimaryException,p.primaryException);
+  assert.equal(x.events.filter(e=>e.name==='business-timeout').length,0);
+});
+test('failed native result logger failure still blocks trusted diagnostic',async()=>{
+  const x=await scenario({payload:{...value(),status:'failed',closed:true},failRecord:'observation-complete'});
+  assert.equal(x.answer.status,'unknown');assert.equal(x.answer.diagnostic.trustedNativeFailure,false);
+});

@@ -76,3 +76,7 @@
 2026-11-23 后续仅完成[启动与退出取证补修及一次无工程验证](library-placeholder-startup-evidence.md)。该新操作取得可信正常退出，原 prepare 仍为 unknown；没有重开本节封存工程或补做清除、保存、编译。以下原探测记录保持原时点。
 
 原始记录根目录：`D:\InoPro-PlaceholderClear-20261123-004500`。先读 result-summary.json，再核对 prepare-intent／start／unconfirmed、probe-stopped、OEM 日志来源、文件保全和接口方法证据。轻量复核包入口为 INDEX.md；逐文件哈希见 MANIFEST.sha256.json，ZIP 总哈希由最终交付另列。
+
+## 2026-11-23 后续独立正例
+
+后续[恢复已测正常解析基线的原生探测](library-placeholder-normal-baseline-probe.md)完成限定清除、保存重开及保存版编译。本页原首败、unknown及原时点结论保持；产品化仍须解决没有历史未覆盖基线的普通工程写前证据。未提供清除产品工具。

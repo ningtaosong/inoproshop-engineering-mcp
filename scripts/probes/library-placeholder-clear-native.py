@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Disposable fixture only. Four distinct native processes; never a product entry."""
+"""Disposable fixture only. Measured normal baseline before override/clear."""
 import os
 import sys
 try:
@@ -56,11 +56,14 @@ def run(root, fixed, mode, script_dir):
                   engine=dict(pid=proc.Id, creationUtcTicks=unicode(proc.StartTime.ToUniversalTime().Ticks),
                               version=unicode(proc.MainModule.FileVersionInfo.FileVersion)),
                   diskBefore=disk, clearDispatchCount=0, fixtureMutationCount=0, saveCount=0,
-                  compileCount=0, compileCompletedCount=0, closed=False)
+                  compileCount=0, compileCompletedCount=0, publicLoadCount=0, closed=False)
     handle, stage, seq = [None], ['start'], [0]
-    placeholder = u'ClearProbeOwned'
+    placeholder = u'CAA Mathematics'
 
-    def emit(name, value): publish(os.path.join(root, mode + '-' + name + '.json'), value)
+    def emit(name, value):
+        filename=os.path.join(root, mode + '-' + name + '.json')
+        publish(filename, value)
+        if name=='plan':result['planSha256']=sha(filename)
     def step(name, action):
         stage[0] = name;seq[0] += 1
         emit('step-%03d-start' % seq[0], dict(stage=name, utc=unicode(DateTime.UtcNow.ToString('o'))))
@@ -101,7 +104,7 @@ def run(root, fixed, mode, script_dir):
         state,manager,refs,raw = capture();emit(name,state);emit(name+'-raw-task-inventory',raw)
         return state,manager,refs
 
-    def build(name, state, persisted):
+    def build(name, state, persisted, first_stabilization=False):
         before_hash = sha(path)
         result['compileCount'] += 1
         reply = step(name,lambda:api['compile_application'](handle[0],state['applicationId'],'application'))
@@ -112,7 +115,15 @@ def run(root, fixed, mode, script_dir):
                       reply['data']['diagnosticsComplete'] is True,'Compilation did not pass: '+name)
         guard.require(before_hash==sha(path),'Compilation changed main file')
         after,unused,refs = collect(name+'-readback')
-        guard.equal(state,after,'Compilation changed checked library/source/task state')
+        if first_stabilization:
+            guard.require(mode=='stabilize','Compile exception outside stabilization')
+            guard.stabilize_transition(state,after,intent,api)
+        else:
+            guard.stable_state(state,after,api)
+        emit(name+'-comparison',dict(passed=True,rule='exact-six-system-additions' if first_stabilization else 'full-state-equality',
+                                    beforeFile=mode+'-initial.json' if persisted else None,
+                                    afterFile=mode+'-'+name+'-readback.json'))
+        return after
 
     def save():
         guard.require(sha(path)==result.get('savedHash',disk),'Disk changed before save')
@@ -125,7 +136,41 @@ def run(root, fixed, mode, script_dir):
         guard.require(projects.primary is None,'Native project close not confirmed')
         handle[0] = None;result['closed'] = True;result['diskAfterClose'] = sha(path)
 
+    def public_load(manager):
+        # Explicit, pre-counted public load; never a retry or private resolver call.
+        guard.require(mode in ('declare','clear') and result['publicLoadCount']==0, 'Unexpected/repeated public load')
+        result['publicLoadCount'] += 1
+        loaded = manager.get_libraries(True)
+        emit('public-load',dict(method='get_libraries',argument=True,returned=[unicode(x) for x in loaded]))
+
+    def normal_plan():
+        plan=load(os.path.join(root,'normal-plan.json'))
+        guard.require(plan['normalSavedReopened'] is True, 'No normal saved/reopened baseline')
+        evidence=plan['normalEvidence']
+        for key in ('state','intent','declarePlan'):
+            filename=os.path.join(root,evidence[key+'File'])
+            guard.require(sha(filename)==evidence[key+'Sha256'], 'Normal baseline evidence changed: '+key)
+        guard.equal(plan['normalBaseline'],load(os.path.join(root,evidence['stateFile'])), 'Normal baseline plan/state differs')
+        guard.normal_resolution(plan['normalBaseline'],plan)
+        return plan
+
+    def prepared_plan(filename):
+        normal=normal_plan();plan=load(os.path.join(root,filename))
+        # Preparation may only add its saved disk hash and later baseline receipt.
+        expected=dict(normal)
+        expected['diskHash']=plan['diskHash']
+        expected['baselineSavedReopened']=plan['baselineSavedReopened']
+        guard.equal(expected,plan,'Prepared plan differs from measured normal plan')
+        return plan
+
     def work():
+        stage[0]='stage-provenance-preflight'
+        guard.require(result['engine']['version']==intent['nativeVersion'],'Native runtime changed')
+        guard.require(sha(os.path.join(script_dir,'library-placeholder-clear-launch.mjs'))==intent['launcherSha256'] and
+                      sha(os.path.join(script_dir,'placeholder-probe-stages.mjs'))==intent['phaseContractSha256'],
+                      'Phase launcher fingerprint changed')
+        previous_state=guard.stage_preflight(intent,mode,root,load,sha)
+        emit('stage-provenance',dict(mode=mode,previousStage=intent['previousStage'],passed=True))
         guard.require(projects.primary is None and sha(path)==disk,'Unowned handle or file changed')
         for suffix in ('.lock','.lck','.~lock','.~u'):
             guard.require(not os.path.lexists(path+suffix),'External occupancy marker exists')
@@ -133,14 +178,28 @@ def run(root, fixed, mode, script_dir):
         handle[0] = step('open-owned-fixture',lambda:projects.open(path))
         guard.require(os.path.normcase(unicode(handle[0].path))==os.path.normcase(path),'Wrong opened path')
         initial,manager,refs = step('initial-read',lambda:collect('initial'))
-        if mode=='prepare':
+        if mode=='stabilize':
+            guard.require(not refs,'Stabilization must precede target creation')
+            # Only this first compile can produce the six exact observed rows.
+            compiled=build('stabilize-build',initial,True,True)
+            step('save-stabilized-fixture',save)
+            saved,_,_=collect('after-save');guard.stable_state(compiled,saved,api)
+        elif mode=='stable':
+            guard.require(not refs,'Target exists before stable baseline')
+            guard.stable_state(previous_state,initial,api)
+            build('stable-build',initial,True)
+        elif mode=='declare':
+            guard.stable_state(previous_state,initial,api)
             guard.require(not refs,'Fixture placeholder already exists')
             catalog,natives = api['installed_inventory']();emit('installed-catalog',catalog)
             guard.require(catalog['enumerationComplete'],'Installed library inventory incomplete')
             selected = []
-            for version in ('3.5.11.0','3.5.7.0'):
+            for version,expected_identity in (
+                    ('3.5.11.0','d6053ea0d17ef9a0c21e32f4636e7c822b3c0fbef7aea3009bd7a6f75c71e331'),
+                    ('3.5.7.0','478d12c5b2de3e431506173d65bf59a34d520049ad41fe14ff361a42fac68ffb')):
                 found=[x for x in catalog['entries'] if x['title']=='CAA Mathematics' and x['company']=='CAA Technical Workgroup' and x['version']==version]
                 guard.require(len(found)==1 and len(natives[found[0]['identity']])==1,'Installed default/override identity not unique')
+                guard.require(found[0]['identity']==expected_identity,'Exact installed library identity changed')
                 selected.append(found[0])
             default,override = selected
             guard.require(default['defaultNamespace']==override['defaultNamespace'] and default['identity']!=override['identity'],'Installed identities/namespace mismatch')
@@ -148,35 +207,58 @@ def run(root, fixed, mode, script_dir):
             emit('selected-libraries',dict(default=default,override=override))
             result['fixtureMutationCount'] += 1
             step('prepare-add-ordinary-placeholder',lambda:manager.add_placeholder(placeholder,natives[default['identity']][0]))
+            step('load-created-placeholder-publicly',lambda:public_load(manager))
             created,manager,refs = collect('created')
             guard.require(len(refs)==1 and refs[0].system_library is False and refs[0].is_managed is False and
                           refs[0].get_redirection() is None and unicode(refs[0].default_resolution)==default['displayName'], 'Created default/ownership not confirmed')
             emit('native-method',dict(name='set_redirection',documentation=unicode(refs[0].set_redirection.__doc__),referenceId=unicode(refs[0].id)))
-            result['fixtureMutationCount'] += 1
-            step('prepare-explicit-override',lambda:refs[0].set_redirection(override['displayName']))
-            prepared,manager,refs = collect('prepared')
-            plan=dict(projectPath=path,applicationId=prepared['applicationId'],managerId=prepared['managerId'],
+            plan=dict(projectPath=path,applicationId=created['applicationId'],managerId=created['managerId'],
                       referenceId=unicode(refs[0].id),placeholderName=placeholder,namespace=default['defaultNamespace'],
                       defaultResolution=default['displayName'],explicitResolution=override['displayName'],
-                      preparedByThisProbe=True,baselineSavedReopened=False,defaultInstalled=default,overrideInstalled=override)
-            target=guard.target(prepared,plan)['rawFields']
-            guard.require(target['explicit_redirection']==override['displayName'] and target['effective_resolution']==override['displayName'] and target['is_redirected'] is True,'Prepared override not confirmed')
-            guard.equal(initial['sources'],prepared['sources'],'Preparation changed source')
-            guard.equal(initial['tasks'],prepared['tasks'],'Preparation changed tasks')
-            before_refs=initial['library']['references'];after_refs=prepared['library']['references']
-            guard.equal(before_refs,after_refs[:len(before_refs)],'Preparation changed pre-existing library references')
-            guard.require(len(after_refs)==len(before_refs)+1,'Preparation added an unexpected reference')
+                      preparedByThisProbe=True,baselineSavedReopened=False,normalSavedReopened=False,
+                      normalInstalled=default,defaultInstalled=default,overrideInstalled=override)
+            guard.created_normal(initial,created,plan,api)
+            compiled=build('normal-initial-build',created,False)
+            step('save-normal-baseline',save)
+            saved,_,_=collect('after-save');guard.stable_state(compiled,saved,api)
+            plan['normalBaseline']=saved;plan['normalDiskHash']=sha(path);emit('plan',plan)
+        elif mode=='normal':
+            plan=load(os.path.join(root,'declare-plan.json'))
+            guard.require(sha(path)==plan['normalDiskHash'],'Normal saved file changed')
+            guard.stable_state(previous_state,initial,api)
+            guard.equal(plan['normalBaseline'],initial,'Normal reopen differs')
+            guard.normal_resolution(initial,plan)
+            compiled=build('normal-build',initial,True)
+            plan['normalSavedReopened']=True
+            plan['normalEvidence']=dict(stateFile='normal-normal-build-readback.json',
+                stateSha256=sha(os.path.join(root,'normal-normal-build-readback.json')),
+                intentFile='normal-intent.json',intentSha256=sha(os.path.join(root,'normal-intent.json')),
+                declarePlanFile='declare-plan.json',declarePlanSha256=sha(os.path.join(root,'declare-plan.json')))
+            emit('plan',plan)
+        elif mode=='prepare':
+            plan=normal_plan()
+            guard.stable_state(previous_state,initial,api)
+            guard.equal(plan['normalBaseline'],initial,'Normal state changed before override preparation')
+            guard.normal_resolution(initial,plan)
+            guard.require(len(refs)==1 and unicode(refs[0].id)==plan['referenceId'],'Override reference identity changed')
+            live,manager,refs=step('same-handle-normal-recheck',lambda:collect('normal-prewrite'))
+            guard.equal(initial,live,'Same-handle normal state changed')
+            guard.require(sha(path)==disk,'Disk changed before override preparation')
+            result['fixtureMutationCount'] += 1
+            step('prepare-explicit-override',lambda:refs[0].set_redirection(plan['explicitResolution']))
+            prepared,manager,refs = collect('prepared')
+            guard.after_override(initial,prepared,plan)
             step('save-prepared-fixture',save);plan['diskHash']=sha(path);emit('plan',plan)
             saved,_,_=collect('after-save');guard.equal(prepared,saved,'Preparation save changed checked state')
         elif mode=='baseline':
-            plan=load(os.path.join(root,'prepare-plan.json'))
+            plan=prepared_plan('prepare-plan.json')
             guard.equal(load(os.path.join(root,'prepare-after-save.json')),initial,'Prepared baseline reopen mismatch')
             guard.target(initial,plan)
             build('baseline-build',initial,True)
             plan['baselineSavedReopened']=True
             emit('plan',plan)
         elif mode=='clear':
-            plan=load(os.path.join(root,'baseline-plan.json'))
+            plan=prepared_plan('baseline-plan.json')
             baseline=load(os.path.join(root,'baseline-initial.json'))
             guard.preflight(baseline,initial,plan,sha(path))
             File.Copy(path,os.path.join(root,'checkpoint.project'),False)
@@ -189,12 +271,17 @@ def run(root, fixed, mode, script_dir):
                 result['clearDispatchCount']=1
             returned=step('clear-explicit-override',lambda:guard.clear_once(refs[0],initial,live,plan,sha(path),mark))
             result['nativeReturn']=None if returned is None else unicode(returned)
+            immediate,_,_=step('immediate-clear-readback',lambda:collect('after-clear-immediate'))
+            guard.after_clear_immediate(initial,immediate,plan)
+            emit('after-clear-immediate-check',dict(passed=True,rule='null-override-and-retention-before-public-load',
+                source='clear-after-clear-immediate.json',clearDispatchCount=result['clearDispatchCount'],publicLoadCount=result['publicLoadCount']))
+            step('load-cleared-placeholder-publicly',lambda:public_load(manager))
             after,_,_=collect('after-clear');guard.after_clear(initial,after,plan)
             build('after-clear-build',after,False)
             step('save-cleared-fixture',save)
             saved,_,_=collect('after-save');guard.equal(after,saved,'Clear save changed checked state')
         elif mode=='verify':
-            plan=load(os.path.join(root,'baseline-plan.json'))
+            plan=prepared_plan('baseline-plan.json')
             guard.equal(load(os.path.join(root,'clear-after-save.json')),initial,'Saved independent readback differs')
             guard.after_clear(load(os.path.join(root,'baseline-initial.json')),initial,plan)
             build('saved-build',initial,True)
@@ -212,7 +299,10 @@ def run(root, fixed, mode, script_dir):
             except Exception as cleanup: result['evidenceError']=api['exception_evidence'](cleanup)
             # No recovery save, no rollback, no retry. A read-only failure can close
             # its owned handle; any mutation uncertainty leaves the native scene.
-            if result['fixtureMutationCount']==0 and result['clearDispatchCount']==0 and handle[0] is not None:
+            # First stabilization compile itself may materialize configuration.
+            # A failed validation there is not a read-only failure, even before save.
+            if (result['fixtureMutationCount']==0 and result['clearDispatchCount']==0 and result['saveCount']==0 and
+                not (mode=='stabilize' and result['compileCount']>0) and handle[0] is not None):
                 try: step('close-read-only-stop',close);result['status']='failed'
                 except Exception as cleanup: result['cleanupException']=api['exception_evidence'](cleanup)
     _trace.primary_call(system, guarded)
@@ -223,7 +313,7 @@ def run(root, fixed, mode, script_dir):
 try:
     if __name__=='__main__':
         root=os.environ['INOPRO_CLEAR_ROOT'];mode=os.environ['INOPRO_CLEAR_MODE']
-        if not os.path.basename(root).startswith('InoPro-PlaceholderClear-') or mode not in ('prepare','baseline','clear','verify'):
+        if not os.path.basename(root).startswith('InoPro-PlaceholderClear-') or mode not in ('stabilize','stable','declare','normal','prepare','baseline','clear','verify'):
             raise ValueError('Dedicated probe required')
         run(root,os.environ['INOPRO_CLEAR_FIXED'],mode,os.path.dirname(os.path.abspath(__file__)))
     else:

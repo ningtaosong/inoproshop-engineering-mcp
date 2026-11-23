@@ -17,6 +17,30 @@ export async function readResult(file) {
   catch(error){if(error.code==='ENOENT')return {exists:false};return {exists:true,error:{name:error.name,message:error.message}};}
 }
 
+// Diagnosis only: a failed native operation never becomes succeeded or releasable.
+export function completionDiagnosis(outcome) {
+  const native=outcome.result?.value;
+  const trustedNativeFailure=outcome.timedOut===false&&outcome.normalExit===true&&outcome.identityMatches===true&&
+    !outcome.primaryException&&!outcome.loggerErrors.length&&native?.status==='failed'&&native.closed===true;
+  if(trustedNativeFailure) return {kind:'native-failed-closed-exit-zero',trustedNativeFailure:true,
+    message:'Native operation reported failed; project close and exit 0 confirmed; unknown and leases retained',
+    nativePrimaryException:native.primaryException??null};
+  return {kind:outcome.timedOut?'observation-deadline-or-recording-stop':'unconfirmed-completion',trustedNativeFailure:false,
+    message:outcome.timedOut?'Bounded observation stopped; original failure and late evidence retained':
+      'Native completion unconfirmed; consult result, identity, recorder and exit evidence',
+    nativePrimaryException:native?.primaryException??null};
+}
+
+export function completionError(outcome) {
+  const diagnostic=completionDiagnosis(outcome);
+  const cause=diagnostic.nativePrimaryException;
+  const error=new Error(diagnostic.message+(cause?.message?'; '+cause.message:''));
+  error.observationDiagnostic=diagnostic;
+  error.nativePrimaryException=cause;
+  error.timedOut=outcome.timedOut;
+  return error;
+}
+
 export async function observeProbe(child,{binding,birth,publish,resultFile,businessMs=240000,graceMs=60000,pollMs=200,
   read=()=>readResult(resultFile),sleep=ms=>new Promise(r=>setTimeout(r,ms)),now=()=>Date.now(),fallback=s=>process.stderr.write(s+'\n')}) {
   let exit=null,spawnError=null,timedOut=false,lastResult=null,primary=null;
@@ -73,8 +97,9 @@ export async function observeProbe(child,{binding,birth,publish,resultFile,busin
   const status=!primary&&!timedOut&&!spawnError&&!loggerErrors.length&&identityMatches&&normalExit&&resultReceipt?.value?.status==='succeeded'?'succeeded':'unknown';
   const outcome={status,timedOut,exit,birth:observedBirth,identityMatches,normalExit,result:resultReceipt,
     primaryException:primary,loggerErrors,noReplay:true};
+  outcome.diagnostic=completionDiagnosis(outcome);
   await safe('observation-complete',outcome);
-  if(loggerErrors.length)outcome.status='unknown';
+  if(loggerErrors.length){outcome.status='unknown';outcome.diagnostic=completionDiagnosis(outcome);}
   if(!exit)child.unref();
   return outcome;
 }

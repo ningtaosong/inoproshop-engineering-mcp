@@ -1,4 +1,5 @@
-import {observeProbe,closeProbeHandles} from './probe-exit-observer.mjs';
+import {observeProbe,closeProbeHandles,completionError} from './probe-exit-observer.mjs';
+import {phases,runStageSequence} from './placeholder-probe-stages.mjs';
 import {execFile, spawn} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
 import {open, readFile, realpath} from 'node:fs/promises';
@@ -31,6 +32,19 @@ const publish=async(name,value)=>{
   finally {await closeProbeHandles([file],first);}
 };
 const now=()=>new Date().toISOString();
+const planFile=process.argv[3];
+if(!planFile)throw Error('Reviewed preflight plan file is required');
+const reviewed=JSON.parse(await readFile(planFile,'utf8'));
+if(pathKey(reviewed.fixtureRoot)!==pathKey(root)||pathKey(reviewed.project)!==pathKey(project)||
+   pathKey(reviewed.registry)!==pathKey(daily)||reviewed.seedSha256!==seed||
+   JSON.stringify(reviewed.phases)!==JSON.stringify(phases))throw Error('Reviewed plan scope/phase mismatch');
+const pinKeys=reviewed.files.map(f=>pathKey(f.path));
+if(new Set(pinKeys).size!==pinKeys.length)throw Error('Duplicate reviewed file identity');
+for(const file of [script,fileURLToPath(import.meta.url),executable,
+  ...['library_placeholder_clear_guard.py','probe_fixed_helpers.py','probe_startup_trace.py','probe-exit-observer.mjs','placeholder-probe-stages.mjs'].map(n=>path.join(repo,'scripts','probes',n)),
+  ...['worker.py','library_reference.py'].map(n=>path.join(fixed,'bridge',n))])
+  if(!pinKeys.includes(pathKey(file)))throw Error('Missing reviewed code fingerprint: '+file);
+for(const file of reviewed.files){if(await sha(file.path)!==file.sha256)throw Error('Reviewed script/input changed: '+file.path);}
 const origin=await load('fixture-origin.json');
 if(pathKey(root)!==pathKey(requested)||pathKey(await realpath(project))!==pathKey(project)||
    pathKey(origin.project)!==pathKey(project)||origin.seedSha256!==seed||await sha(project)!==seed)
@@ -61,12 +75,21 @@ async function verifyRegistry(store) {
 }
 
 let dispatched=false;
-async function nativePass(mode,expectedDisk) {
+async function nativePass(mode,expectedDisk,previous) {
   if(await sha(project)!==expectedDisk)throw Error('Fixture changed before native pass');
   await checkHandoff();
   const launchId=randomUUID(),scriptSha256=await sha(script);
   const argv=['--profile="InoProShop(V1.9.1.6)"','--runscript="'+script+'"'];
+  let previousStage=null;
+  if(previous){
+    previousStage={mode:previous.mode};
+    for(const [key,suffix] of Object.entries({intent:'intent',result:'result',observation:'observation-complete',state:previous.state}))
+      previousStage[key+'Sha256']=await sha(path.join(root,previous.mode+'-'+suffix+'.json'));
+  }
   await publish(mode+'-intent.json',{operationId,launchId,mode,project,expectedDisk,sha256:scriptSha256,
+    seedSha256:seed,nativeVersion:'1.9.1.6',previousStage,
+    launcherSha256:await sha(fileURLToPath(import.meta.url)),
+    phaseContractSha256:await sha(fileURLToPath(new URL('./placeholder-probe-stages.mjs',import.meta.url))),
     guardSha256:await sha(path.join(repo,'scripts','probes','library_placeholder_clear_guard.py')),
     bridgeSha256:await sha(path.join(fixed,'bridge','worker.py')),
     libraryHelperSha256:await sha(path.join(fixed,'bridge','library_reference.py')),
@@ -91,50 +114,39 @@ async function nativePass(mode,expectedDisk) {
       resultFile:path.join(root,mode+'-result.json'),publish:(name,value)=>publish(mode+'-'+name+'.json',value),
       businessMs:240000,graceMs:60000
     });
-    if(observed.status!=='succeeded')throw Error('Native completion uncertain; original timeout and bounded exit observations retained');
+    if(observed.status!=='succeeded')throw completionError(observed);
     const birth=observed.birth;
     const result=await load(mode+'-result.json');
     if(result.engine.pid!==child.pid||result.engine.creationUtcTicks!==birth.identity.startId||
        !result.closed||pathKey(result.projectPath)!==pathKey(project)||
        result.diskBefore!==expectedDisk||result.diskAfterClose!==await sha(project))
       throw Error('Native result unconfirmed; read original pass output, no replay');
-    if (result.status==='failed'&&!result.fixtureMutationCount&&result.clearDispatchCount===0&&result.diskAfterClose===expectedDisk) {
-      dispatched=false;
-      throw Error('Read-only preflight stopped before mutation; see original result');
-    }
     if(result.status!=='succeeded')throw Error('Native result unconfirmed; retain evidence and lease');
-    dispatched=false;
+    // Keep hold through phase count/version validation. Failure never auto-releases.
     return result;
   } catch(error){first=error;throw error;} finally {await closeProbeHandles([stdout,stderr],first);}
 }
 
 await checkHandoff();
-await publish('probe-operation.json',{operationId,project,started:now(),purpose:'clear one own ordinary placeholder application override; public set_redirection(null)'});
+await publish('probe-operation.json',{operationId,project,started:now(),preflightPlanPath:planFile,preflightPlanSha256:await sha(planFile),
+  purpose:'clear one own ordinary placeholder application override; restore measured persisted normal resolution baseline'});
 const store=new Store(daily);
 try {
   const before=await verifyRegistry(store);
   await store.acquire(project);
   const held=await verifyRegistry(store);
   await publish('lease-acquired.json',{operationId,ownerPid:process.pid,before,held,time:now()});
-  const prepared=await nativePass('prepare',seed);
-  if(prepared.saveCount!==1||prepared.fixtureMutationCount!==2||prepared.clearDispatchCount!==0||prepared.compileCount!==0)
-    throw Error('Fixture preparation not confirmed');
-  const baseline=await nativePass('baseline',prepared.diskAfterClose);
-  if(baseline.saveCount!==0||baseline.clearDispatchCount!==0||baseline.compileCount!==1||baseline.compileCompletedCount!==1||baseline.diskAfterClose!==prepared.diskAfterClose)
-    throw Error('Saved baseline verification failed');
-  const write=await nativePass('clear',baseline.diskAfterClose);
-  if(write.saveCount!==1||write.clearDispatchCount!==1||write.compileCount!==1||write.compileCompletedCount!==1)throw Error('Single clear/save/build not confirmed');
-  const verify=await nativePass('verify',write.diskAfterClose);
-  if(verify.saveCount!==0||verify.clearDispatchCount!==0||verify.compileCount!==1||verify.compileCompletedCount!==1||verify.diskAfterClose!==write.diskAfterClose)
-    throw Error('Saved version changed during verification');
-  const births=[prepared,baseline,write,verify].map(r=>r.engine.creationUtcTicks);
-  if(new Set(births).size!==4)throw Error('Four independent native processes not confirmed');
-  await publish('probe-succeeded.json',{operationId,project,savedDiskSha256:verify.diskAfterClose,time:now(),
-    clearDispatchCount:1,preparationSaveCount:1,formalSaveCount:1,preparationCompileCount:1,formalCompileCount:2,independentProcesses:4});
+  const sequence=await runStageSequence(seed,nativePass,()=>{dispatched=false;});
+  await publish('probe-succeeded.json',{operationId,project,savedDiskSha256:sequence.disk,time:now(),
+    clearDispatchCount:1,preparationSaveCount:3,formalSaveCount:1,preparationCompileCount:5,formalCompileCount:2,independentProcesses:8,
+    publicLoadCount:2,normalBaselineSavedReopened:true,
+    phases:sequence.completed.map(r=>r.mode)});
 
 } catch(error) {
   try {await publish('probe-stopped.json',{operationId,uncertain:dispatched,error:error.message,
-    primaryException:{name:error.name,message:error.message,stack:error.stack},time:now()});}
+    primaryException:{name:error.name,message:error.message,stack:error.stack},
+    nativePrimaryException:error.nativePrimaryException??null,observationDiagnostic:error.observationDiagnostic??null,
+    timedOut:error.timedOut??null,time:now()});}
   catch(logger){process.stderr.write(JSON.stringify({primaryException:{name:error.name,message:error.message,stack:error.stack},
     loggerException:{name:logger.name,message:logger.message,stack:logger.stack}})+'\n');}
   throw error;
