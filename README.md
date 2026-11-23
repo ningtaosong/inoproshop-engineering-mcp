@@ -1,8 +1,8 @@
 # InoProShop Engineering MCP
 
-**当前 main 为 0.36.0 候选版、37 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+**当前 main 为 0.37.0 候选版、38 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
-本功能分支已完成 **0.37.0 候选版、38 项工具**，新增独立 `library_placeholder_clear`；[真实 MCP 与一次 DSH CLI 工程闭环通过](docs/library-placeholder-clear-acceptance.md)，流程效率与展示部分通过。未合并、未部署，日常 0.36.0 入口保持。仅清除普通 CAA Mathematics 应用覆盖并报告实际解析，不承诺回到默认版本。见[接口与守卫设计](docs/library-placeholder-clear-design.md)。
+**0.37.0 候选版已合并**，新增独立 `library_placeholder_clear`；[真实 MCP 与一次 DSH CLI 工程闭环通过](docs/library-placeholder-clear-acceptance.md)，流程效率与展示部分通过。[固定构建、入口和连接口径](docs/library-placeholder-clear-0370-merge.md)分别记录，保留 0.36.0 回退构建。仅清除普通 CAA Mathematics 应用覆盖并报告实际解析，不承诺回到默认版本。见[接口与守卫设计](docs/library-placeholder-clear-design.md)。
 
 
 已合并的 variable_edit 新增 add-initializer：只给普通原生 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的 VAR 或 Application 根 GVL 的 VAR_GLOBAL 中已有、唯一且无显式初值的 BOOL／DINT／TIME 单变量补写初值。不创建变量或改变类型；已有初值即拒绝，旧 set-initializer 仍拒绝缺初值。[范围和示例](docs/variable-edit.md) · [实现与验收归属](docs/variable-initializer-add.md)。真实 MCP 六次补写及一次 CLI 新动作闭环通过，正式各两次编译均0错误／0警告；47次状态查询、一条输出截断及初始化首败保留。本轮真实 POU 样例为 PROGRAM；FUNCTION／FUNCTION_BLOCK 普通 VAR 保护由离线测试覆盖。固定入口和独立连接状态见[0.36.0 收尾说明](docs/variable-initializer-0360-merge.md)，不把独立连接当作 Desktop 日常验收。
@@ -83,7 +83,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | 库引用只读查询 | 直接库引用、命名空间、占位符声明、显式覆盖与当前有效解析；不可取得字段明确标注 | `library_inspect` | 0.10.0；S5b 扩展覆盖读回 |
 | 本机库查询与精确添加 | 查询原生安装身份；按精确库身份添加一个直接引用 | `library_catalog`、`library_reference_add` | **S5a / 0.27.0** |
 | 普通占位符精确覆盖 | 支持范围内设置精确本机已安装库；显式覆盖与当前有效解析分别读回 | `library_placeholder_resolve`、`library_inspect` | **S5b / 0.28.0**，见[说明](docs/library-placeholder-resolve.md) |
-| 清除普通占位符应用覆盖 | 限定 AM610/CAA Mathematics 组合，保留同一引用并返回实际解析；不保证默认回退 | `library_placeholder_clear` | **0.37.0 候选，限定工程闭环通过，未合并**；[说明](docs/library-placeholder-clear.md) |
+| 清除普通占位符应用覆盖 | 限定 AM610/CAA Mathematics 组合，保留同一引用并返回实际解析；不保证默认回退 | `library_placeholder_clear` | **0.37.0 候选已合并，限定工程闭环通过**；[说明](docs/library-placeholder-clear.md) |
 | 库使用证据收集 | 读取直接引用和命名空间，检索并核对可读源码中的调用，报告实际检查范围和缺口 | 复用 `library_inspect`、`project_search`、`object_read` | [只读用法](docs/getting-started.md#只读检查库的使用情况)，[移除可行性探测](docs/library-reference-remove-probe.md) |
 | 已有周期任务配置 | 读取任务和调用顺序；仅编辑已有周期任务的整数毫秒周期 1..60000 及优先级 0..31，不创建任务或编辑调用列表 | `task_inspect`、`task_config_update` | 查询已有；**S1 / 0.18.0** 写入，见[说明](docs/task-config.md) |
 | 创建周期任务并绑定程序 | AM610（设备描述 `3.5.11.11`）Application 内新建一个周期任务，绑定一个已有根级 ST PROGRAM；创建前、绑定后及重开后核验原生 ST 标识，保留原任务和调用顺序 | `task_create` | **S8a 首项 / 0.31.0，已交付**，见[说明](docs/task-create.md) |
@@ -107,7 +107,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | --- | --- | --- | --- |
 | 更多聚合成员、声明区和变量类型的专用修改 | S4b，分项验证 | 明确新增作用域，限定类型转换、初值与调用影响；完成拒绝场景及真实工程验收 | 此前三个限定子阶段已合并；普通 VAR／根 GVL VAR_GLOBAL 已有单变量的 BOOL、DINT、TIME set-type 已交付。已交付 0.35.0 增加已有聚合中缺失直接字段的显式初始化；已合并 0.36.0 增加普通 VAR／根 VAR_GLOBAL 已有无初值单变量的初值补写；新建 DUT 字段、嵌套成员、数组、更广类型及其他声明区仍未实现。RETAIN／PERSISTENT 及复杂声明扩展另行规划 |
 | 普通直接库引用移除 | S5 后续范围 | 写入前将原生选择条件与选中引用唯一绑定，并说明使用关系和反向依赖的实际覆盖 | [可行性探测已完成](docs/library-reference-remove-probe.md)，目前仅适合只读评估，未提供删除能力 |
-| 清除占位符显式覆盖 | S5 限定子阶段 | 已验普通 CAA Mathematics 原生组合；保持引用身份和其他内容 | 本分支 0.37.0 独立工具已完成限定 MCP/CLI 验收，待复核合并；不承诺恢复默认解析，不扩展直接引用删除 |
+| 清除占位符显式覆盖 | S5 限定子阶段 | 已验普通 CAA Mathematics 原生组合；保持引用身份和其他内容 | 0.37.0 独立工具已完成限定 MCP/CLI 验收并合并；不承诺恢复默认解析，不扩展直接引用删除 |
 | 限定设备添加 | S6b | 先在已知正确挂接的现有实例上读回对端连接器 ID 和所属父设备，并区分同接口的不同连接器 | [单一组合的可行性探测已完成](docs/device-add-probe.md#探测结论与证据入口)，只读选址评估，无添加工具 |
 | 离线设备参数写入 | S6 后续独立项 | 核实参数身份、离线可写语义和持久化 | 未开发 |
 | 按声明查询限定 ST 用法 | S7a | 在已读取的普通 ST `PROGRAM` 简单赋值中做保守静态推导 | [已交付](docs/variable-usages.md)，含绑定证据变化时的分页校验 |

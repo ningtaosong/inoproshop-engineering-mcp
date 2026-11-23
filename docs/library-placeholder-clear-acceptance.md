@@ -1,6 +1,6 @@
 # 0.37.0 占位符覆盖清除：实现及验收归属
 
-2026-11-23，功能分支 `codex/library-placeholder-clear`。产品受验提交 `f944b55339e65acce1a1f1fd2f6ef72e6c1e26f7`，基于 main `da87ac1d553a3a009a5bdb170b47a370924a0d3a`。0.37.0 候选版、38 项工具；本轮未合并 main、未永久部署。原生探测收尾提交 `7c700dc77783354816570a129b631a3b785227c2` 独立保留。
+2026-11-23，功能分支 `codex/library-placeholder-clear`。产品受验提交 `f944b55339e65acce1a1f1fd2f6ef72e6c1e26f7`，基于 main `da87ac1d553a3a009a5bdb170b47a370924a0d3a`。0.37.0 候选版、38 项工具；本段保留原验收时尚未合并、未永久部署的归属。后续[合并与固定入口收尾](library-placeholder-clear-0370-merge.md)不重放本轮任务。原生探测收尾提交 `7c700dc77783354816570a129b631a3b785227c2` 独立保留。
 
 ## 结论和范围
 

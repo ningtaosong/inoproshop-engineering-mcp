@@ -1,6 +1,6 @@
 # 清除普通占位符应用级显式覆盖
 
-0.37.0 候选分支新增 `library_placeholder_clear`，38项工具。限定实现、离线验证、真实 MCP 和一次 DSH CLI 工程闭环已完成；流程效率与展示部分通过，未合并、未部署。[验收归属及首败](library-placeholder-clear-acceptance.md)。
+0.37.0 候选分支新增 `library_placeholder_clear`，38项工具。限定实现、离线验证、真实 MCP 和一次 DSH CLI 工程闭环已完成；流程效率与展示部分通过，已正常合并；[固定入口收尾](library-placeholder-clear-0370-merge.md)与原验收分别归属。[验收归属及首败](library-placeholder-clear-acceptance.md)。
 
 可复制需求：
 
