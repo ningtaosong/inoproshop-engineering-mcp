@@ -1,7 +1,7 @@
 {
-  "serverVersion": "0.34.3",
+  "serverVersion": "0.37.0",
   "contractVersion": "1.0.0",
-  "toolCount": 37,
+  "toolCount": 38,
   "tools": [
     {
       "name": "environment_inspect",
@@ -6220,6 +6220,293 @@
               },
               "checkpoint": {
                 "type": "string"
+              },
+              "snapshot": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "diskHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "additionalProperties": {}
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "status",
+          "summary"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "library_placeholder_clear",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "targetKind": {
+            "default": "application",
+            "type": "string",
+            "const": "application"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "managerId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "placeholderReferenceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "expectedDiskHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expectedReferenceVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "当前目标页的 configurationVersion，不是分页 version。"
+          },
+          "expectedPlaceholderVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expectedExplicitRedirection": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "referenceOperationId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "同一成功 library_inspect 目标页的 operationId。"
+          }
+        },
+        "required": [
+          "requestId",
+          "projectId",
+          "applicationId",
+          "managerId",
+          "placeholderReferenceId",
+          "expectedDiskHash",
+          "expectedReferenceVersion",
+          "expectedPlaceholderVersion",
+          "expectedExplicitRedirection",
+          "referenceOperationId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0.0"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "conflict",
+              "unsupported",
+              "unknown"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "projectId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "applicationId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "managerId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "placeholderReferenceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "changed": {
+                "type": "boolean",
+                "const": true
+              },
+              "cleared": {
+                "type": "boolean",
+                "const": true
+              },
+              "reopened": {
+                "type": "boolean",
+                "const": true
+              },
+              "buildApplicable": {
+                "type": "boolean",
+                "const": false
+              },
+              "before": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "immediate": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "after": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "targetBefore": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "targetImmediate": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "targetAfter": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "beforePlaceholderVersion": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "placeholderVersion": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "checkpoint": {
+                "type": "string"
+              },
+              "resolution": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "native-unresolved",
+                      "native-resolution-reported"
+                    ]
+                  },
+                  "effectiveResolution": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "resolutionInfo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "resolverGuid": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "valueState": {
+                    "type": "string",
+                    "enum": [
+                      "native-null",
+                      "empty-text",
+                      "literal-None",
+                      "text"
+                    ]
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "loadedStatus": {
+                    "type": "string",
+                    "const": "not-independently-verified"
+                  }
+                },
+                "required": [
+                  "status",
+                  "effectiveResolution",
+                  "resolutionInfo",
+                  "resolverGuid",
+                  "valueState",
+                  "source",
+                  "loadedStatus"
+                ],
+                "additionalProperties": false
               },
               "snapshot": {
                 "type": "string",
@@ -13964,7 +14251,9 @@
               "add",
               "set-initializer",
               "set-member-initializer",
-              "set-type"
+              "set-type",
+              "add-member-initializer",
+              "add-initializer"
             ]
           },
           "name": {

@@ -1,0 +1,21 @@
+# 清除普通占位符应用级显式覆盖
+
+0.37.0 候选分支新增 `library_placeholder_clear`，38项工具。限定实现、离线验证、真实 MCP 和一次 DSH CLI 工程闭环已完成；流程效率与展示部分通过，已正常合并；[固定入口收尾](library-placeholder-clear-0370-merge.md)与原验收分别归属。[验收归属及首败](library-placeholder-clear-acceptance.md)。
+
+可复制需求：
+
+> 在指定工程中，只清除 CAA Mathematics 的应用级显式覆盖，保留占位符、默认声明、命名空间及其他配置。报告实际解析，再编译并保存重开核对。条件不符或出现冲突、不确定结果时停止，不重新设置覆盖。
+
+用户提供工程路径和占位符名，Agent 从当前 `library_inspect` 的目标页取得内部身份、当前覆盖和配置版本，不要求用户填写 GUID。分页 version 只用于续页，写前版本应使用目标页 configurationVersion、placeholderConfigurationVersion 和 operationId。
+
+首版仅支持 InoProShop1.9.1.6、AM610设备描述4102/10f4 0002/3.5.11.11、普通非托管非系统CAA Mathematics，默认3.5.11.0、当前覆盖3.5.7.0、命名空间MATH。仅移除应用覆盖；不删除引用、不卸载库、不修改默认声明，不调用主动加载。没有覆盖时拒绝。原 `library_placeholder_resolve` 设置行为不变。
+
+成功表示同一原生引用的覆盖为null且is_redirected=false，其他受检内容保全，已保存关闭重开。有效解析和来源原文单独返回，不保证回到默认版本或宣称库已加载。明确未解析、空文本、字面文本None、字段缺失与读取失败分别处理；缺证或额外变化会返回unknown并冻结，不回滚或恢复性保存。`buildApplicable=false`表示旧编译证据失效，编译须单独执行。
+
+完整三阶段库、源码和任务快照留在IPC及操作记录，服务独立核验后才投递紧凑摘要。摘要列明实际目标、清除/保存结果、解析、版本/文件哈希和证据路径；未重复发送完整源码。只有任务集合和PROGRAM目录按唯一身份对齐，任务内部调用顺序与备注仍严格核对。
+
+原生正例归属探测提交7c700dc77783354816570a129b631a3b785227c2，不冒充产品验收。当前离线四组Node为1004/1004（首轮1003/1004，失败组独立复测180/180）；Python630/630；早期定向92/92。紧凑投递后定向64/64，分别记录，不相加。默认环境200ms问题未修复，首轮POU测试返回瞬间未留存，不能补造完整running响应。
+
+真实验收使用产品提交 `f944b55339e65acce1a1f1fd2f6ef72e6c1e26f7` 的独立固定构建；两份新夹具各清除一次，各两次正式编译均0错误／0警告，保存重开通过。两套各自六阶段准备、五次准备编译另列；正式 MCP 8 次、CLI 7 次 IDE 均有可信正常退出。历史unknown、隔离与封存工程未重开。实际运行、PLC、Desktop日常连接、崩溃根因、CmpLog、脚本信任及历史性能边界保留。
+
+[设计及写前守卫](library-placeholder-clear-design.md) · [原设置能力](library-placeholder-resolve.md) · [README](../README.md)

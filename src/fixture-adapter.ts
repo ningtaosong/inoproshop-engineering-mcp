@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {fixtureOrganization,fixtureOrganize} from './fixture-organization.js';
+import {fixturePlaceholderClear} from './fixture-placeholder-clear.js';
 import { type Adapter, type BridgeRequest } from './adapter.js';
 import { reply, DomainError, pouDeclarationMatches, declarationMatches,methodDeclarationMatches,propertyHeader,getterDeclarationMatches, type Reply } from './contracts.js';
 import {propertyEvidence,PROPERTY_NATIVE,ACCESSOR_NATIVE} from './properties.js';
@@ -267,6 +268,7 @@ export class FixtureAdapter implements Adapter {
       result.data!.readOnlyEvidence={beforeDiskHash:a.readDiskHash,afterCloseDiskHash:after,postExitDiskHash:after,unchanged:after===a.readDiskHash};
       if(after!==a.readDiskHash)result={...reply('unknown','测试只读工程文件变化',{priorResult:result}),error:{code:'READ_ONLY_FILE_CHANGED',message:'File changed'}};
     }
+    else if(req.command==='clear_placeholder')result=await fixturePlaceholderClear(p,req,dir,libraryInventory,snapshot);
     else if(req.command==='resolve_placeholder') {
       const before=libraryInventory(),values=['Fixture Mathematics, 1.0.0 (Fixture Vendor)','Fixture Vendor','Fixture Mathematics','1.0.0','FMATH','fixture://installed/FixtureMath.library'];
       const identity=digest(JSON.stringify(values)),manager=p.libraryManagers?.find((m:any)=>m.applicationId===a.applicationId&&m.managerId===a.managerId);

@@ -1,0 +1,154 @@
+{
+  "commit": "da87ac1d553a3a009a5bdb170b47a370924a0d3a",
+  "version": "0.36.0",
+  "tools": {
+    "environment_inspect": {
+      "input": "25c7d85c859a6f78f6f4e83edf2d3073645b7c71d2832348387882a6833b1834",
+      "output": "909f5aa07386346bf7b7cd809a8128c95c9a6f0ad8e553d4a2725e8f031d79c7"
+    },
+    "session_status": {
+      "input": "25c7d85c859a6f78f6f4e83edf2d3073645b7c71d2832348387882a6833b1834",
+      "output": "f01234996852dd126ef47e73c587b1aa336ff47e26a3aece1a67b24e3cf0a8bc"
+    },
+    "project_list": {
+      "input": "25c7d85c859a6f78f6f4e83edf2d3073645b7c71d2832348387882a6833b1834",
+      "output": "9fc220dcd76c25b5dc3f0e317d24ff8f934ebda29a2e0dccfcd80c4ae7fce048"
+    },
+    "project_create": {
+      "input": "3918345ecc49ebb249573fe7db039614f80341c448c329bea41aa1e1bd73c56c",
+      "output": "354f9fa9373dfad6cc026081f2fef3881aa2c1e1a92ae42173fb44dc88a920f6"
+    },
+    "project_open": {
+      "input": "e4102bd4d995146d9a83ae9a955de46fe2e6829d6492b7dbdc4b4dae268add6e",
+      "output": "85f438a3fe88141ad286fd7abf1e41f31aff7918e0294be5d7d2ff5b5010bb06"
+    },
+    "project_open_copy": {
+      "input": "1619b1846f77e98786d6fa1473a69191b7e6f689547392eb7f6102f09513c68d",
+      "output": "4cd579d0c6671b05d9ba82bb19cc051fdc890d099f16baa54ab5dbccedf5f1ff"
+    },
+    "project_activate": {
+      "input": "2e02ea81623db59be87f5b103a6983b9f71f4b7602439eca301ff3ac8f3130cd",
+      "output": "51935564fab6e31f3d5f8d60fd82fef9d8956e4b7a7d95b0dc0f3cba35fbca21"
+    },
+    "object_list": {
+      "input": "27ad9558fb69071c34215bdc1eb151f662b1864b8516ed2e70fbdb8b78ea3ecd",
+      "output": "a26114e16c57700a0e815f32d8d3226529eb45c8dbb5e9d9f05f466911f0a781"
+    },
+    "object_read": {
+      "input": "04d4c913f02330d7c038f54fa00c3790072fbc097901357e000885178a4237d1",
+      "output": "64014d5cf06118d4bb11cd0baba4f5b671c4e00dabeb73dd2a6b2af333193b7e"
+    },
+    "project_search": {
+      "input": "b6b06a4312eff1c7fdae010bb1edd3a0a9beb5251376a1e1e1cffd286e63a863",
+      "output": "cb06ca906946ab51e30b4f03faf1a7c42a8238512b63fb18d32d339f5372ac3f"
+    },
+    "variable_inspect": {
+      "input": "b1471cfc1ff9ac99cc4d626d82715da705d5b1fedea69e0a61f1e762b0fccbe0",
+      "output": "3580d30de7f02ddac4a8112586bb1c693e2b7c7b84e6b52df5b98928b0425303"
+    },
+    "variable_usages": {
+      "input": "9fdc9112c27c62d55f52c1d5c65b3b997fa8915abace3fbd3f5c82566cf74e5e",
+      "output": "c1d983de3a2ef7e0f4637eb3ae3b4bb548f20139bc5b2b482c44c284e2437781"
+    },
+    "library_inspect": {
+      "input": "c2cd1c19940fb7834fd8be52836681ad9029e672ae800df87234f830c226302d",
+      "output": "b95ac4f72a496eb0c80ab867c3dacffbe5861d540bb2d4116e5024e8723b0ded"
+    },
+    "library_catalog": {
+      "input": "8b221a6826f5826ed11bc7e862bd8a25a5d6eb69823403f806afd2aee00e3753",
+      "output": "7fefac4175773bddb18ff7b3d82a0a9ce3bceb6425e5ef2677942c4d411f4211"
+    },
+    "library_reference_add": {
+      "input": "be8289dd6064588091e0a4dc2f2aaa9c52dc77f6ab2a86d9dae0f3458fc3e7c7",
+      "output": "5302226c081462920f7acbbd759e75e9a587639598e49f307066fae6b0ac2462"
+    },
+    "library_placeholder_resolve": {
+      "input": "adb6d7d47f2915010301992dd92ced6c769cf1f5c21a69d49790e1a4a99682c8",
+      "output": "94f7d4890975204dc8e216d90e2223979225552c50a9a307a583e1280359a4e0"
+    },
+    "task_inspect": {
+      "input": "3854cc18034e6b9f236cfd4d8026ac8b919ff12c6ec18e755a6f95ccc8004819",
+      "output": "b3b1acf1b6cd5bdc7bf295b04b7f34baa299b1b18e954a99a017569da504d00c"
+    },
+    "task_config_update": {
+      "input": "519281a4103c3fe88b60249f0a67e6803fa17454a43de3f8f29613c20a8b8586",
+      "output": "8757da61c557c8e1fc5b52b291716944e3cbdf8e2c29bcd3bcfafbc238808bfd"
+    },
+    "task_create": {
+      "input": "92a59f41e0dcde9f392dd3b8551a6557e72fa7f85f1492963e703d0dac654e11",
+      "output": "021aaddaed5252da557de4bf7499e8a2c63bbca85c9ac319d892260521b550f3"
+    },
+    "task_call_append": {
+      "input": "61481e259f9b71b5db2f5daf83d8ab12b4d37e5ef4466a2b94e692ffaec464c4",
+      "output": "7eb08eaa503847503ae59fce6005aa44484d8a69816ea1e9c1e146cd6a7d92b2"
+    },
+    "task_call_replace": {
+      "input": "18670ddb605b4fd9482fe614cc4e4dc9b9dcc910ee8d6e25f75d0bf0b3c65167",
+      "output": "5d31a7e29d2135c88c0de71531cf1300663ecc231254def4f826d5e260027971"
+    },
+    "project_compare": {
+      "input": "0f6b6276b6a991245fdfce5a35398b30e9b39a3e60833c3c7d20ebb1088c0054",
+      "output": "d31be1d45cbbd0841c8c242197b0ddefc8e00faf8e486d7a9ad49b430e473e6d"
+    },
+    "project_structure": {
+      "input": "46567bf40af6a937bfefa99e0dc7cf62f4bcd06f7d4287de7e150d04a3c5d625",
+      "output": "8d7604be4dec33678acf0818be8302707bee53a9bf72028f9d709e88fa24b1a5"
+    },
+    "folder_create": {
+      "input": "0160307fcfc34c4b4b3e4814ee72399a95cb091ad9352f0bd5831dc8a9f13b0b",
+      "output": "a566f1de28c71b75190d723932259ffa556911ea39233ab2a2aed5371d843bd4"
+    },
+    "object_move": {
+      "input": "d952e509af4e17f27321097b6a9e48fab8076789c4d17cc4c1b547a01c0125cb",
+      "output": "a566f1de28c71b75190d723932259ffa556911ea39233ab2a2aed5371d843bd4"
+    },
+    "device_catalog": {
+      "input": "6f0cb5175946ac1f8bfa2946c29b2736f16ae76656be3873c9251dc0c1270bbc",
+      "output": "a2c0eeded327e383a5c7ec879ba911730d40029ce387611c13f334056d67c1c3"
+    },
+    "io_mapping_inspect": {
+      "input": "af4d792ffc6b069482aa9e5b6892894c3901e390f82c215feb0a0d07ef4b933d",
+      "output": "ee9d81a8249ed292528e1b3482f322b033919afa19fa2b3eca617b52ee62ff63"
+    },
+    "device_inspect": {
+      "input": "fbf7875936d7447f35ea9a226ae70caae8ab185cdbb7bec32dfadf5e17de46d5",
+      "output": "b576da50e674f3bff835fab183db6815fb8b353d6c155e68e8ba34d1ec3f43aa"
+    },
+    "pou_create": {
+      "input": "ede2549f5db2d775541f1295575fa1b1bd6bd7f0d4caa9e869e9c7da3fb4592a",
+      "output": "9b067a753c98a34774dbba9dd7df14dcf54af78c7f9b9616738220dc3154db0e"
+    },
+    "declaration_create": {
+      "input": "f161e4e841325ee597ca551bbdf3b9fd828accee4724fdf1534fe621a276dd4d",
+      "output": "9b067a753c98a34774dbba9dd7df14dcf54af78c7f9b9616738220dc3154db0e"
+    },
+    "method_create": {
+      "input": "0c3efa3a5f191212df8ed121a4fd1b55efbbd6872ec01a753085be9746987de3",
+      "output": "962ba5a336f20ec6e5dacedbd4288e201d6130a15eb061f9ddc47d95055046ee"
+    },
+    "property_create": {
+      "input": "7291910d0c1c37e28d24ea538c9a9cb800f3d22de5962c9f7e0f671e61cf495e",
+      "output": "647ed7fbe8700a0ca1c54f7bf6c98b6c9e56ba50f2f81d74a523de15953a6d41"
+    },
+    "code_apply_change": {
+      "input": "6a4d35816dd1ccf8dc99d790a85edeeb43be11b57365750ec1a0364314c8244f",
+      "output": "4b47d3f009492ffa61ff5a65f44618007d1fc590f0b47a2e7e5582ddf2a5c40e"
+    },
+    "project_build": {
+      "input": "0f5181f2797dc6f7997344720ba27232a2c463dcbd46503d97a48e823ac5305c",
+      "output": "c8734dc99f7c7089507105035f1833a79f4c62990a1219410789c436f11d2291"
+    },
+    "variable_edit": {
+      "input": "0764987a891fa887ee035088ec0ad668cd7b2960c78c404c82cc70a3ab9f5628",
+      "output": "8de7d84c12d19aee013bde40c04a3af2c0a7ed22310f8e9c3336e6838b1f44a8"
+    },
+    "project_save": {
+      "input": "9c1c5e85464bbf172b6bc6a7fddb8186223b65ed12151ddd129b9a5d72cc9124",
+      "output": "e56df83e170a17e77d614a42622b44581d9dc4a2cbe024526ebdba9569af31de"
+    },
+    "operation_status": {
+      "input": "0d61571d11a0c0eb2cc4c505cbed92860f36fe2039f6a18f01f734ac9c1d8f8d",
+      "output": "4b124d5735caff6d71f9cb1d07b1dd61322c89717ce3075615aecd86162eea4b"
+    }
+  }
+}

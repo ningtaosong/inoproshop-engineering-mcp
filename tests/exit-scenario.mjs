@@ -8,7 +8,7 @@ import {atomicJson,readJson,digest} from '../dist/storage.js';
 
 // Replays the archived succeeded + 0xC000041D combination through the production adapter.
 // Synthetic JSON file/process; never opens the archived engineering project.
-export async function scenario({code=3221226525,signal=null,command='read',writeResult=true,dispatch=true,probe,writeEvidence,timeoutMs=1000,delay=40,onStart}={}) {
+export async function scenario({code=3221226525,signal=null,command='read',writeResult=true,dispatch=true,probe,writeEvidence,timeoutMs=1000,delay=40,onStart,afterResult}={}) {
  const env=await setup(),directory=path.join(env.dir,'exit-ipc'),operationId=randomUUID();
  const request={operationId,requestId:'archive-exit-repro',requestFingerprint:'f'.repeat(64),command,projectPath:env.source,args:{}};
  const raw={contractVersion:'1.0.0',operationId,status:'succeeded',summary:'archived success / abnormal exit combination',data:{diskHash:digest(await fs.readFile(env.source)),value:'native read preserved'}};
@@ -19,6 +19,7 @@ export async function scenario({code=3221226525,signal=null,command='read',write
   completion=new Promise(resolve=>setTimeout(async()=>{
    if(dispatch)await atomicJson(path.join(directory,'dispatched.json'),{operationId,pid:12345});
    if(writeResult)await atomicJson(path.join(directory,'result.json'),raw);
+   await afterResult?.({directory,request,raw});
    child.exitCode=code;child.emit('exit',code,signal);resolve();
   },delay));return child;
  },{probe:probe??(async()=>({state:'running',identity})),writeEvidence});

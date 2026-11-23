@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.36.0';
+export const VERSION = '0.37.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -75,6 +75,11 @@ export const schemas = {
     managerId:uuid,placeholderReferenceId:z.string().min(1).max(160),expectedDiskHash:hash,
     expectedReferenceVersion:hash.describe('实际包含目标占位符的成功 library_inspect 页的 configurationVersion 原值；不是分页 version。'),expectedPlaceholderVersion:hash,expectedExplicitRedirection:z.string().nullable(),
     referenceOperationId:uuid.describe('实际包含目标占位符的成功 library_inspect 页的 operationId；与 expectedReferenceVersion 来自同一页。'),installedIdentity:hash,expectedCatalogVersion:hash,catalogOperationId:uuid}).strict(),
+  library_placeholder_clear:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
+    managerId:uuid,placeholderReferenceId:id,expectedDiskHash:hash,
+    expectedReferenceVersion:hash.describe('当前目标页的 configurationVersion，不是分页 version。'),
+    expectedPlaceholderVersion:hash,expectedExplicitRedirection:z.string().min(1).max(2048),
+    referenceOperationId:uuid.describe('同一成功 library_inspect 目标页的 operationId。')}).strict(),
   task_inspect:z.object({projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid}).strict(),
   task_config_update:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     taskId:uuid,expectedTaskVersion:hash,expectedDiskHash:hash,
@@ -355,6 +360,15 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
     placeholderReferenceId:z.string().optional(),installedIdentity:hash.optional(),
     beforePlaceholderVersion:hash.optional(),placeholderVersion:hash.optional(),changed:z.boolean().optional(),
     noOp:z.boolean().optional(),reopened:z.boolean().optional(),checkpoint:z.string().optional(),...snapshotFields}).passthrough(),
+  library_placeholder_clear:z.object({projectId:uuid,applicationId:uuid,managerId:uuid,placeholderReferenceId:id,
+    changed:z.literal(true),cleared:z.literal(true),reopened:z.literal(true),buildApplicable:z.literal(false),
+    before:z.record(z.string(),z.unknown()),immediate:z.record(z.string(),z.unknown()),after:z.record(z.string(),z.unknown()),
+    targetBefore:z.record(z.string(),z.unknown()),targetImmediate:z.record(z.string(),z.unknown()),targetAfter:z.record(z.string(),z.unknown()),
+    beforePlaceholderVersion:hash,placeholderVersion:hash,checkpoint:z.string(),
+    resolution:z.object({status:z.enum(['native-unresolved','native-resolution-reported']),
+      effectiveResolution:z.string().nullable(),resolutionInfo:z.string().nullable(),resolverGuid:z.string().nullable(),
+      valueState:z.enum(['native-null','empty-text','literal-None','text']),source:z.string(),loadedStatus:z.literal('not-independently-verified')}),
+    ...snapshotFields}).partial().passthrough(),
   project_compare:comparisonDataSchema.partial().passthrough(),
   project_structure:structureDataSchema.partial().passthrough(),
   folder_create:z.object({projectId:uuid.optional(),applicationId:uuid.optional(),changed:z.boolean().optional(),noOp:z.boolean().optional(),reopened:z.boolean().optional(),structureVersion:hash.optional(),structuralEvidence:z.record(z.string(),z.unknown()).optional(),object:z.record(z.string(),z.unknown()).optional(),...snapshotFields}).passthrough(),

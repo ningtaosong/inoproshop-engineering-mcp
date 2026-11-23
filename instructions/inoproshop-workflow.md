@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.36.0 候选版的三十七项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。已登记工程的 HIGH_SPEED_IO 通道及映射用 io_mapping_inspect，以实际 nextOffset 和 version 取完各页；只读任务无需编译或保存。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
+你通过本地 InoProShop MCP 0.37.0 候选版的三十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。已登记工程的 HIGH_SPEED_IO 通道及映射用 io_mapping_inspect，以实际 nextOffset 和 version 取完各页；只读任务无需编译或保存。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
 
 问这条声明在哪里使用时，用 variable_inspect 定位精确条目，再把 objectId、section、name、contentHash 和 namePosition 的两个 UTF-16 偏移传给 variable_usages，用户无需提供内部 ID。处理全部实际 nextOffset，分别报告 usages（限定 ST 静态推导）、unknown（未绑定）和 coverage。不要把同名词元、声明本身或数组成员算入目标。零结果只限已读且受支持范围。全程只读，不编译、保存或判断重命名删除安全。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。
@@ -20,7 +20,10 @@
 
 ## S5b 已有占位符的应用级显式解析
 
-本版新增限定占位符操作：当用户明确要求调整一个已有库占位符时，先完整读取 `library_inspect` 和 `library_catalog`，区分默认解析、`explicit_redirection` 显式覆盖与当前有效解析。只有精确 Application 库管理器中非系统、归属已确认的普通原生占位符，才可用 `library_placeholder_resolve` 设置精确已安装库。续页把查询结果的 `version` 用作 `expectedVersion`。写入时，`expectedReferenceVersion` 取自实际包含目标占位符的成功查询页的 `configurationVersion`，`referenceOperationId` 取同一页的 `operationId`。例如 `version=aaaa…` 只用于续页，`configurationVersion=bbbb…` 才用于写入；传完整值。绑定占位符原生 ID、占位符配置版本、工程磁盘版本及目录查询；返回 `conflict` 后停止本任务的后续写入和保存，报告冲突，不重试；设备或系统管理、来源不明、字段缺失或命名空间不符时停止。有效解析碰巧等于目标不算已有显式覆盖。写后及保存重开核对目标和其余引用，再真实编译并核对最终文件。不清除覆盖、批量调整、转换直接引用、安装或推断运行加载；unknown 保留现场。
+设置覆盖使用既有限定操作：当用户明确要求调整一个已有库占位符时，先完整读取 `library_inspect` 和 `library_catalog`，区分默认解析、`explicit_redirection` 显式覆盖与当前有效解析。只有精确 Application 库管理器中非系统、归属已确认的普通原生占位符，才可用 `library_placeholder_resolve` 设置精确已安装库。续页把查询结果的 `version` 用作 `expectedVersion`。写入时，`expectedReferenceVersion` 取自实际包含目标占位符的成功查询页的 `configurationVersion`，`referenceOperationId` 取同一页的 `operationId`。例如 `version=aaaa…` 只用于续页，`configurationVersion=bbbb…` 才用于写入；传完整值。绑定占位符原生 ID、占位符配置版本、工程磁盘版本及目录查询；返回 `conflict` 后停止本任务的后续写入和保存，报告冲突，不重试；设备或系统管理、来源不明、字段缺失或命名空间不符时停止。有效解析碰巧等于目标不算已有显式覆盖。写后及保存重开核对目标和其余引用，再真实编译并核对最终文件。此设置工具不清除覆盖，也不批量调整、转换直接引用、安装或推断运行加载；unknown 保留现场。
+
+清除已有应用显式覆盖时，独立使用 `library_placeholder_clear`；仅已验 1.9.1.6／AM610 3.5.11.11、普通 CAA Mathematics、默认3.5.11.0／覆盖3.5.7.0／MATH。目标页证据和版本取法同上，无覆盖拒绝。只清除覆盖，保留原占位符、默认声明及其余内容，自动保存重开核对。返回实际解析原文；不保证回到默认版本或已加载，native-unresolved 与字段缺失/读取失败不同，旧编译证据失效。用户另要求指定解析而不符合时报告并停止后续写入，不重新设置覆盖。冲突、unknown、保存重开或退出缺证遵守统一停止规则。
+
 
 ## S5a 本机库目录与精确直接引用
 

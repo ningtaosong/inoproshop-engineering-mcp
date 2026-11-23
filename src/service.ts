@@ -1,4 +1,5 @@
 import {placeholderReferenceConflict} from './library-guidance.js';
+import {clearTarget,validateClearResult} from './library-placeholder-clear.js';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -30,6 +31,7 @@ const S5B_PROMPT_STAGES:Record<string,readonly ('initial-open'|'reopen')[]> = {
   project_open:['initial-open'], project_structure:['initial-open'], object_list:['initial-open'],
   library_inspect:['initial-open'], project_search:['initial-open'], object_read:['initial-open'], variable_usages:['initial-open'],
   library_placeholder_resolve:['initial-open','reopen'], code_apply_change:['initial-open','reopen'],
+  library_placeholder_clear:['initial-open','reopen'],
   task_create:['initial-open','reopen'],
   task_call_append:['initial-open','reopen'], task_call_replace:['initial-open','reopen'],
   project_build:['initial-open'], project_save:['initial-open','reopen']
@@ -336,6 +338,24 @@ export class EngineeringService {
   }
   private publishTaskCallEvidence(file:string,value:unknown) {return atomicJson(file,value);}
   private async validateCallEvidence(op:Operation,parsed:Reply,session?:Session) {
+    if(op.tool==='library_placeholder_clear'&&parsed.status==='succeeded'){
+      const directory=path.join(op.bridge!.directory,'placeholder-clear-service',randomUUID()),publicationErrors:any[]=[];
+      const publish=async(name:string,value:unknown)=>{
+        try{await atomicJson(path.join(directory,name),value);}catch(e:any){publicationErrors.push({file:name,error:{name:e.name,message:e.message,stack:e.stack}});}
+      };
+      await publish('observed.json',{operationId:op.operationId,requestId:op.requestId,result:parsed});
+      let primary:any,checks:any;
+      try{
+        this.validateEvidence(op,parsed,session);
+        checks=validateClearResult(parsed.data,op.args,session,path.join(op.bridge!.directory,'checkpoint.project'));
+      }
+      catch(e){primary=e;}
+      await publish('verification.json',{status:primary||publicationErrors.length?'failed':'succeeded',checks,
+        primaryException:primary?{name:primary.name,message:primary.message,stack:primary.stack}:undefined,publicationErrors});
+      if(primary){if(publicationErrors.length)primary.message+='; diagnostic publication failed: '+JSON.stringify(publicationErrors);throw primary;}
+      if(publicationErrors.length)throw new DomainError('unknown','PLACEHOLDER_CLEAR_PUBLICATION_FAILED',JSON.stringify(publicationErrors));
+      return;
+    }
     if(!['task_call_append','task_call_replace'].includes(op.tool)||parsed.status!=='succeeded')
       return this.validateEvidence(op,parsed,session);
     const directory=path.join(op.bridge!.directory,'task-call-service',randomUUID()),publicationErrors:any[]=[];
@@ -401,7 +421,7 @@ export class EngineeringService {
   }
   private validateEvidence(op:Operation,parsed:Reply,session?:Session) {
     const args=op.tool==='variable_edit'?(op as any).effectiveArgs??op.args:op.args;
-    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',task_create:'task_create',task_call_append:'task_call_append',task_call_replace:'task_call_replace',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',project_structure:'structure',io_mapping_inspect:'io_mapping',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
+    const command=({project_search:'search',variable_inspect:'variables',task_inspect:'tasks',task_config_update:'task_update',task_create:'task_create',task_call_append:'task_call_append',task_call_replace:'task_call_replace',library_inspect:'libraries',library_catalog:'catalog',device_catalog:'device_catalog',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',library_placeholder_clear:'clear_placeholder',project_structure:'structure',io_mapping_inspect:'io_mapping',device_inspect:'device',object_read:'read',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',code_apply_change:'change',variable_edit:'change',project_build:'build',project_save:'save',object_list:'list',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect'} as Record<string,string>)[op.tool];
     if(parsed.operationId!==op.operationId) throw new DomainError('unknown','RESULT_ID_MISMATCH','结果编号不一致');
     if(parsed.status==='succeeded') {
       const d=parsed.data;
@@ -416,6 +436,10 @@ export class EngineeringService {
           declarationMatches(v.objectType,v.path?.at(-1) || '',v.declaration);
       };
       if(!d) invalid();
+      if(command==='clear_placeholder'){
+        validateClearResult(d,args,session,path.join(op.bridge!.directory,'checkpoint.project'));
+        return;
+      }
       if(command==='io_mapping'){
         const io=d as any,e=io.readOnlyEvidence;
         if(!session||io.projectId!==args.projectId||pathKey(io.projectPath)!==pathKey(session.workingPath)||
@@ -792,6 +816,20 @@ export class EngineeringService {
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
     if(op.tool==='variable_edit')return this.variableEdit(op,s);
+    if(op.tool==='library_placeholder_clear'){
+      if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
+        throw new DomainError('conflict','LIBRARY_DISK_CHANGED','清除前磁盘版本变化，未派发IDE');
+      const prior=await this.store.operation(a.referenceOperationId),ref=prior?.response?.data as any;
+      try{
+        if(prior?.tool!=='library_inspect'||prior.status!=='succeeded'||prior.args.projectId!==a.projectId||prior.args.applicationId!==a.applicationId||
+          ref?.configurationVersion!==a.expectedReferenceVersion||ref?.placeholderConfigurationVersion!==a.expectedPlaceholderVersion||
+          ref?.diskHash!==a.expectedDiskHash||ref?.readOnlyEvidence?.unchanged!==true||
+          ref?.readOnlyEvidence?.beforeDiskHash!==a.expectedDiskHash||ref?.readOnlyEvidence?.postExitDiskHash!==a.expectedDiskHash)
+          throw Error('Current target-page evidence required');
+        clearTarget(ref,a,true,true);
+      }catch(e:any){throw new DomainError('conflict','PLACEHOLDER_CLEAR_REFERENCE_EVIDENCE',placeholderReferenceConflict+' '+e.message);}
+      return this.bridge(op,'clear_placeholder',s,{...a,maxReferences:prior!.args.maxReferences,expectedSourceSnapshot:s.snapshot});
+    }
     if(op.tool==='library_reference_add'||op.tool==='library_placeholder_resolve'){
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)
         throw new DomainError('conflict','LIBRARY_DISK_CHANGED','直接库引用写入前磁盘版本已变化，未派发IDE');

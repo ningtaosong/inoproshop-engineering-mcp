@@ -175,7 +175,7 @@ for(const loss of ['type','insertion','declaration','list'])test('missing '+loss
 });
 test('37 tools: other 36 input/output schemas unchanged; variable_edit only adds enum action',async()=>{
  const baseline=JSON.parse(await readFile(new URL('./fixtures/aggregate-member-legacy-contracts.json',import.meta.url)));
- assert.equal(Object.keys(schemas).length,37);
+ assert.equal(Object.keys(schemas).length,38);
  for(const [name,entry] of Object.entries(baseline.tools)){
   const input=z.toJSONSchema(schemas[name]);
   if(name==='variable_edit')input.properties.action.enum=input.properties.action.enum.filter(x=>!['add-member-initializer','add-initializer'].includes(x));

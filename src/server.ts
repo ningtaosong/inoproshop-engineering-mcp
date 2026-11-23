@@ -7,7 +7,8 @@ import { FixtureAdapter } from './fixture-adapter.js';
 import { EngineeringService } from './service.js';
 import { schemas, outputSchemas, reply, DomainError, VERSION } from './contracts.js';
 import {toolOutput} from './native-output.js';
-import {libraryInspectDescription, libraryPlaceholderResolveDescription} from './library-guidance.js';
+import {placeholderClearDelivery} from './placeholder-clear-delivery.js';
+import {libraryInspectDescription, libraryPlaceholderResolveDescription,libraryPlaceholderClearDescription} from './library-guidance.js';
 
 const config=configuration();
 if(!Number.isFinite(config.timeoutMs)||config.timeoutMs<100||!Number.isFinite(config.responseWaitMs)||config.responseWaitMs<1)
@@ -28,6 +29,7 @@ const descriptions:Record<string,string>={
   library_catalog:'只读列出当前本机原生已安装库，不需要工程身份。返回原生名称、版本、厂商、默认命名空间、仓库文件与精确身份；可用 query 过滤名称/厂商/版本/命名空间，按同一目录版本分页，或用 detailIdentity 取精确详情。过滤不是精确身份判定；读取不完整或截断明确标注。此查询不代表工程已引用、解析或运行加载。',
   library_reference_add:'把先由 library_catalog 精确查询的已安装库，加入当前 Application 的指定原生库管理器。需先用 library_inspect 取得完整直接引用和配置版本；提交两个查询操作引用、库身份、默认命名空间及当前磁盘哈希。写前重新核对目录和引用，冲突拒绝；同一精确引用为 no-op。写入后保存关闭重开及读回，部分结果不确定冻结，不自动安装、升级、删除或回滚。库变动后须重新编译；默认不做 project_compare。',
   library_placeholder_resolve:libraryPlaceholderResolveDescription,
+  library_placeholder_clear:libraryPlaceholderClearDescription,
   object_list:'分页列出精确应用的原生PUBLIC ST void/DINT Method、PUBLIC DINT只读Get或可读写Get+Set的Property及独立访问器，保留父链及结构，不能仅凭Get/Set名称定位；以及ST POU和根节点GVL/结构体/普通枚举/一维定长数组DUT。保留真实GUID、完整路径、有无实现及未支持子对象缺口。',
   object_read:'精确读取支持ST对象及内容哈希。Property只有声明；Get/Set独立声明和实现，返回FB→Property→访问器父链、属性哈希与访问器结构/版本。readOnly=true要求唯一Get；false要求一个Get和一个Set，不转换或补建访问器。GVL/DUT无实现区，数组边界等来自声明解析，无独立getter。',
   project_search:'只读检索选定工程/应用的支持源码。matchMode默认literal：名称/声明/实现字面子串，包含注释和字符串，areas默认全部。identifier仅接受单个完整标识符，必须显式areas=[declaration,implementation]或其非空子集，不接受name/默认全区域、正则或成员表达式；按大小写选项匹配词元，跳过注释/字符串及已支持的直接地址，未知地址和其他词法缺口独立报告，不验证地址有效性或I/O映射。保留真实身份/原文UTF-16位置/内容版本、范围/读取失败/跳过、截断和分页。按实际nextOffset+expectedVersion及原模式/条件续页，复用原清单不启动IDE；旧检索版本须重新首查，损坏证据冻结。不是语义交叉引用、读写或安全删除/重命名分析。',
@@ -60,7 +62,7 @@ for(const [name,inputSchema] of Object.entries(schemas)) {
       let result;
       try { result=await service.call(name,args); }
       catch(e:any) { result={...reply(e instanceof DomainError?e.status:'failed',e.message),error:{code:e.code || 'TOOL_ERROR',message:e.message}}; }
-      return toolOutput(result);
+      return toolOutput(placeholderClearDelivery(result,config.dataDir));
     });
 }
 // 不监听客户端取消来中断 IDE；客户端可断开，原操作继续持久化。
