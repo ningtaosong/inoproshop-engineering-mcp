@@ -1,6 +1,6 @@
 # 清除普通占位符应用级显式覆盖
 
-0.37.0 候选分支新增 `library_placeholder_clear`，38项工具。当前实现与离线验证完成，真实 MCP 和一次 DSH CLI 验收尚待具体计划复核；未合并、未部署。
+0.37.0 候选分支新增 `library_placeholder_clear`，38项工具。限定实现、离线验证、真实 MCP 和一次 DSH CLI 工程闭环已完成；流程效率与展示部分通过，未合并、未部署。[验收归属及首败](library-placeholder-clear-acceptance.md)。
 
 可复制需求：
 
@@ -16,6 +16,6 @@
 
 原生正例归属探测提交7c700dc77783354816570a129b631a3b785227c2，不冒充产品验收。当前离线四组Node为1004/1004（首轮1003/1004，失败组独立复测180/180）；Python630/630；早期定向92/92。紧凑投递后定向64/64，分别记录，不相加。默认环境200ms问题未修复，首轮POU测试返回瞬间未留存，不能补造完整running响应。
 
-真实验收前需固定提交、配置、两份新夹具及准备脚本，先MCP后仅一次CLI；历史unknown、隔离与封存工程不重开。实际运行、PLC、Desktop日常连接、崩溃根因、CmpLog、脚本信任及历史性能边界保留。
+真实验收使用产品提交 `f944b55339e65acce1a1f1fd2f6ef72e6c1e26f7` 的独立固定构建；两份新夹具各清除一次，各两次正式编译均0错误／0警告，保存重开通过。两套各自六阶段准备、五次准备编译另列；正式 MCP 8 次、CLI 7 次 IDE 均有可信正常退出。历史unknown、隔离与封存工程未重开。实际运行、PLC、Desktop日常连接、崩溃根因、CmpLog、脚本信任及历史性能边界保留。
 
 [设计及写前守卫](library-placeholder-clear-design.md) · [原设置能力](library-placeholder-resolve.md) · [README](../README.md)
