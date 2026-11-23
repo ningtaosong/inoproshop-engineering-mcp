@@ -170,3 +170,12 @@ test('38 tool schemas unchanged; only explicit FB section refinement extended',a
  for(const section of ['VAR_INPUT','VAR_OUTPUT',undefined])assert(schemas.variable_edit.safeParse({...q,section}).success);
  for(const patch of [{type:'TIME'},{expectedOldInitializer:''},{section:'VAR_IN_OUT'},{memberName:'X'},{action:'set-type',type:'TIME',expectedOldType:'DINT',expectedOldInitializer:'1'}])assert(!schemas.variable_edit.safeParse({...q,...patch}).success);
 });
+
+for(const section of ['VAR_INPUT','VAR_OUTPUT'])for(const modifier of ['RETAIN','PERSISTENT','CONSTANT',"{attribute 'x'}"])
+ test('interface initializer refuses modified selected block '+section+' '+modifier,()=>{
+ const s='FUNCTION_BLOCK Main\n'+section+' '+modifier+'\n Delay : TIME;\nEND_VAR';
+ assert.throws(()=>execute(s,{...action,section}));
+ });
+for(const section of ['VAR_INPUT','VAR_OUTPUT'])test('interface initializer counts empty duplicate modified blocks '+section,()=>{
+ for(const modifier of ['', ' RETAIN',' PERSISTENT'])assert.throws(()=>execute('FUNCTION_BLOCK Main\n'+section+'\n Delay : TIME;\nEND_VAR\n'+section+modifier+'\nEND_VAR',{...action,section}));
+});
