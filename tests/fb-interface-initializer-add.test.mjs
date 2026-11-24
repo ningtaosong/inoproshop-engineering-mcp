@@ -179,3 +179,49 @@ for(const section of ['VAR_INPUT','VAR_OUTPUT'])for(const modifier of ['RETAIN',
 for(const section of ['VAR_INPUT','VAR_OUTPUT'])test('interface initializer counts empty duplicate modified blocks '+section,()=>{
  for(const modifier of ['', ' RETAIN',' PERSISTENT'])assert.throws(()=>execute('FUNCTION_BLOCK Main\n'+section+'\n Delay : TIME;\nEND_VAR\n'+section+modifier+'\nEND_VAR',{...action,section}));
 });
+
+// Combined production service/adapter path. All process and file operations below
+// target synthetic fixture files; no real IDE or archived project is opened.
+import {EventEmitter} from 'node:events';
+import path from 'node:path';
+import {IdeAdapter} from '../dist/adapter.js';
+import {atomicJson,readJson} from '../dist/storage.js';
+import {processObservations,normalCloseDouble} from './process-double.mjs';
+for(const mode of ['direct','copy'])for(const failure of ['none','preflight-close','write-close','write-missing-receipt'])
+test('FB interface and production exit guard '+mode+' '+failure,async t=>{
+ const f=await fixture(t,{mode,rows:withProperty()});await f.service.store.release();
+ const nativeFixture=new FixtureAdapter(),commands=[];let kills=0;
+ const adapter=new IdeAdapter({executable:process.execPath,profile:'offline',timeoutMs:3000,noUI:false},(exe,args,options)=>{
+  const child=new EventEmitter();child.pid=12345;child.kill=()=>kills++;
+  setTimeout(async()=>{try{
+   const request=await readJson(options.env.INOPRO_BRIDGE_REQUEST),dir=path.dirname(options.env.INOPRO_BRIDGE_REQUEST);
+   commands.push(request.command);
+   const result=await nativeFixture.execute(request,path.join(f.e.dir,'native-fixture-'+commands.length),async()=>{});
+   await atomicJson(path.join(dir,'dispatched.json'),{operationId:request.operationId,pid:12345});
+   await atomicJson(path.join(dir,'result.json'),result);await normalCloseDouble(dir);
+   if((failure==='preflight-close'&&request.command==='read')||(failure==='write-close'&&request.command==='change'))
+    await atomicJson(path.join(dir,'normal-close-failed.json'),{firstError:{message:'original public close failure'}});
+   if(failure==='write-missing-receipt'&&request.command==='change')await (await import('node:fs/promises')).unlink(path.join(dir,'normal-close-returned.json'));
+   child.emit('exit',0,null);
+  }catch(e){child.emit('error',e);}},30);return child;
+ },processObservations);
+ const service=new EngineeringService({...f.config,responseWaitMs:5000},adapter);t.after(()=>service.store.release());
+ const before=await sha(f.s.workingPath),r=await service.call('variable_edit',schemas.variable_edit.parse(f.request));
+ if(failure==='none'){
+  assert.equal(r.status,'succeeded',JSON.stringify(r));assert.equal(r.data.initializerTargetReadback.reopened.interfaceChildren.rows.length,4);
+  assert.equal(commands.filter(x=>x==='change').length,1);assert.notEqual(await sha(f.s.workingPath),before);
+ }else{
+  assert.equal(r.status,'unknown',JSON.stringify(r));
+  assert.equal(r.error.code,failure==='write-missing-receipt'?'NORMAL_CLOSE_EVIDENCE_MISSING':'NORMAL_CLOSE_FAILED');
+  if(failure!=='write-missing-receipt')assert.equal(r.data.normalCloseEvidence.firstFailure.firstError.message,'original public close failure');
+  assert.equal(commands.filter(x=>x==='change').length,failure==='preflight-close'?0:1);
+  if(failure==='preflight-close')assert.equal(await sha(f.s.workingPath),before);
+  const after=await sha(f.s.workingPath),count=commands.length;
+  assert.equal((await service.call('variable_edit',schemas.variable_edit.parse(f.request))).operationId,r.operationId);
+  await assert.rejects(()=>service.call('variable_edit',schemas.variable_edit.parse({...f.request,requestId:randomUUID()})),e=>e.code==='PENDING_UNKNOWN');
+  await service.store.release();const restarted=new EngineeringService(f.config,new IdeAdapter({}));t.after(()=>restarted.store.release());
+  assert.equal((await restarted.call('operation_status',{operationId:r.operationId,reconcile:true})).status,'unknown');
+  assert.equal(commands.length,count);assert.equal(await sha(f.s.workingPath),after);
+ }
+ assert.equal(commands.filter(x=>x==='save').length,0);assert.equal(kills,0);
+});
