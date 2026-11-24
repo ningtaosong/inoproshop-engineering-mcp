@@ -1,8 +1,10 @@
 # InoProShop MCP 后续开发计划
 
-规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-23。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
+规划建立日期：2026-11-09；最近规划补充：2026-11-10；当前状态同步：2026-11-24。本文供规划、开发和复核任务共同使用，读取本文不代表开始执行全部阶段。第 1 节保留规划建立时的基线语境；当前状态以路线表及后续实施记录为准。S9 在线能力仍为后续规划，未启动实现或设备连接。
 
-main 为 0.37.0 候选版、38 项工具；固定入口与实际连接分别见[收尾说明](docs/library-placeholder-clear-0370-merge.md)，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+main 为 0.37.2 候选版、38 项工具；固定入口与实际连接分别见[收尾说明](docs/normal-exit-0372-merge.md)，保留0.37.0回退构建。S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
+
+`codex/variable-edit-isolation` 的0.37.2维护兼容补修已随本次正常合并进入main，同时保留祖先 `codex/native-normal-exit-guard`／`7233a2e0f633a3f345e3a2c572089148d30b8ed3` 的正常退出保护。仅补齐 `variable_edit` 隔离评估的原始 `change` 请求和检查点归属；[原补修与准备](docs/variable-edit-isolation.md)按原时点保留。获准具体计划已正式提交，[两阶段真实 MCP 复验](docs/native-normal-exit-recheck-0372.md)完成限定只读退出和单周期参数保存闭环，9次IDE均正常退出，真实编译1次0错误／0警告；两处验收脚本错误保留，未发送模型任务。旧受阻计划及原unknown不改判。[正常退出保护](docs/native-normal-exit-guard.md)离线证据仍归原提交；实际正常退出也不证明原崩溃根因已解决或async=True表示OnLoad已退栈。0.38候选继续独立保留；本次仅收尾0.37.2，不启动下一阶段。
 
 `codex/library-placeholder-clear` 的限定普通占位符覆盖清除已正常合并，0.37.0 候选版／38 项工具。入口配置、独立连接和最终日常连接分别留证。[设计与守卫](docs/library-placeholder-clear-design.md)区分覆盖清除和实际解析，不预测默认回退。原生正例归属探测提交 `7c700dc77783354816570a129b631a3b785227c2`；[真实 MCP 与一次 DSH CLI 产品工程闭环通过](docs/library-placeholder-clear-acceptance.md)，实际解析与编译分别取证；26 次状态查询、五条 CLI 输出截断等使流程效率与展示仅部分通过。S9 暂缓，不连接 PLC。
 

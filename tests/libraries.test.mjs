@@ -1,4 +1,4 @@
-import {processObservations,requestBinding} from './process-double.mjs';
+import {processObservations,requestBinding,normalCloseDouble} from './process-double.mjs';
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import {readFile,writeFile,readdir} from 'node:fs/promises';import path from 'node:path';import {randomUUID} from 'node:crypto';import {spawnSync} from 'node:child_process';
 import {z} from 'zod';
@@ -68,7 +68,7 @@ test('意外修改与损坏原清单继续冻结，查询不重放读取',async 
 });
 test('真实适配器libraries命令确认退出后哈希，不自动保存或kill（进程替身）',async()=>{
  const e=await setup(),dir=path.join(e.dir,'ipc'),before=digest(await readFile(e.source));let killed=0;
- const adapter=new IdeAdapter({executable:process.execPath,profile:'test',timeoutMs:1000},()=>{const child=new EventEmitter(); child.pid=12345;child.kill=()=>killed++;setTimeout(async()=>{const r=JSON.parse(await readFile(path.join(dir,'request.json')));await atomicJson(path.join(dir,'dispatched.json'),{operationId:r.operationId,pid:12345});await atomicJson(path.join(dir,'result.json'),{contractVersion:'1.0.0',status:'succeeded',summary:'fixture',operationId:r.operationId,data:{diskHash:before,readOnlyEvidence:{beforeDiskHash:before,afterCloseDiskHash:before,unchanged:true}}});await writeFile(e.source,(await readFile(e.source,'utf8'))+' ');child.emit('exit',0);},20);return child;},processObservations);
+ const adapter=new IdeAdapter({executable:process.execPath,profile:'test',timeoutMs:1000},()=>{const child=new EventEmitter(); child.pid=12345;child.kill=()=>killed++;setTimeout(async()=>{const r=JSON.parse(await readFile(path.join(dir,'request.json')));await atomicJson(path.join(dir,'dispatched.json'),{operationId:r.operationId,pid:12345});await atomicJson(path.join(dir,'result.json'),{contractVersion:'1.0.0',status:'succeeded',summary:'fixture',operationId:r.operationId,data:{diskHash:before,readOnlyEvidence:{beforeDiskHash:before,afterCloseDiskHash:before,unchanged:true}}});await writeFile(e.source,(await readFile(e.source,'utf8'))+' ');await normalCloseDouble(dir);child.emit('exit',0);},20);return child;},processObservations);
  const r=await adapter.execute({...requestBinding,operationId:randomUUID(),command:'libraries',projectPath:e.source,args:{readDiskHash:before}},dir,async()=>{});assert.equal(r.status,'unknown');assert.equal(r.error.code,'READ_ONLY_FILE_CHANGED');assert.equal(killed,0);
 });
 test('生产固定库读取器：原生API替身、失败及只读调用白名单',()=>{const r=spawnSync('python',['tests/bridge_libraries_test.py'],{encoding:'utf8'});assert.equal(r.status,0,r.stdout+r.stderr);});

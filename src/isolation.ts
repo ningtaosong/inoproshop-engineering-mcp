@@ -5,7 +5,7 @@ import os from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { Store, canonical, digest, pathKey, readJson, atomicJson, type Operation, type Session } from './storage.js';
+import { Store, canonical, digest, codeHash, pathKey, readJson, atomicJson, type Operation, type Session } from './storage.js';
 import { DomainError } from './contracts.js';
 import {observeLeaseOwner,sameProcess} from './lease-process.js';
 
@@ -71,6 +71,48 @@ function resolveOwnership(op:Operation,projects:Session[]):{session:Session;basi
   return {session:s,basis:'provisional-direct'};
 }
 export function ownedProject(op:Operation,projects:Session[]) {return resolveOwnership(op,projects).session;}
+
+// Maintenance verifies the original persisted request; it must not re-plan a
+// historical variable action under the currently installed product's grammar.
+async function variableEditOwnership(op:Operation,req:any,s:Session,dir:string):Promise<string[]> {
+  const reasons:string[]=[],a=op.args,e=(op as any).effectiveArgs,original=(op as any).variableOriginal;
+  const object=(v:any)=>!!v&&typeof v==='object'&&!Array.isArray(v);
+  const guid=(v:any)=>typeof v==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(v);
+  const hash=(v:any)=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
+  const samePath=(v:any,p:string)=>typeof v==='string'&&path.isAbsolute(v)&&pathKey(v)===pathKey(p);
+  if(!object(e)||!object(req?.args)||canonical(e)!==canonical(req.args)||
+    Object.entries(a).some(([k,v])=>canonical(e?.[k])!==canonical(v))||
+    e?.variableEdit!==true||typeof e?.declaration!=='string'||typeof e?.implementation!=='string')
+    reasons.push('持久化有效参数缺失或与原参数/桥接请求不一致');
+  if(!req||req.command!=='change'||req.operationId!==op.operationId||req.requestId!==op.requestId||
+    a.requestId!==op.requestId||req.requestFingerprint!==op.fingerprint||
+    !guid(op.bridge?.launchId)||req.launchId!==op.bridge?.launchId||
+    a.projectId!==s.projectId||a.targetKind!=='application'||!guid(a.applicationId)||!guid(a.objectId)||
+    !hash(a.expectedHash)||!hash(a.expectedSnapshot)||!hash(a.expectedDiskHash)||
+    !samePath(req.projectPath,s.workingPath)||!samePath(req.resultPath,path.join(dir,'result.json'))||
+    !samePath(req.checkpointPath,path.join(dir,'checkpoint.project')))
+    reasons.push('原请求、工程、对象或派发身份不完整/不一致');
+  if(s.editMode==='direct'&&(!object(req?.fileGuard)||req.fileGuard.mode!=='direct'||
+    req.fileGuard.expectedDiskHash!==a.expectedDiskHash))reasons.push('直接工程的原磁盘保护不一致');
+  const before=await readJson(path.join(dir,'before.json'));
+  const core=['objectId','applicationId','path','objectType','nativeTypeId','language','declaration','implementation','contentHash'];
+  if(!object(before)||!object(original)||core.some(k=>!(k in before)||!(k in original)||canonical(before[k])!==canonical(original[k]))||
+    before?.objectId!==a.objectId||before?.applicationId!==a.applicationId||
+    !Array.isArray(before?.path)||!before.path.length||before.path.some((v:any)=>typeof v!=='string'||!v.length)||
+    !guid(before?.nativeTypeId)||typeof before?.objectType!=='string'||!before.objectType||
+    typeof before?.language!=='string'||!before.language||typeof before?.declaration!=='string'||typeof before?.implementation!=='string'||
+    before?.contentHash!==a.expectedHash||
+    (typeof before?.declaration==='string'&&typeof before?.implementation==='string'&&codeHash(before.declaration,before.implementation)!==a.expectedHash)||
+    !samePath(original?.projectPath,s.workingPath)||original?.diskHash!==a.expectedDiskHash||
+    e?.objectType!==before?.objectType||e?.implementation!==before?.implementation||
+    (object(before)&&object(original)&&Object.keys(before).some(k=>k in original&&canonical(before[k])!==canonical(original[k]))))
+    reasons.push('写前对象、原文或共享原生证据无法对应');
+  // The checkpoint is the pre-write disk version. The current saved partial
+  // project must remain untouched and may legitimately have a different hash.
+  const checkpoint=await fs.readFile(path.join(dir,'checkpoint.project'));
+  if(!checkpoint.length||digest(checkpoint)!==a.expectedDiskHash)reasons.push('写前检查点与原磁盘版本不一致');
+  return reasons;
+}
 export interface IsolationPlan {
   version:1|2; kind:'project-isolation'; planId:string; createdAt:string; dataDir:string; reason:string;
   operationId:string; projectId:string|null; operationIds:string[]; bindings:any[]; aliases:Identity[];
@@ -265,7 +307,7 @@ export async function evaluateIsolation(root:string,operationId?:string) {
           const p=path.join(dir,n),bytes=await fs.readFile(p);originalRecords.push({path:p,sha256:digest(bytes),base64:bytes.toString('base64')});
         }
         const req=await readJson(path.join(dir,'request.json')),dispatch=await readJson(path.join(dir,'dispatched.json'));
-        const command=({project_save:'save',project_build:'build',code_apply_change:'change',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',task_config_update:'task_update',task_create:'task_create',task_call_append:'task_call_append',task_call_replace:'task_call_replace',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',library_placeholder_clear:'clear_placeholder',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect',object_list:'list',object_read:'read',io_mapping_inspect:'io_mapping',project_search:'search',variable_usages:'search',task_inspect:'tasks',library_inspect:'libraries'} as Record<string,string>)[op.tool];
+        const command=({project_save:'save',project_build:'build',code_apply_change:'change',variable_edit:'change',pou_create:'create',method_create:'create_method',property_create:'create_property',declaration_create:'create_declaration',task_config_update:'task_update',task_create:'task_create',task_call_append:'task_call_append',task_call_replace:'task_call_replace',library_reference_add:'add_library',library_placeholder_resolve:'resolve_placeholder',library_placeholder_clear:'clear_placeholder',project_open:'inspect',project_open_copy:'inspect',project_activate:'inspect',object_list:'list',object_read:'read',io_mapping_inspect:'io_mapping',project_search:'search',variable_usages:'search',task_inspect:'tasks',library_inspect:'libraries'} as Record<string,string>)[op.tool];
         if(!req||req.operationId!==op.operationId||pathKey(req.projectPath??'')!==pathKey(selected.workingPath)||
           !command||req.command!==command||Object.entries(op.args).some(([k,v])=>canonical(req.args?.[k])!==canonical(v)))blockers.push('原桥接请求不完整或身份不一致：'+op.operationId);
         if(selectedBasis==='provisional-direct'&&
@@ -273,6 +315,10 @@ export async function evaluateIsolation(root:string,operationId?:string) {
             !aliases.some(a=>a.key===pathKey(op.args.projectPath)&&sameFile(a,aliases[0]))))
           blockers.push('登记前直接打开的原请求磁盘保护字段或请求路径身份不一致：'+op.operationId);
         if(!dispatch||dispatch.operationId!==op.operationId||dispatch.pid!==op.bridge?.pid)blockers.push('原派发/PID证据不完整：'+op.operationId);
+        if(op.tool==='variable_edit'){
+          await record(path.join(dir,'checkpoint.project'),true);await record(path.join(dir,'before.json'),true);
+          for(const reason of await variableEditOwnership(op,req,selected,dir))blockers.push('变量编辑隔离归属无法核实：'+reason+'：'+op.operationId);
+        }
         if(['code_apply_change','pou_create','declaration_create','method_create','property_create'].includes(op.tool)){
           await record(path.join(dir,'checkpoint.project'),true);await record(path.join(dir,'before.json'),true);
         }

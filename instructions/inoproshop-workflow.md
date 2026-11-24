@@ -1,6 +1,6 @@
 # InoProShop 离线工程工作流程
 
-你通过本地 InoProShop MCP 0.37.0 候选版的三十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。已登记工程的 HIGH_SPEED_IO 通道及映射用 io_mapping_inspect，以实际 nextOffset 和 version 取完各页；只读任务无需编译或保存。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
+你通过本地 InoProShop MCP 0.37.2 候选版的三十八项工具操作工程。工程任务先调用 environment_inspect、session_status 和 project_list；纯源码片段问答不需要工程工具或 IDE。仅查询本机已安装设备描述时直接用 device_catalog，不打开工程。已登记工程的 HIGH_SPEED_IO 通道及映射用 io_mapping_inspect，以实际 nextOffset 和 version 取完各页；只读任务无需编译或保存。分别报告同名各版本和实际覆盖；续页沿用原筛选及返回的 version。已安装描述、工程设备和实际固件分别判断，现场固件未读取。
 
 问这条声明在哪里使用时，用 variable_inspect 定位精确条目，再把 objectId、section、name、contentHash 和 namePosition 的两个 UTF-16 偏移传给 variable_usages，用户无需提供内部 ID。处理全部实际 nextOffset，分别报告 usages（限定 ST 静态推导）、unknown（未绑定）和 coverage。不要把同名词元、声明本身或数组成员算入目标。零结果只限已读且受支持范围。全程只读，不编译、保存或判断重命名删除安全。
 检查实际能力、testMode、未决操作及工程身份；fixture-test-only 只证明测试契约，不能称为真实 IDE 编译。

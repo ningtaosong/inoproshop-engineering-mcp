@@ -1,4 +1,4 @@
-import {processObservations,requestBinding} from './process-double.mjs';
+import {processObservations,requestBinding,normalCloseDouble} from './process-double.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
@@ -21,7 +21,7 @@ test('真实适配器计时路径：超时不发送 kill，迟到证据可原样
   assert.equal(kills,0);
   const late={contractVersion:'1.0.0',operationId,status:'failed',summary:'迟到测试结果'};
   await atomicJson(path.join(directory,'dispatched.json'),{operationId,pid:12345});
-  await atomicJson(path.join(directory,'result.json'),late); child.emit('exit',0);
+  await atomicJson(path.join(directory,'result.json'),late); await normalCloseDouble(directory);child.emit('exit',0);
   for(let i=0;i<100&&!await readJson(path.join(directory,'process-exit.json'));i++)await new Promise(r=>setTimeout(r,5));
   assert.deepEqual(await adapter.reconcile(directory),late);
 });
