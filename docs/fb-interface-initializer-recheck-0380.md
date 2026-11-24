@@ -1,6 +1,6 @@
 # 0.38.0 FB接口初值：整合正常退出保护后的独立复验
 
-本轮在 `codex/fb-interface-initializer-add` 继续实现与验收，未合并 main 或部署。范围仍为普通原生 ST FUNCTION_BLOCK 的普通 VAR_INPUT／VAR_OUTPUT，给已有、唯一、无显式初值的 BOOL、DINT、TIME 单变量补写初值。显式指定 section，使用 `variable_edit / add-initializer`，保持38项工具。原 VAR／根GVL及其他动作语义不变，S4b尚未全部完成。
+本文记录独立复验当时的状态：在 `codex/fb-interface-initializer-add` 实现与验收，尚未合并或部署。后续正常合并与入口准备见[0.38.0收尾说明](fb-interface-initializer-0380-merge.md)，不改写本次实际验收归属。范围仍为普通原生 ST FUNCTION_BLOCK 的普通 VAR_INPUT／VAR_OUTPUT，给已有、唯一、无显式初值的 BOOL、DINT、TIME 单变量补写初值。显式指定 section，使用 `variable_edit / add-initializer`，保持38项工具。原 VAR／根GVL及其他动作语义不变，S4b尚未全部完成。
 
 ## 代码及证据归属
 
