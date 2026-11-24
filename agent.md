@@ -4,7 +4,7 @@
 
 main 为 0.37.0 候选版、38 项工具；固定入口与实际连接分别见[收尾说明](docs/library-placeholder-clear-0370-merge.md)，S8b 首版限定 I/O 只读查询已交付。使用 [io_mapping_inspect](docs/io-mapping-inspect.md) 查询已验 HIGH_SPEED_IO 离线映射。
 
-当前 `codex/native-normal-exit-guard` 为 0.37.1 补修候选、38 工具，未合并或部署。[正常退出保护](docs/native-normal-exit-guard.md)仅修改共享产品 worker 的退出路径及服务端证据校验；本轮只做离线验证，没有 IDE、工程或模型任务。正式隔离与后续真实工程复验须另行安排；原 unknown、0.38 功能候选、日常入口及历史现场保持。不得用无工程 FileExit 正例改判带工程故障，或将 async=True 写成 OnLoad 已退栈。
+当前 `codex/variable-edit-isolation` 为 0.37.2 维护兼容补修候选、38 工具，基于独立保留的 `codex/native-normal-exit-guard`／`7233a2e0f633a3f345e3a2c572089148d30b8ed3`。仅补齐 `variable_edit` 隔离评估的原始 `change` 请求和检查点归属；[补修与复验准备](docs/variable-edit-isolation.md)记录具体范围。未合并、未部署、未提交隔离、未启动真实工程或模型任务；旧受阻计划及原 unknown 保留。[正常退出保护](docs/native-normal-exit-guard.md)的离线证据仍归原提交，没有将无工程 FileExit 正例改判为带工程成功，或将 async=True 写成 OnLoad 已退栈。0.38 功能候选和日常入口保持。
 
 `codex/library-placeholder-clear` 的限定普通占位符覆盖清除已正常合并，0.37.0 候选版／38 项工具。入口配置、独立连接和最终日常连接分别留证。[设计与守卫](docs/library-placeholder-clear-design.md)区分覆盖清除和实际解析，不预测默认回退。原生正例归属探测提交 `7c700dc77783354816570a129b631a3b785227c2`；[真实 MCP 与一次 DSH CLI 产品工程闭环通过](docs/library-placeholder-clear-acceptance.md)，实际解析与编译分别取证；26 次状态查询、五条 CLI 输出截断等使流程效率与展示仅部分通过。S9 暂缓，不连接 PLC。
 
