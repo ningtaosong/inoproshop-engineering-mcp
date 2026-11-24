@@ -1,6 +1,6 @@
 # 变量级编辑：S4a 与 S4b 限定子阶段
 
-0.38.0 功能分支扩展 add-initializer：显式 section=VAR_INPUT／VAR_OUTPUT 时，仅给普通原生 ST FUNCTION_BLOCK 的唯一完整无修饰声明区补写已有 BOOL／DINT／TIME 单变量的缺失初值。原文及受支持 Method／Property／Get／Set 子树保全；缺证拒绝。旧动作及省略 section 的范围不变。见[设计与验收](fb-interface-initializer-add.md)。
+0.38.0 功能分支扩展 add-initializer：显式 section=VAR_INPUT／VAR_OUTPUT 时，仅给普通原生 ST FUNCTION_BLOCK 的唯一完整无修饰声明区补写已有 BOOL／DINT／TIME 单变量的缺失初值。原文及受支持 Method／Property／Get／Set 子树保全；缺证拒绝。旧动作及省略 section 的范围不变。见[设计与原失败](fb-interface-initializer-add.md)及[整合0.37.2后的独立复验](fb-interface-initializer-recheck-0380.md)。本轮工程闭环通过，尚未合并或部署，不代表S4b全部完成。
 ## S4b 第三子阶段：基础类型与显式初值同步修改（0.26.0 已合并）
 
 variable_edit 的 set-type 只用于普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的普通 VAR，或 Application 根 GVL 的普通 VAR_GLOBAL 中已存在、唯一的单变量声明。原类型和目标类型均限 BOOL、DINT、TIME；原声明必须已有符合本服务规则的显式字面初值。调用时同时提交目标 type 与 initializer，并用 expectedOldType、expectedOldInitializer 绑定当前原文，外加已有对象哈希、工程 snapshot 与磁盘哈希。用户只需说明工程和需求，内部身份由 Agent 读取。
