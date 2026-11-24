@@ -125,7 +125,7 @@ test('production service rejects wrong clear envelope operationId, freezes and d
  assert.equal((await service.status()).data.globalFrozen,true);assert.equal((await call('library_placeholder_clear',a)).operationId,r.operationId);
  await assert.rejects(()=>call('library_placeholder_clear',{...a,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');assert.equal(clears,1);
 });
-test('0.37.0 adds exactly one tool; all original 37 inputs and outputs unchanged',async()=>{
+test('0.37.x keeps the added clear tool and original 37 contracts unchanged',async()=>{
  const prior=JSON.parse(await readFile(new URL('./fixtures/placeholder-clear-legacy-contracts.json',import.meta.url),'utf8'));
  assert.equal(Object.keys(prior.tools).length,37);assert.equal(Object.keys(schemas).length,38);assert.equal(VERSION,'0.38.0');
  for(const [name,hashes] of Object.entries(prior.tools)){

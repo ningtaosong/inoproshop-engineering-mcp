@@ -1,8 +1,10 @@
 # InoProShop Engineering MCP
 
-本功能分支为 **0.38.0 候选版、38 项工具**：`variable_edit.add-initializer` 可在普通原生 ST FUNCTION_BLOCK 的唯一完整 `VAR_INPUT`／`VAR_OUTPUT` 区为已有 BOOL／DINT／TIME 单变量补写缺失初值。[范围与证据](docs/fb-interface-initializer-add.md)。不创建变量、不覆盖已有值、不改变显式调用实参；日常 main 仍为下述 0.37.0。实现与离线验证通过；真实 MCP 第二次补写后遇到 IDE 异常退出，工程验收未通过，CLI 未发送，现场按 unknown 保留。
+本功能分支为 **0.38.0 候选版、38 项工具**，继续[普通ST FB输入／输出缺失初值补写](docs/fb-interface-initializer-add.md)。已正常整合main 0.37.2的正常退出和维护归属保护；原0.38异常退出及unknown保持原记录，并已按获准具体计划正式隔离，不恢复或重放原工程。本轮使用新的独立工程重新验证；未合并main或部署，日常入口保持0.37.2。
 
-**当前 main 为 0.37.0 候选版、38 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+**当前 main 为 0.37.2 候选版、38 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+
+**0.37.2 已合并**，同时纳入 [0.37.1 正常退出保护](docs/native-normal-exit-guard.md)和 `variable_edit` 原请求的维护归属补修，不重建历史写入参数、不改判 unknown。[补修与原准备记录](docs/variable-edit-isolation.md)及[两阶段真实 MCP 复验](docs/native-normal-exit-recheck-0372.md)保留各自时点：获准具体隔离计划已提交，9次IDE均取得可信正常退出，一次 MainTask 20→25 ms 保存重开闭环通过，保存版编译0错误／0警告。两处验收脚本错误保留；未完成的0.38候选独立保留，本结果不等同于0.38功能或CLI模型验收。[合并、固定入口及连接口径](docs/normal-exit-0372-merge.md)区分独立连接和Desktop日常连接。
 
 **0.37.0 候选版已合并**，新增独立 `library_placeholder_clear`；[真实 MCP 与一次 DSH CLI 工程闭环通过](docs/library-placeholder-clear-acceptance.md)，流程效率与展示部分通过。[固定构建、入口和连接口径](docs/library-placeholder-clear-0370-merge.md)分别记录，保留 0.36.0 回退构建。仅清除普通 CAA Mathematics 应用覆盖并报告实际解析，不承诺回到默认版本。见[接口与守卫设计](docs/library-placeholder-clear-design.md)。
 
@@ -64,7 +66,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 
 ## 已完成功能（main）
 
-下表列出 main 已合并的 37 项工具及其能力。具体受验版本和未验事项见[验证范围](#能力与验证边界)。
+下表列出 main 已合并的 38 项工具及其能力。具体受验版本和未验事项见[验证范围](#能力与验证边界)。
 
 | 功能 | 已实现范围 | 对应工具 | 完成阶段 |
 | --- | --- | --- | --- |

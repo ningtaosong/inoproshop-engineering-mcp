@@ -71,6 +71,8 @@ class PhaseEvidence(unittest.TestCase):
             return {'status': 'succeeded', 'data': {'lifecycle': self.env['lifecycle_report'](state)}}
 
         self.env.update(publish=publish, dispatch=dispatch,
+                        prepare_native_exit=lambda *args: SimpleNamespace(preflight=lambda: None,
+                            queue=lambda: setattr(self, 'exits', self.exits + 1), fail=lambda *args: None),
                         projects=SimpleNamespace(open=native_open),
                         system=SimpleNamespace(execute_on_primary_thread=lambda action: action(),
                                                exit=lambda: setattr(self, 'exits', self.exits + 1)))
@@ -125,7 +127,7 @@ class PhaseEvidence(unittest.TestCase):
     def test_result_publish_failure_leaves_dispatched_without_result(self):
         self.open_release.set()
         self.fail_result_publish = True
-        self.assertRaises(IOError, self.run_entry)
+        self.run_entry()  # First publication exception is recorded, not thrown into UI.
         self.assertEqual((self.opens, self.closes), (1, 1))
         self.assertFalse(self.result.exists())
         self.assertTrue((self.dir / 'dispatched.json').exists())

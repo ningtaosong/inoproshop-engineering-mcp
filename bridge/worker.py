@@ -2177,7 +2177,25 @@ def dispatch(req):
         response["summary"]=response["summary"].replace(u"工作副本",u"指定工程")
     return response
 
+def prepare_native_exit(request, request_path):
+    from System import Guid, Array, String
+    from System.Diagnostics import Process
+    process = Process.GetCurrentProcess()
+    try:
+        identity = dict(pid=process.Id, startId=text(process.StartTime.ToUniversalTime().Ticks))
+    finally:
+        process.Dispose()
+    directory = os.path.dirname(os.path.abspath(__file__))
+    hashes = {}
+    for key, name in [('workerHash', 'worker.py'), ('helperHash', 'native_exit.py')]:
+        with open(os.path.join(directory, name), 'rb') as stream:
+            hashes[key] = hashlib.sha256(stream.read()).hexdigest()
+    return NativeExit(request, request_path, system, projects, publish, identity,
+                      Guid, lambda: Array[String]([]), hashes)
+
 # Fixed helper code only; request text is never evaluated.
+with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'native_exit.py'),'r',encoding='utf-8') as native_exit_file:
+    exec(compile(native_exit_file.read(),'native_exit.py','exec'))
 with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'organization.py'),'r',encoding='utf-8') as organization_file:
     exec(compile(organization_file.read(),'organization.py','exec'))
 with io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'library_reference.py'),'r',encoding='utf-8') as library_reference_file:
@@ -2202,10 +2220,13 @@ if os.path.exists(request["resultPath"]):
 elif os.path.exists(dispatch_path):
     raise ValueError("Original dispatch result is unknown; refusing replay")
 else:
-    publish(dispatch_path, {"operationId": request["operationId"], "pid": os.getpid(), "python": sys.version})
+    closer = prepare_native_exit(request, request_path)
     holder = []
     def execute():
         phase_event("primary-thread","entered")
+        # Check close capability before any engineering dispatch.
+        closer.preflight()
+        publish(dispatch_path, {"operationId": request["operationId"], "pid": os.getpid(), "python": sys.version})
         holder.append(dispatch(request))
         phase_event("primary-thread","returned")
     try:
@@ -2215,14 +2236,18 @@ else:
         phase_event("primary-thread","completed")
         result = holder[0]
     except Exception as e:
+        closer.fail("primary-thread", e)
         phase_event("primary-thread","failed")
         result = failure("unknown", "PRIMARY_THREAD_ERROR", text(e), {"detail": traceback.format_exc()})
-    result["operationId"] = request["operationId"]
-    phase_event("result-finalization","started")
-    if result.get("data") is not None and os.path.exists(request["projectPath"]):
-        result["data"]["diskHash"] = file_hash(request["projectPath"])
-    phase_event("result-publish","started")
-    publish(request["resultPath"], result)
-    phase_event("result-publish","succeeded")
-# 只退出由服务以 --runscript 启动的新实例。
-system.exit()
+    try:
+        result["operationId"] = request["operationId"]
+        phase_event("result-finalization","started")
+        if result.get("data") is not None and os.path.exists(request["projectPath"]):
+            result["data"]["diskHash"] = file_hash(request["projectPath"])
+        phase_event("result-publish","started")
+        publish(request["resultPath"], result)
+        phase_event("result-publish","succeeded")
+        closer.queue()
+    except Exception as e:
+        closer.fail("result-publication", e)
+# Natural return. No direct Engine.Shutdown, fallback close, kill or recovery save.

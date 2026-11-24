@@ -13,12 +13,19 @@ import {EngineeringService} from '../dist/service.js';
 import {atomicJson,readJson,digest} from '../dist/storage.js';
 import {publishProcessEvidence} from '../dist/process-exit.js';
 
+// Order this case by the actual synthetic exit event, not a sleep that can race
+// filesystem publication. The production rule and all timeouts stay unchanged.
+function identityAfterExit() {
+ let exited;const observed=new Promise(resolve=>exited=resolve);
+ return {code:0,onExit:()=>exited(),probe:async()=>{await observed;return processObservations.probe();}};
+}
+
 for(const [name,options,code] of [
  ['signal',{code:null,signal:'SIGABRT'},'IDE_ABNORMAL_EXIT'],
  ['unknown-status',{code:null},'EXIT_STATUS_UNCONFIRMED'],
  ['identity-unavailable',{code:0,probe:async()=>({state:'unconfirmed',reason:'denied'})},'EXIT_IDENTITY_UNCONFIRMED'],
  ['identity-throws',{code:0,probe:async()=>{throw Error('original identity exception');}},'EXIT_IDENTITY_UNCONFIRMED'],
- ['identity-after-exit',{code:0,probe:async()=>{await new Promise(r=>setTimeout(r,80));return processObservations.probe();}},'EXIT_IDENTITY_UNCONFIRMED'],
+ ['identity-after-exit',identityAfterExit(),'EXIT_IDENTITY_UNCONFIRMED'],
  ['dispatched-no-result',{code:0,writeResult:false},'RESULT_MISSING'],
  ['success-no-marker',{code:0,dispatch:false},'DISPATCH_EVIDENCE_MISSING'],
 ])test('退出边界 '+name,async()=>{
