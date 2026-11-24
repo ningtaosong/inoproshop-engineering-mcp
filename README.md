@@ -1,8 +1,8 @@
 # InoProShop Engineering MCP
 
-**当前 main 为 0.37.0 候选版、38 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
+**当前 main 为 0.37.2 候选版、38 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
-本分支为 **0.37.2 维护兼容补修候选版、38 项工具**，继承 [0.37.1 正常退出保护](docs/native-normal-exit-guard.md)，未合并或部署。本次只补齐 `variable_edit` 原请求的维护归属核验，不重建历史写入参数、不改判 unknown。[补修、隔离计划和复验准备](docs/variable-edit-isolation.md)。未完成的 0.38 功能候选独立保留，获准计划已正式提交；[两阶段真实 MCP 复验](docs/native-normal-exit-recheck-0372.md)完成只读退出及一次 MainTask 20→25 ms 保存闭环，保存版编译0错误／0警告。保留两处验收脚本错误，不等同于0.38功能或CLI模型验收。
+**0.37.2 已合并**，同时纳入 [0.37.1 正常退出保护](docs/native-normal-exit-guard.md)和 `variable_edit` 原请求的维护归属补修，不重建历史写入参数、不改判 unknown。[补修与原准备记录](docs/variable-edit-isolation.md)及[两阶段真实 MCP 复验](docs/native-normal-exit-recheck-0372.md)保留各自时点：获准具体隔离计划已提交，9次IDE均取得可信正常退出，一次 MainTask 20→25 ms 保存重开闭环通过，保存版编译0错误／0警告。两处验收脚本错误保留；未完成的0.38候选独立保留，本结果不等同于0.38功能或CLI模型验收。[合并、固定入口及连接口径](docs/normal-exit-0372-merge.md)区分独立连接和Desktop日常连接。
 
 **0.37.0 候选版已合并**，新增独立 `library_placeholder_clear`；[真实 MCP 与一次 DSH CLI 工程闭环通过](docs/library-placeholder-clear-acceptance.md)，流程效率与展示部分通过。[固定构建、入口和连接口径](docs/library-placeholder-clear-0370-merge.md)分别记录，保留 0.36.0 回退构建。仅清除普通 CAA Mathematics 应用覆盖并报告实际解析，不承诺回到默认版本。见[接口与守卫设计](docs/library-placeholder-clear-design.md)。
 
