@@ -2,6 +2,8 @@
 
 **当前 main 为 0.37.0 候选版、38 项工具，S8b 首版已交付 [I/O 通道与映射只读查询](docs/io-mapping-inspect.md)。** [真实验收](docs/io-mapping-inspect-acceptance.md)
 
+本分支为 **0.37.1 正常退出保护补修候选版、38 项工具**，基于上述 main，未合并或部署。共享产品桥接改用已核实的公开正常关闭路径；完整关闭记录与同一进程的可信退出必须同时成立。见[补修范围、离线验证与真实复验条件](docs/native-normal-exit-guard.md)。不表示原 IDE 崩溃根因已解决；未完成的 0.38 功能候选独立保留。
+
 **0.37.0 候选版已合并**，新增独立 `library_placeholder_clear`；[真实 MCP 与一次 DSH CLI 工程闭环通过](docs/library-placeholder-clear-acceptance.md)，流程效率与展示部分通过。[固定构建、入口和连接口径](docs/library-placeholder-clear-0370-merge.md)分别记录，保留 0.36.0 回退构建。仅清除普通 CAA Mathematics 应用覆盖并报告实际解析，不承诺回到默认版本。见[接口与守卫设计](docs/library-placeholder-clear-design.md)。
 
 

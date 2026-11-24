@@ -5,6 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {probeProcess,type ProcessProbe} from './lease-process.js';
 import {publishProcessEvidence,exitVerdict,evidenceFileHash,type ExecutionBinding,type ProcessStartEvidence,type ExitObservation,type EvidenceWriter} from './process-exit.js';
 import { spawn } from 'node:child_process';
+import {NORMAL_CLOSE_GUID,normalCloseHashes,normalCloseVerdict} from './normal-close.js';
 import { DomainError, type Reply } from './contracts.js';
 import { atomicJson, readJson, digest, canonical } from './storage.js';
 
@@ -32,12 +33,16 @@ export interface Adapter {
 export class IdeAdapter implements Adapter {
   constructor(readonly config: Config, private readonly spawnProcess: typeof spawn = spawn, private readonly observations:{probe?:ProcessProbe;writeEvidence?:EvidenceWriter}={}) {}
   async execute(request: BridgeRequest, directory: string, onStart: (pid:number,evidence?:ProcessStartEvidence)=>Promise<void>): Promise<Reply> {
+    if(this.config.noUI)throw new DomainError('unsupported','NORMAL_CLOSE_REQUIRES_UI','公开正常关闭需要已验 UI 宿主；未启动 IDE 或派发工程操作');
     try { await fs.access(this.config.executable); }
     catch { throw new DomainError('unsupported','IDE_MISSING',`未找到 InoProShop：${this.config.executable}`); }
     await fs.mkdir(directory,{recursive:true});
     const requestFile=path.join(directory,'request.json');
     // Hash the JSON representation actually published (optional undefined fields are omitted).
     const persisted=JSON.parse(JSON.stringify({...request,exitEvidenceVersion:1,launchId:randomUUID(),
+      normalClosePolicy:{version:1,commandGuid:NORMAL_CLOSE_GUID,
+        workerHash:digest(await fs.readFile(path.join(ROOT,'bridge','worker.py'))),
+        helperHash:digest(await fs.readFile(path.join(ROOT,'bridge','native_exit.py')))},
       ...(request.promptPolicy==='library-info-open-stages-v2'?{promptDeadlineUtc:new Date(Date.now()+Math.max(0,this.config.timeoutMs-5000)).toISOString()}:{}),
       resultPath:path.join(directory,'result.json'),...(request.command==='new_project'?{ideExecutable:this.config.executable}:{checkpointPath:path.join(directory,'checkpoint.project')})}));
     await atomicJson(requestFile,persisted);
@@ -50,9 +55,9 @@ export class IdeAdapter implements Adapter {
     const stdout=await fs.open(path.join(directory,'stdout.txt'),'a');
     const stderr=await fs.open(path.join(directory,'stderr.txt'),'a');
     let child;
+    const launchedAt=new Date().toISOString();
     try { child=this.spawnProcess(this.config.executable,args,{cwd:path.dirname(this.config.executable),shell:false,windowsHide:true,windowsVerbatimArguments:process.platform==='win32',env:{...process.env,INOPRO_BRIDGE_REQUEST:requestFile},stdio:['ignore',stdout.fd,stderr.fd]}); }
     catch(e) {await Promise.allSettled([stdout.close(),stderr.close()]);throw e;}
-    const launchedAt=new Date().toISOString();
     let exited=false;
     const completion=new Promise<ExitObservation>(resolve=>{
       child.once('error',(e:any)=>resolve({state:'spawn-error',code:null,signal:null,observedAt:new Date().toISOString(),
@@ -80,6 +85,8 @@ export class IdeAdapter implements Adapter {
       await publishProcessEvidence(path.join(directory,'process-exit.json'),{...exit,binding:s.binding,pid:s.pid,
         processIdentity:s.process.state==='running'?s.process.identity:null,startHash:digest(canonical(s)),
         resultHash:await evidenceFileHash(path.join(directory,'result.json')),
+        normalCloseHashes:await normalCloseHashes(directory),
+        normalCloseStderrHash:await evidenceFileHash(path.join(directory,'stderr.txt')),
         dispatchHash:await evidenceFileHash(path.join(directory,'dispatched.json'))},this.observations.writeEvidence);
       return {exit};
       }catch(error:any){return {exit,error};}
@@ -136,6 +143,8 @@ export class IdeAdapter implements Adapter {
     if(!verdict.normal)return uncertain('IDE_ABNORMAL_EXIT');
     if(!response)return uncertain('RESULT_MISSING');
     if(!dispatched)return uncertain('DISPATCH_EVIDENCE_MISSING');
+    const close=await normalCloseVerdict(directory,request,verdict);
+    if(!close.confirmed){const r=uncertain(close.code!);r.data!.normalCloseEvidence=close;return r;}
     if(previous?.operationId===request.operationId&&previous.status==='unknown'&&previous.error?.code==='READ_ONLY_FILE_CHANGED')return previous;
     if(request.command==='clear_placeholder'&&previous?.operationId===request.operationId&&
       previous.status==='unknown'&&previous.error?.code==='CLEAR_SAVED_DISK_CHANGED')return previous;
