@@ -1,8 +1,10 @@
 # 安装、接入与日常离线试用
 
-适用于 **InoProShop MCP 0.36.0 候选版、37 项工具**。确认客户端实际加载版本后，给出工程路径和需求；内部身份、哈希和操作引用由 Agent 获取。
+适用于 **InoProShop MCP main 已交付的 0.38.0 候选版、38 项工具**。确认客户端实际加载版本后，给出工程路径和需求；内部身份、哈希和操作引用由 Agent 获取。
 
 0.34.3 时已完成[一次 DSH CLI 最小模型接入](offline-trial-readiness-0343.md)：同一正式连接取得 37 项工具，模型实际调用一次 environment_inspect，返回 0.34.3。本次未打开工程，不代表 Desktop 握手、指令全文进入模型上下文、桌面交互或链接点击通过。已有工程闭环见 [0.34.2 双路报警](offline-alarm-acceptance-0342.md)与 [0.34.3 追加／替换复验](task-program-inventory-order.md)，各自保留原归属。
+
+0.38.0已合并[普通ST FB输入／输出缺失初值补写](fb-interface-initializer-add.md)。[新的独立MCP与一次CLI验收](fb-interface-initializer-recheck-0380.md)证明限定工程闭环；入口及连接状态见[收尾说明](fb-interface-initializer-0380-merge.md)，不能由Git版本推断客户端实际加载。
 
 ## 先确认环境
 
@@ -18,7 +20,7 @@
 
 1. 使用已核验的固定构建，确认 Node、dist/server.js 和工作目录存在，不指向正在变化的开发目录。
 2. 备份现有配置，只调整 InoProShop 条目，不覆盖账号或其他插件。参考[普通 MCP 模板](../config/dsh.example.patch.yml)及[headless 增量模板](../config/dsh.headless-trial.example.patch.yml)。模板没有凭证。
-3. maxInstructionBytes: 65536 放在 MCP 客户端 config 层，与 serverName、transport 同级。0.36.0 受验固定构建含标题为 **63,752 字节**；换构建须重新核对，不截断指令或盲目提高上限。
+3. maxInstructionBytes: 65536 放在 MCP 客户端 config 层，与 serverName、transport 同级。0.38.0 受验固定构建含标题为 **64,547 字节**；换构建须重新核对，不截断指令或盲目提高上限。
 4. CLI 最终合成配置中 credentials、authorization、deepseek-account 必须启用，模型保持原账号配置；只启用一个目标 MCP 条目。Desktop 已登录不等于 headless 自动可用，不把凭证写入模板。
 5. 从连接／会话记录确认实际版本和完整工具清单，再按需要进行一次只读查询。不要让模型凭记忆列举工具；启动成功或退出码 0 单独不算接通。
 
@@ -29,7 +31,7 @@ D:\InoPro-Fixed\0.34.3-0a927d857681\dist\server.js
 D:\InoPro\.local\dsh-phase4-repair-20261028-A1
 ~~~
 
-该次 0.34.3 临时 CLI 使用上述固定构建及登记目录，日常配置当时未改，0.34.2 回退保留。0.35.0 已新增已有聚合缺失成员初始化，见[范围与示例](variable-edit.md)及[真实 MCP／一次 CLI 验收](aggregate-member-initializer-add.md)。当前0.36.0新增已有普通变量缺失初值补写，范围及原验收见[说明](variable-initializer-add.md)。0.35.0回退构建保留；本次main合并后的入口和独立连接检查见[收尾说明](variable-initializer-0360-merge.md)及本地复核包，不把旧路径当作新版入口。Desktop 欢迎页未处理，最终日常握手仍未验证。其他电脑填写自己的已核实路径，不原样套用本机目录。
+该次 0.34.3 临时 CLI 使用上述固定构建及登记目录，日常配置当时未改，0.34.2 回退保留。0.35.0 已新增已有聚合缺失成员初始化，见[范围与示例](variable-edit.md)及[真实 MCP／一次 CLI 验收](aggregate-member-initializer-add.md)。0.36.0新增已有普通变量缺失初值补写，范围及原验收见[说明](variable-initializer-add.md)。0.38.0固定入口从最终合并提交生成，目录为 `D:\InoPro-Fixed\0.38.0-<合并提交短号>`；具体服务路径与配置写前后指纹见[0.38.0收尾说明](fb-interface-initializer-0380-merge.md)及本地复核包。保留 `D:\InoPro-Fixed\0.37.2-769b513b4ec8` 回退构建，不把历史路径当作当前入口。Desktop 欢迎页未处理，最终日常握手仍未验证。其他电脑填写自己的已核实路径，不原样套用本机目录。
 
 先准备并核对私有 patch，安装版 CLI 的一次标准输入调用格式如下；不要重复发送同一业务任务：
 
@@ -46,7 +48,7 @@ maxInstructionBytes 属于 DSH MCP 客户端。已验口径为：正文去尾空
 
 ## Codex 与 DSH 分开核对
 
-本机 codex-direct-edit-validation 的项目级配置仍启用历史 **0.16.0／21 工具**入口；旧 0.14.0、0.15.0 条目停用。当前全局 config.toml 没有 InoProShop 条目。本轮只读核对配置，没有启动或升级 Codex，未取得当前会话握手。DSH 的 37 项工具不能当作 Codex 已加载能力。见 [Codex 历史接入](codex-integration.md)。
+本机 codex-direct-edit-validation 的项目级配置仍启用历史 **0.16.0／21 工具**入口；旧 0.14.0、0.15.0 条目停用。当前全局 config.toml 没有 InoProShop 条目。本轮只读核对配置，没有启动或升级 Codex，未取得当前会话握手。DSH 的 38 项工具不能当作 Codex 已加载能力。见 [Codex 历史接入](codex-integration.md)。
 
 ## 工程与副本
 

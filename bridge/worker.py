@@ -203,7 +203,33 @@ def read_object(item, names, app_id):
     if object_kind(item) in ('property','property_get','property_set'):result.update(property_metadata(item,names))
     return result
 
-def initializer_target_evidence(project,item,names,aid):
+def initializer_interface_children(item,names,aid):
+    rows=[];seen=set([text(item.guid).lower()])
+    def visit(parent,path):
+        for child in parent.get_children(False):
+            cid=text(child.guid).lower()
+            if cid in seen or len(rows)>=1000:raise ValueError('Duplicate or excessive FB child inventory')
+            if text(child.parent.guid).lower()!=text(parent.guid).lower():raise ValueError('Native FB child parent mismatch')
+            seen.add(cid)
+            child_names=path+[text(child.get_name())]
+            kind=object_kind(child)
+            if kind not in ('method','property','property_get','property_set'):
+                raise ValueError('Unsupported FB child cannot be preserved')
+            if kind in ('method','property') and text(parent.guid).lower()!=text(item.guid).lower():
+                raise ValueError('Method/Property is not directly owned by target FB')
+            if kind in ('property_get','property_set') and object_kind(parent)!='property':
+                raise ValueError('Accessor is not directly owned by a supported Property')
+            if kind!='property' and list(child.get_children(False)):raise ValueError('Unsupported descendant below Method/accessor')
+            observed=read_object(child,child_names,aid)
+            observed.update(parentId=text(parent.guid).lower(),
+                            embeddedObjectTypes=sorted(text(t).lower() for t in child.embedded_object_types),
+                            declarationRawHash=sha(text(child.textual_declaration.text) if child.has_textual_declaration else u''),
+                            implementationRawHash=sha(text(child.textual_implementation.text) if child.has_textual_implementation else u''))
+            rows.append(observed);visit(child,child_names)
+    visit(item,names)
+    return {'source':'native-fb-subtree-raw-source','complete':True,'rows':sorted(rows,key=lambda x:x['objectId'])}
+
+def initializer_target_evidence(project,item,names,aid,section=None):
     # Only the new action requests this evidence; language='ST' is not proof.
     observed=read_object(item,names,aid);kind=observed['objectType']
     app=application(project,aid)
@@ -221,9 +247,14 @@ def initializer_target_evidence(project,item,names,aid):
             raise ValueError('Initializer target lacks native ordinary ST POU identity')
         parent_id=text(item.parent.guid).lower()
     else:raise ValueError('Unsupported initializer target')
-    return {'source':'native-object-application-and-embedded-types','objectId':observed['objectId'],
+    result={'source':'native-object-application-and-embedded-types','objectId':observed['objectId'],
             'applicationId':aid,'path':names,'parentId':parent_id,'nativeTypeId':observed['nativeTypeId'],
             'pouType':pou,'embeddedObjectTypes':embedded}
+    if section is not None:
+        if section not in ('VAR_INPUT','VAR_OUTPUT') or kind!='function_block' or pou!='function_block':
+            raise ValueError('Interface initializer requires native ST FUNCTION_BLOCK')
+        result['interfaceChildren']=initializer_interface_children(item,names,aid)
+    return result
 
 
 def member_initializer_insertion(raw, before, args, delimiter=u')'):
@@ -1943,7 +1974,7 @@ def dispatch(req):
                 located=locate(project,app_id,args["objectId"])
                 observed=read_object(*located)
                 if args.get('initializerTarget'):
-                    try:observed['initializerTargetEvidence']=initializer_target_evidence(project,*located)
+                    try:observed['initializerTargetEvidence']=initializer_target_evidence(project,located[0],located[1],located[2],args.get('initializerSection'))
                     except Exception as e:lifecycle_reject(lifecycle,failure('unsupported','VARIABLE_INITIALIZER_SCOPE',text(e),{'primaryException':exception_evidence(e)}))
                 response = success(u"已读取精确 ST 对象", observed)
             elif command == "create":
@@ -1968,7 +1999,7 @@ def dispatch(req):
                 insertion_prefix='initializer-insertion' if args.get('action')=='add-initializer' else 'member-insertion'
                 if args.get('action')=='add-initializer':
                     try:
-                        actual=initializer_target_evidence(project,item,names,aid)
+                        actual=initializer_target_evidence(project,item,names,aid,args.get('section'))
                         if actual!=args.get('initializerTargetGuard'):raise ValueError('Initializer native target changed')
                         insertion_raw,insertion_evidence=member_initializer_insertion(text(item.textual_declaration.text),before,dict(args,memberInsertion=args.get('initializerInsertion')),u';')
                         initializer_evidence={'before':actual}
@@ -2036,7 +2067,7 @@ def dispatch(req):
                                 impl=text(item.textual_implementation.text) if before['hasImplementation'] else u''
                                 if impl!=initializer_implementation:raise ValueError('Initializer insertion changed implementation raw text')
                                 insertion_evidence['immediateImplementationRawHash']=sha(impl)
-                                initializer_evidence['immediate']=initializer_target_evidence(project,item,names,aid)
+                                initializer_evidence['immediate']=initializer_target_evidence(project,item,names,aid,args.get('section'))
                                 if initializer_evidence['immediate']!=initializer_evidence['before']:raise ValueError('Initializer native identity changed after insertion')
                             insertion_evidence['immediateRawHash']=sha(immediate)
                             publish(os.path.join(os.path.dirname(req['resultPath']),insertion_prefix+'-immediate.json'),dict(observed,**{insertion_field:insertion_evidence}))
@@ -2050,7 +2081,8 @@ def dispatch(req):
                                 impl=text(reopened_item.textual_implementation.text) if before['hasImplementation'] else u''
                                 if impl!=initializer_implementation:raise ValueError('Initializer implementation changed across reopen')
                                 insertion_evidence['reopenedImplementationRawHash']=sha(impl)
-                                initializer_evidence['reopened']=initializer_target_evidence(project,*locate(project,app_id,args['objectId']))
+                                located=locate(project,app_id,args['objectId'])
+                                initializer_evidence['reopened']=initializer_target_evidence(project,located[0],located[1],located[2],args.get('section'))
                                 if initializer_evidence['reopened']!=initializer_evidence['before']:raise ValueError('Initializer native identity changed across reopen')
                             insertion_evidence['reopenedRawHash']=sha(native_raw)
                             publish(os.path.join(os.path.dirname(req['resultPath']),insertion_prefix+'-reopened.json'),dict(reopened,**{insertion_field:insertion_evidence}))

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.37.2';
+export const VERSION = '0.38.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -175,7 +175,7 @@ export const schemas = {
     typeObjectId:uuid.optional(),expectedTypeHash:hash.optional()}).strict()
     .refine(a=>a.action==='add'?a.type!==undefined&&a.expectedOldInitializer===undefined&&a.expectedOldType===undefined&&a.memberName===undefined&&a.typeObjectId===undefined&&a.expectedTypeHash===undefined:
       a.action==='set-initializer'?a.type===undefined&&a.expectedOldType===undefined&&a.memberName===undefined&&a.typeObjectId===undefined&&a.expectedTypeHash===undefined&&(!a.section||a.expectedOldInitializer!==undefined):
-      a.action==='add-initializer'?a.type===undefined&&a.expectedOldType===undefined&&a.expectedOldInitializer===undefined&&a.section===undefined&&a.memberName===undefined&&a.typeObjectId===undefined&&a.expectedTypeHash===undefined:
+      a.action==='add-initializer'?a.type===undefined&&a.expectedOldType===undefined&&a.expectedOldInitializer===undefined&&a.memberName===undefined&&a.typeObjectId===undefined&&a.expectedTypeHash===undefined:
       a.action==='set-type'?a.type!==undefined&&a.expectedOldType!==undefined&&a.expectedOldInitializer!==undefined&&a.section===undefined&&a.memberName===undefined&&a.typeObjectId===undefined&&a.expectedTypeHash===undefined:
       a.type===undefined&&a.expectedOldType===undefined&&a.section===undefined&&a.memberName!==undefined&&a.typeObjectId!==undefined&&a.expectedTypeHash!==undefined&&(a.action==='add-member-initializer'?a.expectedOldInitializer===undefined:a.expectedOldInitializer!==undefined),
       '类型修改须同时指定目标类型/初值及原类型/初值且不得带声明区或成员参数；旧动作保持各自参数语义'),

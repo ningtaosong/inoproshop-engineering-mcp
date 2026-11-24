@@ -126,12 +126,12 @@ test('37 tool compatibility: only new input enum, all output schemas unchanged',
  assert.equal(Object.keys(schemas).length,38);
  const q={...action,requestId:randomUUID(),projectId:randomUUID(),applicationId:app,objectId:obj,expectedHash:'a'.repeat(64),expectedSnapshot:'a'.repeat(64),expectedDiskHash:'a'.repeat(64)};
  assert(schemas.variable_edit.safeParse(q).success);
- for(const x of [{type:'TIME'},{section:'VAR_INPUT'},{expectedOldInitializer:''},{memberName:'X'},{typeObjectId:obj2}])assert(!schemas.variable_edit.safeParse({...q,...x}).success);
+ for(const x of [{type:'TIME'},{expectedOldInitializer:''},{memberName:'X'},{typeObjectId:obj2}])assert(!schemas.variable_edit.safeParse({...q,...x}).success);
 });
 
 test('candidate package and initialize version match', async () => {
  const { VERSION } = await import('../dist/contracts.js');
  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
  assert.equal(VERSION, pkg.version);
- assert.equal(VERSION, '0.37.1');
+ assert.equal(VERSION, '0.38.0');
 });

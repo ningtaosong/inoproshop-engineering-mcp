@@ -595,7 +595,7 @@ export class EngineeringService {
             if(!raw||!isHash(raw.beforeImplementationRawHash)||raw.immediateImplementationRawHash!==raw.beforeImplementationRawHash||
               raw.reopenedImplementationRawHash!==raw.beforeImplementationRawHash)invalid();
             if(!e||canonical(e.before)!==canonical(expected)||canonical(e.immediate)!==canonical(expected)||canonical(e.reopened)!==canonical(expected))invalid();
-            try {initializerTargetEvidence({...d,initializerTargetEvidence:e.reopened},session!.applications!.find(x=>x.applicationId===args.applicationId)!.path);}catch{invalid();}
+            try {initializerTargetEvidence({...d,initializerTargetEvidence:e.reopened},session!.applications!.find(x=>x.applicationId===args.applicationId)!.path,op.args.section);}catch{invalid();}
           }
           const childGuard=(op as any).variableChildGuard;
           if(childGuard){const e=d!.variableChildEvidence as any;
@@ -936,7 +936,7 @@ export class EngineeringService {
     const dir=this.store.file('ipc/'+op.operationId),pre=path.join(dir,'preflight');
     op.bridge={directory:pre};await this.store.saveOp(op);
     const raw=replySchema.parse(await this.executeNative(op,{operationId:op.operationId,command:'read',projectPath:s.workingPath,
-      args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.objectId,...(a.action==='add-initializer'?{initializerTarget:true}:{})},
+      args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.objectId,...(a.action==='add-initializer'?{initializerTarget:true,...(a.section?{initializerSection:a.section}:{})}:{})},
       ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pre,
       async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
     if(raw.status!=='succeeded')return raw;
@@ -954,7 +954,7 @@ export class EngineeringService {
       throw new DomainError('unsupported','VARIABLE_TYPE_SCOPE','类型修改仅支持原生普通 ST POU 的 VAR 或Application根GVL，未修改');
     let initializerGuard:any;
     if(a.action==='add-initializer'){
-      try {initializerGuard=initializerTargetEvidence(before,s.applications!.find(x=>x.applicationId===a.applicationId)!.path);}
+      try {initializerGuard=initializerTargetEvidence(before,s.applications!.find(x=>x.applicationId===a.applicationId)!.path,a.section);}
       catch(e:any){throw new DomainError('unsupported','VARIABLE_INITIALIZER_SCOPE',e.message);}
     }
     let childGuard:any;

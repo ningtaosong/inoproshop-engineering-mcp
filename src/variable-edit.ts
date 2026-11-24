@@ -1,6 +1,8 @@
 // S4a source planning only. The service re-reads native text before planning;
 // the bridge checks the same content, project and disk versions before writing.
-import {normalize} from './storage.js';
+import {normalize,codeHash,canonical} from './storage.js';
+import {propertyEvidence} from './properties.js';
+import {methodDeclarationMatches} from './contracts.js';
 import {lexSt} from './st-lex.js';
 import {parseDeclaration} from './variables.js';
 import {parseInitializerMembers} from './initializer-members.js';
@@ -143,9 +145,9 @@ export function planVariableEdit(declaration:string,kind:'gvl'|'st_pou'|'functio
       r.name?.toLowerCase()===edit.name.toLowerCase()))
     throw new Error('Variable name ambiguous across declaration scopes or function return');
   if(edit.action==='add-initializer'){
-    if(edit.section||edit.type!==undefined||edit.expectedOldType!==undefined||edit.expectedOldInitializer!==undefined||
+    if(edit.type!==undefined||edit.expectedOldType!==undefined||edit.expectedOldInitializer!==undefined||
       blocks.length!==1||blocks[0].unsupportedHeader)
-      throw new Error('Add initializer requires one ordinary VAR or root VAR_GLOBAL block and no type/old value');
+      throw new Error('Add initializer requires one ordinary supported declaration block and no type/old value');
     if(row.modifiers?.length||row.addressRaw||row.hasExplicitInitializer!==false||
       row.initializerRaw!==null||row.initializerPosition!==null)
       throw new Error('Explicit initializer already exists or declaration is special/uncertain');
@@ -272,7 +274,7 @@ export function applyMemberInitializerInsertion(raw:string,declaration:string,gu
 }
 
 // Native object identity and ST implementation evidence, separate from source syntax.
-export function initializerTargetEvidence(before:any,appPath:string[]){
+export function initializerTargetEvidence(before:any,appPath:string[],section?:VariableSection){
   const e=before?.initializerTargetEvidence;
   if(!e||e.source!=='native-object-application-and-embedded-types'||!Array.isArray(appPath)||
     e.objectId!==before.objectId||e.applicationId!==before.applicationId||
@@ -290,5 +292,50 @@ export function initializerTargetEvidence(before:any,appPath:string[]){
     !Array.isArray(e.embeddedObjectTypes)||!e.embeddedObjectTypes.every((x:any)=>typeof x==='string')||
     !e.embeddedObjectTypes.includes('3b83b776-fb25-43b8-99f2-3c507c9143fc'))
     throw new Error('Ordinary native ST POU implementation not confirmed');
+  if(section){
+    if(before.objectType!=='function_block'||before.pouType!=='function_block')throw new Error('Interface initializer requires native ST FUNCTION_BLOCK');
+    validateInitializerChildren(e.interfaceChildren,before);
+  }
   return e;
+}
+
+// Only the explicit FB interface insertion requests this complete native subtree.
+// Child object order is not execution order; source and parent identity stay exact.
+export function validateInitializerChildren(e:any,owner:any){
+  const uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i, hash=/^[0-9a-f]{64}$/;
+  if(e?.source!=='native-fb-subtree-raw-source'||e.complete!==true||!Array.isArray(e.rows)||e.rows.length>1000)
+    throw new Error('Incomplete FB child preservation evidence');
+  const ids=new Set<string>(),byId=new Map<string,any>([[owner.objectId,owner]]);
+  for(const r of e.rows){
+    if(typeof r.objectId!=='string'||!uuid.test(r.objectId)||ids.has(r.objectId.toLowerCase())||r.objectId.toLowerCase()===owner.objectId.toLowerCase()||
+      r.applicationId!==owner.applicationId||typeof r.parentId!=='string'||!uuid.test(r.parentId)||
+      !['method','property','property_get','property_set'].includes(r.objectType)||typeof r.nativeTypeId!=='string'||!uuid.test(r.nativeTypeId)||
+      !Array.isArray(r.path)||!r.path.every((x:any)=>typeof x==='string'&&x.length>0)||
+      JSON.stringify(r.path.slice(0,owner.path.length))!==JSON.stringify(owner.path)||r.path.length<=owner.path.length||
+      typeof r.declaration!=='string'||typeof r.implementation!=='string'||typeof r.hasImplementation!=='boolean'||
+      !hash.test(r.declarationRawHash)||!hash.test(r.implementationRawHash)||
+      !Array.isArray(r.embeddedObjectTypes)||!r.embeddedObjectTypes.every((x:any)=>typeof x==='string'&&uuid.test(x)))
+      throw new Error('Invalid or duplicate FB child identity/source');
+    ids.add(r.objectId.toLowerCase());byId.set(r.objectId,r);
+  }
+  for(const r of e.rows){const p=byId.get(r.parentId);
+    if(!p||JSON.stringify(r.path.slice(0,-1))!==JSON.stringify(p.path))throw new Error('FB child parent coverage missing');
+    if(r.contentHash!==codeHash(r.declaration,r.implementation))throw new Error('FB child source hash mismatch');
+    const children=e.rows.filter((x:any)=>x.parentId===r.objectId);
+    if(r.objectType==='method'){
+      if(r.parentId!==owner.objectId||r.nativeTypeId!=='f8a58466-d7f6-439f-bbb8-d4600e41d099'||
+        r.methodMetadataSource!=='native-method-type-parent-and-declaration-header'||r.hasImplementation!==true||
+        !r.embeddedObjectTypes.includes('3b83b776-fb25-43b8-99f2-3c507c9143fc')||children.length||
+        canonical(r.parentPath)!==canonical(owner.path)||!methodDeclarationMatches(r.path.at(-1),r.declaration,r.methodReturnType,r.access))
+        throw new Error('Unsupported native Method subtree');
+    }else{
+      if(!propertyEvidence(r)||r.fbId!==owner.objectId)throw new Error('Unsupported Property metadata');
+      if(r.objectType==='property'){
+        if(r.parentId!==owner.objectId||canonical(children.map((x:any)=>x.objectId).sort())!==canonical(r.accessorStructure.accessors.map((x:any)=>x.objectId).sort()))
+          throw new Error('Property accessor coverage mismatch');
+      }else if(p.objectType!=='property'||r.propertyId!==p.objectId||children.length||
+        canonical(r.accessorStructure)!==canonical(p.accessorStructure)||r.propertyContentHash!==p.contentHash)
+        throw new Error('Accessor parent or source metadata mismatch');
+    }
+  }
 }
