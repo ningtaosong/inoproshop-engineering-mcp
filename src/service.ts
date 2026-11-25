@@ -43,7 +43,17 @@ export class EngineeringService {
   private queue: Promise<unknown> = Promise.resolve();
   private admission: Promise<unknown> = Promise.resolve();
   private persistencePoison?: string;
+  private admissionClosed=false;
+  private calls=new Set<Promise<Reply>>();
   constructor(readonly config: Config, readonly adapter: Adapter) { this.store=new Store(config.dataDir); }
+  stopAdmission(){this.admissionClosed=true;}
+  async drain() {
+    // call() may return running while admission/queue and native observation continue.
+    for(;;){const admission=this.admission,queue=this.queue;
+      await Promise.allSettled([...this.calls,admission,queue]);
+      if(this.calls.size===0&&admission===this.admission&&queue===this.queue)return;
+    }
+  }
   async environment():Promise<Reply> {
     const exists=await fs.access(this.config.executable).then(()=>true,()=>false);
     const evidence=await fs.readFile(path.join(ROOT,'docs','evidence','capabilities.json'),'utf8').then(JSON.parse,()=>null);
@@ -158,6 +168,11 @@ export class EngineeringService {
     return {...reply(status,summary,{tool:op.tool,startedAt:op.startedAt,evidence:op.bridge?.directory}),requestId:op.requestId,operationId:op.operationId};
   }
   async call(tool:string,args:any):Promise<Reply> {
+    if(this.admissionClosed)throw new DomainError('conflict','SERVICE_CLOSING','客户端连接正在正常收尾，未受理新请求');
+    const pending=this.callAccepted(tool,args);this.calls.add(pending);
+    pending.then(()=>this.calls.delete(pending),()=>this.calls.delete(pending));return pending;
+  }
+  private async callAccepted(tool:string,args:any):Promise<Reply> {
     if(tool==='environment_inspect') return this.environment();
     if(tool==='session_status') return this.status();
     if(tool==='project_list') return this.projects();
@@ -249,6 +264,10 @@ export class EngineeringService {
   private async reconcileNative(op:Operation) {
     const isolated=await this.isolatedObservation(op);
     if(isolated)return isolated;
+    // A known runtime observer fault is durable in the operation even if its
+    // supplemental diagnostic failed to publish. A later clean receipt cannot
+    // erase that first fault after service restart; no replay or repair here.
+    if(op.response?.error?.code==='EXIT_OBSERVER_FAILED')return op.response;
     return this.adapter.reconcile(op.bridge!.directory,{operationId:op.operationId,requestId:op.requestId,
       requestFingerprint:op.fingerprint,launchId:op.bridge!.launchId});
   }

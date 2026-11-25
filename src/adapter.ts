@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import {NORMAL_CLOSE_GUID,normalCloseHashes,normalCloseVerdict} from './normal-close.js';
 import { DomainError, type Reply } from './contracts.js';
 import { atomicJson, readJson, digest, canonical } from './storage.js';
+import {exclusiveJson,errorDetails,diagnosticStderr} from './exit-journal.js';
 
 export interface Config {
   dataDir: string; executable: string; profile: string; noUI: boolean;
@@ -29,10 +30,19 @@ export interface BridgeRequest { operationId: string; requestId?:string; request
 export interface Adapter {
   execute(request: BridgeRequest, directory: string, onStart: (pid:number,evidence?:ProcessStartEvidence)=>Promise<void>): Promise<Reply>;
   reconcile(directory: string,expected?:ExecutionBinding & {launchId?:string}): Promise<Reply | undefined>;
+  waitForObservations?():Promise<void>;
 }
 export class IdeAdapter implements Adapter {
-  constructor(readonly config: Config, private readonly spawnProcess: typeof spawn = spawn, private readonly observations:{probe?:ProcessProbe;writeEvidence?:EvidenceWriter}={}) {}
+  private pending=new Set<Promise<unknown>>();
+  private observationFailures=new Map<string,any>();
+  constructor(readonly config: Config, private readonly spawnProcess: typeof spawn = spawn,
+    private readonly observations:{probe?:ProcessProbe;writeEvidence?:EvidenceWriter;writeDiagnostic?:EvidenceWriter;reportDiagnostic?:(value:unknown)=>unknown}={}) {}
+  private track<T>(promise:Promise<T>):Promise<T> {this.pending.add(promise);promise.then(()=>this.pending.delete(promise),()=>this.pending.delete(promise));return promise;}
+  async waitForObservations(){while(this.pending.size)await Promise.allSettled([...this.pending]);}
   async execute(request: BridgeRequest, directory: string, onStart: (pid:number,evidence?:ProcessStartEvidence)=>Promise<void>): Promise<Reply> {
+    return this.track(this.executeObserved(request,directory,onStart));
+  }
+  private async executeObserved(request: BridgeRequest, directory: string, onStart: (pid:number,evidence?:ProcessStartEvidence)=>Promise<void>): Promise<Reply> {
     if(this.config.noUI)throw new DomainError('unsupported','NORMAL_CLOSE_REQUIRES_UI','公开正常关闭需要已验 UI 宿主；未启动 IDE 或派发工程操作');
     try { await fs.access(this.config.executable); }
     catch { throw new DomainError('unsupported','IDE_MISSING',`未找到 InoProShop：${this.config.executable}`); }
@@ -58,40 +68,58 @@ export class IdeAdapter implements Adapter {
     const launchedAt=new Date().toISOString();
     try { child=this.spawnProcess(this.config.executable,args,{cwd:path.dirname(this.config.executable),shell:false,windowsHide:true,windowsVerbatimArguments:process.platform==='win32',env:{...process.env,INOPRO_BRIDGE_REQUEST:requestFile},stdio:['ignore',stdout.fd,stderr.fd]}); }
     catch(e) {await Promise.allSettled([stdout.close(),stderr.close()]);throw e;}
-    let exited=false;
+    let exited=false,startValue:ProcessStartEvidence|undefined,timedOut=false;
+    const runtimeReports:Promise<void>[]=[];
+    const binding={operationId:request.operationId,requestId:request.requestId??'',requestFingerprint:request.requestFingerprint??'',
+      launchId:persisted.launchId,requestHash:digest(canonical(persisted))};
+    const publicationFailure=async(stage:string,error:unknown,exit?:ExitObservation)=>{
+      const value={binding,pid:child.pid??null,process:startValue?.process??{state:'unconfirmed',reason:'start-evidence-unavailable'},
+        observedAt:new Date().toISOString(),stage,timedOut,error:errorDetails(error),...(exit?{observedExit:exit}:{})};
+      // Sticky in memory before the first await, including when all writes fail.
+      if(!this.observationFailures.has(directory))this.observationFailures.set(directory,value);
+      try {await publishProcessEvidence(path.join(directory,stage+'-publication-error.json'),value,this.observations.writeDiagnostic??exclusiveJson);}
+      catch(recordError){const diagnostic={kind:'process-evidence-diagnostic-failed',directory,...value,recordError:errorDetails(recordError)};
+        try {(this.observations.reportDiagnostic??diagnosticStderr)(diagnostic);}catch(reportError){diagnosticStderr({...diagnostic,reportError:errorDetails(reportError)});}}
+    };
     const completion=new Promise<ExitObservation>(resolve=>{
-      child.once('error',(e:any)=>resolve({state:'spawn-error',code:null,signal:null,observedAt:new Date().toISOString(),
-        error:{name:e.name,message:e.message,...(e.code?{code:e.code}:{})}}));
+      child.once('error',(e:any)=>{
+        if(!child.pid)resolve({state:'spawn-error',code:null,signal:null,observedAt:new Date().toISOString(),error:errorDetails(e)});
+        else runtimeReports.push(this.track(publicationFailure('process-runtime',e))); // an error with a PID does not prove exit
+      });
       child.once('exit',(code,signal)=>{exited=true;resolve({state:'exited',code,signal:signal??null,observedAt:new Date().toISOString()});});
+      child.once('close',(code,signal)=>{if(!exited&&child.pid)resolve({state:'unconfirmed',code:null,signal:null,
+        observedAt:new Date().toISOString(),error:{name:'ExitEventMissing',message:'close without exit event; close code='+String(code)+' signal='+String(signal)}});});
     });
     const streamsClosed=Promise.allSettled([stdout.close(),stderr.close()]);
     const start=(async():Promise<ProcessStartEvidence>=>{
       const observation=child.pid?await (this.observations.probe??probeProcess)(child.pid).catch((e:any)=>({state:'unconfirmed' as const,reason:e.message})):
         {state:'unconfirmed' as const,reason:'no-spawned-pid'};
       const process=exited?{state:'unconfirmed' as const,reason:'exited-before-creation-identity-confirmed'}:observation;
-      const value:ProcessStartEvidence={binding:{operationId:request.operationId,requestId:request.requestId??'',
-        requestFingerprint:request.requestFingerprint??'',launchId:persisted.launchId,requestHash:digest(canonical(persisted))},
+      const value:ProcessStartEvidence={binding,
         pid:child.pid??null,process,observedAt:launchedAt};
+      startValue=value;
       const closed=await streamsClosed;
       const failed=closed.find(r=>r.status==='rejected');
       if(failed?.status==='rejected')throw failed.reason;
-      await publishProcessEvidence(path.join(directory,'process-start.json'),value,this.observations.writeEvidence);
+      try {await publishProcessEvidence(path.join(directory,'process-start.json'),value,this.observations.writeEvidence??exclusiveJson);}
+      catch(error){await publicationFailure('process-start',error);throw error;}
       return value;
     })();
     // Keep observing after a timeout; never kill or replay the original process.
-    const published=completion.then(async exit=>{
+    const published=this.track(completion.then(async exit=>{
       try {
       const s=await start;
+      await Promise.all(runtimeReports);
       await publishProcessEvidence(path.join(directory,'process-exit.json'),{...exit,binding:s.binding,pid:s.pid,
         processIdentity:s.process.state==='running'?s.process.identity:null,startHash:digest(canonical(s)),
+        observerFailure:this.observationFailures.get(directory)??null,
         resultHash:await evidenceFileHash(path.join(directory,'result.json')),
         normalCloseHashes:await normalCloseHashes(directory),
         normalCloseStderrHash:await evidenceFileHash(path.join(directory,'stderr.txt')),
-        dispatchHash:await evidenceFileHash(path.join(directory,'dispatched.json'))},this.observations.writeEvidence);
+        dispatchHash:await evidenceFileHash(path.join(directory,'dispatched.json'))},this.observations.writeEvidence??exclusiveJson);
       return {exit};
-      }catch(error:any){return {exit,error};}
-    });
-    let timedOut=false;
+      }catch(error:any){await publicationFailure('process-exit',error,exit);return {exit,error};}
+    }));
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([(async()=>{
@@ -100,6 +128,12 @@ export class IdeAdapter implements Adapter {
         if(child.pid)await onStart(child.pid,s);
         const outcome=await published;
         if(timedOut)throw new DomainError('unknown','IDE_TIMEOUT','原操作已超时，仅发布退出证据，等待显式核对');
+        const firstObservation=this.observationFailures.get(directory);
+        if(firstObservation?.stage==='process-runtime'&&'error' in outcome)return {
+          contractVersion:'1.0.0' as const,operationId:request.operationId,status:'unknown' as const,summary:'进程观察首错及退出证据发布错误分别保留，禁止重放',
+          error:{code:'EXIT_OBSERVER_FAILED',message:firstObservation.error.message},
+          data:{observationFailure:firstObservation,observedExit:outcome.exit,publicationError:errorDetails(outcome.error),
+            priorResult:await readJson(path.join(directory,'result.json')).catch(()=>null)}};
         if('error' in outcome)return {contractVersion:'1.0.0' as const,operationId:request.operationId,status:'unknown' as const,
           summary:'进程退出证据发布失败，保留原操作，禁止重放',
           error:{code:'EXIT_EVIDENCE_PUBLISH_FAILED',message:outcome.error.message},
@@ -127,6 +161,11 @@ export class IdeAdapter implements Adapter {
     if(!request&&!response)return;
     if(!request||(response&&response.operationId!==request.operationId))
       throw new DomainError('unknown','RESULT_ID_MISMATCH','桥接结果与原操作不匹配');
+    const observationFailure=this.observationFailures.get(directory);
+    if(observationFailure?.stage==='process-runtime')return {contractVersion:'1.0.0',operationId:request.operationId,status:'unknown',
+      summary:'已观察到进程错误；正常退出不能消除此错误，保留原异常和现场',
+      error:{code:'EXIT_OBSERVER_FAILED',message:observationFailure.error.message},
+      data:{priorResult:response??null,observationFailure}};
     const verdict=await exitVerdict(directory,request,expected,this.observations.probe);
     const uncertain=(code:string):Reply=>({contractVersion:'1.0.0',operationId:request.operationId,status:'unknown',
       summary:'进程退出证据无法确认整体成功；保留原始结果与现场，不重放',

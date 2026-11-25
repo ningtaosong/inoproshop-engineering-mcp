@@ -9,6 +9,10 @@ import { schemas, outputSchemas, reply, DomainError, VERSION } from './contracts
 import {toolOutput} from './native-output.js';
 import {placeholderClearDelivery} from './placeholder-clear-delivery.js';
 import {libraryInspectDescription, libraryPlaceholderResolveDescription,libraryPlaceholderClearDescription} from './library-guidance.js';
+import {randomUUID} from 'node:crypto';
+import {ServiceLifecycle} from './service-lifecycle.js';
+import {ExitJournal,diagnosticStderr,errorDetails} from './exit-journal.js';
+import {ownProcessIdentity} from './lease-process.js';
 
 const config=configuration();
 if(!Number.isFinite(config.timeoutMs)||config.timeoutMs<100||!Number.isFinite(config.responseWaitMs)||config.responseWaitMs<1)
@@ -67,15 +71,19 @@ for(const [name,inputSchema] of Object.entries(schemas)) {
 }
 // 不监听客户端取消来中断 IDE；客户端可断开，原操作继续持久化。
 const transport=new StdioServerTransport();
+const runId=randomUUID();
+// Bind the observer to this process, without logging environment/account data.
+const journal=new ExitJournal(path.join(config.dataDir,'service-lifecycle',runId),
+  ownProcessIdentity().then(identity=>({runId,pid:process.pid,processIdentity:identity??null,entry:process.argv[1],version:VERSION})));
+const lifecycle=new ServiceLifecycle({stopAdmission:()=>service.stopAdmission(),drain:()=>service.drain(),
+  observe:async()=>{await service.adapter.waitForObservations?.();},status:()=>service.status(),release:()=>service.store.release(),
+  close:()=>server.close(),record:(event,data)=>journal.record(event,data),
+  failed:error=>{process.exitCode=1;diagnosticStderr({kind:'service-shutdown-error',runId,error:errorDetails(error)});}});
+const shutdown=(reason:string,error?:unknown)=>{void lifecycle.request(reason,error);};
+process.stdin.on('end',()=>shutdown('stdin-end'));
+process.stdin.on('close',()=>shutdown('stdin-close'));
+process.stdin.on('error',error=>shutdown('stdin-error',error));
+process.on('SIGTERM',()=>shutdown('SIGTERM'));
+process.on('SIGINT',()=>shutdown('SIGINT'));
 await server.connect(transport);
-let shuttingDown=false;
-async function shutdown() {
-  if(shuttingDown) return; shuttingDown=true;
-  const status=await service.status().catch(()=>undefined);
-  const pending=status?.data?.pending as any[] | undefined;
-  if(status?.status==='succeeded' && status.data?.writeFrozen===false && pending?.length===0) await service.store.release().catch(()=>{});
-  await server.close();
-}
-server.server.onclose=()=>{ void shutdown(); };
-process.on('SIGTERM',()=>{ void shutdown().finally(()=>process.exit(0)); });
-process.on('SIGINT',()=>{ void shutdown().finally(()=>process.exit(0)); });
+server.server.onclose=()=>shutdown('transport-close');

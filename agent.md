@@ -15,6 +15,8 @@
 
 本阶段在功能分支实现并离线验证；[本轮真实验收在准备工程保存退出不确定时停止](docs/struct-field-add-acceptance.md)，正式新动作和CLI任务均未执行。保留本次unknown，先按正式规则核清保护条件，再另行安排真实复验；不合并main，不部署日常入口。S4b其余能力不顺带实现，在线布局和PLC运行未验证。
 
+随后按明确授权完成[退出观察与命令行收尾维护](docs/exit-observation-maintenance.md)：EOF停止新受理并等待队列及迟到退出证据，错误取证独立保留。本轮仅离线验证，不修改业务Schema或初始化正文，不改判原unknown，不代表真实IDE退出根因或S4b验收已经通过。
+
 `agent.md` 是仓库规划文件，不是自动注入的运行时指令，也不是 `AGENTS.md`。后续执行提示必须明确要求先读最新 main 的本文件和 README；本轮仅为 `add-struct-field` 更新必要的初始化说明及输入 Schema，私人配置和日常固定入口不变，不增加自动审批机制。DSH 欢迎页／认证、CLI 接入与转储诊断单列维护，不另算业务功能完成率。
 
 日常 DSH 已配置 0.38.0 固定构建并有独立连接证据；Desktop 最终日常握手和完整指令进入模型上下文未验证。Codex 沿用独立配置。见[0.38.0 收尾](docs/fb-interface-initializer-0380-merge.md)。

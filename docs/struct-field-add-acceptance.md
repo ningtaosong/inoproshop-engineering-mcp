@@ -47,6 +47,8 @@
 
 2026-11-25追加[本次退出缺口的只读诊断](struct-field-save-exit-diagnosis.md)：已核对超时后同一IDE仍在运行，EOF不等于服务shutdown，后续退出码及先后顺序仍缺证。本次unknown不改判；诊断没有启动工程或修改退出设施。
 
+随后另经授权进行[退出观察与命令行收尾的离线补修](exit-observation-maintenance.md)。该补修没有重放本次工程、隔离或模型任务；本页原停止结果不变，新的真实验收仍待另行安排。
+
 先独立核对本次unknown及退出缺口；若需隔离，必须通过正式维护计划和明确授权。本轮不修复退出设施、不提交隔离、不重开该工程、不换工程或数据目录绕过。排他和保护条件明确满足后，再另行安排准备成功、三种字段的真实MCP及一次CLI闭环；不能把离线替身结果或准备编译替代这些证据。
 
 本轮证据根目录：`D:\InoPro-StructFieldAdd-20261125`。入口为 `blocked-audit.json`、`prepare/transcript.json`、`prepare/calls/11-result.json`、`prepare/exit-verdicts.json`、`evidence/launcher-exit-observation.json`、`history-after-stop.json`、`offline/validation-summary.json` 和 `fixed-check.json`。交付包另提供原始本轮IPC与逐文件清单，不含私人配置或历史账本全文。

@@ -6,7 +6,7 @@ import {sameProcess,validProcessIdentity,probeProcess,type ProcessProbe,type Pro
 export interface ExecutionBinding {operationId:string;requestId:string;requestFingerprint:string;}
 export interface LaunchBinding extends ExecutionBinding {launchId:string;requestHash:string;}
 export interface ProcessStartEvidence {binding:LaunchBinding;pid:number|null;process:ProcessObservation;observedAt:string;}
-export interface ExitObservation {state:'exited'|'spawn-error';code:number|null;signal:string|null;observedAt:string;error?:{name:string;message:string;code?:string};}
+export interface ExitObservation {state:'exited'|'spawn-error'|'unconfirmed';code:number|null;signal:string|null;observedAt:string;error?:{name:string;message:string;code?:string};}
 export type EvidenceWriter=(file:string,value:unknown)=>Promise<void>;
 export async function publishProcessEvidence(file:string,value:unknown,write:EvidenceWriter=atomicJson) {
   await write(file,{schemaVersion:1,checksum:digest(canonical(value)),value});
@@ -26,6 +26,16 @@ export async function exitVerdict(directory:string,request:any,expected?:Executi
   try {
     start=await evidence(path.join(directory,'process-start.json'));
     exit=await evidence(path.join(directory,'process-exit.json'));
+    // New append-only diagnostics do not replace a receipt, and a receipt cannot
+    // silently overrule a known publication/runtime failure on restart.
+    for(const stage of ['process-start','process-exit','process-runtime']) {
+      const failure=await evidence(path.join(directory,stage+'-publication-error.json'));
+      if(failure){const b=failure.binding;
+        if(!b||b.operationId!==request.operationId||b.requestId!==request.requestId||b.requestFingerprint!==request.requestFingerprint||
+          b.launchId!==request.launchId||b.requestHash!==digest(canonical(request)))return fail('EXIT_EVIDENCE_MISMATCH',{failure});
+        return fail('EXIT_EVIDENCE_PUBLISH_FAILED',{failure,start:start??null,exit:exit??null});
+      }
+    }
   } catch(e:any) {return fail('EXIT_EVIDENCE_INVALID',{reason:e.message});}
   if(!start)return fail('EXIT_EVIDENCE_MISSING',{start:null,exit:exit??null});
   const b=start.binding;
@@ -47,6 +57,10 @@ export async function exitVerdict(directory:string,request:any,expected?:Executi
   if(canonical(exit.binding)!==canonical(b)||exit.startHash!==digest(canonical(start))||exit.pid!==start.pid||
     !Number.isFinite(Date.parse(exit.observedAt))||Date.parse(exit.observedAt)<Date.parse(start.observedAt))
     return fail('EXIT_EVIDENCE_MISMATCH',{start,exit});
+  // A clean OS exit does not erase an earlier observer error. Kept in the normal
+  // receipt too so a failed supplemental diagnostic cannot disappear on restart.
+  if(exit.observerFailure!==undefined&&exit.observerFailure!==null)
+    return fail('EXIT_OBSERVER_FAILED',{start,exit,observationFailure:exit.observerFailure});
   if(exit.resultHash!==await evidenceFileHash(path.join(directory,'result.json'))||
     exit.dispatchHash!==await evidenceFileHash(path.join(directory,'dispatched.json')))
     return fail('EXIT_FILES_CHANGED',{start,exit});
