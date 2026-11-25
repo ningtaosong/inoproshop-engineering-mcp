@@ -30,7 +30,8 @@ test('未决修改重启后冻结；只接纳原操作晚到结果；不重放',
   const op={schemaVersion:1,operationId,requestId:'lost',tool:'code_apply_change',args,fingerprint:'abc',status:'running',startedAt:new Date().toISOString(),ownerPid:2147483647,bridge:{directory}};
   await store.saveOp(op); const c=await connect(env.dataDir); t.after(()=>c.client.close());
   const status=await c.call('session_status'); assert.equal(status.data.writeFrozen,true);
-  assert.equal((await c.call('project_open_copy',{requestId:'cannot-replay',sourcePath:env.source,applicationId:app})).status,'unknown');
+  const blocked=await c.call('project_open_copy',{requestId:'cannot-replay',sourcePath:env.source,applicationId:app});
+  assert.equal(blocked.status,'conflict');assert.equal(blocked.error.code,'PENDING_UNKNOWN');assert.equal(blocked.operationId,undefined);
   const missing=await c.call('operation_status',{requestId:'lost',reconcile:true}); assert.equal(missing.status,'unknown');
   await atomicJson(path.join(directory,'result.json'),{...reply('succeeded','原修改晚到证据',{...args,contentHash:codeHash(args.declaration,args.implementation),snapshot:'0'.repeat(64),diskHash:digest(await readFile(workingPath)),persistedToWorkingCopy:true,reopened:true,testMode:true}),operationId});
   const recovered=await c.call('operation_status',{requestId:'lost',reconcile:true}); assert.equal(recovered.status,'succeeded');
