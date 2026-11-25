@@ -1,0 +1,170 @@
+# -*- coding: utf-8 -*-
+"""Real diagnostic adapter/controller, substitute native objects; never starts IDE."""
+import os,sys,json,tempfile,shutil,uuid,copy,traceback,ast
+import resident_project_session as m
+
+class Obj(object):
+    def __init__(self,**values):self.__dict__.update(values)
+
+def run_cases_json():
+    cases=[];samples=[];root=tempfile.mkdtemp(prefix='resident-memory-offline-')
+    def check(value):
+        if not value:raise AssertionError('Expectation failed')
+    def case(name,fn):
+        try:fn();cases.append(dict(name=name,passed=True))
+        except Exception:cases.append(dict(name=name,passed=False,error=traceback.format_exc()))
+    def fixture():
+        folder=os.path.join(root,str(uuid.uuid4()));os.mkdir(folder);disk=os.path.join(folder,'synthetic-disk.bin')
+        with open(disk,'wb') as f:f.write(b'NOT AN ENGINEERING PROJECT; offline disk sentinel')
+        counts=dict(open=0,replace=0,save=0,close=0,compile=0,callback=0)
+        fail=Obj(write=None,publish=None,admission=False,identity=False,thread=1,race=None,fileId=None,open=False)
+        class Text(object):
+            def __init__(self,value):self.text=value
+            def replace(self,value):
+                counts['replace']+=1;self.text=value
+                if fail.write=='partial':raise ValueError('first native replace exception')
+                if fail.write=='wrong':self.text+=u'unexpected'
+        def node(name,typ,decl=None,impl=None,app=False,task=False):
+            o=Obj(guid=str(uuid.uuid4()),type=typ,is_application=app,is_task=task,
+                  has_textual_declaration=decl is not None,has_textual_implementation=impl is not None,
+                  textual_declaration=Text(decl),textual_implementation=Text(impl),embedded_object_types=[m.ST] if impl is not None else [],children=[])
+            o.get_name=lambda:name;o.get_children=lambda ignored:list(o.children)
+            return o
+        app=node('Application',str(uuid.uuid4()),app=True)
+        target=node('PLC_PRG',m.POU,u'PROGRAM PLC_PRG\r\nVAR\r\nEND_VAR',u'(* 原始中文 *)\r\n')
+        task=node('MainTask',str(uuid.uuid4()),task=True);task.pous=[('PLC_PRG',u'中文'),('Other','None')]
+        for key in m.TASK_FIELDS:setattr(task,key,0)
+        task.watchdog=Obj(enabled=False,time=0,time_unit=0,sensitivity=1)
+        other=node('Other',m.POU,u'PROGRAM Other\nVAR\nEND_VAR',u'(* leave alone *)')
+        app.children=[target,task,other];project=Obj(path=disk,get_children=lambda ignored:[app])
+        projects=Obj(primary=None,all=[])
+        def open_project(path,primary=True):
+            counts['open']+=1;projects.primary=project;projects.all=[project]
+            if fail.open:raise ValueError('open entered then failed')
+            return project
+        projects.open=open_project
+        intent=dict(projectPath=disk,diskHash=m.file_hash(disk),launchId=str(uuid.uuid4()),
+                    requestIds=[str(uuid.uuid4()) for _ in range(5)],operationIds=[str(uuid.uuid4()) for _ in range(5)],processIdentity=dict(pid=123,startId='639311898512120181'))
+        def file_identity(path):
+            return dict(path=path,realPath=os.path.realpath(path),fileId=fail.fileId or '9000:12345',sha256=m.file_hash(path)) # synthetic native identity, not a real project proof
+        intent['fileIdentity']=file_identity(disk)
+        publications={}
+        def publish(name,value):
+            if name==fail.publish:raise IOError('first evidence publication failure')
+            if name in publications:raise IOError('No overwriting evidence')
+            publications[name]=copy.deepcopy(value)
+            if fail.race and name.endswith('memory-checkpoint.json'):fail.race()
+        def admit():
+            if fail.admission:raise ValueError('globalFrozen remains true')
+            return True
+        def primary(fn):counts['callback']+=1;fn()
+        adapter=m.NativeProjectAdapter(projects,disk,lambda a,b:a is b,lambda:fail.thread)
+        session=m.ResidentSequence(intent,adapter,admit,m.public_primary_dispatch(Obj(execute_on_primary_thread=primary)),publish,lambda:dict(pid=124,startId='other') if fail.identity else intent['processIdentity'],file_identity)
+        return Obj(s=session,intent=intent,counts=counts,fail=fail,target=target,other=other,task=task,app=app,project=project,projects=projects,pub=publications,folder=folder)
+    def send(x):
+        req=m.request_for(x.s);path=os.path.join(x.folder,'request-%s.json'%req['sequence'])
+        with open(path,'wb') as f:f.write(m.canonical(req))
+        return m.process_request_file(x.s,path)
+    def normal():
+        x=fixture();initial=x.target.textual_implementation.text
+        result=[]
+        for i in range(5):result.append(send(x));check(result[-1]['status']=='memory-verified')
+        check(x.counts==dict(open=1,replace=2,save=0,close=0,compile=0,callback=5))
+        check(x.projects.primary is x.project and m.file_hash(x.intent['projectPath'])==x.intent['diskHash'])
+        check(x.target.textual_implementation.text.startswith(initial) and all(c in x.target.textual_implementation.text for c in m.COMMENTS))
+        target=x.target.guid
+        check(x.pub['request-4-memory-checkpoint.json']['state']['nodes'][target]['implementation']==result[1]['state']['nodes'][target]['implementation'])
+        check(result[2]['state']==result[1]['state'] and result[4]['state']==result[3]['state'])
+        check(len(set(r['request']['requestId'] for r in result))==5)
+        samples.append(dict(results=result,counts=x.counts,secondMemoryCheckpoint=x.pub['request-4-memory-checkpoint.json'],simulated=True))
+    case('five independent request files, same handle, unsaved checkpoint retains first edit',normal)
+    def reject(change):
+        x=fixture();check(send(x)['status']=='memory-verified');before=x.counts['replace'];hash_before=m.file_hash(x.intent['projectPath'])
+        if change=='memory':x.target.textual_implementation.text+=u'user edit'
+        if change=='declaration':x.target.textual_declaration.text+=u' changed'
+        if change=='other-source':x.other.textual_implementation.text+=u'user edit'
+        if change=='task-comment':x.task.pous[0]=('PLC_PRG',None)
+        if change=='task-order':x.task.pous.reverse()
+        if change=='ST':x.target.embedded_object_types=[]
+        if change=='thread':x.fail.thread=2
+        if change=='process':x.fail.identity=True
+        if change=='closed':x.projects.primary=None;x.projects.all=[]
+        if change=='handle':x.projects.primary=Obj(path=x.project.path)
+        if change=='duplicate-guid':x.other.guid=x.target.guid
+        if change=='name':x.other.get_name=lambda:'PLC_PRG'
+        if change=='global':x.fail.admission=True
+        if change=='disk':
+            with open(x.intent['projectPath'],'ab') as f:f.write(b'user save')
+            hash_before=m.file_hash(x.intent['projectPath'])
+        if change=='same-bytes-file-replaced':x.fail.fileId='9000:67890'
+        if change=='race':x.fail.race=lambda:setattr(x.target.textual_implementation,'text',u'edit after checkpoint')
+        r=send(x);check(r['status'] in ('conflict','unknown') and r['frozen'] and x.counts['replace']==before and x.counts['save']==0 and m.file_hash(x.intent['projectPath'])==hash_before)
+        check(x.s.first_error is not None)
+    for c in ('memory','declaration','other-source','task-comment','task-order','ST','thread','process','closed','handle','duplicate-guid','name','global','disk','same-bytes-file-replaced','race'):case('reject without mutation '+c,lambda c=c:reject(c))
+    def fault(kind):
+        x=fixture();send(x);req=m.request_for(x.s)
+        if kind in ('partial','wrong'):x.fail.write=kind
+        else:x.fail.publish={'checkpoint':'request-2-memory-checkpoint.json','dispatch':'request-2-dispatch.json','after':'request-2-after.json','result':'result-2.json'}[kind]
+        r=x.s.accept(req);check(r['status']==('conflict' if kind in ('checkpoint','dispatch') else 'unknown'))
+        calls=x.counts['replace'];check(calls==(0 if kind in ('checkpoint','dispatch') else 1))
+        check(x.s.accept(req)==r and x.counts['replace']==calls)
+        first=copy.deepcopy(x.s.first_error);req2=dict(req,requestId=str(uuid.uuid4()));x.s.accept(req2)
+        check(x.s.first_error==first and x.counts['replace']==calls and x.counts['save']==0 and m.file_hash(x.intent['projectPath'])==x.intent['diskHash'])
+    for k in ('partial','wrong','checkpoint','dispatch','after','result'):case('sticky first failure, dedup and no recovery '+k,lambda k=k:fault(k))
+    def stale(field):
+        x=fixture();send(x);req=m.request_for(x.s);req[field]='wrong';r=x.s.accept(req);check(r['status']=='conflict' and x.counts['replace']==0)
+    for field in ('expectedVersion','previousResultHash','operationId','requestId','launchId','command','projectPath'):case('request rejects '+field,lambda f=field:stale(f))
+    def duplicate():
+        x=fixture();send(x);req=m.request_for(x.s);r=x.s.accept(req);check(x.s.accept(req)==r and x.counts['replace']==1)
+        changed=dict(req,command='read');check(x.s.accept(changed)['status']=='conflict');check(x.s.first_error is not None)
+    case('duplicate success returns cached original, changed duplicate stops',duplicate)
+    def blocked():
+        x=fixture();x.fail.admission=True;r=send(x);check(r['status']=='conflict' and x.counts['open']==x.counts['replace']==x.counts['save']==0)
+    case('formal global freeze stops before open or primary dispatch',blocked)
+    def empty_admission():
+        x=fixture();x.s.admission=lambda:None;r=send(x);check(r['status']=='conflict' and x.counts['open']==x.counts['replace']==0)
+    case('missing affirmative admission also stops before open',empty_admission)
+    def scalar_change(kind):
+        x=fixture()
+        if kind=='null-text':x.task.event=None
+        send(x)
+        if kind=='null-text':x.task.event='None'
+        if kind=='number-text':x.task.priority='0'
+        if kind=='bool-number':x.task.watchdog.enabled=0
+        r=send(x);check(r['status']=='conflict' and x.counts['replace']==x.counts['save']==0)
+    for kind in ('null-text','number-text','bool-number'):case('actual adapter preserves scalar distinction '+kind,lambda k=kind:scalar_change(k))
+    def open_unknown():
+        x=fixture();x.fail.open=True;r=send(x);check(r['status']=='unknown' and r['nativeAttempts']['open']==1 and x.counts['replace']==x.counts['save']==0)
+    case('open entered and failed is unknown with actual open attempt',open_unknown)
+    def missing_callback(write=False):
+        x=fixture()
+        if write:send(x)
+        pending=[];x.s.on_primary=lambda fn:pending.append(fn);r=send(x)
+        check(r['status']=='unknown' and x.counts['replace']==0)
+        before=dict(x.counts);pending[0]();check(before==x.counts)
+    case('missing callback receipt is unknown; late callback cannot open',missing_callback)
+    case('missing callback receipt before edit; late callback cannot edit',lambda:missing_callback(True))
+    def duplicate_callback():
+        x=fixture();send(x);x.s.on_primary=lambda fn:(fn(),fn());r=send(x);check(r['status']=='unknown' and x.counts['replace']==1)
+    case('unexpected duplicate callback cannot write twice',duplicate_callback)
+    def wrapper_failure():
+        x=fixture();send(x);x.fail.write='partial'
+        def wrapped(fn):fn();raise IOError('later wrapper failure')
+        x.s.on_primary=wrapped;r=send(x)
+        check(r['status']=='unknown' and r['firstError']['message']=='first native replace exception' and x.s.secondary[0]['message']=='later wrapper failure')
+    case('native first exception survives later public callback wrapper exception',wrapper_failure)
+    def publication_secondary():
+        x=fixture();send(x);x.fail.write='partial';x.fail.publish='request-error-2.json';r=send(x)
+        check(r['firstError']['message']=='first native replace exception' and x.s.secondary and x.counts['replace']==1)
+    case('error publication failure preserves first exception',publication_secondary)
+    def no_hidden_lifecycle():
+        with open(m.__file__.replace('.pyc','.py'),'rb') as f:tree=ast.parse(f.read())
+        names=[n.func.attr for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute)]
+        check(not set(names).intersection(('save','close','Close','compile','exit','queue','execute','kill')))
+    case('adapter never saves closes compiles exits or invokes old business helper',no_hidden_lifecycle)
+    shutil.rmtree(root)
+    return json.dumps(dict(passed=all(c['passed'] for c in cases),count=len(cases),cases=cases,samples=samples,nativeIDEStarted=False,engineeringRun=False),ensure_ascii=True)
+
+if __name__=='__main__':
+    value=run_cases_json();print(value)
+    if not json.loads(value)['passed']:sys.exit(1)

@@ -37,7 +37,7 @@ foreach($item in $spec.files){
 }
 $synthetic=$null
 if($spec.syntheticTest){
-  if([IO.Path]::GetFileName($spec.syntheticTest.path) -notin @('test_native_idle.py','test_resident_two_read.py')){throw 'Only the audited synthetic helper suite may execute'}
+  if([IO.Path]::GetFileName($spec.syntheticTest.path) -notin @('test_native_idle.py','test_resident_two_read.py','test_resident_project_session.py')){throw 'Only the audited synthetic helper suite may execute'}
   foreach($file in $spec.syntheticTest.modules){if((Get-FileHash -LiteralPath $file.path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $file.sha256){throw 'Synthetic module fingerprint differs'}}
   if((Get-FileHash -LiteralPath $spec.syntheticTest.path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $spec.syntheticTest.sha256){throw 'Synthetic test fingerprint differs'}
   $search=[Collections.Generic.List[string]]::new()
