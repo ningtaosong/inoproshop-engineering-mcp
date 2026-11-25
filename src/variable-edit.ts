@@ -62,7 +62,7 @@ function isNativeConversion(name:string):boolean {
   return false;
 }
 
-function checkVariableName(name:string):void {
+export function checkVariableName(name:string):void {
   if(!ident.test(name)||name.includes('__'))throw new Error('Invalid plain ST variable identifier');
   const upper=name.toUpperCase();
   if(reserved.has(upper)||nativeOperators.has(upper)||isNativeConversion(upper))

@@ -1,3 +1,4 @@
+import {beforeStructFieldInput} from './contract-projection.mjs';
 
 import test from 'node:test';import assert from 'node:assert/strict';import {readFile,writeFile} from 'node:fs/promises';import {randomUUID,createHash} from 'node:crypto';
 import {z} from 'zod';
@@ -117,10 +118,10 @@ for(const loss of ['insertion','identity','raw-implementation','declaration'])te
  const x=await f.call('variable_edit',f.request);assert.equal(x.status,'unknown',JSON.stringify(x));
  const n=f.requests.length;await assert.rejects(f.call('variable_edit',{...f.request,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');assert.equal(f.requests.length,n);
 });
-test('37 tool compatibility: only new input enum, all output schemas unchanged',async()=>{
+test('historical initializer contract projection retains old rules',async()=>{
  const baseline=JSON.parse(await readFile(new URL('./fixtures/variable-initializer-add-legacy-contracts.json',import.meta.url)));
  for(const [name,b] of Object.entries(baseline)){
-  const input=z.toJSONSchema(schemas[name]);if(name==='variable_edit')input.properties.action.enum=input.properties.action.enum.filter(x=>x!=='add-initializer');
+  const input=beforeStructFieldInput(name,z.toJSONSchema(schemas[name]));if(name==='variable_edit')input.properties.action.enum=input.properties.action.enum.filter(x=>x!=='add-initializer');
   assert.deepEqual(input,b.input,name);assert.deepEqual(z.toJSONSchema(outputSchemas[name]),b.output,name);
  }
  assert.equal(Object.keys(schemas).length,38);
@@ -133,5 +134,5 @@ test('candidate package and initialize version match', async () => {
  const { VERSION } = await import('../dist/contracts.js');
  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
  assert.equal(VERSION, pkg.version);
- assert.equal(VERSION, '0.38.0');
+ assert.equal(VERSION, '0.39.0');
 });

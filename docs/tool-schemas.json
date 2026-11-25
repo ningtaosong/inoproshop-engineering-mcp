@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.38.0",
+  "serverVersion": "0.39.0",
   "contractVersion": "1.0.0",
   "toolCount": 38,
   "tools": [
@@ -14253,7 +14253,8 @@
               "set-member-initializer",
               "set-type",
               "add-member-initializer",
-              "add-initializer"
+              "add-initializer",
+              "add-struct-field"
             ]
           },
           "name": {
@@ -14315,8 +14316,7 @@
           "expectedSnapshot",
           "expectedDiskHash",
           "action",
-          "name",
-          "initializer"
+          "name"
         ],
         "additionalProperties": false
       },
