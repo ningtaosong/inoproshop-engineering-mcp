@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {request,verifyResponse,sameNativeContext,exchangeTwo} from './resident_two_read_observer.mjs';
+import {request,verifyResponse,sameNativeContext,verifyInstalledFrame,verifyAcceptedResponse,exchangeTwo} from './resident_two_read_observer.mjs';
+import fs from 'node:fs';
 import {sha} from './native_idle_observer.mjs';
 const intent={requestIds:['one','two'],launchId:'launch',scriptSha256:'s'.repeat(64)};
 const binding={operationId:'op',requestId:'bootstrap',launchId:'launch',requestFingerprint:'fingerprint',scriptSha256:intent.scriptSha256};
@@ -33,3 +34,37 @@ for(const failAt of ['ensure','send','read','accept'])test('first failure stops 
  const sent=[];const io={ensure:async()=>{},send:async req=>sent.push(req.sequence),read:async()=>Buffer.from('{}'),accept:async()=>{}};
  io[failAt]=async()=>{throw Error('first failure');};await assert.rejects(exchangeTwo(intent,io),/first failure/);assert.ok(!sent.includes(2));
 });
+const archived=JSON.parse(fs.readFileSync(new URL('./resident_frame_case_fixture.json',import.meta.url),'utf8'));
+test('archived result reproduces old production accept statement rejection',()=>{
+ const oldCheck=new Function('state','intent',archived.legacyStatement);
+ assert.throws(()=>oldCheck(archived.state,{frameIdentity:archived.expected}),/Installed frame identity differs/);
+});
+test('archived lowercase actual path passes new production ready and result verifier with installed bytes',()=>verifyInstalledFrame(archived.state,archived.expected));
+test('actual archived full ready and result through production accept chain',()=>{
+ verifyInstalledFrame(archived.ready.state,archived.expected);
+ const actual=verifyAcceptedResponse(archived.response,archived.request,archived.processStart.start,archived.processStart.binding,archived.requestFileSha256,archived.ready.state,null,archived.expected);
+ assert.deepEqual(actual,archived.response.state);
+});
+for(const [name,mutate] of [
+ ['handle',r=>r.state.mainHandle='0'],['thread',r=>r.state.thread=99],['request',r=>r.request.requestId='changed'],
+ ['pid',r=>r.binding.pid++],['creation',r=>r.binding.startId='changed'],['hash',r=>r.state.frameFileEvidence.actualSha256='0'.repeat(64)],
+ ['project',r=>r.state.noProject.openProjectCount=1],['stack',r=>r.state.startupFramesPresent=true]
+])test('full production accept rejects altered archived '+name,async()=>{
+ const value=structuredClone(archived.response);mutate(value);const sent=[];
+ await assert.rejects(exchangeTwo({requestIds:[archived.request.requestId,'second'],launchId:archived.request.launchId,scriptSha256:archived.request.scriptSha256},{
+ ensure:async()=>{},send:async req=>sent.push(req.sequence),read:async()=>Buffer.from(JSON.stringify(value)),
+ accept:async(req,bytes)=>verifyAcceptedResponse(JSON.parse(bytes),req,archived.processStart.start,archived.processStart.binding,archived.requestFileSha256,archived.ready.state,null,archived.expected)}));
+ assert.deepEqual(sent,[1]);
+});
+for(const [name,mutate] of [
+ ['directory',s=>s.frameIdentity.path=s.frameIdentity.path.replace('3.5.11.10','3.5.11.11')],
+ ['filename',s=>s.frameIdentity.path=s.frameIdentity.path.replace('frame.plugin.dll','other.plugin.dll')],
+ ['mvid',s=>s.frameIdentity.mvid='other'],['type',s=>s.frameIdentity.type='other'],
+ ['relative path',s=>s.frameIdentity.path='frame.plugin.dll'],['missing proof',s=>delete s.frameFileEvidence],
+ ['wrong raw path',s=>s.frameFileEvidence.actualPath='other'],['wrong expected raw',s=>s.frameFileEvidence.expectedPath='other'],
+ ['different full path',s=>s.frameFileEvidence.actualFullPath='D:\\other.dll'],
+ ['changed hash',s=>s.frameFileEvidence.actualSha256='b'.repeat(64)],['missing hash',s=>delete s.frameFileEvidence.expectedSha256],
+ ['different installed hash',s=>s.frameFileEvidence.installedSha256='b'.repeat(64)],['comparison false',s=>s.frameFileEvidence.pathOrdinalIgnoreCaseEqual=false]
+])test('production frame verifier rejects '+name,()=>{const s=structuredClone(archived.state);mutate(s);assert.throws(()=>verifyInstalledFrame(s,archived.expected));});
+test('actual installed read failure stops',()=>assert.throws(()=>verifyInstalledFrame(archived.state,archived.expected,()=>{throw Error('file unavailable');}),/file unavailable/));
+test('installed bytes changed after native read stops',()=>assert.throws(()=>verifyInstalledFrame(archived.state,archived.expected,()=>Buffer.from('different')),/bytes changed/));

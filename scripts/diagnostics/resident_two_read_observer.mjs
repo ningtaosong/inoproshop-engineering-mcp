@@ -28,6 +28,22 @@ export function verifyResponse(value,req,start,binding,requestSha256){
 export function sameNativeContext(a,b){
   if(a.thread!==b.thread||a.mainHandle!==b.mainHandle||!isDeepStrictEqual(a.frameIdentity,b.frameIdentity))throw Error('Native context identity differs');
 }
+export function verifyInstalledFrame(state,expected,readBytes=fs.readFileSync){
+  const actual=state?.frameIdentity,proof=state?.frameFileEvidence;
+  const full=value=>{if(typeof value!=='string'||!path.win32.isAbsolute(value))throw Error('Frame path is not absolute');return path.win32.normalize(value).toLowerCase();};
+  if(!actual||!proof||!expected||!/^[a-f0-9]{64}$/.test(expected.sha256))throw Error('Frame evidence incomplete');
+  if(full(actual.path)!==full(expected.path)||actual.mvid!==expected.mvid||actual.type!==expected.type)throw Error('Installed frame identity differs');
+  if(proof.actualPath!==actual.path||proof.expectedPath!==expected.path||full(proof.actualFullPath)!==full(actual.path)||full(proof.expectedFullPath)!==full(expected.path)||proof.pathOrdinalIgnoreCaseEqual!==true)throw Error('Frame path evidence differs');
+  for(const field of ['actualSha256','installedSha256','expectedSha256'])if(proof[field]!==expected.sha256)throw Error('Frame file evidence differs: '+field);
+  if(sha(readBytes(actual.path))!==expected.sha256||sha(readBytes(expected.path))!==expected.sha256)throw Error('Installed frame bytes changed');
+}
+export function verifyAcceptedResponse(value,req,start,binding,requestSha256,readyState,firstState,frame){
+  const state=verifyResponse(value,req,start,binding,requestSha256);
+  verifyInstalledFrame(state,frame);
+  sameNativeContext(readyState,state);
+  if(firstState)sameNativeContext(firstState,state);
+  return state;
+}
 export async function exchangeTwo(intent,io){
   let priorHash=null;
   for(const sequence of [1,2]){
@@ -102,6 +118,7 @@ export async function launch(intentFile){
     if(start.state!=='running'||start.path!==intent.exe)throw Error('Native creation identity unavailable');
     const readyBytes=await waitFile('ready.json',intent.readyMs),ready=JSON.parse(readyBytes);
     if(Object.entries({...binding,pid:start.pid,startId:start.startId}).some(([k,v])=>ready.binding?.[k]!==v)||ready.state?.startupFramesPresent!==false)throw Error('Ready identity/evidence differs');
+    verifyInstalledFrame(ready.state,intent.frameIdentity);
     record('ready-observed',{sha256:sha(readyBytes),ready});
     let firstState=null;
     await exchangeTwo(intent,{
@@ -114,10 +131,8 @@ export async function launch(intentFile){
       read:sequence=>waitFile(`result-${sequence}.json`,intent.requestMs),
       accept:async(req,bytes)=>{
       const sequence=req.sequence,value=JSON.parse(bytes);
-      const state=verifyResponse(value,req,start,binding,sha(fs.readFileSync(path.join(root,`request-${sequence}.json`))));
-      for(const key of ['path','mvid','type'])if(state.frameIdentity[key]!==intent.frameIdentity[key])throw Error('Installed frame identity differs');
-      sameNativeContext(ready.state,state);
-      if(firstState)sameNativeContext(firstState,state);else firstState=state;
+      const state=verifyAcceptedResponse(value,req,start,binding,sha(fs.readFileSync(path.join(root,`request-${sequence}.json`))),ready.state,firstState,intent.frameIdentity);
+      if(!firstState)firstState=state;
       const alive=processState(child.pid);
       if(alive.state!=='running'||alive.startId!==start.startId||alive.path!==start.path)throw Error('IDE is not the same live instance after read');
       record('result-accepted',{sequence,resultSha256:sha(bytes),value,alive});

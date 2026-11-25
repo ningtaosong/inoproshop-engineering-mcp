@@ -9,6 +9,7 @@ import datetime
 import traceback
 import tempfile
 import shutil
+import ntpath
 
 
 def definitions():
@@ -21,12 +22,24 @@ def definitions():
                  BLOCKED=(('ScriptEngine.plugin','_3S.CoDeSys.ScriptEngine.ScriptExecutor','Execute'),))
     try:scope['unicode']=unicode
     except NameError:scope['unicode']=str
+    if sys.platform=='cli':
+        from System import StringComparer
+        from System.IO import Path
+    else:
+        class Path(object):
+            GetFullPath=staticmethod(ntpath.abspath)
+        class CaseComparer(object):
+            Equals=staticmethod(lambda a,b:a.lower()==b.lower())
+        class StringComparer(object):
+            OrdinalIgnoreCase=CaseComparer()
+    scope.update(Path=Path,StringComparer=StringComparer)
     eval(compile(tree,file+':definitions-only','exec'),scope,scope)
     return scope
 
 
 def run_cases_json():
     cases=[]
+    interop=[]
     def check(value):
         if not value:raise AssertionError('Expectation failed')
     def case(name,fn):
@@ -55,6 +68,44 @@ def run_cases_json():
         for key,bad in [('thread',2),('mainHandle','13'),('frameIdentity',dict(path='other'))]:
             case('native identity '+key,lambda k=key,b=bad:rejects(lambda:n['stable_identity'](state,dict(state,**{k:b}))))
         case('same native context',lambda:n['stable_identity'](state,dict(state)))
+        def frame_evidence(change):
+            s=definitions();records=[];s['record']=lambda stage,**fields:records.append(dict(fields,stage=stage))
+            s['sha_file']=lambda path:'a'*64
+            expected=dict(path='D:\\Frame.plugin.dll',mvid='m',type='main');actual=dict(expected)
+            disposed=False;invoke=False;thread=1
+            if change in ('path','mvid','type'):actual[change]='different'
+            if change=='IsDisposed':disposed=True
+            if change=='InvokeRequired':invoke=True
+            if change=='primaryThread':thread=2
+            if change=='fileSha256':s['sha_file']=lambda path:'b'*64
+            if change=='publication':
+                actual['path']='different'
+                s['record']=lambda *args,**fields:(_ for _ in ()).throw(IOError('frame evidence publication failed'))
+            if change:
+                rejects(lambda:s['validate_frame'](actual,expected,disposed,invoke,thread,1,'a'*64))
+                if change!='publication':check(records[0]['differences']==[change] and records[0]['actual']==actual and records[0]['expected']==expected)
+            else:s['validate_frame'](actual,expected,False,False,1,1,'a'*64);check(not records)
+        for field in (None,'path','mvid','type','IsDisposed','InvokeRequired','primaryThread','fileSha256','publication'):
+            case('frame predicate evidence '+str(field),lambda f=field:frame_evidence(f))
+        def archived_path(change=None):
+            s=definitions();records=[];s['record']=lambda stage,**fields:records.append(dict(fields,stage=stage))
+            expected=dict(path=r'D:\InProShop\CODESYS\PlugIns\55da38af-e78a-46ae-915b-7686657f6fac\3.5.11.10\Frame.plugin.dll',mvid='907636ac-aa7c-498c-953a-7c3b30b2e75c',type='_3S.CoDeSys.Frame.MainForm')
+            actual=dict(expected,path=expected['path'].lower())
+            digest='2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe'
+            if change=='directory':actual['path']=actual['path'].replace('3.5.11.10','3.5.11.11')
+            if change=='filename':actual['path']=actual['path'].replace('frame.plugin.dll','other.plugin.dll')
+            if change=='mvid':actual['mvid']='different'
+            if change=='type':actual['type']='different'
+            # Real installed bytes for the archived positive; controlled bytes for negative identity tests.
+            if change:s['sha_file']=lambda path:'b'*64 if change=='hash' else digest
+            if change:
+                rejects(lambda:s['validate_frame'](actual,expected,False,False,1,1,digest));check(len(records)==1)
+            else:
+                proof=s['validate_frame'](actual,expected,False,False,1,1,digest)
+                check(proof['actualSha256']==digest and proof['installedSha256']==digest and proof['actualPath']!=proof['expectedPath'] and proof['pathOrdinalIgnoreCaseEqual'])
+                interop.append(dict(archivedFramePathEvidence=proof))
+        for change in (None,'directory','filename','mvid','type','hash'):
+            case('real archived path '+str(change),lambda c=change:archived_path(c))
         def receiver(failure=None):
             d=os.path.join(root,'r'+str(len(cases)));os.mkdir(d)
             s=definitions();s['_root']=d;s['_binding']=dict(pid=1,startId='start')
@@ -147,7 +198,9 @@ def run_cases_json():
         def capture_test(change=None):
             class Obj(object):
                 def __init__(self,**items):self.__dict__.update(items)
-            s=definitions();p=s['TwoReadProbe'](dict(intent,frameIdentity=dict(path='frame',mvid='m',type='_3S.CoDeSys.Frame.MainForm')))
+            s=definitions();p=s['TwoReadProbe'](dict(intent,frameIdentity=dict(path='frame',mvid='m',type='_3S.CoDeSys.Frame.MainForm',sha256='a'*64)))
+            s['sha_file']=lambda path:'a'*64
+            records=[];s['record']=lambda stage,**fields:records.append(dict(fields,stage=stage))
             p.primary_thread=1
             assembly=Obj(Location='frame',ManifestModule=Obj(ModuleVersionId='m'))
             kind=Obj(FullName='_3S.CoDeSys.Frame.MainForm',Assembly=assembly)
@@ -184,6 +237,29 @@ def run_cases_json():
             check(method('native_idle_probe.py')==method('resident_two_read_probe.py'))
         case('publisher AST unchanged from existing IronPython evidence writer',same_publisher)
         if sys.platform=='cli':
+            def actual_form_access():
+                import clr
+                clr.AddReference('System.Windows.Forms')
+                from System.Windows.Forms import Form
+                from System.Diagnostics import StackTrace
+                form=Form() # hidden offline instance, never Show or Application.Run
+                try:
+                    record=dict(type=unicode(form.GetType().FullName),
+                        path=unicode(form.GetType().Assembly.Location),
+                        mvid=unicode(form.GetType().Assembly.ManifestModule.ModuleVersionId),
+                        visible=bool(form.Visible),modal=bool(form.Modal),enabled=bool(form.Enabled),
+                        disposed=bool(form.IsDisposed),invokeRequired=bool(form.InvokeRequired))
+                    interop.append(record)
+                    handle=form.Handle
+                    record['handlePythonType']=str(type(handle))
+                    record['handleRawText']=unicode(handle)
+                    record['handleViaCurrentExpression']=unicode(handle.ToInt64())
+                    frames=StackTrace(False).GetFrames()
+                    record['stackFrameCount']=len(frames)
+                    record['stackMethods']=[unicode(f.GetMethod().Name) for f in frames]
+                    check(not form.Visible and not form.Modal and not form.IsDisposed and len(frames)>0)
+                finally:form.Dispose()
+            case('installed CLR actual hidden Form access',actual_form_access)
             def clr_delegate():
                 from System.Threading import Thread,ThreadStart
                 called=[];delegate=ThreadStart(lambda:called.append('bound'))
@@ -200,7 +276,7 @@ def run_cases_json():
                     check(detail['clrChain'][0]['message']=='native outer' and detail['clrChain'][1]['message']=='native inner')
             case('installed CLR actual inner exception chain',actual_clr_chain)
     finally:shutil.rmtree(root)
-    return json.dumps(dict(passed=all(c['passed'] for c in cases),count=len(cases),cases=cases,nativeHostStarted=False,nativeEntryExecuted=False,projectOperations=0))
+    return json.dumps(dict(passed=all(c['passed'] for c in cases),count=len(cases),cases=cases,interop=interop,nativeHostStarted=False,nativeEntryExecuted=False,projectOperations=0))
 
 
 if __name__=='__main__':

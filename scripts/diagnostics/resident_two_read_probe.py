@@ -150,6 +150,34 @@ def stable_identity(first, current):
             raise ValueError('Owned native context changed: ' + key)
 
 
+def validate_frame(identity, expected, disposed, invoke_required, current_thread, expected_thread, expected_sha):
+    # This installed Windows assembly was observed with only path-letter casing changed.
+    # Preserve both raw values; a different normalized directory/file remains rejected.
+    actual_full = Path.GetFullPath(identity['path'])
+    expected_full = Path.GetFullPath(expected['path'])
+    path_equal = bool(StringComparer.OrdinalIgnoreCase.Equals(actual_full, expected_full))
+    actual_sha = sha_file(identity['path'])
+    installed_sha = sha_file(expected['path'])
+    proof = dict(actualPath=identity['path'], expectedPath=expected['path'],
+                 actualFullPath=unicode(actual_full), expectedFullPath=unicode(expected_full),
+                 pathOrdinalIgnoreCaseEqual=path_equal, actualSha256=actual_sha,
+                 installedSha256=installed_sha, expectedSha256=expected_sha)
+    differences = [key for key in ('mvid', 'type') if identity[key] != expected[key]]
+    if not path_equal: differences.append('path')
+    if actual_sha != expected_sha or installed_sha != expected_sha: differences.append('fileSha256')
+    if disposed: differences.append('IsDisposed')
+    if invoke_required: differences.append('InvokeRequired')
+    if current_thread != expected_thread: differences.append('primaryThread')
+    if differences:
+        # Exact comparison unchanged. Record the actual failing predicates before raising.
+        record('frame-identity-rejected', actual=identity, expected=expected,
+               isDisposed=disposed, invokeRequired=invoke_required,
+               currentThread=current_thread, expectedThread=expected_thread,
+               differences=differences, fileEvidence=proof)
+        raise ValueError('Owned MainForm check differs: ' + ', '.join(differences))
+    return proof
+
+
 class TwoReadProbe(object):
     def __init__(self, intent):
         self.intent = intent
@@ -189,8 +217,8 @@ class TwoReadProbe(object):
         identity = dict(path=unicode(assembly.Location), mvid=unicode(assembly.ManifestModule.ModuleVersionId),
                         type=unicode(main.GetType().FullName))
         expected = dict((key, self.intent['frameIdentity'][key]) for key in ('path', 'mvid', 'type'))
-        if identity != expected or main.IsDisposed or main.InvokeRequired:
-            raise ValueError('Owned MainForm identity or thread unavailable')
+        file_evidence = validate_frame(identity, expected, bool(main.IsDisposed), bool(main.InvokeRequired),
+                                       current_thread, self.primary_thread, self.intent['frameIdentity']['sha256'])
         rows = [dict(type=unicode(form.GetType().FullName), visible=bool(form.Visible), modal=bool(form.Modal)) for form in forms]
         if any(row['visible'] and row['modal'] for row in rows):
             raise ValueError('Visible modal form; no prompt handling')
@@ -209,7 +237,7 @@ class TwoReadProbe(object):
         if not main.Enabled and not startup:
             raise ValueError('MainForm disabled after startup; no prompt handling')
         return dict(noProject=no_project, thread=current_thread, mainHandle=unicode(main.Handle.ToInt64()),
-                    frameIdentity=identity, mainEnabled=bool(main.Enabled), forms=rows, stack=stack, startupFramesPresent=startup)
+                    frameIdentity=identity, frameFileEvidence=file_evidence, mainEnabled=bool(main.Enabled), forms=rows, stack=stack, startupFramesPresent=startup)
 
     def on_primary(self):
         holder = []
@@ -307,12 +335,14 @@ def start():
     for item in intent['fixedFiles']:
         if sha_file(item['path']) != item['sha256']:
             raise ValueError('Fixed dependency fingerprint differs: ' + item['path'])
-    global Process, StackTrace, Thread, ThreadStart, Application, system, projects
+    global Process, StackTrace, Thread, ThreadStart, Application, StringComparer, Path, system, projects
     import clr
     clr.AddReference('System.Windows.Forms')
     from System.Diagnostics import Process, StackTrace
     from System.Threading import Thread, ThreadStart
     from System.Windows.Forms import Application
+    from System import StringComparer
+    from System.IO import Path
     from scriptengine import system, projects
     process = Process.GetCurrentProcess()
     try:
