@@ -38,6 +38,8 @@ export const alive = (pid: number) => { try { process.kill(pid,0); return true; 
 export interface Operation {
   schemaVersion: 1; operationId: string; requestId: string; tool: string; args: any;
   fingerprint: string; status: Reply['status']; startedAt: string; ownerPid: number;
+  ownerIdentity?:import('./lease-process.js').ProcessIdentity;
+  dispatchFiles?:Array<{path:string;key:string;realPath?:string;fileId?:string|null;[key:string]:unknown}>;
   response?: Reply; bridge?: { directory: string; pid?: number; launchId?: string }; finishedAt?: string;
   registryVersion?: 1;
   project?: Session;

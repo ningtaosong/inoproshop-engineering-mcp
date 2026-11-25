@@ -25,6 +25,8 @@ import {ioMappingPage} from './io-mapping.js';
 import {deviceCatalogResult} from './device-catalog.js';
 import {catalogResult,catalogVersion,libraryConfigurationVersion,placeholderConfigurationVersion,completeLibraryInventory,completePlaceholderInventory,LIB_CONFIG_SCHEME,LIB_PLACEHOLDER_SCHEME} from './libraries.js';
 import {initializerTargetEvidence,planVariableEdit,planMemberInitializerEdit,isMemberInitializerAction} from './variable-edit.js';
+import {assessPending,related,targetFiles} from './pending-impact.js';
+import {ownProcessIdentity,type ProcessProbe} from './lease-process.js';
 
 // Only allowlisted direct-project operations opt in. A native command always
 // opens once; the write commands below additionally save and reopen.
@@ -45,7 +47,23 @@ export class EngineeringService {
   private persistencePoison?: string;
   private admissionClosed=false;
   private calls=new Set<Promise<Reply>>();
-  constructor(readonly config: Config, readonly adapter: Adapter) { this.store=new Store(config.dataDir); }
+  private ownedOperations=new Set<string>();
+  private runningOperations=new Set<string>();
+  constructor(readonly config: Config, readonly adapter: Adapter,private readonly pendingOptions:{probe?:ProcessProbe}={}) { this.store=new Store(config.dataDir); }
+  private pending(exclude?:string){return assessPending(this.store,{...this.pendingOptions,owned:this.ownedOperations,running:this.runningOperations,exclude});}
+  private async guardPending(tool:string,args:any,exclude?:string,project?:Session) {
+    try {
+    let state:Awaited<ReturnType<typeof assessPending>>;
+    state=await this.pending(exclude);
+    const s=project??state.registry.projects.find(s=>s.projectId===args.projectId);
+    const paths=[args.projectPath,args.sourcePath,...(s?[s.sourcePath,s.workingPath]:[])].filter((p):p is string=>typeof p==='string');
+    const blocked=related(state.impacts,args.projectId??s?.projectId,await targetFiles(paths));
+    if(blocked.length)throw new DomainError('conflict','PENDING_UNKNOWN',
+      '未派发：'+blocked.map(b=>`${b.operationId} (${b.scope}): ${b.reason}`).join('; '));
+    return state;
+    }catch(e:any){if(e instanceof DomainError&&(e.code==='PENDING_UNKNOWN'||!exclude))throw e;
+      const error=new DomainError('conflict','PENDING_UNKNOWN','未派发：未决证据或目标身份无法确认：'+e.message);Object.assign(error,{cause:e});throw error;}
+  }
   stopAdmission(){this.admissionClosed=true;}
   async drain() {
     // call() may return running while admission/queue and native observation continue.
@@ -74,28 +92,32 @@ export class EngineeringService {
   }
   async status():Promise<Reply> {
     try {
-      const registry=await this.store.registry();
-      const pending=(await this.store.operations()).filter(o=>o.status==='running'||o.status==='unknown');
-      const isolation=await isolationState(this.store);
-      const isolatedIds=new Set(isolation.own.flatMap(e=>e.plan.operationIds));
-      const isolatedProjects=new Set(isolation.own.map(e=>e.plan.projectId));
-      const globalFrozen=!!this.persistencePoison||pending.some(o=>!isolatedIds.has(o.operationId)&&(o.status==='unknown'||!alive(o.ownerPid)));
-      await maintenanceGuard();
-      return reply('succeeded','会话状态',{session:registry.projects.find(s=>s.projectId===registry.activeProjectId) || null,
-        pending:pending.map(o=>({operationId:o.operationId,requestId:o.requestId,tool:o.tool,status:o.status==='running'&&(!alive(o.ownerPid)||!!this.persistencePoison)?'unknown':o.status})),
-        writeFrozen:globalFrozen||isolatedProjects.has(registry.activeProjectId),globalFrozen,
-        availability:globalFrozen?'global-frozen':isolatedProjects.has(registry.activeProjectId)?'active-project-isolated':'available',
-        isolatedProjects:isolation.own.map(e=>({projectId:e.plan.projectId,operationIds:e.plan.operationIds,planId:e.plan.planId,committedAt:e.committedAt,sourcePath:e.plan.bindings[0].sourcePath,workingPath:e.plan.bindings[0].workingPath}))});
+      return await this.observedStatus(await this.pending());
     } catch(e:any) {
       return {...reply('unknown','持久化记录或维护状态无法确认，工程派发已全局冻结',{session:null,pending:[],writeFrozen:true,globalFrozen:true,availability:'global-frozen'}),error:{code:e.code || 'CORRUPT_RECORD',message:e.message}};
     }
   }
+  private async observedStatus(state:Awaited<ReturnType<typeof assessPending>>):Promise<Reply> {
+      const {registry,isolation}=state;
+      const pending=state.operations.filter(o=>o.status==='running'||o.status==='unknown');
+      const isolatedProjects=new Set(isolation.own.map(e=>e.plan.projectId));
+      const globalFrozen=!!this.persistencePoison||state.globalFrozen;
+      const current=registry.projects.find(s=>s.projectId===registry.activeProjectId);
+      const activeBlocked=!!current&&related(state.impacts,current.projectId,await targetFiles([current.sourcePath,current.workingPath])).length>0;
+      await maintenanceGuard();
+      return reply('succeeded',globalFrozen?'未决记录的影响范围或进程退出无法确认，暂停工程派发':activeBlocked?'当前工程有未决操作；明确无关工程可另行指定，原操作保持unknown':'会话状态',{session:current || null,
+        pending:pending.map(o=>({operationId:o.operationId,requestId:o.requestId,tool:o.tool,status:o.status==='running'&&(!alive(o.ownerPid)||!!this.persistencePoison)?'unknown':o.status})),
+        writeFrozen:globalFrozen||activeBlocked||isolatedProjects.has(registry.activeProjectId),globalFrozen,
+        ...(activeBlocked&&!globalFrozen&&!isolatedProjects.has(registry.activeProjectId)?{}:{availability:globalFrozen?'global-frozen':isolatedProjects.has(registry.activeProjectId)?'active-project-isolated':'available'}),
+        isolatedProjects:isolation.own.map(e=>({projectId:e.plan.projectId,operationIds:e.plan.operationIds,planId:e.plan.planId,committedAt:e.committedAt,sourcePath:e.plan.bindings[0].sourcePath,workingPath:e.plan.bindings[0].workingPath}))});
+  }
   async projects():Promise<Reply> {
-    const r=await this.store.registry();const status=await this.status();
+    const state=await this.pending(),r=state.registry;
+    const status=await this.observedStatus(state);
     if(status.status!=='succeeded')return status;
     const isolated=(status.data!.isolatedProjects as any[]);
-    return reply('succeeded','已登记工程（只读，不打开 IDE）',{projects:r.projects.map(s=>({...s,projectPath:s.workingPath,name:path.basename(s.workingPath),active:s.projectId===r.activeProjectId,
-      availability:status.data!.globalFrozen?'global-frozen':isolated.some(e=>e.projectId===s.projectId)?'isolated':'available'})),
+    return reply('succeeded','已登记工程（只读，不打开 IDE）',{projects:await Promise.all(r.projects.map(async s=>({...s,projectPath:s.workingPath,name:path.basename(s.workingPath),active:s.projectId===r.activeProjectId,
+      availability:this.persistencePoison||state.globalFrozen?'global-frozen':isolated.some(e=>e.projectId===s.projectId)?'isolated':related(state.impacts,s.projectId,await targetFiles([s.sourcePath,s.workingPath])).length?'unresolved':'available'}))),
       activeProjectId:r.activeProjectId,writeFrozen:status.data!.writeFrozen,globalFrozen:status.data!.globalFrozen,isolatedProjects:isolated});
   }
   private async originalProject(op:Operation):Promise<Session> {
@@ -204,11 +226,10 @@ export class EngineeringService {
       if(old.fingerprint!==fingerprint) throw new DomainError('conflict','REQUEST_ID_REUSED','业务 requestId 已用于不同工具或参数');
       return this.operation({operationId:old.operationId});
     }
-    if(ops.some(o=>!isolatedIds.has(o.operationId)&&(o.status==='unknown'||(o.status==='running'&&!alive(o.ownerPid)))))
-      throw new DomainError('unknown','PENDING_UNKNOWN','存在未决操作；请先查询并核对 operation_status，禁止派发后续工程操作');
+    await this.guardPending(tool,args);
     const globalQuery=tool==='library_catalog'||tool==='device_catalog';
     const switching=['project_create','project_open','project_open_copy','project_activate'].includes(tool);
-    if(switching && ops.some(o=>o.status==='running'&&!isolatedIds.has(o.operationId)))throw new DomainError('conflict','PENDING_OPERATION','存在运行中或排队操作，不能切换；请先查询原操作');
+    if(switching && ops.some(o=>o.status==='running'&&this.runningOperations.has(o.operationId)&&!isolatedIds.has(o.operationId)))throw new DomainError('conflict','PENDING_OPERATION','存在本服务运行中或排队操作，不能切换；请先查询本轮原操作');
     let registry;
     try {registry=await this.store.ensureRegistry();}
     catch(e:any) {this.persistencePoison=e.message;throw new DomainError('unknown','REGISTRY_UNAVAILABLE','登记无法确认，保持冻结：'+e.message);}
@@ -217,19 +238,19 @@ export class EngineeringService {
     if(!switching&&!globalQuery && (!current || current.projectId!==args.projectId))
       throw new DomainError('conflict','PROJECT_NOT_ACTIVE','请求工程不是活动工程；请先明确激活目标，再使用其真实身份');
     const op:Operation={schemaVersion:1,registryVersion:1,operationId:randomUUID(),requestId,tool,args,fingerprint,status:'running',ownerPid:process.pid,startedAt:new Date().toISOString(),
+      ownerIdentity:await ownProcessIdentity(),
       ...(switching?{activation:{previousActiveProjectId:registry.activeProjectId,revision:registry.revision}}:globalQuery?{}:{project:current})};
     try {await this.store.saveOp(op);} // 持久化先于队列派发和工程修改。
     catch(e:any) {
       this.persistencePoison=e.message || String(e);
       return {...this.operationReply(op,'unknown','原请求登记无法可靠发布，未派发，后续工程操作已冻结'),error:{code:'PERSISTENCE_ERROR',message:this.persistencePoison!}};
     }
+    this.ownedOperations.add(op.operationId);this.runningOperations.add(op.operationId);
     const execution=this.queue.then(async()=> {
       let result:Reply;
       try {
         if(this.persistencePoison) throw new DomainError('failed','NOT_DISPATCHED','前一结果持久化失败，本排队操作未派发');
-        const scope=await isolationState(this.store),covered=new Set(scope.own.flatMap(e=>e.plan.operationIds));
-        const unresolved=(await this.store.operations()).some(o=>o.operationId!==op.operationId&&!covered.has(o.operationId)&&(o.status==='unknown'||(o.status==='running'&&!alive(o.ownerPid))));
-        if(unresolved) throw new DomainError('unknown','PENDING_UNKNOWN','队列中前一操作结果未知，未派发本操作');
+        await this.guardPending(tool,args,op.operationId,op.project);
         result=await this.execute(op);
       } catch(e:any) {
         result={...reply(e instanceof DomainError?e.status:(op.bridge?'unknown':'failed'),e.message || String(e)),error:{code:e.code || 'EXECUTION_ERROR',message:e.message || String(e)}};
@@ -242,6 +263,7 @@ export class EngineeringService {
       console.error('操作记录发布失败，保持冻结：',this.persistencePoison);
       return {...this.operationReply(op,'unknown','操作结果无法可靠持久化，已冻结后续派发'),error:{code:'PERSISTENCE_ERROR',message:this.persistencePoison!}};
     });
+    execution.finally(()=>this.runningOperations.delete(op.operationId)).catch(()=>{});
     this.queue=execution;
     return Promise.race([execution,new Promise<Reply>(resolve=> {
       const timer=setTimeout(()=>resolve(this.operationReply(op,'running','请求已持久化，正在执行；请查询原 operationId')),this.config.responseWaitMs);
@@ -272,6 +294,15 @@ export class EngineeringService {
       requestFingerprint:op.fingerprint,launchId:op.bridge!.launchId});
   }
   private async executeNative(op:Operation,request:BridgeRequest,directory:string,onStart:(pid:number)=>Promise<void>) {
+    try {
+    if(request.projectPath){
+      const files=await targetFiles([...new Set([request.projectPath,...(op.project?[op.project.sourcePath,op.project.workingPath]:[])])]);
+      const actual=files.filter(f=>f.fileId&&f.realPath);
+      if(actual.length){op.dispatchFiles=actual;try{await this.store.saveOp(op);}catch(e:any){this.persistencePoison=e.message??String(e);throw new DomainError('unknown','PERSISTENCE_ERROR',this.persistencePoison!);}}
+    }
+    // Last check is in the actual launch path, after planning and file guards.
+    await this.guardPending(op.tool,op.args,op.operationId,op.project);
+    }catch(e:any){if(e instanceof DomainError&&(e.status!=='unknown'||e.code==='PERSISTENCE_ERROR'))throw e;const error=new DomainError('conflict','NOT_DISPATCHED','未调用原生入口：'+(e.message??String(e)));Object.assign(error,{cause:e});throw error;}
     return this.adapter.execute({...request,requestId:op.requestId,requestFingerprint:op.fingerprint},directory,
       async(pid,evidence)=>{
         if(evidence)op.bridge!.launchId=evidence.binding.launchId;
