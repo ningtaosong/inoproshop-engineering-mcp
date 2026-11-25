@@ -50,12 +50,13 @@ def start():
         class Probe(base['TwoReadProbe']):
             def __init__(self):
                 base['TwoReadProbe'].__init__(self,intent)
-                self.adapter=module['NativeProjectAdapter'](projects,intent['projectPath'],module['same_public_identity'],lambda:Thread.CurrentThread.ManagedThreadId)
+                self.adapter=module['NativeProjectAdapter'](projects,intent['projectPath'],module['same_public_identity'],lambda:Thread.CurrentThread.ManagedThreadId,lambda proof:base['record']('project-ownership-observed',proof=proof))
                 self.session=module['ResidentSequence'](session_intent,self.adapter,self.engineering_admission,self.primary_dispatch,base['publish'],process_identity,file_identity)
             def project_status(self):
                 if self.adapter.project is None:return base['TwoReadProbe'].project_status(self)
                 self.adapter._owned()
-                return dict(primaryIsNone=False,openProjectCount=1,uiPresent=bool(system.ui_present),projectHandle=self.adapter.handle,projectPath=unicode(self.adapter.project.path))
+                proof=self.adapter.last_ownership
+                return dict(primaryIsNone=False,openProjectCount=len(proof['all']),backgroundLibraryCount=len(proof['all'])-1,uiPresent=bool(system.ui_present),projectHandle=self.adapter.handle,projectPath=unicode(self.adapter.project.path))
             def engineering_admission(self):
                 self.admission()
                 sequence=self.session.completed+1

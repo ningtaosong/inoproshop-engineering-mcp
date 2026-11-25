@@ -36,7 +36,7 @@ def run_cases_json():
         for key in m.TASK_FIELDS:setattr(task,key,0)
         task.watchdog=Obj(enabled=False,time=0,time_unit=0,sensitivity=1)
         other=node('Other',m.POU,u'PROGRAM Other\nVAR\nEND_VAR',u'(* leave alone *)')
-        app.children=[target,task,other];project=Obj(handle=42,path=disk,get_children=lambda ignored:[app])
+        app.children=[target,task,other];project=Obj(handle=42,library=False,primary=True,path=disk,get_children=lambda ignored:[app])
         projects=Obj(primary=None,all=[])
         def open_project(path,primary=True):
             counts['open']+=1;projects.primary=project;projects.all=[project]
@@ -182,9 +182,50 @@ def run_cases_json():
         case('native identity protection '+change,native_identity_change)
     def new_wrappers():
         x=fixture();x.s.adapter.same_reference=m.same_public_identity;check(send(x)['status']=='memory-verified')
-        x.projects.primary=Obj(handle=x.project.handle,path=x.project.path)
+        x.projects.primary=Obj(handle=x.project.handle,path=x.project.path,library=False,primary=True)
         check(send(x)['status']=='memory-verified' and x.counts['replace']==1)
     case('same public project handle across different wrappers preserves memory edit',new_wrappers)
+    def libraries():
+        x=fixture();original=x.projects.open
+        def open_with_library(path,primary=True):
+            value=original(path,primary);x.projects.all.append(Obj(handle=43,path='referenced.compiled-library',primary=False,library=True));return value
+        x.projects.open=open_with_library
+        check(send(x)['status']=='memory-verified')
+        check(send(x)['status']=='memory-verified' and x.counts['replace']==1)
+        check(len(x.s.adapter.last_ownership['all'])==2)
+    case('public referenced library can coexist with sole owned primary project',libraries)
+    for kind in ('non-library','second-primary','duplicate-handle','missing-owned','null-row','missing-library-flag','nonbool-library','owned-library','primary-wrong-path','read-error','record-error'):
+        def reject_projects(kind=kind):
+            x=fixture();check(send(x)['status']=='memory-verified')
+            bg=Obj(handle=43,path='background',primary=False,library=True);x.projects.all.append(bg)
+            if kind=='non-library':bg.library=False
+            if kind=='second-primary':bg.primary=True
+            if kind=='duplicate-handle':bg.handle=42
+            if kind=='missing-owned':x.projects.all=[bg]
+            if kind=='null-row':x.projects.all.append(None)
+            if kind=='missing-library-flag':del bg.library
+            if kind=='nonbool-library':bg.library='True'
+            if kind=='owned-library':x.project.library=True
+            if kind=='primary-wrong-path':x.projects.primary=Obj(handle=42,path='different',primary=True,library=False)
+            if kind=='read-error':
+                class Bad(Obj):
+                    @property
+                    def all(self):raise IOError('first enumeration failure')
+                x.s.adapter.projects=Bad(primary=x.project)
+            records=[]
+            def observe(value):
+                records.append(copy.deepcopy(value))
+                if kind=='record-error':raise IOError('first ownership publication failure')
+            x.s.adapter.observe_ownership=observe;r=send(x)
+            check(r['frozen'] and x.counts['replace']==x.counts['save']==0 and records and r['ownershipEvidence']==records[-1])
+            if kind=='read-error':check(r['ownershipEvidence']['readErrors'][0]['message']=='first enumeration failure')
+            if kind=='record-error':check(r['firstError']['message']=='first ownership publication failure')
+        case('public all-list protection and recorded rejection '+kind,reject_projects)
+    def background_change():
+        x=fixture();check(send(x)['status']=='memory-verified')
+        x.projects.all.append(Obj(handle=43,path='added-library',primary=False,library=True))
+        r=send(x);check(r['frozen'] and x.counts['replace']==x.counts['save']==0)
+    case('background library set change after observed baseline stops before edit',background_change)
     shutil.rmtree(root)
     return json.dumps(dict(passed=all(c['passed'] for c in cases),count=len(cases),cases=cases,samples=samples,nativeIDEStarted=False,engineeringRun=False),ensure_ascii=True)
 

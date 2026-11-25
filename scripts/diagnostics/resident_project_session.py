@@ -77,11 +77,32 @@ def same_public_identity(a,b):
     ag=getattr(a,'guid',None);bg=getattr(b,'guid',None)
     return (ag is None and bg is None) or (ag is not None and bg is not None and guid(ag)==guid(bg))
 
+def project_view(project):
+    if project is None:return None
+    library=project.library;primary=project.primary
+    if type(library) is not bool or type(primary) is not bool:raise ValueError('Native project classification is not Boolean')
+    return dict(handle=public_handle(project),path=source_text(project.path),library=library,primary=primary)
+
+def validate_owned_projects(proof,path,handle):
+    if proof['readErrors']:raise Conflict('Public project ownership evidence incomplete')
+    owned=proof['returned'];primary=proof['primary'];rows=proof['all']
+    if owned is None or primary is None:raise Conflict('Owned or primary project unavailable')
+    if owned['handle']!=handle or primary['handle']!=handle:raise Conflict('Primary native handle differs from owned project')
+    if owned!=primary or normalized_path(owned['path'])!=normalized_path(path) or not owned['primary'] or owned['library']:raise Conflict('Primary project classification/path differs')
+    handles=[row['handle'] for row in rows]
+    if len(set(handles))!=len(handles):raise Conflict('Duplicate project handle in open list')
+    selected=[row for row in rows if row['handle']==handle]
+    if selected!=[owned]:raise Conflict('Owned project missing or differs in open list')
+    # Public library=True means a referenced background library; no name/suffix inference.
+    if any(row['primary'] or not row['library'] for row in rows if row['handle']!=handle):raise Conflict('Additional non-library or primary project; no takeover')
+    return True
+
 class NativeProjectAdapter(object):
     """Only public open/get_children/text getters/text.replace; no business helper auto-save."""
-    def __init__(self,projects,path,same_reference,thread_id):
+    def __init__(self,projects,path,same_reference,thread_id,observe_ownership=None):
         self.projects=projects;self.path=path;self.same_reference=same_reference
         self.thread_id=thread_id;self.thread=None;self.project=None;self.target=None;self.handle=None
+        self.observe_ownership=observe_ownership;self.last_ownership=None
         self.attempts=dict(open=0,replace=0,read=0)
 
     def _owned(self):
@@ -93,9 +114,32 @@ class NativeProjectAdapter(object):
             self.attempts['open']+=1
             self.project=self.projects.open(self.path,primary=True)
             self.handle=public_handle(self.project)
-        if not self.same_reference(self.project,self.projects.primary) or len(list(self.projects.all))!=1:raise Conflict('Owned project handle changed or closed')
-        if public_handle(self.project)!=self.handle:raise Conflict('Owned native handle changed')
-        if normalized_path(source_text(self.project.path))!=normalized_path(self.path):raise Conflict('Project path changed')
+        proof=dict(returned=None,primary=None,all=[],readErrors=[])
+        native_errors=[]
+        def read(label,fn):
+            try:return fn()
+            except Exception as error:
+                proof['readErrors'].append(dict(field=label,type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc()))
+                native_errors.append(error)
+                return None
+        proof['returned']=read('returned',lambda:project_view(self.project))
+        proof['primary']=read('primary',lambda:project_view(self.projects.primary))
+        rows=read('all',lambda:list(self.projects.all))
+        if rows is not None:
+            for index,item in enumerate(rows):
+                row=read('all[%d]'%index,lambda:project_view(item))
+                if row is None:proof['readErrors'].append(dict(field='all[%d]'%index,message='Null/invalid project entry'))
+                else:proof['all'].append(row)
+        self.last_ownership=copy.deepcopy(proof)
+        try:
+            if self.observe_ownership:self.observe_ownership(proof)
+        except Exception as error:
+            if native_errors:
+                self.last_ownership['publicationError']=dict(type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc())
+                raise native_errors[0]
+            raise
+        if native_errors:raise native_errors[0]
+        validate_owned_projects(proof,self.path,self.handle)
 
     def snapshot(self):
         self.attempts['read']+=1
@@ -131,7 +175,8 @@ class NativeProjectAdapter(object):
         if row['nativeTypeId']!=POU or ST not in row['embeddedObjectTypes'] or not isinstance(row['implementation'],string_types) or not re.match(r'^\s*PROGRAM\s+PLC_PRG\b',row['declaration'] or '',re.I):raise ValueError('Native root ST PROGRAM evidence incomplete')
         if self.target is not None and not self.same_reference(self.target,objects[oid]):raise ValueError('Target object instance changed')
         self.target=objects[oid]
-        return dict(projectPath=source_text(self.project.path),projectHandle=self.handle,applicationId=apps[0],targetId=oid,nodes=nodes,thread=self.thread)
+        opened=dict((str(row['handle']),copy.deepcopy(row)) for row in self.last_ownership['all'])
+        return dict(projectPath=source_text(self.project.path),projectHandle=self.handle,openedProjects=opened,applicationId=apps[0],targetId=oid,nodes=nodes,thread=self.thread)
 
     def replace_implementation(self,value):
         self._owned()
@@ -227,7 +272,7 @@ class ResidentSequence(object):
             callback_allowed[0]=False
             attempted=dict((key,self.adapter.attempts[key]-attempts_before[key]) for key in attempts_before)
             uncertain=dispatched[0] or attempted['open']>0 or stage[0] in ('primary-call','result-publication') or (stage[0] in ('memory-read','after-read') and not isinstance(error,Conflict))
-            response=dict(status='unknown' if uncertain else 'conflict',request=request,firstError=self.first_error,dispatched=bool(dispatched[0] or attempted['open'] or attempted['read']),modificationDispatched=dispatched[0],nativeAttempts=attempted,frozen=True,automaticRollback=False,saveCalls=0,closeCalls=0)
+            response=dict(status='unknown' if uncertain else 'conflict',request=request,firstError=self.first_error,ownershipEvidence=self.adapter.last_ownership,dispatched=bool(dispatched[0] or attempted['open'] or attempted['read']),modificationDispatched=dispatched[0],nativeAttempts=attempted,frozen=True,automaticRollback=False,saveCalls=0,closeCalls=0)
             try:self.publish('request-error-%d.json'%(self.completed+1),response)
             except Exception as secondary:self.secondary.append(dict(type=type(secondary).__name__,message=text_type(secondary)))
         self.results[rid]=(fingerprint,copy.deepcopy(response))
