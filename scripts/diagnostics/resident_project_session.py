@@ -97,6 +97,68 @@ def validate_owned_projects(proof,path,handle):
     if any(row['primary'] or not row['library'] for row in rows if row['handle']!=handle):raise Conflict('Additional non-library or primary project; no takeover')
     return True
 
+EDIT_VERSION='resident-comment-dependencies-v1'
+NODE_FIELDS=set(('objectId','path','parentId','nativeTypeId','applicationId','declaration','implementation','embeddedObjectTypes'))
+
+def editing_view(state):
+    """Only this fixed comment experiment: Application subtree, source and ancestors.
+
+    Background library loading and unrelated non-source tree nodes remain raw
+    observations, not a promise to preserve the entire device configuration.
+    Ownership is still validated on every read. Unknown fields are conservative.
+    """
+    nodes=state['nodes'];aid=guid(state['applicationId']);target=guid(state['targetId'])
+    if not isinstance(nodes,dict) or aid not in nodes or target not in nodes:raise Conflict('Editing dependency identity missing')
+    opened=state['openedProjects']
+    if not isinstance(opened,dict):raise Conflict('Open project observations missing')
+    rows=list(opened.values())
+    if isinstance(state['projectHandle'],bool) or not isinstance(state['projectHandle'],int_types) or state['projectHandle']<0:raise Conflict('Invalid owned handle')
+    if any(not isinstance(row,dict) or isinstance(row.get('handle'),bool) or not isinstance(row.get('handle'),int_types) or row['handle']<0 or type(row.get('primary')) is not bool or type(row.get('library')) is not bool or not isinstance(row.get('path'),string_types) for row in rows):raise Conflict('Incomplete project classification')
+    if any(str(row['handle'])!=key for key,row in opened.items()):raise Conflict('Project observation key differs')
+    owned=opened.get(str(state['projectHandle']))
+    validate_owned_projects(dict(returned=owned,primary=owned,all=rows,readErrors=[]),state['projectPath'],state['projectHandle'])
+    selected=set((aid,target))
+    for oid,row in nodes.items():
+        if not isinstance(row,dict) or not NODE_FIELDS.issubset(row) or guid(row['objectId'])!=oid:raise Conflict('Incomplete node observation')
+        guid(row['nativeTypeId'])
+        if row['parentId'] is not None:guid(row['parentId'])
+        if row['applicationId'] is not None and row['applicationId']!=aid:raise Conflict('Unexpected Application ownership')
+        if not isinstance(row['path'],list) or not row['path'] or any(not isinstance(x,string_types) or not x for x in row['path']):raise Conflict('Incomplete object path')
+        if any(row[k] is not None and not isinstance(row[k],string_types) for k in ('declaration','implementation')) or not isinstance(row['embeddedObjectTypes'],list):raise Conflict('Incomplete source observation')
+        for typ in row['embeddedObjectTypes']:guid(typ)
+        if row['parentId'] is not None and row['parentId'] not in nodes:raise Conflict('Object parent missing from enumeration')
+        if row['applicationId'] is not None or row['declaration'] is not None or row['implementation'] is not None or row['embeddedObjectTypes'] or set(row)-NODE_FIELDS or row['nativeTypeId']==POU:selected.add(oid)
+    for start in list(nodes):
+        seen=set();oid=start
+        while oid is not None:
+            if oid in seen or oid not in nodes:raise Conflict('Dependency ancestry incomplete or cyclic')
+            seen.add(oid);oid=nodes[oid]['parentId']
+        if start in selected:selected.update(seen)
+    result=copy.deepcopy(state);del result['openedProjects']
+    result['nodes']=dict((oid,copy.deepcopy(nodes[oid])) for oid in selected)
+    return dict(versionKind=EDIT_VERSION,state=result)
+
+def memory_version(state):return digest(editing_view(state))
+
+def state_differences(before,after,path=''):
+    if type(before)!=type(after):return [dict(path=path,kind='type',before=before,after=after)]
+    if isinstance(before,dict):
+        rows=[]
+        for key in sorted(set(before)|set(after)):
+            child=path+'/'+key
+            if key not in before or key not in after:rows.append(dict(path=child,kind='added' if key not in before else 'removed',before=before.get(key),after=after.get(key)))
+            else:rows.extend(state_differences(before[key],after[key],child))
+        return rows
+    if canonical(before)==canonical(after):return []
+    return [dict(path=path,kind='ordered-list' if isinstance(before,list) else 'value',before=before,after=after)]
+
+def comparison(before,after):
+    left=editing_view(before);right=editing_view(after)
+    return dict(versionKind=EDIT_VERSION,dependenciesEqual=canonical(left)==canonical(right),
+                beforeMemoryVersion=digest(left),afterMemoryVersion=digest(right),
+                beforeObservationHash=digest(before),afterObservationHash=digest(after),
+                dependencyDifferences=state_differences(left,right),observationDifferences=state_differences(before,after))
+
 class NativeProjectAdapter(object):
     """Only public open/get_children/text getters/text.replace; no business helper auto-save."""
     def __init__(self,projects,path,same_reference,thread_id,observe_ownership=None):
@@ -223,7 +285,7 @@ class ResidentSequence(object):
             if seq>5:raise ValueError('Fixed request sequence finished')
             expected=dict(schemaVersion=1,sequence=seq,requestId=self.intent['requestIds'][seq-1],operationId=self.intent['operationIds'][seq-1],
                           launchId=self.intent['launchId'],projectPath=self.intent['projectPath'],
-                          command=ACTIONS[seq-1],expectedVersion=digest(self.state) if self.state is not None else None,
+                          command=ACTIONS[seq-1],expectedVersion=memory_version(self.state) if self.state is not None else None,
                           previousResultHash=self.previous)
             if type(request.get('sequence')) is not int or type(request.get('schemaVersion')) is not int or request!=expected:raise ValueError('Request scope/order/version differs')
             self._guard()
@@ -238,21 +300,26 @@ class ResidentSequence(object):
                 try:
                     callback_guard();stage[0]='memory-read';current=self.adapter.snapshot();before[0]=copy.deepcopy(current)
                     self.publish('request-%d-before.json'%seq,current)
-                    if self.state is not None and current!=self.state:raise Conflict('Memory or identity changed; user action preserved')
+                    editing_view(current)
+                    if self.state is not None:
+                        checked=comparison(self.state,current);self.publish('request-%d-precondition-check.json'%seq,checked)
+                        if not checked['dependenciesEqual']:raise Conflict('Memory or identity changed; user action preserved')
                     planned=copy.deepcopy(current)
                     if seq in (2,4):
                         target=planned['nodes'][planned['targetId']];old=target['implementation'];newline='\r\n' if '\r\n' in old else '\n'
                         if any(comment in old for comment in COMMENTS[(seq//2)-1:]):raise ValueError('Diagnostic comment already present')
                         new=old+newline+COMMENTS[seq//2-1]+newline;target['implementation']=new
                         # Memory checkpoint includes ALL observed source, including prior unsaved edit.
-                        stage[0]='checkpoint';self.publish('request-%d-memory-checkpoint.json'%seq,dict(state=current,memoryVersion=digest(current),diskHash=self.intent['diskHash']))
+                        stage[0]='checkpoint';self.publish('request-%d-memory-checkpoint.json'%seq,dict(state=current,memoryVersion=memory_version(current),observationHash=digest(current),versionKind=EDIT_VERSION,diskHash=self.intent['diskHash']))
                         callback_guard();stage[0]='predispatch-read';live=self.adapter.snapshot();self.publish('request-%d-predispatch.json'%seq,live)
-                        if live!=current:raise Conflict('Memory changed after checkpoint')
-                        callback_guard();stage[0]='dispatch';self.publish('request-%d-dispatch.json'%seq,dict(request=request,beforeVersion=digest(live),plannedVersion=digest(planned)))
+                        checked=comparison(current,live);self.publish('request-%d-predispatch-check.json'%seq,checked)
+                        if not checked['dependenciesEqual']:raise Conflict('Memory changed after checkpoint')
+                        callback_guard();stage[0]='dispatch';self.publish('request-%d-dispatch.json'%seq,dict(request=request,beforeVersion=memory_version(live),plannedVersion=memory_version(planned),versionKind=EDIT_VERSION,beforeObservationHash=digest(live)))
                         callback_guard()
                         dispatched[0]=True;self.modifications+=1;self.adapter.replace_implementation(new)
                     stage[0]='after-read';after=self.adapter.snapshot();self.publish('request-%d-after.json'%seq,after)
-                    if after!=planned:raise ValueError('Readback differs; no reverse write or recovery save')
+                    checked=comparison(planned,after);self.publish('request-%d-readback-check.json'%seq,checked)
+                    if not checked['dependenciesEqual']:raise ValueError('Readback differs; no reverse write or recovery save')
                     callback_guard();output.append(after)
                 except Exception as error:error_holder.append((error,traceback.format_exc(),stage[0]))
             stage[0]='primary-call'
@@ -260,7 +327,7 @@ class ResidentSequence(object):
             finally:callback_allowed[0]=False
             if error_holder:raise error_holder[0][0]
             if len(output)!=1:raise ValueError('Primary callback completion missing')
-            response=dict(status='memory-verified',request=request,state=output[0],memoryVersion=digest(output[0]),diskHash=self.intent['diskHash'],
+            response=dict(status='memory-verified',request=request,state=output[0],memoryVersion=memory_version(output[0]),observationHash=digest(output[0]),versionKind=EDIT_VERSION,diskHash=self.intent['diskHash'],
                           processIdentity=self.intent['processIdentity'],nativeAttempts=dict((k,self.adapter.attempts[k]-attempts_before[k]) for k in attempts_before),changes=self.modifications,saved=False,reopened=False,saveCalls=0,closeCalls=0,exitCalls=0)
             stage[0]='result-publication';self.publish('result-%d.json'%seq,response)
             self.state=copy.deepcopy(output[0]);self.previous=digest(response);self.completed=seq
@@ -280,7 +347,7 @@ class ResidentSequence(object):
 
 def request_for(session):
     seq=session.completed+1
-    return dict(schemaVersion=1,sequence=seq,requestId=session.intent['requestIds'][seq-1],operationId=session.intent['operationIds'][seq-1],launchId=session.intent['launchId'],projectPath=session.intent['projectPath'],command=ACTIONS[seq-1],expectedVersion=digest(session.state) if session.state is not None else None,previousResultHash=session.previous)
+    return dict(schemaVersion=1,sequence=seq,requestId=session.intent['requestIds'][seq-1],operationId=session.intent['operationIds'][seq-1],launchId=session.intent['launchId'],projectPath=session.intent['projectPath'],command=ACTIONS[seq-1],expectedVersion=memory_version(session.state) if session.state is not None else None,previousResultHash=session.previous)
 
 def process_request_file(session,path):
     def pairs(values):

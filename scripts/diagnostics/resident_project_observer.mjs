@@ -8,13 +8,35 @@ const actions=['read','append-comment-1','read','append-comment-2','read'];
 const comments=['(* 未保存连续请求：第一处注释 *)','(* 未保存连续请求：第二处注释 *)'];
 export function canonical(x){if(Array.isArray(x))return '['+x.map(canonical).join(',')+']';if(x&&typeof x==='object')return '{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+canonical(x[k])).join(',')+'}';return JSON.stringify(x);}
 export const version=x=>sha(Buffer.from(canonical(x)));
+export const editVersion='resident-comment-dependencies-v1';
+const nodeFields=['objectId','path','parentId','nativeTypeId','applicationId','declaration','implementation','embeddedObjectTypes'];
+function guid(x){if(typeof x!=='string'||!(/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(x))||x==='00000000-0000-0000-0000-000000000000')throw Error('Invalid native dependency identity');return x;}
+export function editingView(s){
+ const nodes=s.nodes,aid=guid(s.applicationId),target=guid(s.targetId),h=s.projectHandle;
+ if(!nodes||!nodes[aid]||!nodes[target]||!Number.isInteger(h)||h<0||!s.openedProjects||Array.isArray(s.openedProjects))throw Error('Dependency observations missing');
+ const rows=Object.entries(s.openedProjects),owned=s.openedProjects[String(h)];
+ for(const [key,row] of rows)if(!row||!Number.isInteger(row.handle)||row.handle<0||key!==String(row.handle)||typeof row.path!=='string'||typeof row.primary!=='boolean'||typeof row.library!=='boolean'||(row.handle!==h&&(row.primary||!row.library)))throw Error('Invalid public project classification');
+ if(!owned||!owned.primary||owned.library||owned.path.toLowerCase()!==s.projectPath.toLowerCase())throw Error('Owned primary differs');
+ const selected=new Set([aid,target]);
+ for(const [oid,row] of Object.entries(nodes)){
+  if(!row||!nodeFields.every(k=>Object.hasOwn(row,k))||guid(row.objectId)!==oid)throw Error('Incomplete node');guid(row.nativeTypeId);
+  if(row.parentId!==null){guid(row.parentId);if(!nodes[row.parentId])throw Error('Object parent missing');}
+  if(row.applicationId!==null&&row.applicationId!==aid)throw Error('Unexpected Application');
+  if(!Array.isArray(row.path)||!row.path.length||row.path.some(x=>typeof x!=='string'||!x)||['declaration','implementation'].some(k=>row[k]!==null&&typeof row[k]!=='string')||!Array.isArray(row.embeddedObjectTypes))throw Error('Incomplete source/path');
+  row.embeddedObjectTypes.forEach(guid);
+  if(row.applicationId!==null||row.declaration!==null||row.implementation!==null||row.embeddedObjectTypes.length||Object.keys(row).some(k=>!nodeFields.includes(k))||row.nativeTypeId==='6f9dac99-8de1-4efc-8465-68ac443b7d08')selected.add(oid);
+ }
+ for(const start of Object.keys(nodes)){const seen=new Set();let id=start;while(id!==null){if(seen.has(id)||!nodes[id])throw Error('Dependency ancestry incomplete/cyclic');seen.add(id);id=nodes[id].parentId;}if(selected.has(start))for(const id of seen)selected.add(id);}
+ const state=structuredClone(s);delete state.openedProjects;state.nodes=Object.fromEntries([...selected].map(id=>[id,structuredClone(nodes[id])]));return {versionKind:editVersion,state};
+}
+export const memoryVersion=s=>version(editingView(s));
 export function makeRequest(i,n,prior){if(n<1||n>5)throw Error('Fixed sequence');return {schemaVersion:1,sequence:n,requestId:i.requestIds[n-1],operationId:i.operationIds[n-1],launchId:i.launchId,projectPath:i.projectPath,command:actions[n-1],expectedVersion:prior?.memoryVersion??null,previousResultHash:prior?version(prior):null};}
 export function verifyResult(v,req,prior,identity,i){
  if(v.status!=='memory-verified'||!eq(v.request,req)||!eq(v.processIdentity,identity)||v.diskHash!==i.diskHash||v.saved!==false||v.reopened!==false||v.saveCalls!==0||v.closeCalls!==0||v.exitCalls!==0)throw Error('Request or lifecycle evidence differs');
- if(!v.state||v.memoryVersion!==version(v.state)||v.state.projectPath!==i.projectPath||!Number.isInteger(v.state.projectHandle)||v.state.projectHandle<0)throw Error('Native project identity/version missing');
+ if(!v.state||v.versionKind!==editVersion||v.observationHash!==version(v.state)||v.memoryVersion!==memoryVersion(v.state)||v.state.projectPath!==i.projectPath||!Number.isInteger(v.state.projectHandle)||v.state.projectHandle<0)throw Error('Native project identity/version missing');
  const n=req.sequence,edit=n===2||n===4;
  if(v.changes!==Math.floor(n/2)||v.nativeAttempts.open!==(n===1?1:0)||v.nativeAttempts.replace!==(edit?1:0)||v.nativeAttempts.read!==(edit?3:2))throw Error('Native attempt counts differ');
- if(prior){const wanted=structuredClone(prior.state);if(edit){const t=wanted.nodes[wanted.targetId],old=t.implementation,nl=old.includes('\r\n')?'\r\n':'\n';t.implementation=old+nl+comments[n/2-1]+nl;}if(!eq(wanted,v.state))throw Error('Memory preservation differs');}
+ if(prior){const wanted=structuredClone(prior.state);if(edit){const t=wanted.nodes[wanted.targetId],old=t.implementation,nl=old.includes('\r\n')?'\r\n':'\n';t.implementation=old+nl+comments[n/2-1]+nl;}if(!eq(editingView(wanted),editingView(v.state)))throw Error('Memory preservation differs');}
  return v;
 }
 function ps(code){return JSON.parse(execFileSync(PS,['-NoProfile','-NonInteractive','-Command',code],{encoding:'utf8',windowsHide:true,timeout:10000}).replace(/^\uFEFF/,''));}

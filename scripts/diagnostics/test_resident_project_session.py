@@ -224,8 +224,45 @@ def run_cases_json():
     def background_change():
         x=fixture();check(send(x)['status']=='memory-verified')
         x.projects.all.append(Obj(handle=43,path='added-library',primary=False,library=True))
-        r=send(x);check(r['frozen'] and x.counts['replace']==x.counts['save']==0)
-    case('background library set change after observed baseline stops before edit',background_change)
+        r=send(x);check(r['status']=='memory-verified' and x.counts['replace']==1 and x.counts['save']==0)
+        proof=x.pub['request-2-precondition-check.json'];check(proof['dependenciesEqual'] and proof['observationDifferences'] and proof['beforeObservationHash']!=proof['afterObservationHash'])
+    case('background libraries remain observed while edit dependencies stay stable',background_change)
+    def delayed_node(kind):
+        x=fixture();check(send(x)['status']=='memory-verified')
+        extra=Obj(handle=42,guid=str(uuid.uuid4()),type=str(uuid.uuid4()),is_application=False,is_task=False,
+                  has_textual_declaration=False,has_textual_implementation=False,embedded_object_types=[])
+        extra.get_name=lambda:u'任意非源码名称';extra.get_children=lambda ignored:[]
+        x.project.get_children=lambda ignored:[x.app,extra]
+        if kind=='application-subtree':x.project.get_children=lambda ignored:[x.app];x.app.children.append(extra)
+        if kind=='source':extra.has_textual_declaration=True;extra.textual_declaration=Obj(text=u'VAR_GLOBAL X:BOOL; END_VAR')
+        if kind=='embedded':extra.has_textual_implementation=True;extra.textual_implementation=Obj(text=u'');extra.embedded_object_types=[m.ST]
+        if kind=='missing-parent':extra.guid=x.app.guid
+        r=send(x)
+        if kind=='observation':
+            check(r['status']=='memory-verified' and x.counts['replace']==1)
+            proof=x.pub['request-2-precondition-check.json'];check(proof['dependenciesEqual'] and len(proof['observationDifferences'])==1)
+            check(extra.guid in r['state']['nodes'] and extra.guid not in m.editing_view(r['state'])['state']['nodes'])
+        else:check(r['frozen'] and x.counts['replace']==x.counts['save']==0)
+    for kind in ('observation','application-subtree','source','embedded','missing-parent'):case('dependency projection '+kind,lambda kind=kind:delayed_node(kind))
+    def projection_counter(kind):
+        x=fixture();check(send(x)['status']=='memory-verified');a=x.s.state;b=copy.deepcopy(a)
+        if kind=='ancestor':b['nodes'][x.app.guid]['path']=['OtherApplication']
+        if kind=='unknown-field':b['nodes'][x.target.guid]['futureEvidence']=True
+        if kind=='field-type':b['nodes'][x.task.guid]['taskFields']['priority']['value']=False
+        if kind=='missing-source-field':del b['nodes'][x.target.guid]['implementation']
+        if kind=='missing-parent':b['nodes'][x.target.guid]['parentId']=str(uuid.uuid4())
+        if kind=='parent-cycle':b['nodes'][x.app.guid]['parentId']=x.target.guid
+        try:proof=m.comparison(a,b)
+        except Exception:check(kind in ('missing-source-field','missing-parent','parent-cycle'));return
+        check(not proof['dependenciesEqual'] and proof['dependencyDifferences'])
+    for kind in ('ancestor','unknown-field','field-type','missing-source-field','missing-parent','parent-cycle'):case('editing projection rejects '+kind,lambda kind=kind:projection_counter(kind))
+    def proof_failure(name):
+        x=fixture();check(send(x)['status']=='memory-verified');x.fail.publish=name
+        req=m.request_for(x.s);r=send(x);calls=x.counts['replace']
+        check(r['frozen'] and r['firstError']['message']=='first evidence publication failure' and x.counts['save']==0)
+        check(calls==(1 if name=='request-2-readback-check.json' else 0))
+        check(x.s.accept(req)==r and x.counts['replace']==calls)
+    for name in ('request-2-precondition-check.json','request-2-predispatch-check.json','request-2-readback-check.json'):case('comparison evidence publication failure '+name,lambda name=name:proof_failure(name))
     if sys.platform=='cli':
         def clr_project_fields():
             from System import Int32,Boolean
@@ -235,6 +272,65 @@ def run_cases_json():
     shutil.rmtree(root)
     return json.dumps(dict(passed=all(c['passed'] for c in cases),count=len(cases),cases=cases,samples=samples,nativeIDEStarted=False,engineeringRun=False),ensure_ascii=True)
 
+def run_archive_json(directory):
+    """Replay immutable captured JSON into the real controller; no native project I/O."""
+    def load(name):
+        with open(os.path.join(directory,name),'rb') as f:return json.loads(f.read().decode('utf-8'))
+    original=load('result-1.json');left=original['state'];right=load('request-2-before.json')
+    cases=[]
+    def case(name,fn):
+        try:
+            if not fn():raise AssertionError(name)
+            cases.append(dict(name=name,passed=True))
+        except Exception:cases.append(dict(name=name,passed=False,error=traceback.format_exc()))
+    case('old full-snapshot comparison rejects archived first-to-second read',lambda:left!=right)
+    case('archived edit dependencies equal with raw differences retained',lambda:m.comparison(left,right)['dependenciesEqual'] and bool(m.comparison(left,right)['observationDifferences']))
+    def arbitrary_name():
+        value=copy.deepcopy(right)
+        for oid in set(right['nodes'])-set(left['nodes']):value['nodes'][oid]['path'][-1]=u'不是白名单名称'
+        return m.comparison(left,value)['dependenciesEqual']
+    case('observation-only classification does not use derived node name',arbitrary_name)
+    def extra_unknown():
+        value=copy.deepcopy(right)
+        for oid in set(right['nodes'])-set(left['nodes']):value['nodes'][oid]['futureNativeEvidence']=None
+        return not m.comparison(left,value)['dependenciesEqual']
+    case('unknown fields on observation-only nodes remain conservative dependencies',extra_unknown)
+    for kind in ('source','task-order-comment','parent','unknown-protected-field','missing-source'):
+        def reject(kind=kind):
+            value=copy.deepcopy(right);target=value['nodes'][value['targetId']]
+            if kind=='source':target['implementation']+=u'user change'
+            if kind=='task-order-comment':
+                for node in value['nodes'].values():
+                    if 'calls' in node:node['calls'][0][1]=u'changed'
+            if kind=='parent':target['path'][0]=u'AnotherDevice'
+            if kind=='unknown-protected-field':target['futureNativeEvidence']=False
+            if kind=='missing-source':del value['nodes'][value['targetId']]
+            try:return not m.comparison(left,value)['dependenciesEqual']
+            except m.Conflict:return kind=='missing-source'
+        case('archived counterexample '+kind,reject)
+    sample=[]
+    def controller():
+        class Adapter(object):
+            def __init__(self):self.state=copy.deepcopy(left);self.attempts=dict(open=0,read=0,replace=0);self.last_ownership=None
+            def snapshot(self):
+                if self.attempts['read']==0:self.attempts['open']+=1
+                self.attempts['read']+=1;return copy.deepcopy(self.state)
+            def replace_implementation(self,text):self.attempts['replace']+=1;self.state['nodes'][self.state['targetId']]['implementation']=text
+        adapter=Adapter();published={};pid=original['processIdentity'];path=left['projectPath']
+        intent=dict(projectPath=path,diskHash=original['diskHash'],launchId=str(uuid.uuid4()),requestIds=[str(uuid.uuid4()) for _ in range(5)],operationIds=[str(uuid.uuid4()) for _ in range(5)],processIdentity=pid)
+        intent['fileIdentity']=dict(path=path,realPath=path,fileId='1:123',sha256=original['diskHash'])
+        def publish(name,value):
+            if name in published:raise IOError('Duplicate publication')
+            published[name]=copy.deepcopy(value)
+        session=m.ResidentSequence(intent,adapter,lambda:True,lambda fn:fn(),publish,lambda:pid,lambda ignored:intent['fileIdentity'])
+        a=session.accept(m.request_for(session));adapter.state=copy.deepcopy(right);b=session.accept(m.request_for(session))
+        sample.append(dict(simulated=True,originalBodiesExecuted=False,publications=published,counts=adapter.attempts))
+        return a['status']==b['status']=='memory-verified' and adapter.attempts['replace']==1 and b['state']['nodes'][left['targetId']]['implementation']==left['nodes'][left['targetId']]['implementation']+'\n'+m.COMMENTS[0]+'\n'
+    case('real controller accepts archive-backed dependency view in an offline substitute',controller)
+    return json.dumps(dict(passed=all(x['passed'] for x in cases),count=len(cases),cases=cases,samples=sample,
+                          sourceFiles=[dict(name=n,sha256=m.file_hash(os.path.join(directory,n))) for n in ('result-1.json','request-2-before.json')],
+                          leftViewHash=m.memory_version(left),rightViewHash=m.memory_version(right),nativeIDEStarted=False,engineeringRun=False),ensure_ascii=True)
+
 if __name__=='__main__':
-    value=run_cases_json();print(value)
+    value=run_archive_json(sys.argv[2]) if len(sys.argv)==3 and sys.argv[1]=='--archive' else run_cases_json();print(value)
     if not json.loads(value)['passed']:sys.exit(1)
