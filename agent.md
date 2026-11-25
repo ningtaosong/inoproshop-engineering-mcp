@@ -24,6 +24,8 @@
 
 随后[只读诊断](docs/native-close-cancel-diagnosis.md)在该次退出时间窗确认 OEM `CanClose=false` 取消关闭，异步排队没有保证进度恢复完成。生产帮助函数离线复现这一缺口；公开可靠就绪条件仍待核实，尚未修改产品退出路径或重跑工程，不把原因定位写成修复及真实验收完成。
 
+随后[一次无工程观察](docs/native-idle-observation.md)先保留Job预检首败，再按官方Node机制限定修正诊断器并验证。唯一实际IDE启动取得入口、加载和主线程空工程证据，但OpenForms除唯一MainForm外另有HardwareConfigOutputInfoWnd，脚本总数假设触发停止；FileExit为0，未取得退出回执，父观察器及空IDE现场保留待正常收尾。额外Form未证实是阻塞提示，不作为原关闭故障根因；产品未修、工程冻结及原unknown不变。
+
 `agent.md` 是仓库规划文件，不是自动注入的运行时指令，也不是 `AGENTS.md`。后续执行提示必须明确要求先读最新 main 的本文件和 README；本轮仅为 `add-struct-field` 更新必要的初始化说明及输入 Schema，私人配置和日常固定入口不变，不增加自动审批机制。DSH 欢迎页／认证、CLI 接入与转储诊断单列维护，不另算业务功能完成率。
 
 日常 DSH 已配置 0.38.0 固定构建并有独立连接证据；Desktop 最终日常握手和完整指令进入模型上下文未验证。Codex 沿用独立配置。见[0.38.0 收尾](docs/fb-interface-initializer-0380-merge.md)。
