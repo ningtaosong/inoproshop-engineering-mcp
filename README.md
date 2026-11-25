@@ -4,7 +4,7 @@
 
 从[简明使用指南](docs/getting-started.md)开始；查能力看下方[已交付功能](#已完成功能main)，查剩余主线看[未完成事项](#未完成功能与计划阶段)和[38 项工具范围核对](docs/mcp-scope-status.md)。默认直接编辑指定文件，必要读取后编译、保存重开及目标读回；显式旧副本接口兼容保留，工程比较仅按用户要求执行。
 
-本分支另含[退出观察与命令行收尾维护](docs/exit-observation-maintenance.md)，仅完成离线验证；原准备unknown及封存工程保持，尚未重放真实验收，也未解决OEM退出根因。
+本分支另含[退出观察与命令行收尾维护](docs/exit-observation-maintenance.md)及[工程影响范围补修与独立复验](docs/struct-field-recheck-20261125.md)：正常只读打开、任务读取及服务EOF退出通过；随后新夹具创建缺少IDE退出回执而保持unknown，正式字段新增与CLI未执行。原准备unknown及封存工程保持，OEM退出根因仍未确认。
 
 2026-11-25用户明确开发重点为 **InoProShop 已开放接口的 MCP 封装与真实功能验证**。停止扩展工程隔离及逐次计划审批流程，当前待确认隔离计划不提交；基本参数、身份、占用校验及准确错误报告保留。本分支现按[历史未决结果的工程影响范围](docs/pending-operation-scope.md)收敛全局拦截，只有进程已结束且归属明确时允许无关工程；旧unknown与封存工程不改判，真实验收另行留证。具体规则见下方 `agent.md` 入口。
 
