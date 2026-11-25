@@ -226,6 +226,12 @@ def run_cases_json():
         x.projects.all.append(Obj(handle=43,path='added-library',primary=False,library=True))
         r=send(x);check(r['frozen'] and x.counts['replace']==x.counts['save']==0)
     case('background library set change after observed baseline stops before edit',background_change)
+    if sys.platform=='cli':
+        def clr_project_fields():
+            from System import Int32,Boolean
+            value=Obj(handle=Int32(42),path='native-scalar-fixture',primary=Boolean.Parse('True'),library=Boolean.Parse('False'))
+            check(m.project_view(value)==dict(handle=42,path='native-scalar-fixture',primary=True,library=False))
+        case('installed IronPython CLR Int32 and Boolean match public project field checks',clr_project_fields)
     shutil.rmtree(root)
     return json.dumps(dict(passed=all(c['passed'] for c in cases),count=len(cases),cases=cases,samples=samples,nativeIDEStarted=False,engineeringRun=False),ensure_ascii=True)
 
