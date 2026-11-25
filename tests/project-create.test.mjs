@@ -52,7 +52,7 @@ test('invalid native task evidence freezes without registration; partial target 
  let calls=0;const adapter=new FixtureAdapter(),c=await ctx(t,{execute:async(...args)=>{calls++;const r=await adapter.execute(...args);r.data.creationEvidence.task.interval='t#200ms';return r;}});
  const r=await call(c.s,'project_create',c.args);assert.equal(r.status,'unknown');assert.equal(r.error.code,'CREATE_EVIDENCE_INVALID');const hash=digest(await readFile(c.target));
  assert.equal((await c.s.store.registry()).projects.length,0);await call(c.s,'project_create',c.args);assert.equal(calls,1);assert.equal(digest(await readFile(c.target)),hash);
- await assert.rejects(call(c.s,'project_create',{...c.args,requestId:randomUUID(),projectPath:path.join(c.e.dir,'another.project')}),/未决/);
+ await assert.rejects(call(c.s,'project_create',{...c.args,requestId:randomUUID(),projectPath:path.join(c.e.dir,'another.project')}),e=>e.code==='PENDING_UNKNOWN');
 });
 test('lost result reconciles original native evidence and binds original reserved identity, no new factory',async t=>{
  let calls=0;const adapter=new FixtureAdapter();const c=await ctx(t,{execute:async(...args)=>{calls++;await adapter.execute(...args);throw Error('connection lost after publication');},reconcile:dir=>adapter.reconcile(dir)});

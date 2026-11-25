@@ -91,7 +91,7 @@ test(`partial clear freezes without recovery ${copy?'copy':'direct'} ${fault}`,a
  assert.deepEqual(await counts(x,r),{clear:1,save:fault==='reopen'?1:0});
  if(fault!=='reopen')assert.deepEqual(await readFile(x.s.workingPath),before);
  assert.equal((await x.c.call('session_status')).data.globalFrozen,true);assert.deepEqual(await x.c.call('library_placeholder_clear',x.args),r);
- assert.equal((await x.c.call('project_build',{requestId:randomUUID(),projectId:x.s.projectId,applicationId:app})).status,'unknown');
+ assert.equal((await x.c.call('project_build',{requestId:randomUUID(),projectId:x.s.projectId,applicationId:app})).status,'conflict');
 });
 test('independent service validator rejects raw differences and allows only task/PROGRAM enumeration',async t=>{
  const x=await context(t),r=await x.c.done(await x.c.call('library_placeholder_clear',x.args));assert.equal(r.status,'succeeded',JSON.stringify(r));

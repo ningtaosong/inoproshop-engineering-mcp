@@ -55,6 +55,9 @@ export class EngineeringService {
     try {
     let state:Awaited<ReturnType<typeof assessPending>>;
     state=await this.pending(exclude);
+    // With no unresolved ownership to match, leave path validation to the
+    // existing command path. Queue and native dispatch repeat this assessment.
+    if(state.impacts.length===0)return state;
     const s=project??state.registry.projects.find(s=>s.projectId===args.projectId);
     const paths=[args.projectPath,args.sourcePath,...(s?[s.sourcePath,s.workingPath]:[])].filter((p):p is string=>typeof p==='string');
     const blocked=related(state.impacts,args.projectId??s?.projectId,await targetFiles(paths));

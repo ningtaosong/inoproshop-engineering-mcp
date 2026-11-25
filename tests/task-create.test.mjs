@@ -104,7 +104,7 @@ for(const stage of ['afterAppend','reopen'])test('append freezes when literal No
   assert.equal(digest(checkpoint),x.appendArgs.expectedDiskHash);
   assert.equal(digest(await readFile(x.file))!==x.appendArgs.expectedDiskHash,stage==='reopen');
   assert.deepEqual(await x.call('task_call_append',x.appendArgs),r);
-  await assert.rejects(x.call('task_call_append',{...x.appendArgs,requestId:randomUUID()}),/未决/);
+  await assert.rejects(x.call('task_call_append',{...x.appendArgs,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
   assert.deepEqual(x.writes,[r.operationId]);
 });
 
@@ -133,7 +133,7 @@ for(const [fault,changed] of [['failTaskCallAppend',false],['failTaskAppendReope
   assert.equal(r.data.automaticRollback,false);
   assert.equal(digest(await readFile(x.file))!==x.appendArgs.expectedDiskHash,changed);
   assert.deepEqual(await x.call('task_call_append',x.appendArgs),r);
-  await assert.rejects(x.call('task_call_append',{...x.appendArgs,requestId:randomUUID()}),/未决/);
+  await assert.rejects(x.call('task_call_append',{...x.appendArgs,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
   assert.deepEqual(x.writes,[r.operationId]);
 });
 
@@ -179,7 +179,7 @@ test('task created but bind unconfirmed keeps checkpoint, original exception and
   assert.equal(r.data.automaticRollback,false);
   assert.deepEqual(await readFile(r.data.checkpoint),bytes);
   assert.deepEqual(await x.call('task_create',x.args),r);
-  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
+  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
   assert.deepEqual(x.writes,[r.operationId]);
   assert.deepEqual(await readFile(x.file),bytes);
 });
@@ -237,7 +237,7 @@ for(const [stage,mutate,message,saved] of [
   assert.equal(digest(await readFile(r.data.checkpoint)),x.args.expectedDiskHash);
   assert.equal(digest(await readFile(x.file))!==x.args.expectedDiskHash,saved);
   assert.deepEqual(await x.call('task_create',x.args),r);
-  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
+  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
   assert.deepEqual(x.writes,[r.operationId]);
 });
 
@@ -245,7 +245,7 @@ test('inconsistent saved binding evidence reported as unknown',async t=>{
   const x=await context(t,()=>{},r=>{r.data.calls[0].programId=randomUUID();return r;});
   const r=await x.call('task_create',x.args);
   assert.equal(r.status,'unknown');assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
-  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
+  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
   assert.equal(x.writes.length,1);
 });
 
@@ -254,7 +254,7 @@ test('service freezes when bridge success omits native ST evidence',async t=>{
   const r=await x.call('task_create',x.args);
   assert.equal(r.status,'unknown');
   assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
-  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
+  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
   assert.deepEqual(x.writes,[r.operationId]);
 });
 
@@ -274,7 +274,7 @@ for(const mode of ['direct','copy']){
     if(fault){
       assert.equal(r.data.automaticRollback,false);
       assert.equal(digest(await readFile(x.file))!==args.expectedDiskHash,fault==='reopen');
-      await assert.rejects(x.call('task_call_replace',{...args,requestId:randomUUID()}),/未决/);
+      await assert.rejects(x.call('task_call_replace',{...args,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
       assert.equal(x.writes.length,1);
     }else{
       assert.deepEqual(r.data.after.tasks[0].rawCalls,[['Other','中文'],['PRG_S8Probe','None']]);
@@ -360,7 +360,7 @@ for(const [label,mutate] of [
   assert.equal(r.error.code,'RESULT_CONTRACT_MISMATCH');
   const bytes=await readFile(x.file);
   assert.deepEqual(await x.call('task_create',x.args),r);
-  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),/未决/);
+  await assert.rejects(x.call('task_create',{...x.args,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
   assert.deepEqual(await readFile(x.file),bytes);
   assert.equal(x.writes.length,1);
 });

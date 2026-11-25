@@ -56,7 +56,7 @@ test('已存在精确直接引用返回可核对 no-op，不再次保存',async 
 test('部分添加结果未知时不自动移除；冻结后续写入',async t=>{
  const x=await context(t,false,{failLibraryAdd:true}),r=await x.c.done(await x.c.call('library_reference_add',x.args));assert.equal(r.status,'unknown',JSON.stringify(r));
  const status=await x.c.call('session_status');assert.equal(status.data.globalFrozen,true);
- const follow=await x.c.call('project_build',{requestId:randomUUID(),...x.scope});assert.equal(follow.status,'unknown');
+ const follow=await x.c.call('project_build',{requestId:randomUUID(),...x.scope});assert.equal(follow.status,'conflict');assert.equal(follow.operationId,undefined); // rejected before dispatch; original operation stays unknown
  const same=await x.c.call('operation_status',{operationId:r.operationId});assert.equal(same.status,'unknown');
 });
 for(const copy of [false,true])for(const fault of ['reopen-enumeration','reopen-truncated','reopen-field','reopen-missing-field','reopen-contradiction','reopen-missing-coverage'])
@@ -68,7 +68,7 @@ test(`保存重开后证据不完整，服务独立冻结 ${copy?'copy':'direct'
  const status=await x.c.call('session_status');assert.equal(status.data.globalFrozen,true);
  const same=await x.c.call('operation_status',{operationId:result.operationId});assert.equal(same.status,'unknown');
  const retry=await x.c.call('library_reference_add',x.args);assert.equal(retry.operationId,result.operationId);
- const follow=await x.c.call('project_build',{requestId:randomUUID(),...x.scope});assert.equal(follow.status,'unknown');
+ const follow=await x.c.call('project_build',{requestId:randomUUID(),...x.scope});assert.equal(follow.status,'conflict');assert.equal(follow.operationId,undefined); // rejected before dispatch; original operation stays unknown
 });
 test('写前库清单不完整时拒绝派发，文件不变',async t=>{
  const m=manager();m.enumerationError='Injected native enumeration failure';
