@@ -1,6 +1,6 @@
 # InoProShop Engineering MCP
 
-当前功能分支为 **0.39.0 候选版、38 项 MCP 工具**，基于 main 0.38.0；尚未合并或部署。新增 [普通结构体 DUT 字段](docs/struct-field-add.md)，使用 `variable_edit / add-struct-field`。产品范围是工程工具、契约、InoProShop 适配和必要保护，客户端复用 DSH／Codex。独立 GUI、代码工作台和自建 Agent 客户端不在当前范围，相关提议已作废；使用现成聊天协调开发不等于在产品内建设多 Agent 框架。
+当前功能分支为 **0.39.0 候选版、38 项 MCP 工具**，基于 main 0.38.0；尚未合并或部署。新增 [普通结构体 DUT 字段](docs/struct-field-add.md)，使用 `variable_edit / add-struct-field`；[离线通过，真实验收在准备保存退出不确定时停止](docs/struct-field-add-acceptance.md)，正式新增与CLI任务均未执行。产品范围是工程工具、契约、InoProShop 适配和必要保护，客户端复用 DSH／Codex。独立 GUI、代码工作台和自建 Agent 客户端不在当前范围，相关提议已作废；使用现成聊天协调开发不等于在产品内建设多 Agent 框架。
 
 从[简明使用指南](docs/getting-started.md)开始；查能力看下方[已交付功能](#已完成功能main)，查剩余主线看[未完成事项](#未完成功能与计划阶段)和[38 项工具范围核对](docs/mcp-scope-status.md)。默认直接编辑指定文件，必要读取后编译、保存重开及目标读回；显式旧副本接口兼容保留，工程比较仅按用户要求执行。
 
