@@ -2,9 +2,11 @@
 
 当前功能分支为 **0.39.0 候选版、38 项 MCP 工具**，基于 main 0.38.0；尚未合并或部署。新增 [普通结构体 DUT 字段](docs/struct-field-add.md)，使用 `variable_edit / add-struct-field`；[离线通过，真实验收在准备保存退出不确定时停止](docs/struct-field-add-acceptance.md)，正式新增与CLI任务均未执行。产品范围是工程工具、契约、InoProShop 适配和必要保护，客户端复用 DSH／Codex。独立 GUI、代码工作台和自建 Agent 客户端不在当前范围，相关提议已作废；使用现成聊天协调开发不等于在产品内建设多 Agent 框架。
 
-从[简明使用指南](docs/getting-started.md)开始；查能力看下方[已交付功能](#已完成功能main)，查剩余主线看[未完成事项](#未完成功能与计划阶段)和[38 项工具范围核对](docs/mcp-scope-status.md)。默认直接编辑指定文件，必要读取后编译、保存重开及目标读回；显式旧副本接口兼容保留，工程比较仅按用户要求执行。
+从[简明使用指南](docs/getting-started.md)开始；查能力看下方[已交付功能](#已完成功能main)，查剩余主线看[未完成事项](#未完成功能与计划阶段)和[38 项工具范围核对](docs/mcp-scope-status.md)。直接编辑指定文件，工程比较仅按用户要求执行，显式旧副本接口兼容保留。
 
-本分支另含[退出观察与命令行收尾维护](docs/exit-observation-maintenance.md)及[工程影响范围补修与独立复验](docs/struct-field-recheck-20261125.md)：正常只读打开、任务读取及服务EOF退出通过；随后新夹具创建缺少IDE退出回执而保持unknown，正式字段新增与CLI未执行。原准备unknown及封存工程保持，OEM退出根因仍未确认。
+**2026-11-25 用户确认的默认流程目标：完成所需读取、修改、编译和保存后，保持 InoProShop 与指定工程打开。当前版本尚未实现。** 关闭重开只用于用户明确要求或专项持久化验收，退出只用于明确收尾或维护。现有版本仍逐请求启动 IDE，多个写工具内含保存重开，最终关闭工程并等待 IDE 退出；历史指南及验收中的保存重开记录保留其原时点。下一步先限定同一 MCP 服务、一个自有 IDE 和指定工程的串行请求，见[常驻工程生命周期最小设计](docs/resident-project-lifecycle-plan.md)。跨客户端重连和服务退出后的保留另待验证，不作为已交付能力。
+
+本分支另含[退出观察与命令行收尾维护](docs/exit-observation-maintenance.md)及[工程影响范围补修与独立复验](docs/struct-field-recheck-20261125.md)：正常只读打开、任务读取及服务EOF退出通过；随后新夹具创建缺少IDE退出回执而保持unknown，正式字段新增与CLI未执行。原准备unknown及封存工程保持；[取消关闭链路的诊断](docs/native-close-cancel-diagnosis.md)按原证据保留，自动 FileExit 就绪诊断现已暂停，不改判原操作。
 
 2026-11-25用户明确开发重点为 **InoProShop 已开放接口的 MCP 封装与真实功能验证**。停止扩展工程隔离及逐次计划审批流程，当前待确认隔离计划不提交；基本参数、身份、占用校验及准确错误报告保留。本分支现按[历史未决结果的工程影响范围](docs/pending-operation-scope.md)收敛全局拦截，只有进程已结束且归属明确时允许无关工程；旧unknown与封存工程不改判，真实验收另行留证。具体规则见下方 `agent.md` 入口。
 
