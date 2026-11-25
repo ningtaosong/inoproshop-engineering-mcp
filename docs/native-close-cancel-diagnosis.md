@@ -92,9 +92,9 @@ OEM 原始位置：
 2. **公开读取。** 在主线程只读 `System.Windows.Forms.Application.OpenForms`，要求恰好一个实际类型及程序集指纹匹配的 `MainForm`；从其公开 `LengthyOperationIsActive` getter 读取原值（只准 `BindingFlags.Public | Instance`，不回退非公开反射）。记录实际对象类型、程序集 SHA/MVID、返回类型和值。没有匹配对象、多个对象、读取失败即缺证停止；接口可见不等于实际脚本访问已通过。
 3. **公开事件与采样。** 订阅 .NET `Application.Idle`、该 Form 的公开 `FormClosing`／`FormClosed`，记录当前主线程及 `System.Diagnostics.StackTrace`。用 .NET `Windows.Forms.Timer` 每 100 ms 只读采样，最多 10 秒；Timer 只驱动采样与期限，不把等待 100 ms 或等待若干次当作就绪。回调立即返回，不 Sleep、不同步等待、不调用 DoEvents，也不调用 OEM 内部恢复方法。
 4. **唯一关闭尝试。** 可评审的实验触发点是：脚本尾部标记已发布，某次原生 Idle 回调中公开耗时标志为 false，当前栈不含固定安装件的 `ScriptExecutor.Execute`／`OnApplicationReady`／`MainForm.OnLoad`。这仍是**待证候选**，因为 UpdatePanels 节流可能尚未解除 CanClose。满足后注销触发订阅、先记派发，再调用一次既有公开 FileExit GUID；记录 `void` 返回和公开关闭事件。无条件则 10 秒内停止，FileExit=0。取消、异常或返回不退出均不再派发第二次，不改变原生状态。不以该条件作为产品成功或安全关闭保证。
-5. **独立退出取证。** 父观察器从 spawn 前装好事件处理，记录 process-start、exit、close、命令与事件时间线。业务观察上限 30 秒，再保留 15 秒迟到观察；正常退出只认同实例 code 0／无信号及完整回执。缺证时写 unknown 和首错，不抛未捕获异常结束外层宿主，不强杀或发第二次关闭命令；停止采样和一切新派发，保留 IDE 与观察宿主现场待处理。无法保证这种到期保全方式时，方案不能进入实际执行。
+5. **独立退出取证。** 若使用 Node ChildProcess 父观察器，在 `spawn` 返回后同步安装事件处理，任何 `await` 前完成；记录 process-start、exit、close、命令与事件时间线。业务观察上限 30 秒，再保留 15 秒迟到观察；正常退出只认同实例 code 0／无信号及完整回执。缺证时写 unknown 和首错，不抛未捕获异常结束外层宿主，不强杀或发第二次关闭命令；停止采样和一切新派发，保留 IDE 与观察宿主现场待处理。无法保证这种到期保全方式时，方案不能进入实际执行。
 6. **判定限制。** 若公开耗时值=false、栈已退出但 FormClosing 仍取消，便直接否定该候选条件，停在接口缺口；不能逐步增加等待时间或新工程。若一次正常退出，仅证明这一无工程观察成功，仍需解释为什么足以覆盖进度恢复后才允许关闭，不能据单次正例直接改产品，更不能补判封存工程。
 
-`FormClosing` 事件能否看到 legacy `OnClosing` 最终取消值、当前 Frame 的公开读取是否可达，均是本方案必须实测的事项；本轮没有伪造结果。本方案须先复核授权，当前实际启动次数为零。若没有可靠条件，保留已确认取消链和这些具体接口问题，不继续业务写入试验。
+`FormClosing` 事件能否看到 legacy `OnClosing` 最终取消值、当前 Frame 的公开读取是否可达，均是本方案必须实测的事项；本轮没有伪造结果。本方案须先复核授权，当前实际启动次数为零。在仍无充分就绪条件时，它仅属于一次接口可达性／生命周期观察，不自动延伸为产品修复或业务复验。若没有可靠条件，保留已确认取消链和这些具体接口问题，不继续业务写入试验。
 
 复核材料根目录：`D:\InoPro-CreateExit-Diagnosis-20261125`。原真实包仍为 `D:\InoPro\deliveries\InoPro-review-20261125-121612.zip`（SHA-256 `0a0df5fcd6eb54d0b5f10e857c915842bb48986f9d7ff4f18aa1a980e2f4888a`）。本轮打包只包含诊断、有限原记录副本、原始 IL 与校验结果，不复制工程二进制或私人配置。历史 unknown、隔离、默认环境性能、崩溃根因、CmpLog、脚本信任、Desktop 和 PLC 运行限制继续保留。
