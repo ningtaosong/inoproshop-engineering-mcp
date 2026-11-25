@@ -25,7 +25,7 @@ def run_cases_json():
                 if fail.write=='partial':raise ValueError('first native replace exception')
                 if fail.write=='wrong':self.text+=u'unexpected'
         def node(name,typ,decl=None,impl=None,app=False,task=False):
-            o=Obj(guid=str(uuid.uuid4()),type=typ,is_application=app,is_task=task,
+            o=Obj(handle=42,guid=str(uuid.uuid4()),type=typ,is_application=app,is_task=task,
                   has_textual_declaration=decl is not None,has_textual_implementation=impl is not None,
                   textual_declaration=Text(decl),textual_implementation=Text(impl),embedded_object_types=[m.ST] if impl is not None else [],children=[])
             o.get_name=lambda:name;o.get_children=lambda ignored:list(o.children)
@@ -36,7 +36,7 @@ def run_cases_json():
         for key in m.TASK_FIELDS:setattr(task,key,0)
         task.watchdog=Obj(enabled=False,time=0,time_unit=0,sensitivity=1)
         other=node('Other',m.POU,u'PROGRAM Other\nVAR\nEND_VAR',u'(* leave alone *)')
-        app.children=[target,task,other];project=Obj(path=disk,get_children=lambda ignored:[app])
+        app.children=[target,task,other];project=Obj(handle=42,path=disk,get_children=lambda ignored:[app])
         projects=Obj(primary=None,all=[])
         def open_project(path,primary=True):
             counts['open']+=1;projects.primary=project;projects.all=[project]
@@ -162,6 +162,29 @@ def run_cases_json():
         names=[n.func.attr for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute)]
         check(not set(names).intersection(('save','close','Close','compile','exit','queue','execute','kill')))
     case('adapter never saves closes compiles exits or invokes old business helper',no_hidden_lifecycle)
+    def public_identity():
+        a=Obj(handle=42);b=Obj(handle=42)
+        check(a is not b and m.same_public_identity(a,b))
+        oid=str(uuid.uuid4());a.guid=oid;b.guid=oid.upper()
+        check(m.same_public_identity(a,b))
+        b.guid=str(uuid.uuid4());check(not m.same_public_identity(a,b))
+        b.guid=oid;b.handle=43;check(not m.same_public_identity(a,b))
+    case('public native identity accepts new wrappers, rejects other handle or GUID',public_identity)
+    for change in ('handle','cross-object','invalid-handle','bool-handle','missing-handle'):
+        def native_identity_change(change=change):
+            x=fixture();x.s.adapter.same_reference=m.same_public_identity;check(send(x)['status']=='memory-verified')
+            if change=='handle':x.project.handle=43
+            if change=='cross-object':x.other.handle=43
+            if change=='invalid-handle':x.project.handle=-1
+            if change=='bool-handle':x.project.handle=True
+            if change=='missing-handle':del x.project.handle
+            r=send(x);check(r['status'] in ('conflict','unknown') and x.counts['replace']==x.counts['save']==0)
+        case('native identity protection '+change,native_identity_change)
+    def new_wrappers():
+        x=fixture();x.s.adapter.same_reference=m.same_public_identity;check(send(x)['status']=='memory-verified')
+        x.projects.primary=Obj(handle=x.project.handle,path=x.project.path)
+        check(send(x)['status']=='memory-verified' and x.counts['replace']==1)
+    case('same public project handle across different wrappers preserves memory edit',new_wrappers)
     shutil.rmtree(root)
     return json.dumps(dict(passed=all(c['passed'] for c in cases),count=len(cases),cases=cases,samples=samples,nativeIDEStarted=False,engineeringRun=False),ensure_ascii=True)
 

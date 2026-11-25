@@ -199,15 +199,19 @@ class TwoReadProbe(object):
         if datetime.datetime.utcnow() >= limit:
             raise ValueError('Fixed observation deadline expired')
 
+    def project_status(self):
+        state = dict(primaryIsNone=projects.primary is None,
+                     openProjectCount=len(list(projects.all)), uiPresent=bool(system.ui_present))
+        if state != dict(primaryIsNone=True, openProjectCount=0, uiPresent=True):
+            raise ValueError('Unexpected project or UI state; no project will be touched')
+        return state
+
     def capture(self):
         # This method runs only through the public primary-thread entry.
         current_thread = Thread.CurrentThread.ManagedThreadId
         if self.primary_thread is not None and current_thread != self.primary_thread:
             raise ValueError('Primary thread changed')
-        no_project = dict(primaryIsNone=projects.primary is None,
-                          openProjectCount=len(list(projects.all)), uiPresent=bool(system.ui_present))
-        if no_project != dict(primaryIsNone=True, openProjectCount=0, uiPresent=True):
-            raise ValueError('Unexpected project or UI state; no project will be touched')
+        no_project = self.project_status()
         forms = list(Application.OpenForms)
         mains = [form for form in forms if unicode(form.GetType().FullName) == '_3S.CoDeSys.Frame.MainForm']
         if len(mains) != 1:
@@ -364,7 +368,8 @@ def start():
     # verifies the public callback stack before ready and both actual requests.
 
 
-try:
-    start()
-except Exception as error:
-    fail('entry', error)
+if __name__ == '__main__':
+    try:
+        start()
+    except Exception as error:
+        fail('entry', error)

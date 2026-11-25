@@ -3,7 +3,7 @@
 
 Standalone diagnostic module, not registered in the MCP product. The caller must
 pass current formal admission on EVERY request and schedule via the public main
-thread API. Unknown creation ownership currently blocks a real run.
+thread API. No product engineering tool is dispatched by this module.
 """
 import os
 import re
@@ -64,11 +64,24 @@ def scalar(value):
 
 def normalized_path(path):return os.path.normcase(os.path.abspath(path))
 
+def public_handle(value):
+    handle=value.handle
+    if isinstance(handle,bool) or not isinstance(handle,int_types) or handle<0:raise Conflict('Public project handle unavailable')
+    return int(handle)
+
+def same_public_identity(a,b):
+    # IScriptTreeObject.handle is the native project handle, not a wrapper address.
+    # ScriptObject identity additionally includes its GUID; no private member access.
+    if a is None or b is None:return False
+    if public_handle(a)!=public_handle(b):return False
+    ag=getattr(a,'guid',None);bg=getattr(b,'guid',None)
+    return (ag is None and bg is None) or (ag is not None and bg is not None and guid(ag)==guid(bg))
+
 class NativeProjectAdapter(object):
     """Only public open/get_children/text getters/text.replace; no business helper auto-save."""
     def __init__(self,projects,path,same_reference,thread_id):
         self.projects=projects;self.path=path;self.same_reference=same_reference
-        self.thread_id=thread_id;self.thread=None;self.project=None;self.target=None
+        self.thread_id=thread_id;self.thread=None;self.project=None;self.target=None;self.handle=None
         self.attempts=dict(open=0,replace=0,read=0)
 
     def _owned(self):
@@ -79,7 +92,9 @@ class NativeProjectAdapter(object):
             if self.projects.primary is not None or len(list(self.projects.all))!=0:raise Conflict('Unowned open project')
             self.attempts['open']+=1
             self.project=self.projects.open(self.path,primary=True)
+            self.handle=public_handle(self.project)
         if not self.same_reference(self.project,self.projects.primary) or len(list(self.projects.all))!=1:raise Conflict('Owned project handle changed or closed')
+        if public_handle(self.project)!=self.handle:raise Conflict('Owned native handle changed')
         if normalized_path(source_text(self.project.path))!=normalized_path(self.path):raise Conflict('Project path changed')
 
     def snapshot(self):
@@ -88,6 +103,7 @@ class NativeProjectAdapter(object):
         def walk(parent,path,aid=None):
             for item in list(parent.get_children(False)):
                 oid=guid(item.guid)
+                if public_handle(item)!=self.handle:raise ValueError('Object belongs to another native project handle')
                 if oid in nodes:raise ValueError('Duplicate object identity')
                 name=source_text(item.get_name());here=path+[name]
                 app=oid if bool(getattr(item,'is_application',False)) else aid
@@ -115,7 +131,7 @@ class NativeProjectAdapter(object):
         if row['nativeTypeId']!=POU or ST not in row['embeddedObjectTypes'] or not isinstance(row['implementation'],string_types) or not re.match(r'^\s*PROGRAM\s+PLC_PRG\b',row['declaration'] or '',re.I):raise ValueError('Native root ST PROGRAM evidence incomplete')
         if self.target is not None and not self.same_reference(self.target,objects[oid]):raise ValueError('Target object instance changed')
         self.target=objects[oid]
-        return dict(projectPath=source_text(self.project.path),applicationId=apps[0],targetId=oid,nodes=nodes,thread=self.thread)
+        return dict(projectPath=source_text(self.project.path),projectHandle=self.handle,applicationId=apps[0],targetId=oid,nodes=nodes,thread=self.thread)
 
     def replace_implementation(self,value):
         self._owned()
