@@ -87,3 +87,5 @@ node "$fixed\scripts\diagnostics\submit_resident_round.mjs" $intent 2
 本轮只有代码与离线临时目录变化；未向旧接收器发请求，没有新IDE、MCP工程服务或模型任务。原历史unknown、隔离、账本、IPC、检查点和锁不操作。日常DSH、Codex配置、固定入口及main不变。保留旧失败、默认性能问题、崩溃根因、CmpLog、脚本信任、Desktop及运行限制。
 
 入口：[当前路线](../agent.md#当前路线与范围变更规则)、[生命周期设计](resident-project-lifecycle-plan.md)、[首次读取及比较补修](resident-project-memory-recheck.md)。
+
+后续时点：2026-11-26经明确授权正常关闭旧实例后，[唯一第一轮真实测试因中文常量加载乱码而停止](resident-round1-20261126.md)。一次实际替换已发生，第三步及第二轮均未执行；新实例未保存并保留。上文离线结果和原时点的维护授权范围不改写。
