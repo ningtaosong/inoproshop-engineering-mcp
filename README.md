@@ -4,9 +4,9 @@
 
 从[简明使用指南](docs/getting-started.md)开始；查能力看下方[已交付功能](#已完成功能main)，查剩余主线看[未完成事项](#未完成功能与计划阶段)和[38 项工具范围核对](docs/mcp-scope-status.md)。直接编辑指定文件，工程比较仅按用户要求执行，显式旧副本接口兼容保留。
 
-**同一工程连续操作已接入候选产品，真实 MCP／DSH 验收尚未执行。** 新推荐流程显式使用 `project_open(sessionMode="resident")`，随后每条独立指令读取当前内存并按版本修改。只迁移 `object_list`、`object_read` 和普通根ST POU实现区的 `code_apply_change`，其他工程工具在该模式明确拒绝。省略模式或显式batch仍保留旧行为，不代表旧38项工具全部支持保持打开。详见[接口、迁移清单及停止条件](docs/resident-mcp-session.md)。
+**同一工程连续操作已接入候选产品，真实 MCP 第一轮在零源码派发的版本冲突处停止；DSH 尚未验收。** [本轮记录](docs/resident-mcp-first-round-20261126.md)：打开成功后，直接库清单由12增17；第一页额外绑定打开版本，被严格守卫拒绝，未重试或执行5秒→7秒修改。新推荐流程显式使用 `project_open(sessionMode="resident")`，随后每条独立指令读取当前内存并按版本修改。只迁移 `object_list`、`object_read` 和普通根ST POU实现区的 `code_apply_change`，其他工程工具在该模式明确拒绝。省略模式或显式batch仍保留旧行为，不代表旧38项工具全部支持保持打开。详见[接口、迁移清单及停止条件](docs/resident-mcp-session.md)。
 
-原[第一轮](docs/resident-round1-utf8-recheck.md)和[同实例第二轮](docs/resident-round2-utf8-recheck.md)属于固定诊断器；两条中文注释未保存，接收器已停止。该实例保持原状，未被新产品接管。诊断成功不能替代正式MCP/DSH连续会话验收；[早期乱码失败](docs/resident-round1-20261126.md)、[加载补修](docs/resident-loader-utf8-fix.md)和[生命周期设计](docs/resident-project-lifecycle-plan.md)保留原时点。当前产品不编译、不保存、不关闭常驻工程，不支持跨客户端恢复；用户手动源码修改须重读，无法解释的磁盘变化或原句柄关闭则停止，不覆盖。
+原[第一轮](docs/resident-round1-utf8-recheck.md)和[同实例第二轮](docs/resident-round2-utf8-recheck.md)属于固定诊断器；当时两条中文注释未保存，接收器已停止。诊断实例随后按授权不保存正常关闭；未由新产品接管。诊断成功不能替代正式MCP/DSH连续会话验收；[早期乱码失败](docs/resident-round1-20261126.md)、[加载补修](docs/resident-loader-utf8-fix.md)和[生命周期设计](docs/resident-project-lifecycle-plan.md)保留原时点。当前产品不编译、不保存、不关闭常驻工程，不支持跨客户端恢复；用户手动源码修改须重读，无法解释的磁盘变化或原句柄关闭则停止，不覆盖。
 
 本分支另含[退出观察与命令行收尾维护](docs/exit-observation-maintenance.md)及[工程影响范围补修与独立复验](docs/struct-field-recheck-20261125.md)：正常只读打开、任务读取及服务EOF退出通过；随后新夹具创建缺少IDE退出回执而保持unknown，正式字段新增与CLI未执行。原准备unknown及封存工程保持；[取消关闭链路的诊断](docs/native-close-cancel-diagnosis.md)按原证据保留，自动 FileExit 就绪诊断现已暂停，不改判原操作。
 
