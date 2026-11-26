@@ -1,4 +1,14 @@
 import {errorDetails} from './exit-journal.js';
+import {DomainError} from './contracts.js';
+
+// Kept separate so offline lifecycle tests exercise the actual server gate.
+export async function releaseObservedLease(adapter:{residentOwned?():boolean;assertResidentRelease?():Promise<void>},release:()=>Promise<void>) {
+  if(adapter.residentOwned?.()){
+    if(!adapter.assertResidentRelease)throw new DomainError('conflict','RESIDENT_LEASE_RETAINED','缺少常驻退出核验；客户端断开不是关闭或保存授权');
+    await adapter.assertResidentRelease();
+  }
+  await release();
+}
 
 export interface LifecycleActions {
   stopAdmission():void;

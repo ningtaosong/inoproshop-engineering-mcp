@@ -10,7 +10,7 @@ import {toolOutput} from './native-output.js';
 import {placeholderClearDelivery} from './placeholder-clear-delivery.js';
 import {libraryInspectDescription, libraryPlaceholderResolveDescription,libraryPlaceholderClearDescription} from './library-guidance.js';
 import {randomUUID} from 'node:crypto';
-import {ServiceLifecycle} from './service-lifecycle.js';
+import {ServiceLifecycle,releaseObservedLease} from './service-lifecycle.js';
 import {ExitJournal,diagnosticStderr,errorDetails} from './exit-journal.js';
 import {ownProcessIdentity} from './lease-process.js';
 
@@ -76,7 +76,7 @@ const runId=randomUUID();
 const journal=new ExitJournal(path.join(config.dataDir,'service-lifecycle',runId),
   ownProcessIdentity().then(identity=>({runId,pid:process.pid,processIdentity:identity??null,entry:process.argv[1],version:VERSION})));
 const lifecycle=new ServiceLifecycle({stopAdmission:()=>service.stopAdmission(),drain:()=>service.drain(),
-  observe:async()=>{await service.adapter.waitForObservations?.();},status:()=>service.status(),release:async()=>{if(service.adapter.residentOwned?.())throw new DomainError('conflict','RESIDENT_LEASE_RETAINED','常驻会话生命周期未释放；客户端断开不是关闭或保存授权');await service.store.release();},
+  observe:async()=>{await service.adapter.waitForObservations?.();},status:()=>service.status(),release:()=>releaseObservedLease(service.adapter,()=>service.store.release()),
   close:()=>server.close(),record:(event,data)=>journal.record(event,data),
   failed:error=>{process.exitCode=1;diagnosticStderr({kind:'service-shutdown-error',runId,error:errorDetails(error)});}});
 const shutdown=(reason:string,error?:unknown)=>{void lifecycle.request(reason,error);};

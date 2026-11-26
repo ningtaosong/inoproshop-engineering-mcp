@@ -68,10 +68,21 @@ export async function verifyResidentResult(request:any,result:Reply,directory:st
 export class ResidentChannel {
  private originalFileId?:string;
  private child?:ChildProcess;private identity?:ProcessIdentity;private root?:string;private launchId?:string;private project?:string;private sequence=0;
- private failure?:unknown;private exited=false;private exitObservation?:Promise<void>;private busy=false;
+ private failure?:unknown;private exited=false;private exitObservation?:Promise<void>;private observationSettled=false;private exitRecord?:any;private busy=false;
  constructor(private config:Config,private productRoot:string,private hooks:{spawn?:typeof spawn;probe?:ProcessProbe;occupancy?:()=>Promise<void>}={}){}
  owned(){return !!this.child;}
  async observe(){if(this.child)await this.exitObservation;}
+ async assertReleaseReady(){
+  if(!this.child)return;
+  const fail=()=>new DomainError('conflict','RESIDENT_LEASE_RETAINED','原IDE正常退出及取证未完整确认；不关闭、保存或释放');
+  if(this.busy||this.failure||!this.exited||!this.observationSettled||!this.identity||!this.root||!this.exitRecord)throw fail();
+  const [start,exit]=await Promise.all([readJson(path.join(this.root,'process-start.json')),readJson(path.join(this.root,'process-exit.json'))]);
+  if(start?.launchId!==this.launchId||!equal(start.processIdentity,this.identity)||!equal(exit,this.exitRecord)||
+   exit?.launchId!==this.launchId||exit?.pid!==this.identity.pid||!equal(exit?.processIdentity,this.identity)||exit?.code!==0||exit?.signal!==null||
+   exit?.lastSequence!==this.sequence||!Number.isFinite(Date.parse(exit?.at??'')))throw fail();
+  // Retain child/ownership: a normal exit permits lease release only during
+  // server shutdown, never batch fallback, relaunch or cross-service takeover.
+ }
  private async live(){if(this.failure)throw this.failure;if(this.exited||!this.child?.pid||!this.identity)throw new DomainError('unknown','RESIDENT_INSTANCE_LOST','原IDE实例无法确认；不重开或重放');const p=await(this.hooks.probe??probeProcess)(this.child.pid);if(p.state!=='running'||!sameProcess(p.identity,this.identity))throw new DomainError('unknown','RESIDENT_INSTANCE_CHANGED','原IDE创建身份或运行状态不符');}
  private async wait(file:string,deadline:number){for(;;){await this.live();const fail=await readJson(path.join(this.root!,'first-error.json'));if(fail)throw new DomainError('unknown','RESIDENT_NATIVE_ERROR',JSON.stringify(fail));const value=await readJson(file);if(value)return value;if(await readJson(path.join(this.root!,'receiver-stopped.json')))throw new DomainError('unknown','RESIDENT_RECEIVER_STOPPED','原接收器已停止，保留现场');if(Date.now()>=deadline)throw new DomainError('unknown','RESIDENT_TIMEOUT','本次请求超时，停止派发；不关闭或重放');await new Promise(r=>setTimeout(r,50));}}
  private async launch(project:string){
@@ -94,11 +105,12 @@ export class ResidentChannel {
   this.exitObservation=new Promise<void>(resolve=>{
    const publications:Promise<void>[]=[];
    const record=(name:string,value:unknown)=>{const pending=exclusiveJson(path.join(this.root!,name),value).catch(e=>{this.failure??=e;});publications.push(pending);return pending;};
-   const finish=()=>{void Promise.allSettled(publications).then(()=>resolve());};
+   const finish=()=>{void Promise.allSettled(publications).then(()=>{this.observationSettled=true;resolve();});};
    this.child!.once('error',e=>{this.failure??=new DomainError('unknown','RESIDENT_PROCESS_ERROR',e.message);
     record('process-error.json',{launchId:this.launchId,pid:this.child!.pid??null,error:errorDetails(e)});if(!this.child!.pid)finish();});
    this.child!.once('exit',(code,signal)=>{this.exited=true;
-    record('process-exit.json',{launchId:this.launchId,pid:this.child!.pid,processIdentity:this.identity??null,code,signal:signal??null,at:new Date().toISOString(),lastSequence:this.sequence});finish();});
+    this.exitRecord={launchId:this.launchId,pid:this.child!.pid,processIdentity:this.identity??null,code,signal:signal??null,at:new Date().toISOString(),lastSequence:this.sequence};
+    record('process-exit.json',this.exitRecord);finish();});
    this.child!.once('close',()=>{if(!this.exited){this.failure??=new DomainError('unknown','RESIDENT_EXIT_MISSING','close without exit event');
     record('process-close-without-exit.json',{launchId:this.launchId,pid:this.child!.pid??null,processIdentity:this.identity??null,exitCode:null,exitConfirmed:false,error:errorDetails(this.failure)});finish();}});
   });

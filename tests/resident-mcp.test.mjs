@@ -1,5 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import {promises as fs} from 'node:fs';import path from 'node:path';import os from 'node:os';import {randomUUID} from 'node:crypto';
 import {ResidentChannel,residentDependencies as deps,residentHash as hash,residentObject,verifyResidentResult} from '../dist/resident.js';
+import {ServiceLifecycle,releaseObservedLease} from '../dist/service-lifecycle.js';
+import {verifyClosedResident} from '../dist/resident-reopen.js';
 import {EngineeringService} from '../dist/service.js';import {digest,readJson} from '../dist/storage.js';import {exclusiveJson} from '../dist/exit-journal.js';import {schemas,outputSchemas,VERSION} from '../dist/contracts.js';
 const APP='10000000-0000-4000-8000-000000000001',OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
 function state(file){const row=(id,parent,name,type,d,i)=>({objectId:id,applicationId:APP,parentId:parent,path:parent?['Application',name]:['Application'],nativeTypeId:type,declaration:d,implementation:i,embeddedObjectTypes:i===null?[]:[ST]});return {projectPath:file,projectHandle:0,thread:9,applications:[APP],openedProjects:{'0':{handle:0,path:file,library:false,primary:true}},nodes:{[APP]:row(APP,null,'Application',APP,null,null),[OBJ]:row(OBJ,APP,'Logic',POU,'PROGRAM Logic\nVAR\nx: DINT;\nEND_VAR','x := 1; // 中文')}};}
@@ -60,6 +62,94 @@ test('resident service: unadapted build/save/create/copy/variables never use bat
 test('resident same-path file replacement is blocked even with identical bytes',async t=>{const f=await fixture(t);await fs.rename(f.file,f.file+'.original');await fs.copyFile(f.file+'.original',f.file);const r=await f.read();assert.equal(r.error.code,'RESIDENT_FILE_REPLACED');assert.equal(f.n.requests.length,1);});
 for(const fault of ['wrong-path','saved','missing-completion','exit'])test('resident evidence failure freezes without retry: '+fault,async t=>{const f=await fixture(t);f.n.fault=fault;const r=await f.read();assert.equal(r.status,'unknown',JSON.stringify(r));const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.launches,1);});
 test('resident list independent result identity check',async t=>{const f=await fixture(t);f.n.fault='list-row';const r=await f.call('object_list',{...f.target,offset:0,limit:50});assert.equal(r.status,'unknown');});
+
+test('normal resident exit followed by EOF permits lifecycle release, without losing owned routing',async t=>{
+ const f=await fixture(t);let released=0,closed=0;const errors=[];
+ const lifecycle=new ServiceLifecycle({stopAdmission:()=>f.service.stopAdmission(),drain:()=>f.service.drain(),
+  observe:()=>f.channel.observe(),status:async()=>({status:'succeeded',data:{writeFrozen:false,pending:[]}}),
+  release:()=>releaseObservedLease({residentOwned:()=>f.channel.owned(),assertResidentRelease:()=>f.channel.assertReleaseReady()},async()=>{released++;}),
+  close:async()=>{closed++;},record:async()=>{},failed:e=>errors.push(e)});
+ const ending=lifecycle.request('stdin-end');await new Promise(r=>setTimeout(r,20));assert.equal(released,0);assert.equal(closed,0);
+ f.n.running=false;f.n.child.emit('exit',0,null);await ending;
+ assert.equal(released,1,JSON.stringify(errors.map(e=>e.message)));assert.equal(closed,1);assert.deepEqual(errors,[]);
+ assert.equal(f.channel.owned(),true,'ownership remains a routing barrier after exit');
+ await assert.rejects(f.channel.execute({operationId:randomUUID(),requestId:'no-reopen',command:'inspect',projectPath:f.file,args:{}},path.join(f.root,'no-reopen'),async()=>{}));
+ assert.equal(f.n.launches,1);
+});
+
+for(const fault of ['live','nonzero','signal','null-code','close-without-exit','exit-publication','missing-start','changed-exit','changed-start','prior-unknown'])test('resident lease retained: '+fault,async t=>{
+ const f=await fixture(t);let released=0;
+ if(fault==='prior-unknown'){f.n.fault='wrong-path';assert.equal((await f.read()).status,'unknown');}
+ if(fault==='exit-publication')await fs.mkdir(path.join(f.n.intent.directory,'process-exit.json'));
+ if(fault==='live'){
+  await assert.rejects(releaseObservedLease({residentOwned:()=>true,assertResidentRelease:()=>f.channel.assertReleaseReady()},async()=>{released++;}));
+ }else{
+  f.n.running=false;
+  if(fault==='close-without-exit')f.n.child.emit('close',null,null);
+  else f.n.child.emit('exit',fault==='nonzero'?23:fault==='null-code'?null:0,fault==='signal'?'SIGTERM':null);
+  await f.channel.observe();
+  if(fault==='missing-start')await fs.unlink(path.join(f.n.intent.directory,'process-start.json'));
+  if(fault==='changed-exit'){const p=path.join(f.n.intent.directory,'process-exit.json'),r=await readJson(p);r.processIdentity.startId='different';await fs.writeFile(p,JSON.stringify(r));}
+  if(fault==='changed-start'){const p=path.join(f.n.intent.directory,'process-start.json'),r=await readJson(p);r.launchId=randomUUID();await fs.writeFile(p,JSON.stringify(r));}
+  await assert.rejects(releaseObservedLease({residentOwned:()=>true,assertResidentRelease:()=>f.channel.assertReleaseReady()},async()=>{released++;}));
+ }
+ assert.equal(released,0);assert.equal(f.channel.owned(),true);assert.equal(f.n.launches,1);
+});
+
+test('exit receipt while a resident request is in flight cannot authorize release',async t=>{
+ const f=await fixture(t);f.n.fault='timeout';const pending=f.read();
+ for(let i=0;i<100&&f.n.requests.length<2;i++)await new Promise(r=>setTimeout(r,5));
+ assert.equal(f.n.requests.length,2);f.n.running=false;f.n.child.emit('exit',0,null);
+ await assert.rejects(f.channel.assertReleaseReady());assert.equal((await pending).status,'unknown');await f.channel.observe();await assert.rejects(f.channel.assertReleaseReady());
+});
+
+test('lifecycle pending or frozen state retains lease even with normal resident exit',async t=>{
+ const f=await fixture(t);f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();
+ for(const data of [{writeFrozen:true,pending:[]},{writeFrozen:false,pending:[{operationId:'pending'}]}]){
+  let released=0;const lifecycle=new ServiceLifecycle({stopAdmission:()=>{},drain:async()=>{},observe:()=>f.channel.observe(),status:async()=>({status:'succeeded',data}),
+   release:()=>releaseObservedLease({residentOwned:()=>true,assertResidentRelease:()=>f.channel.assertReleaseReady()},async()=>{released++;}),close:async()=>{},record:async()=>{},failed:()=>{}});
+  await lifecycle.request('stdin-end');assert.equal(released,0);
+ }
+});
+
+test('owned adapter without an exit release verifier remains retained',async()=>{
+ let released=0;await assert.rejects(releaseObservedLease({residentOwned:()=>true},async()=>{released++;}));assert.equal(released,0);
+});
+
+test('explicit new service project_open reaches native fresh open only after proven closed unchanged session',async t=>{
+ const f=await fixture(t);f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();await f.service.store.release();
+ const oldSession=await f.service.store.session();let calls=0,newRequest;
+ const next=new EngineeringService(f.config,{residentOwned:()=>false,executeResident:async req=>{calls++;newRequest=req;throw Error('offline fixture stops before new native launch');},execute:async()=>{throw Error('batch forbidden');},reconcile:async()=>{throw Error('reconcile forbidden');}},
+  {probe:async()=>({state:'exited'})});
+ let result=await next.call('project_open',{requestId:'explicit-reopen',projectPath:f.file,applicationId:APP,sessionMode:'resident'});
+ while(result.status==='running'){await new Promise(r=>setTimeout(r,5));result=await next.call('operation_status',{operationId:result.operationId});}
+ assert.equal(calls,1,JSON.stringify(result));assert.equal(newRequest.command,'inspect');
+ const op=await next.store.operation(result.operationId);assert.equal(op.project.projectId,oldSession.projectId);assert.notEqual(op.project.sessionId,oldSession.sessionId);
+ assert.equal((await next.store.session()).sessionId,oldSession.sessionId,'failed new open must not rewrite prior registry');await next.store.release();
+});
+
+for(const fault of ['none','live-ide','live-service','unconfirmed','missing-exit','nonzero','missing-start','exit-identity','disk-change','file-replaced','unknown','different-launch','sequence-gap','missing-completion','missing-verification','request-fingerprint','root-stop'])test('closed resident fresh-open proof '+fault,async t=>{
+ const f=await fixture(t);f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();
+ const s=await f.service.store.session(),anchor=await f.service.store.operation(s.lastStateOperationId),dir=f.n.intent.directory,ipc=anchor.bridge.directory;
+ const change=async(file,fn)=>{const v=await readJson(file);fn(v);await fs.writeFile(file,JSON.stringify(v));};
+ if(fault==='missing-exit')await fs.unlink(path.join(dir,'process-exit.json'));
+ if(fault==='nonzero')await change(path.join(dir,'process-exit.json'),x=>x.code=23);
+ if(fault==='missing-start')await fs.unlink(path.join(dir,'process-start.json'));
+ if(fault==='exit-identity')await change(path.join(dir,'process-exit.json'),x=>x.processIdentity.startId='123');
+ if(fault==='disk-change')await fs.appendFile(f.file,'changed');
+ if(fault==='file-replaced'){await fs.rename(f.file,f.file+'.old');await fs.copyFile(f.file+'.old',f.file);}
+ if(fault==='unknown'){anchor.status='unknown';await f.service.store.saveOp(anchor);}
+ if(fault==='different-launch'){const other=structuredClone(anchor);other.operationId=randomUUID();other.requestId=randomUUID();other.bridge.launchId=randomUUID();await f.service.store.saveOp(other);}
+ if(fault==='sequence-gap')await change(path.join(dir,'process-exit.json'),x=>x.lastSequence++);
+ if(fault==='missing-completion')await fs.unlink(path.join(ipc,'completed.json'));
+ if(fault==='missing-verification')await fs.unlink(path.join(ipc,'service-verification.json'));
+ if(fault==='request-fingerprint')await change(path.join(ipc,'request.json'),x=>x.requestFingerprint='wrong');
+ if(fault==='root-stop')await fs.writeFile(path.join(dir,'stop.json'),'{}');
+ const probe=async pid=>fault==='unconfirmed'?{state:'unconfirmed',reason:'fixture'}:fault==='live-ide'&&pid===anchor.bridge.pid?{state:'running',identity:(await readJson(path.join(dir,'process-start.json'))).processIdentity}:fault==='live-service'&&pid===anchor.ownerPid?{state:'running',identity:anchor.ownerIdentity}:{state:'exited'};
+ if(fault==='none'){const proof=await verifyClosedResident(f.service.store,s,'new-explicit',probe);assert.equal(proof.priorSessionId,s.sessionId);assert.equal(proof.diskHash,s.diskHash);}
+ else await assert.rejects(verifyClosedResident(f.service.store,s,'new-explicit',probe),e=>e.code==='RESIDENT_RECONNECT_UNSUPPORTED');
+ assert.equal(f.n.launches,1);assert.equal(f.n.writes,0);
+});
 test('resident write completion missing remains unknown, duplicate and reconcile do not rewrite',async t=>{const f=await fixture(t),r=await f.read();f.n.fault='missing-completion';const changed=await f.change(r,'uncertain');assert.equal(changed.status,'unknown');assert.equal(f.n.writes,1);assert.equal((await f.change(r,'uncertain')).operationId,changed.operationId);await f.call('operation_status',{operationId:changed.operationId,reconcile:true});assert.equal(f.n.writes,1);});
 test('resident request timeout creates stop evidence, no automatic retry',async t=>{const f=await fixture(t);f.n.fault='timeout';assert.equal((await f.read()).error.code,'RESIDENT_TIMEOUT');assert.ok(await readJson(path.join(f.n.intent.directory,'stop.json')));assert.equal(f.n.writes,0);});
 test('resident lifecycle observer waits for real exit and does not request it',async t=>{const f=await fixture(t);let done=false;const pending=f.channel.observe().then(()=>done=true);await new Promise(r=>setTimeout(r,30));assert.equal(done,false);assert.equal(f.n.running,true);f.n.running=false;f.n.child.emit('exit',0,null);await pending;assert.equal(done,true);});

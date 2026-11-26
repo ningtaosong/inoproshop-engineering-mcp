@@ -18,6 +18,7 @@ import {boundNativeReply} from './native-output.js';
 import {captureReply,captureSnapshot,compareReply,type Snapshot} from './comparison.js';
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
+import {verifyClosedResident} from './resident-reopen.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskCallInventoryDifference,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {organizationResult} from './organization.js';
@@ -877,7 +878,13 @@ export class EngineeringService {
           }
         }
       }
-      if(session.sessionMode==='resident'&&!this.adapter.residentOwned?.())throw new DomainError('conflict','RESIDENT_RECONNECT_UNSUPPORTED','跨服务恢复常驻句柄未支持；保留原实例');
+      if(session.sessionMode==='resident'&&!this.adapter.residentOwned?.()){
+        if(op.tool!=='project_open'||a.sessionMode!=='resident')throw new DomainError('conflict','RESIDENT_RECONNECT_UNSUPPORTED','仅明确重新打开已正常关闭的原文件；不接管或恢复内存');
+        const proof=await verifyClosedResident(this.store,session,op.operationId,this.pendingOptions.probe);
+        const directory=this.store.file('ipc/'+op.operationId);await fs.mkdir(directory,{recursive:true});
+        const nextSessionId=randomUUID();await fs.writeFile(path.join(directory,'resident-reopen-precheck.json'),JSON.stringify({operationId:op.operationId,requestId:op.requestId,newSessionId:nextSessionId,...proof},null,2),{flag:'wx'});
+        session={...session,sessionId:nextSessionId,buildApplicable:false};
+      }
       if(op.tool==='project_open'&&a.sessionMode==='resident'){
         if(session.storageMode!=='direct')throw new DomainError('unsupported','RESIDENT_DIRECT_ONLY','resident首版只直接打开指定文件');
         session={...session,sessionMode:'resident'};

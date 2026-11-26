@@ -1,0 +1,1013 @@
+{
+  "source": "Prior real MCP first-round archive, dependency projection only; no new IDE request",
+  "archiveSha256": "6ac4fd6b2359e3f604d98d3da65da702aaca03a09c08f01733cf1255e377bfcd",
+  "snapshots": [
+    {
+      "operationId": "ffcb9e7d-06ca-4d1d-959f-c56ab3e7a8e8",
+      "sourceSha256": "eec8e133243b678fbc8acae792b68e510b705beec8ad60976447977c0883898f",
+      "dependencies": {
+        "scheme": "resident-st-implementation-v1",
+        "projectPath": "D:\\InoPro-ResidentMCP-Acceptance-20261126\\engineering\\AM610_ResidentMCP.project",
+        "projectHandle": 0,
+        "thread": 1,
+        "applications": [
+          "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        ],
+        "nodes": {
+          "745fb67c-acfb-4419-93bb-c56125c93346": {
+            "implementation": null,
+            "objectId": "745fb67c-acfb-4419-93bb-c56125c93346",
+            "declaration": null,
+            "nativeTypeId": "413e2a7d-adb1-4d2c-be29-6ae6e4fab820",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "Task Configuration",
+              "MainTask",
+              "PLC_PRG"
+            ],
+            "parentId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867"
+          },
+          "e88ddc35-95de-4cd2-886e-100ccb300ecf": {
+            "implementation": null,
+            "objectId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "declaration": null,
+            "nativeTypeId": "639b491f-5557-464c-af91-1471bac9f549",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application"
+            ],
+            "parentId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b"
+          },
+          "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": {
+            "implementation": "// Native-created project: continued direct edit validation.\nProbeDelay := T#5s; // 离线测试延时设定\nProbeEnable := FALSE; // 离线测试使能\n",
+            "objectId": "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+            "declaration": "PROGRAM PLC_PRG\nVAR\n    ProbeDelay : TIME;\n    ProbeEnable : BOOL;\nEND_VAR",
+            "nativeTypeId": "6f9dac99-8de1-4efc-8465-68ac443b7d08",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [
+              "a9ed5b7e-75c5-4651-af16-d2c27e98cb94",
+              "3b83b776-fb25-43b8-99f2-3c507c9143fc"
+            ],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "PLC_PRG"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "5d558397-776b-478d-ab91-fa36aca5d60a": {
+            "implementation": null,
+            "objectId": "5d558397-776b-478d-ab91-fa36aca5d60a",
+            "declaration": null,
+            "nativeTypeId": "adb5cb65-8e1d-4a00-b70a-375ea27582f3",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "directLibraries": [
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#IoStandard",
+                "optional": false,
+                "id": "1217811713",
+                "qualified_only": false,
+                "effective_resolution": "IoStandard, 3.5.10.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "IoStandard, 3.5.10.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "IoStandard",
+                "system_library": true,
+                "placeholder_name": "IoStandard"
+              },
+              {
+                "is_redirected": true,
+                "explicit_redirection": "CmpHCUtils, 1.3.2.0 (Inovance)",
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpHCUtils",
+                "optional": false,
+                "id": "677195365",
+                "qualified_only": false,
+                "effective_resolution": "CmpHCUtils, 1.3.2.0 (Inovance)",
+                "resolution_info": "占位符重定向解析",
+                "default_resolution": "CmpHCUtils, * (Inovance)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpHCUtils",
+                "system_library": true,
+                "placeholder_name": "CmpHCUtils"
+              },
+              {
+                "is_redirected": true,
+                "explicit_redirection": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#SysHCPlcInfo",
+                "optional": false,
+                "id": "1168205964",
+                "qualified_only": false,
+                "effective_resolution": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+                "resolution_info": "占位符重定向解析",
+                "default_resolution": "SysHCPlcInfo, * (Inovance)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "SysHCPlcInfo",
+                "system_library": true,
+                "placeholder_name": "SysHCPlcInfo"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#3SLicense",
+                "optional": false,
+                "id": "2391188751",
+                "qualified_only": false,
+                "effective_resolution": "3SLicense, 3.5.10.0 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "许可机制解析",
+                "default_resolution": "3SLicense, 0.0.0.0 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "97c3b452-d9fa-4ac2-9d0c-3d420aa6d95b",
+                "namespace": "_3S_LICENSE",
+                "system_library": true,
+                "placeholder_name": "3SLicense"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#Standard",
+                "optional": false,
+                "id": "1554848619",
+                "qualified_only": false,
+                "effective_resolution": "Standard, 3.5.9.0 (System)",
+                "resolution_info": "库配置文件解析",
+                "default_resolution": "Standard, * (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "Standard",
+                "system_library": false,
+                "placeholder_name": "Standard"
+              },
+              {
+                "is_redirected": true,
+                "explicit_redirection": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#InoParamsConfigLib",
+                "optional": false,
+                "id": "688251431",
+                "qualified_only": false,
+                "effective_resolution": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+                "resolution_info": "占位符重定向解析",
+                "default_resolution": "InoParamsConfigLib, * (Inovance)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "InoParamsConfigLib",
+                "system_library": true,
+                "placeholder_name": "InoParamsConfigLib"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#BreakpointLogging",
+                "optional": false,
+                "id": "2510197305",
+                "qualified_only": false,
+                "effective_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "库配置文件解析",
+                "default_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "BPLog",
+                "system_library": true,
+                "placeholder_name": "BreakpointLogging"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpEventMgr",
+                "optional": false,
+                "id": "3602500822",
+                "qualified_only": false,
+                "effective_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpEventMgr",
+                "system_library": false,
+                "placeholder_name": "CmpEventMgr"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#Component Manager",
+                "optional": false,
+                "id": "2121407659",
+                "qualified_only": false,
+                "effective_resolution": "Component Manager, 3.5.9.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "Component Manager, 3.5.9.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "Component_Manager",
+                "system_library": false,
+                "placeholder_name": "Component Manager"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpApp",
+                "optional": false,
+                "id": "3235431135",
+                "qualified_only": false,
+                "effective_resolution": "CmpApp, 3.5.11.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "CmpApp, 3.5.11.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpApp",
+                "system_library": false,
+                "placeholder_name": "CmpApp"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpIecTask",
+                "optional": false,
+                "id": "551989543",
+                "qualified_only": false,
+                "effective_resolution": "CmpIecTask, 3.5.9.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "CmpIecTask, 3.5.9.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpIecTask",
+                "system_library": false,
+                "placeholder_name": "CmpIecTask"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpHSIO",
+                "optional": false,
+                "id": "2432838545",
+                "qualified_only": false,
+                "effective_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+                "resolution_info": "库配置文件解析",
+                "default_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpHSIO",
+                "system_library": true,
+                "placeholder_name": "CmpHSIO"
+              }
+            ],
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "库管理器"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": {
+            "taskFields": {
+              "core_binding": {
+                "nativeType": null,
+                "kind": "integer",
+                "value": "-2",
+                "pythonType": "int"
+              },
+              "external_event": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "",
+                "pythonType": "str"
+              },
+              "interval": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "t#20ms",
+                "pythonType": "str"
+              },
+              "priority": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "1",
+                "pythonType": "str"
+              },
+              "event_pou_guid": {
+                "nativeType": "System.Guid",
+                "kind": "guid",
+                "value": "e323573b-bb6f-457c-a753-f8fcab0feee4",
+                "pythonType": "Guid"
+              },
+              "parent_synchron_task": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "",
+                "pythonType": "str"
+              },
+              "kind_of_task": {
+                "nativeType": "_3S.CoDeSys.TaskConfig.KindOfTask",
+                "kind": "enum",
+                "value": "Cyclic",
+                "pythonType": "KindOfTask"
+              },
+              "interval_unit": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "ms",
+                "pythonType": "str"
+              },
+              "event": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "",
+                "pythonType": "str"
+              }
+            },
+            "implementation": null,
+            "objectId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+            "declaration": null,
+            "nativeTypeId": "98a2708a-9b18-4f31-82ed-a1465b24fa2d",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "calls": [
+              [
+                "PLC_PRG",
+                ""
+              ]
+            ],
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "Task Configuration",
+              "MainTask"
+            ],
+            "parentId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+            "watchdog": {
+              "time_unit": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "ms",
+                "pythonType": "str"
+              },
+              "time": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "",
+                "pythonType": "str"
+              },
+              "sensitivity": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "1",
+                "pythonType": "str"
+              },
+              "enabled": {
+                "nativeType": null,
+                "kind": "bool",
+                "value": false,
+                "pythonType": "bool"
+              }
+            }
+          },
+          "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": {
+            "implementation": null,
+            "objectId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+            "declaration": null,
+            "nativeTypeId": "ae1de277-a207-4a28-9efb-456c06bd52f3",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "Task Configuration"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "5b3b1170-1a34-47eb-81ad-1fb25bc91256": {
+            "implementation": null,
+            "objectId": "5b3b1170-1a34-47eb-81ad-1fb25bc91256",
+            "declaration": null,
+            "nativeTypeId": "cb8fd02a-a8c8-42aa-81da-ea916f37707b",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "TaskEventPreStart"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "e3a83141-aa59-4caf-bb34-4e823cebf5ce": {
+            "implementation": null,
+            "objectId": "e3a83141-aa59-4caf-bb34-4e823cebf5ce",
+            "declaration": null,
+            "nativeTypeId": "1ea44c06-38dc-4674-b0a1-6d8285a04a30",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "DifferentialMonitor"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "f6a6ccb0-d225-4241-955b-eaf638b32c2b": {
+            "implementation": null,
+            "objectId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+            "declaration": null,
+            "nativeTypeId": "40b404f9-e5dc-42c6-907f-c89f4a517386",
+            "applicationId": null,
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic"
+            ],
+            "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+          },
+          "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+            "implementation": null,
+            "objectId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+            "declaration": null,
+            "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+            "applicationId": null,
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device"
+            ],
+            "parentId": null
+          }
+        }
+      },
+      "diskHash": "8260c5bb670fa918830db8107e55207662ea496bbf14e31b2e6d88737f46286c",
+      "residentVersion": "c94203d42d64b717043077539e2dace28cd277dc9ed823056eb864f52d0617e3"
+    },
+    {
+      "operationId": "a7843aa9-576e-4167-a6c9-4ced283263e5",
+      "sourceSha256": "166ddd997f2a9eaf7cceacf997c1fb2bf7bd499bec30b06641290de1245ff5c9",
+      "dependencies": {
+        "scheme": "resident-st-implementation-v1",
+        "projectPath": "D:\\InoPro-ResidentMCP-Acceptance-20261126\\engineering\\AM610_ResidentMCP.project",
+        "projectHandle": 0,
+        "thread": 1,
+        "applications": [
+          "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        ],
+        "nodes": {
+          "745fb67c-acfb-4419-93bb-c56125c93346": {
+            "implementation": null,
+            "objectId": "745fb67c-acfb-4419-93bb-c56125c93346",
+            "declaration": null,
+            "nativeTypeId": "413e2a7d-adb1-4d2c-be29-6ae6e4fab820",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "Task Configuration",
+              "MainTask",
+              "PLC_PRG"
+            ],
+            "parentId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867"
+          },
+          "e88ddc35-95de-4cd2-886e-100ccb300ecf": {
+            "implementation": null,
+            "objectId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "declaration": null,
+            "nativeTypeId": "639b491f-5557-464c-af91-1471bac9f549",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application"
+            ],
+            "parentId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b"
+          },
+          "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": {
+            "implementation": "// Native-created project: continued direct edit validation.\nProbeDelay := T#5s; // 离线测试延时设定\nProbeEnable := FALSE; // 离线测试使能\n",
+            "objectId": "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+            "declaration": "PROGRAM PLC_PRG\nVAR\n    ProbeDelay : TIME;\n    ProbeEnable : BOOL;\nEND_VAR",
+            "nativeTypeId": "6f9dac99-8de1-4efc-8465-68ac443b7d08",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [
+              "a9ed5b7e-75c5-4651-af16-d2c27e98cb94",
+              "3b83b776-fb25-43b8-99f2-3c507c9143fc"
+            ],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "PLC_PRG"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "5d558397-776b-478d-ab91-fa36aca5d60a": {
+            "implementation": null,
+            "objectId": "5d558397-776b-478d-ab91-fa36aca5d60a",
+            "declaration": null,
+            "nativeTypeId": "adb5cb65-8e1d-4a00-b70a-375ea27582f3",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "directLibraries": [
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#IoStandard",
+                "optional": false,
+                "id": "1217811713",
+                "qualified_only": false,
+                "effective_resolution": "IoStandard, 3.5.10.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "IoStandard, 3.5.10.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "IoStandard",
+                "system_library": true,
+                "placeholder_name": "IoStandard"
+              },
+              {
+                "is_redirected": true,
+                "explicit_redirection": "CmpHCUtils, 1.3.2.0 (Inovance)",
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpHCUtils",
+                "optional": false,
+                "id": "677195365",
+                "qualified_only": false,
+                "effective_resolution": "CmpHCUtils, 1.3.2.0 (Inovance)",
+                "resolution_info": "占位符重定向解析",
+                "default_resolution": "CmpHCUtils, * (Inovance)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpHCUtils",
+                "system_library": true,
+                "placeholder_name": "CmpHCUtils"
+              },
+              {
+                "is_redirected": true,
+                "explicit_redirection": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#SysHCPlcInfo",
+                "optional": false,
+                "id": "1168205964",
+                "qualified_only": false,
+                "effective_resolution": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+                "resolution_info": "占位符重定向解析",
+                "default_resolution": "SysHCPlcInfo, * (Inovance)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "SysHCPlcInfo",
+                "system_library": true,
+                "placeholder_name": "SysHCPlcInfo"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#3SLicense",
+                "optional": false,
+                "id": "2391188751",
+                "qualified_only": false,
+                "effective_resolution": "3SLicense, 3.5.10.0 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "许可机制解析",
+                "default_resolution": "3SLicense, 0.0.0.0 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "97c3b452-d9fa-4ac2-9d0c-3d420aa6d95b",
+                "namespace": "_3S_LICENSE",
+                "system_library": true,
+                "placeholder_name": "3SLicense"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#Standard",
+                "optional": false,
+                "id": "1554848619",
+                "qualified_only": false,
+                "effective_resolution": "Standard, 3.5.9.0 (System)",
+                "resolution_info": "库配置文件解析",
+                "default_resolution": "Standard, * (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "Standard",
+                "system_library": false,
+                "placeholder_name": "Standard"
+              },
+              {
+                "is_redirected": true,
+                "explicit_redirection": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#InoParamsConfigLib",
+                "optional": false,
+                "id": "688251431",
+                "qualified_only": false,
+                "effective_resolution": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+                "resolution_info": "占位符重定向解析",
+                "default_resolution": "InoParamsConfigLib, * (Inovance)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "InoParamsConfigLib",
+                "system_library": true,
+                "placeholder_name": "InoParamsConfigLib"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#BreakpointLogging",
+                "optional": false,
+                "id": "2510197305",
+                "qualified_only": false,
+                "effective_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "库配置文件解析",
+                "default_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "BPLog",
+                "system_library": true,
+                "placeholder_name": "BreakpointLogging"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpEventMgr",
+                "optional": false,
+                "id": "3602500822",
+                "qualified_only": false,
+                "effective_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpEventMgr",
+                "system_library": false,
+                "placeholder_name": "CmpEventMgr"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#Component Manager",
+                "optional": false,
+                "id": "2121407659",
+                "qualified_only": false,
+                "effective_resolution": "Component Manager, 3.5.9.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "Component Manager, 3.5.9.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "Component_Manager",
+                "system_library": false,
+                "placeholder_name": "Component Manager"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpApp",
+                "optional": false,
+                "id": "3235431135",
+                "qualified_only": false,
+                "effective_resolution": "CmpApp, 3.5.11.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "CmpApp, 3.5.11.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpApp",
+                "system_library": false,
+                "placeholder_name": "CmpApp"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpIecTask",
+                "optional": false,
+                "id": "551989543",
+                "qualified_only": false,
+                "effective_resolution": "CmpIecTask, 3.5.9.0 (System)",
+                "resolution_info": "设备解析",
+                "default_resolution": "CmpIecTask, 3.5.9.0 (System)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpIecTask",
+                "system_library": false,
+                "placeholder_name": "CmpIecTask"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#CmpHSIO",
+                "optional": false,
+                "id": "2432838545",
+                "qualified_only": false,
+                "effective_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+                "resolution_info": "库配置文件解析",
+                "default_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "CmpHSIO",
+                "system_library": true,
+                "placeholder_name": "CmpHSIO"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#SM3_Basic",
+                "optional": false,
+                "id": "1556573468",
+                "qualified_only": false,
+                "effective_resolution": "SM3_Basic, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+                "default_resolution": "SM3_Basic, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "SM3_Basic",
+                "system_library": true,
+                "placeholder_name": "SM3_Basic"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#SM3_CNC",
+                "optional": false,
+                "id": "4260704646",
+                "qualified_only": false,
+                "effective_resolution": "SM3_CNC, 4.2.1.1 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+                "default_resolution": "SM3_CNC, 4.2.1.1 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "SM3_CNC",
+                "system_library": true,
+                "placeholder_name": "SM3_CNC"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#SM3_Robotics",
+                "optional": false,
+                "id": "1921012012",
+                "qualified_only": false,
+                "effective_resolution": "SM3_Robotics, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+                "default_resolution": "SM3_Robotics, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "SM3_Robotics",
+                "system_library": true,
+                "placeholder_name": "SM3_Robotics"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#SM3_Robotics_Visu",
+                "optional": false,
+                "id": "2926853128",
+                "qualified_only": false,
+                "effective_resolution": "SM3_Robotics_Visu, 4.2.0.0 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+                "default_resolution": "SM3_Robotics_Visu, 4.2.0.0 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "SM3_Robotics_Visu",
+                "system_library": true,
+                "placeholder_name": "SM3_Robotics_Visu"
+              },
+              {
+                "is_redirected": false,
+                "explicit_redirection": null,
+                "is_managed": false,
+                "is_placeholder": true,
+                "name": "#SM3_Transformation",
+                "optional": false,
+                "id": "2799190328",
+                "qualified_only": false,
+                "effective_resolution": "SM3_Transformation, 4.2.1.0 (3S - Smart Software Solutions GmbH)",
+                "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+                "default_resolution": "SM3_Transformation, 4.2.1.0 (3S - Smart Software Solutions GmbH)",
+                "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+                "namespace": "TRAFO",
+                "system_library": true,
+                "placeholder_name": "SM3_Transformation"
+              }
+            ],
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "库管理器"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": {
+            "taskFields": {
+              "core_binding": {
+                "nativeType": null,
+                "kind": "integer",
+                "value": "-2",
+                "pythonType": "int"
+              },
+              "external_event": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "",
+                "pythonType": "str"
+              },
+              "interval": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "t#20ms",
+                "pythonType": "str"
+              },
+              "priority": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "1",
+                "pythonType": "str"
+              },
+              "event_pou_guid": {
+                "nativeType": "System.Guid",
+                "kind": "guid",
+                "value": "e323573b-bb6f-457c-a753-f8fcab0feee4",
+                "pythonType": "Guid"
+              },
+              "parent_synchron_task": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "",
+                "pythonType": "str"
+              },
+              "kind_of_task": {
+                "nativeType": "_3S.CoDeSys.TaskConfig.KindOfTask",
+                "kind": "enum",
+                "value": "Cyclic",
+                "pythonType": "KindOfTask"
+              },
+              "interval_unit": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "ms",
+                "pythonType": "str"
+              },
+              "event": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "",
+                "pythonType": "str"
+              }
+            },
+            "implementation": null,
+            "objectId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+            "declaration": null,
+            "nativeTypeId": "98a2708a-9b18-4f31-82ed-a1465b24fa2d",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "calls": [
+              [
+                "PLC_PRG",
+                ""
+              ]
+            ],
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "Task Configuration",
+              "MainTask"
+            ],
+            "parentId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+            "watchdog": {
+              "time_unit": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "ms",
+                "pythonType": "str"
+              },
+              "time": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "",
+                "pythonType": "str"
+              },
+              "sensitivity": {
+                "nativeType": null,
+                "kind": "text",
+                "value": "1",
+                "pythonType": "str"
+              },
+              "enabled": {
+                "nativeType": null,
+                "kind": "bool",
+                "value": false,
+                "pythonType": "bool"
+              }
+            }
+          },
+          "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": {
+            "implementation": null,
+            "objectId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+            "declaration": null,
+            "nativeTypeId": "ae1de277-a207-4a28-9efb-456c06bd52f3",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "Task Configuration"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "5b3b1170-1a34-47eb-81ad-1fb25bc91256": {
+            "implementation": null,
+            "objectId": "5b3b1170-1a34-47eb-81ad-1fb25bc91256",
+            "declaration": null,
+            "nativeTypeId": "cb8fd02a-a8c8-42aa-81da-ea916f37707b",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "TaskEventPreStart"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "e3a83141-aa59-4caf-bb34-4e823cebf5ce": {
+            "implementation": null,
+            "objectId": "e3a83141-aa59-4caf-bb34-4e823cebf5ce",
+            "declaration": null,
+            "nativeTypeId": "1ea44c06-38dc-4674-b0a1-6d8285a04a30",
+            "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic",
+              "Application",
+              "DifferentialMonitor"
+            ],
+            "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+          },
+          "f6a6ccb0-d225-4241-955b-eaf638b32c2b": {
+            "implementation": null,
+            "objectId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+            "declaration": null,
+            "nativeTypeId": "40b404f9-e5dc-42c6-907f-c89f4a517386",
+            "applicationId": null,
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device",
+              "Plc Logic"
+            ],
+            "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+          },
+          "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+            "implementation": null,
+            "objectId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+            "declaration": null,
+            "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+            "applicationId": null,
+            "embeddedObjectTypes": [],
+            "path": [
+              "Device"
+            ],
+            "parentId": null
+          }
+        }
+      },
+      "diskHash": "8260c5bb670fa918830db8107e55207662ea496bbf14e31b2e6d88737f46286c",
+      "residentVersion": "015098752cd9fd4b5d9895c92833664b9587d43941858c66034a62f9823491c6"
+    }
+  ]
+}

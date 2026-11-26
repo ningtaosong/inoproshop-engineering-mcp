@@ -34,10 +34,12 @@ export interface Adapter {
   waitForObservations?():Promise<void>;
   executeResident?(request:BridgeRequest,directory:string,onStart:(pid:number,launchId:string)=>Promise<void>):Promise<Reply>;
   residentOwned?():boolean;
+  assertResidentRelease?():Promise<void>;
 }
 export class IdeAdapter implements Adapter {
   private resident?:ResidentChannel;
   residentOwned(){return this.resident?.owned()??false;}
+  async assertResidentRelease(){await this.resident?.assertReleaseReady();}
   executeResident(request:BridgeRequest,directory:string,onStart:(pid:number,launchId:string)=>Promise<void>){
     return (this.resident??=new ResidentChannel(this.config,ROOT)).execute(request,directory,onStart);
   }
