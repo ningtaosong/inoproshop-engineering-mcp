@@ -28,6 +28,8 @@ const mutations={
  'unknown-field':f=>refs(f).at(-1).extra=false,
  'duplicate-id':f=>refs(f).at(-1).id=refs(f)[0].id,
  'null-id':f=>refs(f).at(-1).id=null,
+ 'noncanonical-id':f=>refs(f).at(-1).id='0'+refs(f)[0].id,
+ 'missing-null-top-field':f=>f.before.state.extra=null,
  'manager-application':f=>f.after.state.nodes[mid].applicationId=oid,
  'manager-path':f=>f.after.state.nodes[mid].path.push('wrong'),
  'source-change':f=>f.after.state.nodes[oid].implementation='changed',

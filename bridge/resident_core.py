@@ -377,7 +377,7 @@ def compiler_reference_addition(before,after,pre,aid,support):
     ids=[]
     for row in new:
         rid=row.get('id')
-        if not isinstance(rid,string_types) or not re.match(r'^[0-9]+\Z',rid) or int(rid)<=0 or rid in ids:raise ValueError('Invalid or duplicate native reference identity')
+        if not isinstance(rid,string_types) or not re.match(r'^[1-9][0-9]*\Z',rid) or rid in ids:raise ValueError('Invalid or duplicate native reference identity')
         ids.append(rid)
     if any((r.get('name') or '').lower()=='#iecvaraccess' or (r.get('placeholder_name') or '').lower()=='iecvaraccess' for r in old):raise ValueError('Compiler dependency already present')
     r=new[-1]
@@ -397,7 +397,7 @@ def build_conservation(before,after,pre,post,aid=None,support=None):
     added=sorted(set(new)-set(old))
     if len(added)>1:raise ValueError('Unexplained compiler-generated nodes')
     for k in set(before)|set(after):
-        if k not in ('nodes','openedProjects') and before.get(k)!=after.get(k):raise ValueError('Build state changed: '+k)
+        if k not in ('nodes','openedProjects') and (k not in before or k not in after or digest(before[k])!=digest(after[k])):raise ValueError('Build state changed: '+k)
     # Background library ownership is checked independently; direct references above are exact.
     for oid,dev in pre['devices'].items():
         if post['devices'].get(oid)!=dev:raise ValueError('Existing device/connector changed')

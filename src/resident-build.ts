@@ -32,7 +32,7 @@ function compilerReferenceAddition(before:any,after:any,pre:any,aid:string|undef
  const {directLibraries:old,...rest}=m,{directLibraries:next,...updatedRest}=updated;
  if(!eq(rest,updatedRest))throw Error('Compiler changed library manager fields');
  if(!Array.isArray(old)||!Array.isArray(next)||next.length!==old.length+1||!eq(next.slice(0,-1),old))throw Error('Compiler changed original library references/order');
- const ids=new Set();for(const r of next){if(typeof r.id!=='string'||!/^\d+$/.test(r.id)||BigInt(r.id)<=0n||ids.has(r.id))throw Error('Invalid or duplicate native reference identity');ids.add(r.id);}
+ const ids=new Set();for(const r of next){if(typeof r.id!=='string'||!/^[1-9]\d*$/.test(r.id)||ids.has(r.id))throw Error('Invalid or duplicate native reference identity');ids.add(r.id);}
  if(old.some(r=>(r.name??'').toLowerCase()==='#iecvaraccess'||(r.placeholder_name??'').toLowerCase()==='iecvaraccess'))throw Error('Compiler dependency already present');
  const {id,...ref}=next.at(-1);if(!eq(ref,IEC_COMPILER_REFERENCE))throw Error('Unexpected compiler library reference');
  return {libraryManagerId:m.objectId,applicationId:aid,index:old.length,reference:next.at(-1),supportHash:residentHash(support)};

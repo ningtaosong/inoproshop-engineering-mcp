@@ -97,6 +97,8 @@ MUTATIONS={
  'unknown-field':lambda f:refs(f)[-1].update(extra=False),
  'duplicate-id':lambda f:refs(f)[-1].update(id=refs(f)[0]['id']),
  'null-id':lambda f:refs(f)[-1].update(id=None),
+ 'noncanonical-id':lambda f:refs(f)[-1].update(id='0'+refs(f)[0]['id']),
+ 'missing-null-top-field':lambda f:f['before']['state'].update(extra=None),
  'manager-application':lambda f:f['after']['state']['nodes'][MID].update(applicationId=OBJ),
  'manager-path':lambda f:f['after']['state']['nodes'][MID]['path'].append('wrong'),
  'source-change':lambda f:f['after']['state']['nodes'][OBJ].update(implementation='changed'),
