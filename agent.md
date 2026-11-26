@@ -2,7 +2,7 @@
 
 当前功能分支为 **0.40.0 候选版、38 项工具**，基于已核实 main 0.38.0，尚未合并或部署。本文件前部集中记录唯一的当前路线及范围变更规则；[README 已交付表](README.md#已完成功能main)、第 2 节路线表及[逐工具范围核对](docs/mcp-scope-status.md)与此处同步。历史段落保留原时点，不覆盖这里的当前路线。
 
-2026-11-26正式MCP首轮的原[版本冲突](docs/resident-mcp-first-round-20261126.md)保留。随后[驱动及正常收尾补修](docs/resident-driver-lifecycle-fix.md)完成，新固定连接重新打开同一文件并首查；该轮在写前发现“声明对象＋ST实现”被误排除。现已完成[两端最小补修及离线验证](docs/resident-st-parts-fix.md)，真实源码派发仍为0，新实例保持打开；第一轮尚未完成，第二轮、DSH、保存及编译未执行。不得热替换、自动关闭新实例、统一排除系统库或刷新旧请求重发。以下段落保留各自时点。
+2026-11-26正式MCP首轮的原[版本冲突](docs/resident-mcp-first-round-20261126.md)及后续写前停止记录保留。经[驱动及正常收尾补修](docs/resident-driver-lifecycle-fix.md)、[两端ST识别补修](docs/resident-st-parts-fix.md)、[旧会话完成证明兼容补修](docs/resident-closed-proof-compatibility.md)，新的[真实MCP第一轮](docs/resident-mcp-round1-passed-20261126.md)已完成一次5秒→7秒修改及独立读回；FALSE及两条中文保持，原文只有授权字段变化。IDE75528、服务25884、驱动65144保持打开；保存、编译、关闭及第二轮均未执行。后续轮次仍须另一次明确指令，不自动连发，不热替换或关闭当前实例。以下段落保留各自时点。
 
 ## 当前路线与范围变更规则
 

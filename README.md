@@ -4,7 +4,7 @@
 
 从[简明使用指南](docs/getting-started.md)开始；查能力看下方[已交付功能](#已完成功能main)，查剩余主线看[未完成事项](#未完成功能与计划阶段)和[38 项工具范围核对](docs/mcp-scope-status.md)。直接编辑指定文件，工程比较仅按用户要求执行，显式旧副本接口兼容保留。
 
-**同一工程连续操作已接入候选产品，真实 MCP 第一轮尚未完成；DSH 尚未验收。** 后续修正首查驱动后，新实例在写前发现根 ST PROGRAM 识别缺口；[原生标识依据、两端补修及离线验证](docs/resident-st-parts-fix.md)已记录，源码派发仍为0，当前实例保持打开。以下原首查冲突保留其时点： [本轮记录](docs/resident-mcp-first-round-20261126.md)：打开成功后，直接库清单由12增17；第一页额外绑定打开版本，被严格守卫拒绝，未重试或执行5秒→7秒修改。新推荐流程显式使用 `project_open(sessionMode="resident")`，随后每条独立指令读取当前内存并按版本修改。只迁移 `object_list`、`object_read` 和普通根ST POU实现区的 `code_apply_change`，其他工程工具在该模式明确拒绝。省略模式或显式batch仍保留旧行为，不代表旧38项工具全部支持保持打开。详见[接口、迁移清单及停止条件](docs/resident-mcp-session.md)。
+**同一工程连续操作已接入候选产品，真实 MCP 第一轮修改及独立读回通过；第二轮和 DSH 尚未验收。** [本次实测](docs/resident-mcp-round1-passed-20261126.md)在同一 IDE 中将 `ProbeDelay` 从5秒改为7秒，保留 `ProbeEnable := FALSE` 和两条中文注释；工程与服务保持打开，未保存、编译或关闭。此前[首查版本冲突](docs/resident-mcp-first-round-20261126.md)、[根 ST PROGRAM 识别缺口及补修](docs/resident-st-parts-fix.md)、[旧会话完成证明兼容补修](docs/resident-closed-proof-compatibility.md)保留原结果，不用本次成功覆盖。新推荐流程显式使用 `project_open(sessionMode="resident")`，随后每条独立指令读取当前内存并按版本修改。只迁移 `object_list`、`object_read` 和普通根ST POU实现区的 `code_apply_change`，其他工程工具在该模式明确拒绝。省略模式或显式batch仍保留旧行为，不代表旧38项工具全部支持保持打开。详见[接口、迁移清单及停止条件](docs/resident-mcp-session.md)。
 
 原[第一轮](docs/resident-round1-utf8-recheck.md)和[同实例第二轮](docs/resident-round2-utf8-recheck.md)属于固定诊断器；当时两条中文注释未保存，接收器已停止。诊断实例随后按授权不保存正常关闭；未由新产品接管。诊断成功不能替代正式MCP/DSH连续会话验收；[早期乱码失败](docs/resident-round1-20261126.md)、[加载补修](docs/resident-loader-utf8-fix.md)和[生命周期设计](docs/resident-project-lifecycle-plan.md)保留原时点。当前产品不编译、不保存、不关闭常驻工程，不支持跨客户端恢复；用户手动源码修改须重读，无法解释的磁盘变化或原句柄关闭则停止，不覆盖。
 
