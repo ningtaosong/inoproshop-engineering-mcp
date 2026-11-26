@@ -29,9 +29,12 @@ export function residentDependencies(s:any) {
  return {scheme:'resident-st-implementation-v1',projectPath:s.projectPath,projectHandle:s.projectHandle,thread:s.thread,applications:s.applications,nodes:Object.fromEntries([...selected].map(id=>[id,s.nodes[id]]))};
 }
 
+const ST_PART='3b83b776-fb25-43b8-99f2-3c507c9143fc',VAR_DECL_PART='a9ed5b7e-75c5-4651-af16-d2c27e98cb94';
+// Declaration metadata may accompany ST. Raw arrays still participate in strict evidence/version checks.
+const supportedStParts=(parts:unknown)=>equal(parts,[ST_PART])||equal(parts,[VAR_DECL_PART,ST_PART])||equal(parts,[ST_PART,VAR_DECL_PART]);
 export function residentObject(state:any,oid:string,aid:string){
  const r=state.nodes[oid];
- if(!r||r.applicationId!==aid||r.parentId!==aid||!state.applications.includes(aid)||r.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||!equal(r.embeddedObjectTypes,['3b83b776-fb25-43b8-99f2-3c507c9143fc'])||typeof r.declaration!=='string'||typeof r.implementation!=='string'||Object.values<any>(state.nodes).some(n=>n.parentId===oid))throw Error('Not a supported root ST POU');
+ if(!r||r.applicationId!==aid||r.parentId!==aid||!state.applications.includes(aid)||r.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||!supportedStParts(r.embeddedObjectTypes)||typeof r.declaration!=='string'||typeof r.implementation!=='string'||Object.values<any>(state.nodes).some(n=>n.parentId===oid))throw Error('Not a supported root ST POU');
  const m=/^\s*(PROGRAM|FUNCTION_BLOCK|FUNCTION)\s+([A-Za-z_][A-Za-z0-9_]*)\b/i.exec(r.declaration);if(!m||m[2].toLowerCase()!==r.path.at(-1).toLowerCase())throw Error('POU declaration/name differs');
  return {objectId:oid,applicationId:aid,path:r.path,nativeTypeId:r.nativeTypeId,embeddedObjectTypes:r.embeddedObjectTypes,language:'ST',objectType:m[1].toUpperCase()==='FUNCTION_BLOCK'?'function_block':'st_pou',hasImplementation:true,declaration:r.declaration,implementation:r.implementation,contentHash:codeHash(r.declaration,r.implementation)};
 }

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """Product-core substitutes only. No scriptengine, IDE, project, save or compile."""
-import os,sys,copy,json,unittest
+import os,sys,copy,json,unittest,io
 sys.path.insert(0,os.path.join(os.path.dirname(__file__),'..','bridge'))
 import resident_core as c
+ARCHIVED_FIXTURE=os.path.join(os.path.dirname(os.path.abspath(__file__)),'fixtures','resident-first-list-20261126.json')
 APP='10000000-0000-4000-8000-000000000001';OBJ='20000000-0000-4000-8000-000000000001';OTHER='20000000-0000-4000-8000-000000000002'
 def state():
  def row(oid,name,parent,typ,d=None,i=None):return dict(objectId=oid,path=['Application',name] if parent else ['Application'],parentId=parent,nativeTypeId=typ,applicationId=APP,declaration=d,implementation=i,embeddedObjectTypes=[c.ST] if i is not None else [])
@@ -18,6 +19,36 @@ class Native(object):
   self.writes+=1;self.state['nodes'][oid]['implementation']=value
   if self.fail_write:raise ValueError('first native write fault')
 class Cases(unittest.TestCase):
+ def test_archived_native_declaration_and_st_read(self):
+  with io.open(ARCHIVED_FIXTURE,encoding='utf-8') as stream:archived=json.load(stream)
+  original=archived['snapshots'][1]['dependencies'];self.native.state=copy.deepcopy(original)
+  # Ownership container is the offline adapter substitute; all dependency rows are archived native values.
+  self.native.state['openedProjects']={'0':dict(handle=0,path=original['projectPath'],primary=True,library=False)}
+  oid='76817b8e-cf3d-4b51-82a0-fb6e8bc7c778';aid=original['applications'][0]
+  result=self.session.handle(dict(command='read',args=dict(applicationId=aid,objectId=oid),operationId='archive',requestId='archive',directory='request'))
+  self.assertEqual(result['status'],'succeeded',result)
+  self.assertEqual(result['data']['embeddedObjectTypes'],original['nodes'][oid]['embeddedObjectTypes'])
+  self.assertEqual(result['data']['implementation'],original['nodes'][oid]['implementation'])
+  self.assertEqual(self.native.writes,0)
+  listing=self.session.handle(dict(command='list',args=dict(applicationId=aid,offset=0,limit=200),operationId='list',requestId='list',directory='request'))
+  self.assertEqual(listing['status'],'succeeded');self.assertIn(oid,[row['objectId'] for row in listing['data']['objects']])
+  r=result['data'];text=r['implementation'].replace('T#5s','T#7s');self.assertNotEqual(text,r['implementation'])
+  change=self.session.handle(dict(command='change',args=dict(applicationId=aid,objectId=oid,expectedHash=r['contentHash'],expectedResidentVersion=r['residentVersion'],declaration=r['declaration'],implementation=text),operationId='change',requestId='change',directory='request'))
+  self.assertEqual(change['status'],'succeeded',change);self.assertEqual(self.native.writes,1);self.assertEqual(self.native.saves,0)
+  expected=copy.deepcopy(original);expected['nodes'][oid]['implementation']=text
+  self.assertEqual(c.dependencies(self.native.state),expected)
+ def test_only_known_unique_st_parts_supported(self):
+  for parts in [[c.ST],[c.VAR_DECL,c.ST],[c.ST,c.VAR_DECL]]:
+   n=state();n['nodes'][OBJ]['embeddedObjectTypes']=parts;original=copy.deepcopy(n)
+   self.assertEqual(c.object_data(n,OBJ,APP)['embeddedObjectTypes'],parts);self.assertEqual(n,original)
+  for parts in [None,[],[c.VAR_DECL],[c.ST,c.ST],[c.ST,c.VAR_DECL,c.VAR_DECL],[c.ST,APP],[c.ST,c.VAR_DECL,APP],[c.ST,None],c.ST,[c.ST,c.VAR_DECL.upper()]]:
+   n=state();n['nodes'][OBJ]['embeddedObjectTypes']=parts;self.assertRaises(c.Rejection,c.object_data,n,OBJ,APP)
+ def test_known_st_metadata_changed_after_read_is_conflict(self):
+  r=self.read();self.native.state['nodes'][OBJ]['embeddedObjectTypes']=[c.VAR_DECL,c.ST]
+  self.assertEqual(self.change(r)['status'],'conflict');self.assertEqual(self.native.writes,0);self.assertEqual(self.native.saves,0)
+ def test_known_st_metadata_changed_after_write_is_unknown(self):
+  self.native.hook=lambda n:n.state['nodes'][OBJ].update(embeddedObjectTypes=[c.VAR_DECL,c.ST]) if n.reads==4 else None
+  self.assertEqual(self.change()['status'],'unknown');self.assertRaises(c.Conflict,self.read);self.assertEqual(self.native.writes,1);self.assertEqual(self.native.saves,0)
  def setUp(self):
   self.native=Native();self.disk='a'*64;self.records={};self.failure=None;self.admission_error=None;self.counter=0
   def publish(name,value):
@@ -89,6 +120,8 @@ class Cases(unittest.TestCase):
 
 
 class PublicAdapterCases(unittest.TestCase):
+ def test_native_declaration_and_st_parts_are_retained(self):
+  self.item.embedded_object_types=[c.VAR_DECL,c.ST];s=self.adapter.snapshot();self.assertEqual(c.object_data(s,OBJ,APP)['embeddedObjectTypes'],[c.VAR_DECL,c.ST])
  def setUp(self):
   class Source(object):
    def __init__(self,text):self.text=text

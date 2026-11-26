@@ -21,6 +21,7 @@ except NameError:
     int_types=(int,)
 
 ST='3b83b776-fb25-43b8-99f2-3c507c9143fc'
+VAR_DECL='a9ed5b7e-75c5-4651-af16-d2c27e98cb94'
 POU='6f9dac99-8de1-4efc-8465-68ac443b7d08'
 TASK_FIELDS=('kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task')
 class Conflict(ValueError):pass
@@ -216,10 +217,15 @@ def dependencies(state):
             seen.add(oid);selected.add(oid);oid=nodes[oid]['parentId']
     return dict(scheme=VERSION,projectPath=state['projectPath'],projectHandle=state['projectHandle'],thread=state['thread'],applications=state['applications'],nodes=dict((k,copy.deepcopy(nodes[k])) for k in selected))
 
+def supported_st_parts(parts):
+    # VarDeclObject is declaration metadata, not a second implementation language.
+    # Keep the original list in evidence/versioning; only classify these known sets.
+    return isinstance(parts,list) and (parts==[ST] or parts==[VAR_DECL,ST] or parts==[ST,VAR_DECL])
+
 def object_data(state,oid,aid):
     row=state['nodes'].get(oid)
     if row is None or row['applicationId']!=aid or row['parentId']!=aid:raise Rejection('Only exact Application-root objects supported')
-    if row['nativeTypeId']!=POU or row['embeddedObjectTypes']!=[ST] or row['declaration'] is None or row['implementation'] is None:raise Rejection('Native ST POU evidence missing')
+    if row['nativeTypeId']!=POU or not supported_st_parts(row['embeddedObjectTypes']) or row['declaration'] is None or row['implementation'] is None:raise Rejection('Native ST POU evidence missing')
     if any(x['parentId']==oid for x in state['nodes'].values()):raise Rejection('POU with child objects not supported')
     m=re.match(r'^\s*(PROGRAM|FUNCTION_BLOCK|FUNCTION)\s+([A-Za-z_][A-Za-z0-9_]*)\b',row['declaration'],re.I)
     if not m or m.group(2).lower()!=row['path'][-1].lower():raise Rejection('Ordinary same-name POU header required')

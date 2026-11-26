@@ -5,6 +5,10 @@ import {verifyClosedResident} from '../dist/resident-reopen.js';
 import {EngineeringService} from '../dist/service.js';import {digest,readJson} from '../dist/storage.js';import {exclusiveJson} from '../dist/exit-journal.js';import {schemas,outputSchemas,VERSION} from '../dist/contracts.js';
 const APP='10000000-0000-4000-8000-000000000001',OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
 function state(file){const row=(id,parent,name,type,d,i)=>({objectId:id,applicationId:APP,parentId:parent,path:parent?['Application',name]:['Application'],nativeTypeId:type,declaration:d,implementation:i,embeddedObjectTypes:i===null?[]:[ST]});return {projectPath:file,projectHandle:0,thread:9,applications:[APP],openedProjects:{'0':{handle:0,path:file,library:false,primary:true}},nodes:{[APP]:row(APP,null,'Application',APP,null,null),[OBJ]:row(OBJ,APP,'Logic',POU,'PROGRAM Logic\nVAR\nx: DINT;\nEND_VAR','x := 1; // 中文')}};}
+test('archived native declaration and ST pair is a supported root PROGRAM',async()=>{
+ const archive=JSON.parse(await fs.readFile(new URL('./fixtures/resident-first-list-20261126.json',import.meta.url),'utf8'));
+ for(const {dependencies:s} of archive.snapshots){const id='76817b8e-cf3d-4b51-82a0-fb6e8bc7c778',raw=structuredClone(s),r=residentObject(s,id,s.applications[0]);assert.equal(r.objectId,id);assert.equal(r.implementation,s.nodes[id].implementation);assert.deepEqual(r.embeddedObjectTypes,s.nodes[id].embeddedObjectTypes);assert.deepEqual(s,raw);}
+});
 async function fixture(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'InoPro resident ')),file=path.join(root,'case.project');await fs.writeFile(file,'fixed project');
  const identity={version:1,platform:process.platform,host:os.hostname().toLowerCase(),pid:12345,startId:'987654321'};
@@ -26,14 +30,14 @@ async function fixture(t){
      if(req.args.expectedResidentVersion!==version){status='conflict';Object.assign(data,{firstError:{dispatched:false},secondaryErrors:[],recoverableRejection:true});}
      else {
       await put('checkpoint.json',{request:req,state:before,diskHash:req.diskHash,residentVersion:version});await put('predispatch.json',{state:before,diskHash:req.diskHash});await put('dispatch.json',{operationId:req.operationId,requestId:req.requestId,action:'replace-implementation'});
-      n.state.nodes[OBJ].implementation=req.args.implementation;n.writes++;const after=structuredClone(n.state),actual=deps(after);
+      n.state.nodes[OBJ].implementation=req.args.implementation;n.writes++;if(n.fault==='after-embedded')n.state.nodes[OBJ].embeddedObjectTypes=[ST];const after=structuredClone(n.state),actual=deps(after);
       await put('after.json',{state:after,diskHash:req.diskHash});await put('verification.json',{equal:true,expected:actual,actual});
       Object.assign(data,{snapshot:hash(actual),residentVersion:hash({dependencies:actual,diskHash:req.diskHash}),memoryModified:true,memoryEditsInSession:n.writes,persistedToProject:false});
      }
     }
     if(['read','change'].includes(req.command)&&status==='succeeded')Object.assign(data,residentObject(n.state,OBJ,APP));
     if(req.command==='list'){const {declaration,implementation,...o}=residentObject(n.state,OBJ,APP);Object.assign(data,{objects:[o],total:1,complete:true,nextOffset:null,excluded:[{objectId:APP,path:['Application'],reason:'not a root POU'}]});}
-    if(n.fault==='wrong-path')data.path=['wrong'];if(n.fault==='saved')data.saved=true;if(n.fault==='list-row')data.objects=[];
+    if(n.fault==='wrong-path')data.path=['wrong'];if(n.fault==='saved')data.saved=true;if(n.fault==='list-row')data.objects=[];if(n.fault==='embedded-mismatch')data.embeddedObjectTypes=[ST];
     data.residentEvidence={launchId:intent.launchId,sequence:req.sequence,processIdentity:{pid:identity.pid,startId:identity.startId},requestHash:hash(req),requestCompleted:true,ideExitRequested:false};
     const result={contractVersion:'1.0.0',operationId:req.operationId,requestId:req.requestId,status,summary:'fixture-only',data};await put('result.json',result);
     if(n.fault==='missing-completion')return;
@@ -62,6 +66,21 @@ test('resident service: unadapted build/save/create/copy/variables never use bat
 test('resident same-path file replacement is blocked even with identical bytes',async t=>{const f=await fixture(t);await fs.rename(f.file,f.file+'.original');await fs.copyFile(f.file+'.original',f.file);const r=await f.read();assert.equal(r.error.code,'RESIDENT_FILE_REPLACED');assert.equal(f.n.requests.length,1);});
 for(const fault of ['wrong-path','saved','missing-completion','exit'])test('resident evidence failure freezes without retry: '+fault,async t=>{const f=await fixture(t);f.n.fault=fault;const r=await f.read();assert.equal(r.status,'unknown',JSON.stringify(r));const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.launches,1);});
 test('resident list independent result identity check',async t=>{const f=await fixture(t);f.n.fault='list-row';const r=await f.call('object_list',{...f.target,offset:0,limit:50});assert.equal(r.status,'unknown');});
+
+const VAR_DECL='a9ed5b7e-75c5-4651-af16-d2c27e98cb94';
+for(const parts of [[ST],[VAR_DECL,ST],[ST,VAR_DECL]])test('resident service known ST parts list/read/change retains raw evidence: '+parts.join(','),async t=>{
+ const f=await fixture(t);f.n.state.nodes[OBJ].embeddedObjectTypes=parts;const before=structuredClone(f.n.state);
+ const listed=await f.call('object_list',{...f.target,offset:0,limit:50});assert.equal(listed.status,'succeeded',JSON.stringify(listed));assert.deepEqual(listed.data.objects[0].embeddedObjectTypes,parts);
+ const r=await f.read();assert.equal(r.status,'succeeded');assert.deepEqual(r.data.embeddedObjectTypes,parts);
+ const changed=await f.change(r,'known-st');assert.equal(changed.status,'succeeded',JSON.stringify(changed));assert.deepEqual(changed.data.embeddedObjectTypes,parts);
+ const expected=structuredClone(before);expected.nodes[OBJ].implementation=changed.data.implementation;assert.deepEqual(f.n.state,expected);assert.equal(f.n.writes,1);assert.equal(changed.data.saved,false);assert.equal(changed.data.compileCalls,0);
+});
+for(const parts of [null,[],[VAR_DECL],[ST,ST],[ST,VAR_DECL,VAR_DECL],[ST,APP],[ST,VAR_DECL,APP],[ST,null],ST,[ST,VAR_DECL.toUpperCase()]])test('resident rejects incomplete/unknown/duplicate ST parts '+JSON.stringify(parts),()=>{const s=state('x');s.nodes[OBJ].embeddedObjectTypes=parts;assert.throws(()=>residentObject(s,OBJ,APP));});
+test('supported ST metadata change still invalidates old write version',async t=>{const f=await fixture(t),r=await f.read();f.n.state.nodes[OBJ].embeddedObjectTypes=[VAR_DECL,ST];assert.equal((await f.change(r,'metadata-stale')).status,'conflict');assert.equal(f.n.writes,0);});
+for(const fault of ['embedded-mismatch','after-embedded'])test('resident independent ST metadata evidence mismatch freezes: '+fault,async t=>{
+ const f=await fixture(t);f.n.state.nodes[OBJ].embeddedObjectTypes=[VAR_DECL,ST];const r=await f.read();assert.equal(r.status,'succeeded');f.n.fault=fault;
+ const result=fault==='after-embedded'?await f.change(r,'metadata-after'):await f.read();assert.equal(result.status,'unknown',JSON.stringify(result));const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.writes,fault==='after-embedded'?1:0);assert.equal(f.n.launches,1);
+});
 
 test('normal resident exit followed by EOF permits lifecycle release, without losing owned routing',async t=>{
  const f=await fixture(t);let released=0,closed=0;const errors=[];
