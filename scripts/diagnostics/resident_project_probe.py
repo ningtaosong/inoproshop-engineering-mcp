@@ -6,9 +6,10 @@ def sha(path):
     with open(path,'rb') as f:return hashlib.sha256(f.read()).hexdigest()
 
 def load_fixed(path,expected,name):
-    if sha(path)!=expected:raise ValueError('Fixed module fingerprint differs: '+path)
+    with open(path,'rb') as f:raw=f.read()
+    if hashlib.sha256(raw).hexdigest()!=expected:raise ValueError('Fixed module fingerprint differs: '+path)
     namespace=dict(__name__=name,__file__=path)
-    with open(path,'rb') as f:code=compile(f.read(),path,'exec')
+    code=compile(raw.decode('utf-8','strict'),path,'exec')
     eval(code,namespace,namespace)
     return namespace
 
