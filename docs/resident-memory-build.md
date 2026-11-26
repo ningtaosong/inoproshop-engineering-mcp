@@ -2,6 +2,8 @@
 
 本轮基于 `codex/resident-mcp-session / b5335aa22b00a93c7d3a184fc73e87582a485ec0`，核实远端 main 仍为 `55bb58fc97b266215ad536b6b0f9d4f66c80670f`。只迁移 `project_build`，38项工具不增加。未合并、未部署；保留尚未完成真实验收的0.39 `add-struct-field`。
 
+下文固定构建和授权状态保留最初离线交付时点。随后用户已允许旧实例不保存正常关闭；该IDE已正常退出，但旧SDK控制器的finish前置条件形成循环，尚未移交服务。必要的收尾顺序及原Application选择兼容补修、独立新固定构建和当前等待点见[后续移交记录](resident-build-handoff-fix.md)。真实内存编译仍未执行。
+
 ## 实际实现
 
 resident 的 `project_build` 新增可选输入 `expectedResidentVersion`：在resident执行时必须来自当前读取，服务队列和实际IDE句柄再次核对。旧batch输入与执行不变；该字段不能用于batch。其他37项输入与全部38项输出Schema保持，新增结果字段使用已有passthrough契约。内部身份仍由Agent读取，用户无需填写GUID或版本。
