@@ -1,3 +1,4 @@
+import {ResidentChannel} from './resident.js';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,15 +32,23 @@ export interface Adapter {
   execute(request: BridgeRequest, directory: string, onStart: (pid:number,evidence?:ProcessStartEvidence)=>Promise<void>): Promise<Reply>;
   reconcile(directory: string,expected?:ExecutionBinding & {launchId?:string}): Promise<Reply | undefined>;
   waitForObservations?():Promise<void>;
+  executeResident?(request:BridgeRequest,directory:string,onStart:(pid:number,launchId:string)=>Promise<void>):Promise<Reply>;
+  residentOwned?():boolean;
 }
 export class IdeAdapter implements Adapter {
+  private resident?:ResidentChannel;
+  residentOwned(){return this.resident?.owned()??false;}
+  executeResident(request:BridgeRequest,directory:string,onStart:(pid:number,launchId:string)=>Promise<void>){
+    return (this.resident??=new ResidentChannel(this.config,ROOT)).execute(request,directory,onStart);
+  }
   private pending=new Set<Promise<unknown>>();
   private observationFailures=new Map<string,any>();
   constructor(readonly config: Config, private readonly spawnProcess: typeof spawn = spawn,
     private readonly observations:{probe?:ProcessProbe;writeEvidence?:EvidenceWriter;writeDiagnostic?:EvidenceWriter;reportDiagnostic?:(value:unknown)=>unknown}={}) {}
   private track<T>(promise:Promise<T>):Promise<T> {this.pending.add(promise);promise.then(()=>this.pending.delete(promise),()=>this.pending.delete(promise));return promise;}
-  async waitForObservations(){while(this.pending.size)await Promise.allSettled([...this.pending]);}
+  async waitForObservations(){while(this.pending.size)await Promise.allSettled([...this.pending]);await this.resident?.observe();}
   async execute(request: BridgeRequest, directory: string, onStart: (pid:number,evidence?:ProcessStartEvidence)=>Promise<void>): Promise<Reply> {
+    if(this.residentOwned())throw new DomainError('conflict','RESIDENT_TOOL_NOT_ADAPTED','本服务持有resident工程；禁止启动旧批处理路径');
     return this.track(this.executeObserved(request,directory,onStart));
   }
   private async executeObserved(request: BridgeRequest, directory: string, onStart: (pid:number,evidence?:ProcessStartEvidence)=>Promise<void>): Promise<Reply> {

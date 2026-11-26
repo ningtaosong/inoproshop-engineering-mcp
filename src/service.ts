@@ -143,6 +143,7 @@ export class EngineeringService {
     if(!op) throw new DomainError('failed','OPERATION_NOT_FOUND','未找到原操作');
     const isolated=await this.isolatedObservation(op);
     if(isolated)return isolated;
+    if(op.resident && args.reconcile)return op.response??this.operationReply(op,op.status,'常驻请求仅观察原操作；不以退出或旧文件重判，不重放');
     if(args.reconcile && (op.status==='running'||op.status==='unknown')) {
       if(op.status==='running' && alive(op.ownerPid) && !this.persistencePoison) return this.operationReply(op,'running','原服务仍在执行，查询不会中断或重放');
       await this.store.acquire();
@@ -342,6 +343,7 @@ export class EngineeringService {
         // 旧格式 open 的恢复仅允许指向原已登记项，不推断新工程。
         if(!op.activation) {const r=await this.store.registry();op.activation={previousActiveProjectId:r.activeProjectId,revision:r.revision};}
         session.snapshot=result.data?.snapshot as string;session.diskHash=result.data?.diskHash as string;
+        if(op.resident)session.residentVersion=result.data?.residentVersion as string;
         if(session.lastBuild && !buildApplies(session,session))delete session.lastBuild;
         session.buildApplicable=!!session.lastBuild;session.lastStateOperationId=op.operationId;
         const committed=await this.store.activate(session,op);
@@ -357,6 +359,7 @@ export class EngineeringService {
         if(op.tool==='project_build')s.lastBuild={operationId:op.operationId,...result.data};
         if(result.data?.snapshot)s.snapshot=result.data.snapshot as string;
         if(result.data?.diskHash)s.diskHash=result.data.diskHash as string;
+        if(op.resident)s.residentVersion=result.data?.residentVersion as string;
         if(result.data?.taskConfigurationVersion)s.taskConfigurationVersion=result.data.taskConfigurationVersion as string;
         s.buildApplicable=buildApplies(s,s);
         s.lastStateOperationId=op.operationId;await this.store.saveSession(s);
@@ -366,7 +369,7 @@ export class EngineeringService {
     op.response={...result,operationId:op.operationId,requestId:op.requestId};
     await this.store.saveOp(op);
     // 失败的新目标只释放自己的临时源锁；不释放服务锁或已登记工程的锁。unknown 原锁保留。
-    if(switching && !['succeeded','unknown'].includes(result.status) && op.project &&
+    if(!op.resident && switching && !['succeeded','unknown'].includes(result.status) && op.project &&
       !(await this.store.registry()).projects.some(s=>pathKey(s.sourcePath)===pathKey(op.project!.sourcePath)))
       await this.store.releaseSource(op.project.sourcePath);
     if(op.tool==='project_create'&&op.creation&&!['succeeded','unknown'].includes(result.status)&&
@@ -375,6 +378,7 @@ export class EngineeringService {
   }
   private async bridge(op:Operation,command:string,session:Session,args:any):Promise<Reply> {
     await maintenanceGuard();await assertNotIsolated(this.store,session.projectId,[session.sourcePath,session.workingPath]);
+    if(session.sessionMode==='resident')return this.residentBridge(op,command,session,args);
     const direct=session.editMode==='direct';
     if(direct)await guardDirect(this.store,session);
     op.bridge={directory:this.store.file('ipc/'+op.operationId)};
@@ -389,6 +393,20 @@ export class EngineeringService {
     const parsed=this.prepareResult(op,replySchema.parse(result));
     await this.validateCallEvidence(op,parsed,session);
     return boundNativeReply(parsed);
+  }
+  private async residentBridge(op:Operation,command:string,s:Session,args:any):Promise<Reply> {
+    if(!this.adapter.executeResident)throw new DomainError('unsupported','RESIDENT_ADAPTER_UNAVAILABLE','此适配器没有常驻实现，不回落批处理');
+    const owned=this.adapter.residentOwned?.()===true;
+    if(command!=='inspect'&&!owned)throw new DomainError('conflict','RESIDENT_RECONNECT_UNSUPPORTED','原常驻会话不属于本服务；不重开或接管');
+    if(command==='inspect'&&!owned)await guardDirect(this.store,s);
+    await this.store.acquire(s.sourcePath);
+    if(pathKey(await fs.realpath(s.workingPath))!==pathKey(s.directPath!))throw new DomainError('conflict','PROJECT_PATH_CHANGED','工程路径身份变化');
+    await this.guardPending(op.tool,op.args,op.operationId,s);
+    op.resident=true;op.bridge={directory:this.store.file('ipc/'+op.operationId)};
+    op.dispatchFiles=await targetFiles([s.workingPath]);await this.store.saveOp(op);
+    const residentLeases=await Promise.all([this.store.file('service.lock'),this.store.sourceLock(s.sourcePath)].map(async p=>({path:p,sha256:digest(await fs.readFile(p))})));
+    const raw=await this.adapter.executeResident({operationId:op.operationId,requestId:op.requestId,requestFingerprint:op.fingerprint,command,projectPath:s.workingPath,args:{...args,residentLeases}},op.bridge.directory,async(pid,launchId)=>{op.bridge!.pid=pid;op.bridge!.launchId=launchId;await this.store.saveOp(op);});
+    return replySchema.parse(raw);
   }
   private publishTaskCallEvidence(file:string,value:unknown) {return atomicJson(file,value);}
   private async validateCallEvidence(op:Operation,parsed:Reply,session?:Session) {
@@ -813,6 +831,8 @@ export class EngineeringService {
   }
   private async execute(op:Operation):Promise<Reply> {
     const a=op.args;
+    const residentActive=this.adapter.residentOwned?.()||(await this.store.session())?.sessionMode==='resident';
+    if(residentActive&&!['project_open','object_list','object_read','code_apply_change'].includes(op.tool))throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','当前常驻工程只支持定位、读取和限定实现区修改；不保存、编译、切换或回落旧路径');
     if(op.tool==='library_catalog'||op.tool==='device_catalog'){
       await maintenanceGuard();
       op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
@@ -857,11 +877,16 @@ export class EngineeringService {
           }
         }
       }
+      if(session.sessionMode==='resident'&&!this.adapter.residentOwned?.())throw new DomainError('conflict','RESIDENT_RECONNECT_UNSUPPORTED','跨服务恢复常驻句柄未支持；保留原实例');
+      if(op.tool==='project_open'&&a.sessionMode==='resident'){
+        if(session.storageMode!=='direct')throw new DomainError('unsupported','RESIDENT_DIRECT_ONLY','resident首版只直接打开指定文件');
+        session={...session,sessionMode:'resident'};
+      }else if(session.sessionMode==='resident'||this.adapter.residentOwned?.())throw new DomainError('conflict','RESIDENT_SWITCH_UNSUPPORTED','常驻工程不能通过旧打开/激活/副本路径切换');
       await assertNotIsolated(this.store,session.projectId,[session.sourcePath,session.workingPath]);
       op.project={...session};await this.store.saveOp(op);
       await this.store.acquire(session.sourcePath);
       const diskHash=digest(await fs.readFile(session.workingPath));
-      if(session.diskHash && session.diskHash!==diskHash)
+      if(session.sessionMode!=='resident' && session.diskHash && session.diskHash!==diskHash)
         throw new DomainError('conflict','WORKING_COPY_CHANGED','已登记副本在外部发生变化，原活动工程保留；需先核对原副本与证据');
       return this.bridge(op,'inspect',session,a);
     }
@@ -875,6 +900,12 @@ export class EngineeringService {
     await this.store.acquire(s.sourcePath);
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
+    if(s.sessionMode==='resident'){
+      const command=({object_list:'list',object_read:'read',code_apply_change:'change'} as Record<string,string>)[op.tool];
+      if(!command)throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','此工具尚未迁移到常驻模式');
+      return this.bridge(op,command,s,a);
+    }
+    if(a.expectedResidentVersion!==undefined)throw new DomainError('conflict','RESIDENT_MODE_REQUIRED','resident版本不能用于旧批处理');
     if(op.tool==='variable_edit')return this.variableEdit(op,s);
     if(op.tool==='library_placeholder_clear'){
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)

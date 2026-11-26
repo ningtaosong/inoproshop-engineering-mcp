@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.39.0';
+export const VERSION = '0.40.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -33,10 +33,10 @@ export const schemas = {
   session_status: z.object({}).strict(),
   project_list: z.object({}).strict(),
   project_create:z.object({...request,projectPath:z.string().min(1).max(2048)}).strict(),
-  project_open: z.object({ ...request, projectPath: z.string().min(1).max(2048), applicationId: uuid.optional() }).strict(),
+  project_open: z.object({ ...request, sessionMode:z.enum(['resident','batch']).optional().describe('新推荐流程显式resident：同服务同IDE、默认不保存不关闭；省略或batch保留旧批处理语义。'), projectPath: z.string().min(1).max(2048), applicationId: uuid.optional() }).strict(),
   project_open_copy: z.object({ ...request, sourcePath: z.string().min(1).max(2048), applicationId: uuid.optional() }).strict(),
   project_activate: z.object({ ...request, projectId:uuid, applicationId:uuid.optional() }).strict(),
-  object_list: z.object({ ...target, offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(200).default(50) }).strict(),
+  object_list: z.object({ ...target, expectedResidentVersion:hash.optional(), offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(200).default(50) }).strict(),
   object_read: z.object({ ...target, objectId: uuid }).strict(),
   project_search:z.object({...target,query:z.string().min(1).max(256),caseSensitive:z.boolean().default(false),matchMode:z.enum(['literal','identifier']).default('literal'),
     areas:z.array(z.enum(['name','declaration','implementation'])).min(1).max(3).default(['name','declaration','implementation']),
@@ -160,7 +160,7 @@ export const schemas = {
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/),access:z.literal('PUBLIC'),propertyType:z.literal('DINT'),
     declaration:z.string().min(1).max(500000),getDeclaration:z.string().max(500000),getImplementation:z.string().max(500000),propertyMode:z.enum(['read-only','read-write']).optional(),setDeclaration:z.string().max(500000).optional(),setImplementation:z.string().max(500000).optional()}).strict()
     .refine(a=>a.propertyMode==='read-write'?[a.setDeclaration,a.setImplementation].every(x=>x!==undefined):a.setDeclaration===undefined&&a.setImplementation===undefined,'read-write须显式提供两侧源码；旧调用默认只读且不接收Set源码'),
-  code_apply_change: z.object({ ...request, ...target, objectId: uuid, expectedHash: hash,
+  code_apply_change: z.object({ ...request, ...target, objectId: uuid, expectedHash: hash, expectedResidentVersion:hash.optional().describe('resident模式从当前object_read取值；绑定内存依赖与磁盘版本。仅支持普通根ST POU实现区；声明须逐字保持。'),
     declaration: z.string().max(500000), implementation: z.string().max(500000).optional(), objectType:z.enum(['gvl','structure','enum','array','method','property_get','property_set']).optional(),parentId:uuid.optional(),
     fbId:uuid.optional(),expectedPropertyHash:hash.optional(),expectedAccessorVersion:hash.optional(),expectedSnapshot:hash.optional(),expectedDiskHash:hash.optional() }).strict()
     .refine(a=>['method','property_get','property_set'].includes(a.objectType??'')?a.parentId!==undefined:a.parentId===undefined,'子对象修改须显式类型和精确parentId')

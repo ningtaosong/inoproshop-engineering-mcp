@@ -128,7 +128,7 @@ test('production service rejects wrong clear envelope operationId, freezes and d
 });
 test('historical clear-tool contract projection retains old rules',async()=>{
  const prior=JSON.parse(await readFile(new URL('./fixtures/placeholder-clear-legacy-contracts.json',import.meta.url),'utf8'));
- assert.equal(Object.keys(prior.tools).length,37);assert.equal(Object.keys(schemas).length,38);assert.equal(VERSION,'0.39.0');
+ assert.equal(Object.keys(prior.tools).length,37);assert.equal(Object.keys(schemas).length,38);assert.equal(VERSION,'0.40.0');
  for(const [name,hashes] of Object.entries(prior.tools)){
   assert.equal(digest(JSON.stringify(beforeStructFieldInput(name,z.toJSONSchema(schemas[name])))),hashes.input,name+' input');
   assert.equal(digest(JSON.stringify(z.toJSONSchema(outputSchemas[name]))),hashes.output,name+' output');

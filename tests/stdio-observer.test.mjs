@@ -71,13 +71,13 @@ test('identity returned after child exit is not bound as its creation identity (
  const start=(await rows(directory)).find(e=>e.event==='service-start');assert.equal(start.binding.process.state,'unconfirmed');
  assert.equal(start.binding.process.reason,'exit-before-creation-identity-confirmed');
 });
-test('production offline stdio idle EOF completes journal and closes naturally; no engineering call',async()=>{
+test('production offline stdio idle EOF completes journal and closes naturally; no engineering call',async t=>{
  const env=await setup(),directory=path.join(env.dir,'observer'),entry=path.resolve('dist/server.js');
  const transport=new ObservedStdioTransport({command:process.execPath,args:[entry],cwd:process.cwd(),stderr:'pipe',
    env:{...process.env,INOPRO_DATA_DIR:env.dataDir,INOPRO_TEST_MODE:'fixture'}},{directory});
  let stderr='';transport.stderr.on('data',d=>stderr+=d.toString());
- const client=new Client({name:'offline-exit-test',version:'1'});await client.connect(transport);
- assert.equal(client.getServerVersion().version,'0.39.0');assert.equal((await client.listTools()).tools.length,38);
+ const client=new Client({name:'offline-exit-test',version:'1'});t.after(()=>client.close());await client.connect(transport);
+ assert.equal(client.getServerVersion().version,'0.40.0');assert.equal((await client.listTools()).tools.length,38);
  await client.close();assert.equal(transport.exitSeen.code,0,stderr);
  const runs=await fs.readdir(path.join(env.dataDir,'service-lifecycle'));assert.equal(runs.length,1);
  const journal=await rows(path.join(env.dataDir,'service-lifecycle',runs[0]));assert.equal(journal[0].event,'shutdown-requested');
