@@ -35,6 +35,35 @@ def digest(value):return hashlib.sha256(canonical(value)).hexdigest()
 def file_hash(path):
     with open(path,'rb') as stream:return hashlib.sha256(stream.read()).hexdigest()
 
+# Installed 1.9.1.6 BeforeCompile/LoadPlaceholderLibrary implementations.
+# This is a narrow compiler effect, not a general system-library exemption.
+COMPILER_LIBRARY_ARTIFACTS={
+    'InoSymbolObject.plugin':'91e06b3aa1548a4076535cf68df3bb2f41c9445e7c196a553687c50b9d609c48',
+    'InoLibManObject.plugin':'7fbdf3fd2728e19e737fa3b672da89d4ec9582efc3060ef896a5b44a62b111a6'}
+IEC_COMPILER_REFERENCE=dict(is_redirected=False,explicit_redirection=None,is_managed=False,is_placeholder=True,
+    name='#IecVarAccess',optional=False,qualified_only=False,effective_resolution='IecVarAccess, 3.5.11.0 (System)',
+    resolution_info=u'库配置文件解析',default_resolution='IecVarAccess, 3.3.1.20 (System)',
+    resolver_guid='b303f5ce-75ff-4668-a777-7da8debb449c',namespace='IecVarAccessLibrary',system_library=True,placeholder_name='IecVarAccess')
+
+def compiler_library_support():
+    """Read loaded assembly identity and file fingerprint; never load/call a plugin."""
+    from System import AppDomain
+    rows=[]
+    for a in AppDomain.CurrentDomain.GetAssemblies():
+        name=source_text(a.GetName().Name)
+        if name in COMPILER_LIBRARY_ARTIFACTS:
+            path=source_text(a.Location)
+            rows.append(dict(name=name,version=source_text(a.GetName().Version.ToString()),path=path,sha256=file_hash(path)))
+    return dict(scheme='resident-compiler-library-support-v1',assemblies=sorted(rows,key=lambda r:r['name']))
+
+def checked_compiler_library_support(proof):
+    if not isinstance(proof,dict) or set(proof)!=set(['scheme','assemblies']) or proof['scheme']!='resident-compiler-library-support-v1' or not isinstance(proof['assemblies'],list):raise ValueError('Compiler library support evidence missing')
+    rows=proof['assemblies']
+    if len(rows)!=2 or set(r.get('name') for r in rows)!=set(COMPILER_LIBRARY_ARTIFACTS):raise ValueError('Compiler library implementation coverage differs')
+    for r in rows:
+        if set(r)!=set(['name','version','path','sha256']) or r['version']!='1.9.1.6' or not isinstance(r['path'],string_types) or not r['path'] or r['sha256']!=COMPILER_LIBRARY_ARTIFACTS[r['name']]:raise ValueError('Unverified compiler library implementation')
+    return digest(proof)
+
 def guid(value):
     s=text_type(value)
     if not re.match(r'^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z',s) or s.lower()=='00000000-0000-0000-0000-000000000000':raise ValueError('Invalid native identity')
@@ -215,6 +244,10 @@ class NativeProjectAdapter(object):
         validate_build_context(state,value)
         return value
 
+    def build_library_support(self):
+        self._owned()
+        return compiler_library_support()
+
     def prepare_build(self,aid):
         self._owned()
         item=self.objects.get(aid)
@@ -324,13 +357,43 @@ def build_state_view(state):
     validate_owned_projects(dict(returned=owned,primary=owned,all=list(state['openedProjects'].values()),readErrors=[]),state['projectPath'],state['projectHandle'])
     return dict((k,v) for k,v in state.items() if k!='openedProjects')
 
-def build_conservation(before,after,pre,post):
-    """Only one evidenced compiler-derived AM610 child may appear. Never hide existing rows."""
+def compiler_reference_addition(before,after,pre,aid,support):
+    """Validate exact one appended reference; retain every original row and unknown field."""
+    checked_compiler_library_support(support)
+    if aid not in before['applications']:raise ValueError('Compiler library Application differs')
+    managers=[r for r in before['nodes'].values() if r.get('applicationId')==aid and r.get('nativeTypeId')=='adb5cb65-8e1d-4a00-b70a-375ea27582f3']
+    changed=[oid for oid in before['nodes'] if digest(before['nodes'][oid])!=digest(after['nodes'].get(oid))]
+    if len(managers)!=1 or changed!=[managers[0]['objectId']]:raise ValueError('Compiler library change is not confined to unique Application manager')
+    manager=managers[0];oid=manager['objectId'];updated=after['nodes'][oid]
+    if manager['parentId']!=aid:raise ValueError('Compiler library manager is not Application child')
+    root=before['nodes'][aid];visited=set()
+    while root['parentId'] is not None:
+        if root['objectId'] in visited:raise ValueError('Cyclic Application ancestry')
+        visited.add(root['objectId']);root=before['nodes'][root['parentId']]
+    if pre['devices'].get(root['objectId'],{}).get('identity')!=ROOT_DESCRIPTION:raise ValueError('Compiler library change outside verified AM610')
+    if digest(dict((k,v) for k,v in manager.items() if k!='directLibraries'))!=digest(dict((k,v) for k,v in updated.items() if k!='directLibraries')):raise ValueError('Compiler changed library manager fields')
+    old=manager['directLibraries'];new=updated['directLibraries']
+    if not isinstance(old,list) or not isinstance(new,list) or len(new)!=len(old)+1 or digest(new[:-1])!=digest(old):raise ValueError('Compiler changed original library references/order')
+    ids=[]
+    for row in new:
+        rid=row.get('id')
+        if not isinstance(rid,string_types) or not re.match(r'^[0-9]+\Z',rid) or int(rid)<=0 or rid in ids:raise ValueError('Invalid or duplicate native reference identity')
+        ids.append(rid)
+    if any((r.get('name') or '').lower()=='#iecvaraccess' or (r.get('placeholder_name') or '').lower()=='iecvaraccess' for r in old):raise ValueError('Compiler dependency already present')
+    r=new[-1]
+    if digest(dict((k,v) for k,v in r.items() if k!='id'))!=digest(IEC_COMPILER_REFERENCE):raise ValueError('Unexpected compiler library reference')
+    return dict(libraryManagerId=oid,applicationId=aid,index=len(old),reference=copy.deepcopy(r),supportHash=digest(support))
+
+def build_conservation(before,after,pre,post,aid=None,support=None):
+    """Only the two individually evidenced compiler effects; existing content stays exact."""
     validate_build_context(before,pre);validate_build_context(after,post)
     old=before['nodes'];new=after['nodes']
     if set(old)-set(new):raise ValueError('Compiler removed original node')
-    for oid,row in old.items():
-        if new[oid]!=row:raise ValueError('Compiler changed existing node: '+oid)
+    library_additions=[]
+    changed=[oid for oid,row in old.items() if digest(new[oid])!=digest(row)]
+    if changed:
+        if support is None:raise ValueError('Compiler changed existing node: '+changed[0])
+        library_additions=[compiler_reference_addition(before,after,pre,aid,support)]
     added=sorted(set(new)-set(old))
     if len(added)>1:raise ValueError('Unexplained compiler-generated nodes')
     for k in set(before)|set(after):
@@ -348,7 +411,9 @@ def build_conservation(before,after,pre,post):
         if post['children'][oid]!=[]:raise ValueError('Unexpected derived subtree')
     for parent,ids in pre['children'].items():
         if [x for x in post['children'][parent] if x not in added]!=ids:raise ValueError('Compiler reordered existing siblings')
-    return dict(passed=True,addedDeviceIds=added,sourceUnchanged=True,directLibrariesUnchanged=True,taskCallsUnchanged=True)
+    proof=dict(passed=True,addedDeviceIds=added,sourceUnchanged=True,directLibrariesUnchanged=not library_additions,taskCallsUnchanged=True)
+    if library_additions:proof.update(originalDirectLibrariesUnchanged=True,compilerAddedDirectLibraries=library_additions)
+    return proof
 
 def checked_diagnostics(value,aid):
     if value.get('applicationId')!=aid or value.get('completed') is not True or value.get('diagnosticsComplete') is not True:raise ValueError('Incomplete compiler invocation/diagnostics')
@@ -417,6 +482,8 @@ class ResidentSession(object):
             elif command=='build':
                 if args.get('targetKind','application')!='application' or args.get('expectedResidentVersion')!=version:raise Rejection('Build requires current memory version and actual Application')
                 self.adapter.prepare_build(aid)
+                support=getattr(self.adapter,'build_library_support',lambda:None)()
+                self.publish('compiler-library-support-before.json',support)
                 context=self.adapter.build_context(before)
                 self.publish('build-context-before.json',context)
                 self.publish('checkpoint.json',dict(request=request,state=before,diskHash=disk,residentVersion=version))
@@ -437,7 +504,10 @@ class ResidentSession(object):
                 after=self.adapter.snapshot();self.publish('build-after-state.json',dict(state=after,diskHash=self.disk_hash()))
                 post=self.adapter.build_context(after)
                 self.publish('after.json',dict(state=after,diskHash=self.disk_hash(),buildContext=post))
-                check=build_conservation(before,after,context,post)
+                support_after=getattr(self.adapter,'build_library_support',lambda:None)()
+                self.publish('compiler-library-support-after.json',support_after)
+                check=build_conservation(before,after,context,post,aid,support)
+                if check.get('compilerAddedDirectLibraries') and digest(support_after)!=digest(support):raise ValueError('Compiler library implementation changed during build')
                 counts=checked_diagnostics(compiled,aid)
                 if self.disk_hash()!=disk:raise ValueError('Disk changed during memory build')
                 actual=dependencies(after)

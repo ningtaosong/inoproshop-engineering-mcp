@@ -1,0 +1,3989 @@
+{
+  "before": {
+    "state": {
+      "nodes": {
+        "299aa5b3-9792-46d2-9b16-8a6e6466473a": {
+          "implementation": null,
+          "objectId": "299aa5b3-9792-46d2-9b16-8a6e6466473a",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD5632_SD6143"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "7eb281f0-5127-471a-adcf-3004567f8988": {
+          "implementation": null,
+          "objectId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "declaration": null,
+          "nativeTypeId": "738bea1e-99bb-4f04-90bb-a7a567e74e3a",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement"
+          ],
+          "parentId": null
+        },
+        "57cc0e65-1907-423b-989c-1487e2d15147": {
+          "implementation": null,
+          "objectId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "declaration": null,
+          "nativeTypeId": "738bea1e-99bb-4f04-90bb-a7a567e74e3a",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement"
+          ],
+          "parentId": null
+        },
+        "6a7ce440-fb12-4e91-8750-0d092ece040b": {
+          "implementation": null,
+          "objectId": "6a7ce440-fb12-4e91-8750-0d092ece040b",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD2048_SD2559"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "3cdf2fe1-db22-421f-9905-fa20df0b515d": {
+          "implementation": null,
+          "objectId": "3cdf2fe1-db22-421f-9905-fa20df0b515d",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD8192_SD8703"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "b7fd81da-efc6-485b-99e0-550fbc36c092": {
+          "implementation": null,
+          "objectId": "b7fd81da-efc6-485b-99e0-550fbc36c092",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM512_SM1023"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "887d4770-c693-4669-8ecf-c0a5c6976421": {
+          "implementation": null,
+          "objectId": "887d4770-c693-4669-8ecf-c0a5c6976421",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM7680_SM8191"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "d5667488-8888-4384-ae1d-0ee1132f49cc": {
+          "implementation": null,
+          "objectId": "d5667488-8888-4384-ae1d-0ee1132f49cc",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD9216_SD9727"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83": {
+          "implementation": null,
+          "objectId": "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD8704_SD9215"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "c14ce46e-025a-4d76-a28e-66d1a283c199": {
+          "implementation": null,
+          "objectId": "c14ce46e-025a-4d76-a28e-66d1a283c199",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM1536_SM2047"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "d38cc9cb-e60c-477a-b39b-d1df421a744f": {
+          "implementation": null,
+          "objectId": "d38cc9cb-e60c-477a-b39b-d1df421a744f",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD1536_SD2047"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "b7135532-48ad-4d79-903d-f7d628e79706": {
+          "implementation": null,
+          "objectId": "b7135532-48ad-4d79-903d-f7d628e79706",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD4608_SD5119"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf": {
+          "implementation": null,
+          "objectId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "declaration": null,
+          "nativeTypeId": "639b491f-5557-464c-af91-1471bac9f549",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application"
+          ],
+          "parentId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b"
+        },
+        "38d47f48-fa7e-434e-a719-4709da7a58e2": {
+          "implementation": null,
+          "objectId": "38d47f48-fa7e-434e-a719-4709da7a58e2",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM6144_SM6655"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "77ccab4a-75a2-4c94-866f-8f02fbd0e876": {
+          "implementation": null,
+          "objectId": "77ccab4a-75a2-4c94-866f-8f02fbd0e876",
+          "declaration": null,
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "HwConfiguratioinDevice"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "b98fee4d-62db-4ce8-a240-f2e9ec3119b5": {
+          "implementation": null,
+          "objectId": "b98fee4d-62db-4ce8-a240-f2e9ec3119b5",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM7168_SM7679"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "cfd8c710-45ec-4371-b532-9444ea4dbca2": {
+          "implementation": null,
+          "objectId": "cfd8c710-45ec-4371-b532-9444ea4dbca2",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD1024_SD1535"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "6b9df7c4-5031-4434-80b1-ddc9230e30f9": {
+          "implementation": null,
+          "objectId": "6b9df7c4-5031-4434-80b1-ddc9230e30f9",
+          "declaration": null,
+          "nativeTypeId": "86bab008-5846-4915-b0dc-6a79c0cc7c53",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Network Configuration",
+            "LocalBus Config"
+          ],
+          "parentId": "266b669b-473e-4a03-8c4b-455802429073"
+        },
+        "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d": {
+          "implementation": null,
+          "objectId": "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD7680_SD8191"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": {
+          "implementation": "// Native-created project: continued direct edit validation.\nProbeDelay := T#7s; // 离线测试延时设定\nProbeEnable := FALSE; // 离线测试使能\n",
+          "objectId": "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+          "declaration": "PROGRAM PLC_PRG\nVAR\n    ProbeDelay : TIME;\n    ProbeEnable : BOOL;\nEND_VAR",
+          "nativeTypeId": "6f9dac99-8de1-4efc-8465-68ac443b7d08",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [
+            "a9ed5b7e-75c5-4651-af16-d2c27e98cb94",
+            "3b83b776-fb25-43b8-99f2-3c507c9143fc"
+          ],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "PLC_PRG"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "835c7cde-7ae4-4919-9418-f39973975e87": {
+          "implementation": null,
+          "objectId": "835c7cde-7ae4-4919-9418-f39973975e87",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM2048_SM2559"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "b5da53d7-2520-4692-916b-da0ce8559a69": {
+          "implementation": null,
+          "objectId": "b5da53d7-2520-4692-916b-da0ce8559a69",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM0_SM511"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b": {
+          "implementation": null,
+          "objectId": "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD0_SD511"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+          "implementation": null,
+          "objectId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "declaration": null,
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device"
+          ],
+          "parentId": null
+        },
+        "5d558397-776b-478d-ab91-fa36aca5d60a": {
+          "implementation": null,
+          "objectId": "5d558397-776b-478d-ab91-fa36aca5d60a",
+          "declaration": null,
+          "nativeTypeId": "adb5cb65-8e1d-4a00-b70a-375ea27582f3",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "directLibraries": [
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#IoStandard",
+              "optional": false,
+              "id": "1217811713",
+              "qualified_only": false,
+              "effective_resolution": "IoStandard, 3.5.10.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "IoStandard, 3.5.10.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "IoStandard",
+              "system_library": true,
+              "placeholder_name": "IoStandard"
+            },
+            {
+              "is_redirected": true,
+              "explicit_redirection": "CmpHCUtils, 1.3.2.0 (Inovance)",
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpHCUtils",
+              "optional": false,
+              "id": "677195365",
+              "qualified_only": false,
+              "effective_resolution": "CmpHCUtils, 1.3.2.0 (Inovance)",
+              "resolution_info": "占位符重定向解析",
+              "default_resolution": "CmpHCUtils, * (Inovance)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpHCUtils",
+              "system_library": true,
+              "placeholder_name": "CmpHCUtils"
+            },
+            {
+              "is_redirected": true,
+              "explicit_redirection": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SysHCPlcInfo",
+              "optional": false,
+              "id": "1168205964",
+              "qualified_only": false,
+              "effective_resolution": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+              "resolution_info": "占位符重定向解析",
+              "default_resolution": "SysHCPlcInfo, * (Inovance)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SysHCPlcInfo",
+              "system_library": true,
+              "placeholder_name": "SysHCPlcInfo"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#3SLicense",
+              "optional": false,
+              "id": "2391188751",
+              "qualified_only": false,
+              "effective_resolution": "3SLicense, 3.5.10.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "许可机制解析",
+              "default_resolution": "3SLicense, 0.0.0.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "97c3b452-d9fa-4ac2-9d0c-3d420aa6d95b",
+              "namespace": "_3S_LICENSE",
+              "system_library": true,
+              "placeholder_name": "3SLicense"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#Standard",
+              "optional": false,
+              "id": "1554848619",
+              "qualified_only": false,
+              "effective_resolution": "Standard, 3.5.9.0 (System)",
+              "resolution_info": "库配置文件解析",
+              "default_resolution": "Standard, * (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "Standard",
+              "system_library": false,
+              "placeholder_name": "Standard"
+            },
+            {
+              "is_redirected": true,
+              "explicit_redirection": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#InoParamsConfigLib",
+              "optional": false,
+              "id": "688251431",
+              "qualified_only": false,
+              "effective_resolution": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+              "resolution_info": "占位符重定向解析",
+              "default_resolution": "InoParamsConfigLib, * (Inovance)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "InoParamsConfigLib",
+              "system_library": true,
+              "placeholder_name": "InoParamsConfigLib"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#BreakpointLogging",
+              "optional": false,
+              "id": "2510197305",
+              "qualified_only": false,
+              "effective_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "库配置文件解析",
+              "default_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "BPLog",
+              "system_library": true,
+              "placeholder_name": "BreakpointLogging"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpEventMgr",
+              "optional": false,
+              "id": "3602500822",
+              "qualified_only": false,
+              "effective_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpEventMgr",
+              "system_library": false,
+              "placeholder_name": "CmpEventMgr"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#Component Manager",
+              "optional": false,
+              "id": "2121407659",
+              "qualified_only": false,
+              "effective_resolution": "Component Manager, 3.5.9.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "Component Manager, 3.5.9.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "Component_Manager",
+              "system_library": false,
+              "placeholder_name": "Component Manager"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpApp",
+              "optional": false,
+              "id": "3235431135",
+              "qualified_only": false,
+              "effective_resolution": "CmpApp, 3.5.11.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "CmpApp, 3.5.11.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpApp",
+              "system_library": false,
+              "placeholder_name": "CmpApp"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpIecTask",
+              "optional": false,
+              "id": "551989543",
+              "qualified_only": false,
+              "effective_resolution": "CmpIecTask, 3.5.9.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "CmpIecTask, 3.5.9.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpIecTask",
+              "system_library": false,
+              "placeholder_name": "CmpIecTask"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpHSIO",
+              "optional": false,
+              "id": "2432838545",
+              "qualified_only": false,
+              "effective_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+              "resolution_info": "库配置文件解析",
+              "default_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpHSIO",
+              "system_library": true,
+              "placeholder_name": "CmpHSIO"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_Basic",
+              "optional": false,
+              "id": "3715034611",
+              "qualified_only": false,
+              "effective_resolution": "SM3_Basic, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_Basic, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SM3_Basic",
+              "system_library": true,
+              "placeholder_name": "SM3_Basic"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_CNC",
+              "optional": false,
+              "id": "1377484603",
+              "qualified_only": false,
+              "effective_resolution": "SM3_CNC, 4.2.1.1 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_CNC, 4.2.1.1 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SM3_CNC",
+              "system_library": true,
+              "placeholder_name": "SM3_CNC"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_Robotics",
+              "optional": false,
+              "id": "3746219342",
+              "qualified_only": false,
+              "effective_resolution": "SM3_Robotics, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_Robotics, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SM3_Robotics",
+              "system_library": true,
+              "placeholder_name": "SM3_Robotics"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_Robotics_Visu",
+              "optional": false,
+              "id": "337965806",
+              "qualified_only": false,
+              "effective_resolution": "SM3_Robotics_Visu, 4.2.0.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_Robotics_Visu, 4.2.0.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SM3_Robotics_Visu",
+              "system_library": true,
+              "placeholder_name": "SM3_Robotics_Visu"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_Transformation",
+              "optional": false,
+              "id": "2552443587",
+              "qualified_only": false,
+              "effective_resolution": "SM3_Transformation, 4.2.1.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_Transformation, 4.2.1.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "TRAFO",
+              "system_library": true,
+              "placeholder_name": "SM3_Transformation"
+            }
+          ],
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "库管理器"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "55c9ca6d-38f8-4aec-803a-7aea99f5d50e": {
+          "implementation": null,
+          "objectId": "55c9ca6d-38f8-4aec-803a-7aea99f5d50e",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD512_SD1023"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "84e551e0-9601-4259-b802-9701ea519aa3": {
+          "implementation": null,
+          "objectId": "84e551e0-9601-4259-b802-9701ea519aa3",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM2560_SM3071"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "e0407851-3df6-4797-ad01-660b71986740": {
+          "implementation": null,
+          "objectId": "e0407851-3df6-4797-ad01-660b71986740",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD9728_SD9999"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": {
+          "taskFields": {
+            "core_binding": {
+              "nativeType": null,
+              "kind": "integer",
+              "value": "-2",
+              "pythonType": "int"
+            },
+            "external_event": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "",
+              "pythonType": "str"
+            },
+            "interval": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "t#20ms",
+              "pythonType": "str"
+            },
+            "priority": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "1",
+              "pythonType": "str"
+            },
+            "event_pou_guid": {
+              "nativeType": "System.Guid",
+              "kind": "guid",
+              "value": "e323573b-bb6f-457c-a753-f8fcab0feee4",
+              "pythonType": "Guid"
+            },
+            "parent_synchron_task": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "",
+              "pythonType": "str"
+            },
+            "kind_of_task": {
+              "nativeType": "_3S.CoDeSys.TaskConfig.KindOfTask",
+              "kind": "enum",
+              "value": "Cyclic",
+              "pythonType": "KindOfTask"
+            },
+            "interval_unit": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "ms",
+              "pythonType": "str"
+            },
+            "event": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "",
+              "pythonType": "str"
+            }
+          },
+          "implementation": null,
+          "objectId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+          "declaration": null,
+          "nativeTypeId": "98a2708a-9b18-4f31-82ed-a1465b24fa2d",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "calls": [
+            [
+              "PLC_PRG",
+              ""
+            ]
+          ],
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask"
+          ],
+          "parentId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "watchdog": {
+            "time_unit": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "ms",
+              "pythonType": "str"
+            },
+            "time": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "",
+              "pythonType": "str"
+            },
+            "sensitivity": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "1",
+              "pythonType": "str"
+            },
+            "enabled": {
+              "nativeType": null,
+              "kind": "bool",
+              "value": false,
+              "pythonType": "bool"
+            }
+          }
+        },
+        "383a38c1-9989-474c-8dd3-91140579cf40": {
+          "implementation": null,
+          "objectId": "383a38c1-9989-474c-8dd3-91140579cf40",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM5632_SM6143"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "3ffb0926-b8f2-4569-a780-6378d149901c": {
+          "implementation": null,
+          "objectId": "3ffb0926-b8f2-4569-a780-6378d149901c",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD5120_SD5631"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "9012ecb5-5b8e-42b6-955d-7537670c899b": {
+          "implementation": null,
+          "objectId": "9012ecb5-5b8e-42b6-955d-7537670c899b",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM4608_SM5119"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "99761fc4-7d52-4d4c-b190-d029a12ff5ed": {
+          "implementation": null,
+          "objectId": "99761fc4-7d52-4d4c-b190-d029a12ff5ed",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD4096_SD4607"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "08fc481d-dd55-4f06-8554-7a1c21400ff9": {
+          "implementation": null,
+          "objectId": "08fc481d-dd55-4f06-8554-7a1c21400ff9",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD7168_SD7679"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "1f39e50c-7ccd-4361-8c72-eced6a8b6421": {
+          "implementation": null,
+          "objectId": "1f39e50c-7ccd-4361-8c72-eced6a8b6421",
+          "declaration": null,
+          "nativeTypeId": "72d5f3cf-74f0-4c4a-ad49-63c8bdb8e299",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "HIGH_SPEED_IO",
+            "HSIO"
+          ],
+          "parentId": "bf0d0fd8-de24-465d-a555-4bb14a9a8f37"
+        },
+        "6470a90f-b7cb-43ac-9ae5-94b2338b4573": {
+          "implementation": null,
+          "objectId": "6470a90f-b7cb-43ac-9ae5-94b2338b4573",
+          "declaration": null,
+          "nativeTypeId": "8753fe6f-4a22-4320-8103-e553c4fc8e04",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Project Settings"
+          ],
+          "parentId": null
+        },
+        "2267d37c-bdff-41ba-851d-59c7957b4908": {
+          "implementation": null,
+          "objectId": "2267d37c-bdff-41ba-851d-59c7957b4908",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM3584_SM4095"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "00bbadf4-4e2c-4805-bd26-e580550f2870": {
+          "implementation": null,
+          "objectId": "00bbadf4-4e2c-4805-bd26-e580550f2870",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM4096_SM4607"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": {
+          "implementation": null,
+          "objectId": "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e",
+          "declaration": null,
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "MODBUS_TCP"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": {
+          "implementation": null,
+          "objectId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "declaration": null,
+          "nativeTypeId": "ae1de277-a207-4a28-9efb-456c06bd52f3",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "125a163d-08e2-47f5-9cd0-8a5a64342622": {
+          "implementation": null,
+          "objectId": "125a163d-08e2-47f5-9cd0-8a5a64342622",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM3072_SM3583"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": {
+          "implementation": null,
+          "objectId": "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "declaration": null,
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "HIGH_SPEED_IO"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693": {
+          "implementation": null,
+          "objectId": "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM6656_SM7167"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "cb440091-3406-4785-8a33-f6722bf26ff3": {
+          "implementation": null,
+          "objectId": "cb440091-3406-4785-8a33-f6722bf26ff3",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM8192_SM8703"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "25563e27-cac7-4e3b-9d13-826f214d4ec2": {
+          "implementation": null,
+          "objectId": "25563e27-cac7-4e3b-9d13-826f214d4ec2",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM9216_SM9727"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "dad2379c-8339-43d5-8fad-fc936511cf0a": {
+          "implementation": null,
+          "objectId": "dad2379c-8339-43d5-8fad-fc936511cf0a",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD6656_SD7167"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "27f7c7ba-2364-4445-8a9e-6b707f8b498a": {
+          "implementation": null,
+          "objectId": "27f7c7ba-2364-4445-8a9e-6b707f8b498a",
+          "declaration": null,
+          "nativeTypeId": "8985beab-a1d2-4a9a-aac8-967a847520d2",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "ConfigStorage"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "586acdc4-2093-42df-aec9-6234cb1766ef": {
+          "implementation": null,
+          "objectId": "586acdc4-2093-42df-aec9-6234cb1766ef",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM9728_SM9999"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "26eed4cd-4fdc-4fac-a651-16c4a26571ba": {
+          "implementation": null,
+          "objectId": "26eed4cd-4fdc-4fac-a651-16c4a26571ba",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD3584_SD4095"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "a0329ce4-f69c-4e06-ac96-3022c3c516f6": {
+          "implementation": null,
+          "objectId": "a0329ce4-f69c-4e06-ac96-3022c3c516f6",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD2560_SD3071"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "1c272f52-6ad1-4581-a5a8-492b86e79bff": {
+          "implementation": null,
+          "objectId": "1c272f52-6ad1-4581-a5a8-492b86e79bff",
+          "declaration": null,
+          "nativeTypeId": "c3ac3f32-605b-4001-a449-9dbff0a9b9e1",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Resources List"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "6e99dfee-10c7-482f-a3ca-d5b1c247c679": {
+          "implementation": null,
+          "objectId": "6e99dfee-10c7-482f-a3ca-d5b1c247c679",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD3072_SD3583"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "c9a07ce0-dd7e-4c44-b13e-764a9643b32a": {
+          "implementation": null,
+          "objectId": "c9a07ce0-dd7e-4c44-b13e-764a9643b32a",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM1024_SM1535"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "266b669b-473e-4a03-8c4b-455802429073": {
+          "implementation": null,
+          "objectId": "266b669b-473e-4a03-8c4b-455802429073",
+          "declaration": null,
+          "nativeTypeId": "a982b7cc-8854-4279-846b-e90bf2ef02d4",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Network Configuration"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "5b3b1170-1a34-47eb-81ad-1fb25bc91256": {
+          "implementation": null,
+          "objectId": "5b3b1170-1a34-47eb-81ad-1fb25bc91256",
+          "declaration": null,
+          "nativeTypeId": "cb8fd02a-a8c8-42aa-81da-ea916f37707b",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "TaskEventPreStart"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "dccae013-65e3-4b75-b04e-6494c4881dbf": {
+          "implementation": null,
+          "objectId": "dccae013-65e3-4b75-b04e-6494c4881dbf",
+          "declaration": null,
+          "nativeTypeId": "8e687a04-7ca7-42d3-be06-fcbda676c5ef",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "__VisualizationStyle"
+          ],
+          "parentId": null
+        },
+        "e3a83141-aa59-4caf-bb34-4e823cebf5ce": {
+          "implementation": null,
+          "objectId": "e3a83141-aa59-4caf-bb34-4e823cebf5ce",
+          "declaration": null,
+          "nativeTypeId": "1ea44c06-38dc-4674-b0a1-6d8285a04a30",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "DifferentialMonitor"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "f6a6ccb0-d225-4241-955b-eaf638b32c2b": {
+          "implementation": null,
+          "objectId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "declaration": null,
+          "nativeTypeId": "40b404f9-e5dc-42c6-907f-c89f4a517386",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "85cd3a25-83c0-4e33-b9c8-0db1d5ac3e15": {
+          "implementation": null,
+          "objectId": "85cd3a25-83c0-4e33-b9c8-0db1d5ac3e15",
+          "declaration": null,
+          "nativeTypeId": "413e2a7d-adb1-4d2c-be29-6ae6e4fab820",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask",
+            "PLC_PRG"
+          ],
+          "parentId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867"
+        },
+        "7bc4928b-bafb-40e3-8888-fc8c038335cb": {
+          "implementation": null,
+          "objectId": "7bc4928b-bafb-40e3-8888-fc8c038335cb",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM5120_SM5631"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2": {
+          "implementation": null,
+          "objectId": "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD6144_SD6655"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11": {
+          "implementation": null,
+          "objectId": "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11",
+          "declaration": null,
+          "nativeTypeId": "ed103b54-add2-4aaa-8e19-1402c5a26800",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "HardWare Configuration"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "aa3a87e0-dabe-467a-82c5-6688dc8f3376": {
+          "implementation": null,
+          "objectId": "aa3a87e0-dabe-467a-82c5-6688dc8f3376",
+          "declaration": null,
+          "nativeTypeId": "efe82feb-c219-43c6-84e7-abaa7867b5f9",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Device Diagnosis"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "596d25cc-7ee0-4d22-a882-a51405b3fff1": {
+          "implementation": null,
+          "objectId": "596d25cc-7ee0-4d22-a882-a51405b3fff1",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM8704_SM9215"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        }
+      },
+      "applications": [
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+      ],
+      "thread": 1,
+      "projectPath": "D:\\InoPro-ResidentMCP-Acceptance-20261126\\engineering\\AM610_ResidentMCP.project",
+      "openedProjects": {
+        "56": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_basic\\4.2.2.0\\sm3_basic.compiled-library-ge33",
+          "primary": false,
+          "handle": 56,
+          "library": true
+        },
+        "46": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\component manager\\3.5.9.0\\cm.compiled-library-ge33",
+          "primary": false,
+          "handle": 46,
+          "library": true
+        },
+        "76": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_robotics_visu\\4.2.0.0\\sm3_robotics_visu.compiled-library-ge33",
+          "primary": false,
+          "handle": 76,
+          "library": true
+        },
+        "66": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_error\\4.2.0.0\\sm3_error.compiled-library-ge33",
+          "primary": false,
+          "handle": 66,
+          "library": true
+        },
+        "16": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa net base services\\3.5.9.50\\caa_netbaseservices.compiled-library-ge33",
+          "primary": false,
+          "handle": 16,
+          "library": true
+        },
+        "36": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa callback extern\\3.5.11.0\\caa_callback_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 36,
+          "library": true
+        },
+        "26": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\tcp\\3.5.9.50\\tcp.compiled-library-ge33",
+          "primary": false,
+          "handle": 26,
+          "library": true
+        },
+        "55": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iodriver parameter interfaces\\3.5.2.0\\iodrvparameter_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 55,
+          "library": true
+        },
+        "45": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\3slicense\\3.5.10.0\\3slicense.compiled-library-ge33",
+          "primary": false,
+          "handle": 45,
+          "library": true
+        },
+        "48": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\inovance\\inoparamsconfiglib\\1.0.0.0\\inoparamsconfiglib.compiled-library-ge33",
+          "primary": false,
+          "handle": 48,
+          "library": true
+        },
+        "58": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa device diagnosis\\3.5.11.0\\caa_devicediagnosis.compiled-library-ge33",
+          "primary": false,
+          "handle": 58,
+          "library": true
+        },
+        "15": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmplog\\3.5.5.0\\cmplog.compiled-library-ge33",
+          "primary": false,
+          "handle": 15,
+          "library": true
+        },
+        "18": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\syscpuhandling\\3.5.8.0\\syscpuhandling.compiled-library-ge33",
+          "primary": false,
+          "handle": 18,
+          "library": true
+        },
+        "35": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa memory block manager extern\\3.5.7.0\\caa_memblockman_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 35,
+          "library": true
+        },
+        "25": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\syssocket\\3.5.9.0\\syssocket.compiled-library-ge33",
+          "primary": false,
+          "handle": 25,
+          "library": true
+        },
+        "28": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systime\\3.5.5.0\\systime.compiled-library-ge33",
+          "primary": false,
+          "handle": 28,
+          "library": true
+        },
+        "38": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpeventmgr\\3.5.8.0\\cmpeventmgr.compiled-library-ge33",
+          "primary": false,
+          "handle": 38,
+          "library": true
+        },
+        "40": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\collections\\3.5.11.0\\collections.compiled-library-ge33",
+          "primary": false,
+          "handle": 40,
+          "library": true
+        },
+        "50": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpiectask\\3.5.9.0\\cmpiectask.compiled-library-ge33",
+          "primary": false,
+          "handle": 50,
+          "library": true
+        },
+        "60": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\commfb\\3.5.11.0\\commfb.compiled-library-ge33",
+          "primary": false,
+          "handle": 60,
+          "library": true
+        },
+        "10": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\sysmem\\3.5.5.0\\sysmem.compiled-library-ge33",
+          "primary": false,
+          "handle": 10,
+          "library": true
+        },
+        "65": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_math\\4.2.0.0\\sm3_math.compiled-library-ge33",
+          "primary": false,
+          "handle": 65,
+          "library": true
+        },
+        "30": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systask\\3.5.10.0\\systask.compiled-library-ge33",
+          "primary": false,
+          "handle": 30,
+          "library": true
+        },
+        "20": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa tickutil extern\\3.5.7.0\\caa_tickutil_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 20,
+          "library": true
+        },
+        "68": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_cnc\\4.2.1.1\\sm3_cnc.compiled-library-ge33",
+          "primary": false,
+          "handle": 68,
+          "library": true
+        },
+        "70": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\sysdir\\3.5.8.0\\sysdir.compiled-library-ge33",
+          "primary": false,
+          "handle": 70,
+          "library": true
+        },
+        "75": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_rcp\\4.2.2.0\\sm3_rcp.compiled-library-ge33",
+          "primary": false,
+          "handle": 75,
+          "library": true
+        },
+        "57": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\sysfile\\3.5.9.0\\sysfile.compiled-library-ge33",
+          "primary": false,
+          "handle": 57,
+          "library": true
+        },
+        "47": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpcodemeter\\3.5.5.0\\cmpcodemeter.compiled-library-ge33",
+          "primary": false,
+          "handle": 47,
+          "library": true
+        },
+        "67": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_ramps\\4.2.1.0\\sm3_ramps.compiled-library-ge33",
+          "primary": false,
+          "handle": 67,
+          "library": true
+        },
+        "17": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa types extern\\3.5.10.0\\caa_types_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 17,
+          "library": true
+        },
+        "37": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\inovance\\syshcplcinfo\\1.0.98.4\\syshcplcinfo.compiled-library-ge33",
+          "primary": false,
+          "handle": 37,
+          "library": true
+        },
+        "27": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\udp\\3.5.10.0\\udp.compiled-library-ge33",
+          "primary": false,
+          "handle": 27,
+          "library": true
+        },
+        "52": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iodrvbase\\3.5.5.0\\iodrvbase.compiled-library-ge33",
+          "primary": false,
+          "handle": 52,
+          "library": true
+        },
+        "42": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iecvaraccess3 interfaces\\3.5.11.0\\iecvaraccess3_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 42,
+          "library": true
+        },
+        "72": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\datasources interfaces\\3.5.11.0\\datasources_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 72,
+          "library": true
+        },
+        "62": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_trajectorygeneration\\4.2.1.0\\sm3_trajectorygeneration.compiled-library-ge33",
+          "primary": false,
+          "handle": 62,
+          "library": true
+        },
+        "12": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmperrors\\3.3.1.40\\cmperrors.compiled-library-ge33",
+          "primary": false,
+          "handle": 12,
+          "library": true
+        },
+        "32": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\syssem\\3.5.5.0\\syssem.compiled-library-ge33",
+          "primary": false,
+          "handle": 32,
+          "library": true
+        },
+        "22": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa segmented buffer manager extern\\3.5.11.0\\caa_segbufferman_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 22,
+          "library": true
+        },
+        "59": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa fb factory\\3.5.10.0\\caa_fbfactory.compiled-library-ge33",
+          "primary": false,
+          "handle": 59,
+          "library": true
+        },
+        "49": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\breakpoint logging functions\\3.5.5.0\\breakpointloggingfunctions.compiled-library-ge33",
+          "primary": false,
+          "handle": 49,
+          "library": true
+        },
+        "69": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\visudialogs\\3.5.11.0\\visudialogs.compiled-library-ge33",
+          "primary": false,
+          "handle": 69,
+          "library": true
+        },
+        "19": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa behaviour model\\3.5.11.0\\caa_behaviourmodel.compiled-library-ge33",
+          "primary": false,
+          "handle": 19,
+          "library": true
+        },
+        "39": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpiecvaraccess\\3.5.10.0\\cmpiecvaraccess.compiled-library-ge33",
+          "primary": false,
+          "handle": 39,
+          "library": true
+        },
+        "29": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpasyncmgr\\3.5.10.0\\cmpasyncmgr.compiled-library-ge33",
+          "primary": false,
+          "handle": 29,
+          "library": true
+        },
+        "51": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\inovance\\cmphsio\\0.0.0.7\\hsio.library",
+          "primary": false,
+          "handle": 51,
+          "library": true
+        },
+        "41": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\collections interfaces\\3.5.2.0\\collections_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 41,
+          "library": true
+        },
+        "71": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\standard64\\3.5.11.0\\standard64.compiled-library-ge33",
+          "primary": false,
+          "handle": 71,
+          "library": true
+        },
+        "61": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iodriver profibus2 interfaces\\3.5.6.0\\iodrvprofibus2_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 61,
+          "library": true
+        },
+        "11": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systypes\\3.1.2.0\\systypes.compiled-library",
+          "primary": false,
+          "handle": 11,
+          "library": true
+        },
+        "5": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\inovance\\cmphcutils\\1.3.2.0\\cmphcutils.compiled-library-ge33",
+          "primary": false,
+          "handle": 5,
+          "library": true
+        },
+        "4": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmperrors2 interfaces\\3.5.11.0\\cmperrors2_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 4,
+          "library": true
+        },
+        "7": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systimecore\\3.5.5.0\\systimecore.compiled-library-ge33",
+          "primary": false,
+          "handle": 7,
+          "library": true
+        },
+        "6": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systimertc\\3.5.5.0\\systimertc.compiled-library-ge33",
+          "primary": false,
+          "handle": 6,
+          "library": true
+        },
+        "1": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iostandard\\3.5.10.0\\iostandard.compiled-library-ge33",
+          "primary": false,
+          "handle": 1,
+          "library": true
+        },
+        "0": {
+          "path": "D:\\InoPro-ResidentMCP-Acceptance-20261126\\engineering\\AM610_ResidentMCP.project",
+          "primary": true,
+          "handle": 0,
+          "library": false
+        },
+        "3": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systypes2 interfaces\\3.5.4.0\\systypes_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 3,
+          "library": true
+        },
+        "2": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\base interfaces\\3.5.2.0\\base_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 2,
+          "library": true
+        },
+        "21": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa tick extern\\3.5.7.0\\caa_tick_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 21,
+          "library": true
+        },
+        "31": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systime\\3.5.9.0\\systime.compiled-library-ge33",
+          "primary": false,
+          "handle": 31,
+          "library": true
+        },
+        "9": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\standard\\3.5.9.0\\standard.compiled-library-ge33",
+          "primary": false,
+          "handle": 9,
+          "library": true
+        },
+        "8": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\util\\3.5.11.0\\util.compiled-library-ge33",
+          "primary": false,
+          "handle": 8,
+          "library": true
+        },
+        "54": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systypes interfaces\\3.5.2.0\\systypes_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 54,
+          "library": true
+        },
+        "44": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\stringutils\\3.5.11.0\\stringutils.compiled-library-ge33",
+          "primary": false,
+          "handle": 44,
+          "library": true
+        },
+        "74": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_transformation\\4.2.1.0\\sm3_transformation.compiled-library-ge33",
+          "primary": false,
+          "handle": 74,
+          "library": true
+        },
+        "64": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_rbase\\4.2.0.0\\sm3_rbase.compiled-library-ge33",
+          "primary": false,
+          "handle": 64,
+          "library": true
+        },
+        "14": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\floatingpointutils\\3.5.9.0\\floatingpointutils.compiled-library-ge33",
+          "primary": false,
+          "handle": 14,
+          "library": true
+        },
+        "34": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\memoryutils\\3.5.15.0\\memoryutils.compiled-library-ge33",
+          "primary": false,
+          "handle": 34,
+          "library": true
+        },
+        "24": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa list and tree\\3.5.11.0\\caa_listandtree.compiled-library-ge33",
+          "primary": false,
+          "handle": 24,
+          "library": true
+        },
+        "53": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iodriver interfaces\\3.5.2.0\\iodriver_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 53,
+          "library": true
+        },
+        "43": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpapp\\3.5.11.0\\cmpapp.compiled-library-ge33",
+          "primary": false,
+          "handle": 43,
+          "library": true
+        },
+        "73": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_robotics\\4.2.2.0\\sm3_robotics.compiled-library-ge33",
+          "primary": false,
+          "handle": 73,
+          "library": true
+        },
+        "63": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_addrampsdefault\\4.1.0.0\\sm3_addrampsdefault.compiled-library-ge33",
+          "primary": false,
+          "handle": 63,
+          "library": true
+        },
+        "13": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_shared\\3.5.5.0\\sm3_shared.compiled-library-ge33",
+          "primary": false,
+          "handle": 13,
+          "library": true
+        },
+        "33": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systarget\\3.5.5.0\\systarget.compiled-library-ge33",
+          "primary": false,
+          "handle": 33,
+          "library": true
+        },
+        "23": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa ressource manager extern\\3.5.11.0\\caa_resman_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 23,
+          "library": true
+        }
+      },
+      "projectHandle": 0
+    },
+    "diskHash": "8260c5bb670fa918830db8107e55207662ea496bbf14e31b2e6d88737f46286c"
+  },
+  "after": {
+    "buildContext": {
+      "children": {
+        "299aa5b3-9792-46d2-9b16-8a6e6466473a": [],
+        "$project": [
+          "57cc0e65-1907-423b-989c-1487e2d15147",
+          "7eb281f0-5127-471a-adcf-3004567f8988",
+          "6470a90f-b7cb-43ac-9ae5-94b2338b4573",
+          "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "dccae013-65e3-4b75-b04e-6494c4881dbf"
+        ],
+        "7eb281f0-5127-471a-adcf-3004567f8988": [
+          "3cdf2fe1-db22-421f-9905-fa20df0b515d",
+          "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d",
+          "26eed4cd-4fdc-4fac-a651-16c4a26571ba",
+          "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83",
+          "3ffb0926-b8f2-4569-a780-6378d149901c",
+          "d38cc9cb-e60c-477a-b39b-d1df421a744f",
+          "99761fc4-7d52-4d4c-b190-d029a12ff5ed",
+          "dad2379c-8339-43d5-8fad-fc936511cf0a",
+          "6a7ce440-fb12-4e91-8750-0d092ece040b",
+          "cfd8c710-45ec-4371-b532-9444ea4dbca2",
+          "b7135532-48ad-4d79-903d-f7d628e79706",
+          "6e99dfee-10c7-482f-a3ca-d5b1c247c679",
+          "55c9ca6d-38f8-4aec-803a-7aea99f5d50e",
+          "d5667488-8888-4384-ae1d-0ee1132f49cc",
+          "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2",
+          "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b",
+          "e0407851-3df6-4797-ad01-660b71986740",
+          "a0329ce4-f69c-4e06-ac96-3022c3c516f6",
+          "08fc481d-dd55-4f06-8554-7a1c21400ff9",
+          "299aa5b3-9792-46d2-9b16-8a6e6466473a"
+        ],
+        "57cc0e65-1907-423b-989c-1487e2d15147": [
+          "383a38c1-9989-474c-8dd3-91140579cf40",
+          "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693",
+          "38d47f48-fa7e-434e-a719-4709da7a58e2",
+          "125a163d-08e2-47f5-9cd0-8a5a64342622",
+          "b98fee4d-62db-4ce8-a240-f2e9ec3119b5",
+          "2267d37c-bdff-41ba-851d-59c7957b4908",
+          "586acdc4-2093-42df-aec9-6234cb1766ef",
+          "b5da53d7-2520-4692-916b-da0ce8559a69",
+          "b7fd81da-efc6-485b-99e0-550fbc36c092",
+          "c14ce46e-025a-4d76-a28e-66d1a283c199",
+          "9012ecb5-5b8e-42b6-955d-7537670c899b",
+          "00bbadf4-4e2c-4805-bd26-e580550f2870",
+          "c9a07ce0-dd7e-4c44-b13e-764a9643b32a",
+          "887d4770-c693-4669-8ecf-c0a5c6976421",
+          "7bc4928b-bafb-40e3-8888-fc8c038335cb",
+          "596d25cc-7ee0-4d22-a882-a51405b3fff1",
+          "84e551e0-9601-4259-b802-9701ea519aa3",
+          "835c7cde-7ae4-4919-9418-f39973975e87",
+          "cb440091-3406-4785-8a33-f6722bf26ff3",
+          "25563e27-cac7-4e3b-9d13-826f214d4ec2"
+        ],
+        "6a7ce440-fb12-4e91-8750-0d092ece040b": [],
+        "3cdf2fe1-db22-421f-9905-fa20df0b515d": [],
+        "b7fd81da-efc6-485b-99e0-550fbc36c092": [],
+        "887d4770-c693-4669-8ecf-c0a5c6976421": [],
+        "d5667488-8888-4384-ae1d-0ee1132f49cc": [],
+        "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83": [],
+        "c14ce46e-025a-4d76-a28e-66d1a283c199": [],
+        "d38cc9cb-e60c-477a-b39b-d1df421a744f": [],
+        "b7135532-48ad-4d79-903d-f7d628e79706": [],
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf": [
+          "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+          "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "e3a83141-aa59-4caf-bb34-4e823cebf5ce",
+          "5d558397-776b-478d-ab91-fa36aca5d60a",
+          "5b3b1170-1a34-47eb-81ad-1fb25bc91256"
+        ],
+        "38d47f48-fa7e-434e-a719-4709da7a58e2": [],
+        "77ccab4a-75a2-4c94-866f-8f02fbd0e876": [],
+        "cfd8c710-45ec-4371-b532-9444ea4dbca2": [],
+        "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": [],
+        "b98fee4d-62db-4ce8-a240-f2e9ec3119b5": [],
+        "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d": [],
+        "6b9df7c4-5031-4434-80b1-ddc9230e30f9": [],
+        "835c7cde-7ae4-4919-9418-f39973975e87": [],
+        "b5da53d7-2520-4692-916b-da0ce8559a69": [],
+        "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b": [],
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": [
+          "266b669b-473e-4a03-8c4b-455802429073",
+          "1c272f52-6ad1-4581-a5a8-492b86e79bff",
+          "aa3a87e0-dabe-467a-82c5-6688dc8f3376",
+          "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11",
+          "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e",
+          "27f7c7ba-2364-4445-8a9e-6b707f8b498a",
+          "77ccab4a-75a2-4c94-866f-8f02fbd0e876"
+        ],
+        "5d558397-776b-478d-ab91-fa36aca5d60a": [],
+        "55c9ca6d-38f8-4aec-803a-7aea99f5d50e": [],
+        "84e551e0-9601-4259-b802-9701ea519aa3": [],
+        "e0407851-3df6-4797-ad01-660b71986740": [],
+        "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": [
+          "85cd3a25-83c0-4e33-b9c8-0db1d5ac3e15"
+        ],
+        "383a38c1-9989-474c-8dd3-91140579cf40": [],
+        "3ffb0926-b8f2-4569-a780-6378d149901c": [],
+        "9012ecb5-5b8e-42b6-955d-7537670c899b": [],
+        "99761fc4-7d52-4d4c-b190-d029a12ff5ed": [],
+        "08fc481d-dd55-4f06-8554-7a1c21400ff9": [],
+        "1f39e50c-7ccd-4361-8c72-eced6a8b6421": [],
+        "6470a90f-b7cb-43ac-9ae5-94b2338b4573": [],
+        "2267d37c-bdff-41ba-851d-59c7957b4908": [],
+        "00bbadf4-4e2c-4805-bd26-e580550f2870": [],
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": [],
+        "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": [
+          "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867"
+        ],
+        "125a163d-08e2-47f5-9cd0-8a5a64342622": [],
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": [
+          "1f39e50c-7ccd-4361-8c72-eced6a8b6421"
+        ],
+        "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693": [],
+        "cb440091-3406-4785-8a33-f6722bf26ff3": [],
+        "25563e27-cac7-4e3b-9d13-826f214d4ec2": [],
+        "dad2379c-8339-43d5-8fad-fc936511cf0a": [],
+        "27f7c7ba-2364-4445-8a9e-6b707f8b498a": [],
+        "586acdc4-2093-42df-aec9-6234cb1766ef": [],
+        "26eed4cd-4fdc-4fac-a651-16c4a26571ba": [],
+        "a0329ce4-f69c-4e06-ac96-3022c3c516f6": [],
+        "1c272f52-6ad1-4581-a5a8-492b86e79bff": [],
+        "6e99dfee-10c7-482f-a3ca-d5b1c247c679": [],
+        "c9a07ce0-dd7e-4c44-b13e-764a9643b32a": [],
+        "266b669b-473e-4a03-8c4b-455802429073": [
+          "6b9df7c4-5031-4434-80b1-ddc9230e30f9"
+        ],
+        "5b3b1170-1a34-47eb-81ad-1fb25bc91256": [],
+        "dccae013-65e3-4b75-b04e-6494c4881dbf": [],
+        "e3a83141-aa59-4caf-bb34-4e823cebf5ce": [],
+        "f6a6ccb0-d225-4241-955b-eaf638b32c2b": [
+          "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        ],
+        "85cd3a25-83c0-4e33-b9c8-0db1d5ac3e15": [],
+        "7bc4928b-bafb-40e3-8888-fc8c038335cb": [],
+        "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2": [],
+        "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11": [],
+        "aa3a87e0-dabe-467a-82c5-6688dc8f3376": [],
+        "596d25cc-7ee0-4d22-a882-a51405b3fff1": []
+      },
+      "scheme": "resident-build-context-v1",
+      "devices": {
+        "77ccab4a-75a2-4c94-866f-8f02fbd0e876": {
+          "identity": {
+            "version": "00.00.00.10",
+            "id": "10F4 0005",
+            "type": "40005"
+          },
+          "connectors": [
+            {
+              "id": 1,
+              "interface": "Common.PCI",
+              "role": "Child",
+              "hostPath": -1
+            },
+            {
+              "id": 2,
+              "interface": "Inovance:System",
+              "role": "Parent",
+              "hostPath": 1
+            }
+          ]
+        },
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": {
+          "identity": {
+            "version": "00.00.00.10",
+            "id": "10F4 0510",
+            "type": "40510"
+          },
+          "connectors": [
+            {
+              "id": 1,
+              "interface": "Common.PCI",
+              "role": "Child",
+              "hostPath": -1
+            },
+            {
+              "id": 2,
+              "interface": "Common.ModbusTcpSerialDevice",
+              "role": "Parent",
+              "hostPath": 1
+            }
+          ]
+        },
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": {
+          "identity": {
+            "version": "00.00.00.20",
+            "id": "10F4 0600",
+            "type": "40600"
+          },
+          "connectors": [
+            {
+              "id": 1,
+              "interface": "Common.PCI",
+              "role": "Child",
+              "hostPath": -1
+            },
+            {
+              "id": 2,
+              "interface": "Common.inovance2",
+              "role": "Parent",
+              "hostPath": 1
+            }
+          ]
+        },
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+          "identity": {
+            "version": "3.5.11.11",
+            "id": "10f4 0002",
+            "type": "4102"
+          },
+          "connectors": [
+            {
+              "id": 0,
+              "interface": "Common.SoftMotion.General",
+              "role": "Parent",
+              "hostPath": -1
+            },
+            {
+              "id": 1,
+              "interface": "Common.PCI",
+              "role": "Parent",
+              "hostPath": -1
+            }
+          ]
+        }
+      }
+    },
+    "state": {
+      "nodes": {
+        "299aa5b3-9792-46d2-9b16-8a6e6466473a": {
+          "implementation": null,
+          "objectId": "299aa5b3-9792-46d2-9b16-8a6e6466473a",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD5632_SD6143"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "7eb281f0-5127-471a-adcf-3004567f8988": {
+          "implementation": null,
+          "objectId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "declaration": null,
+          "nativeTypeId": "738bea1e-99bb-4f04-90bb-a7a567e74e3a",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement"
+          ],
+          "parentId": null
+        },
+        "57cc0e65-1907-423b-989c-1487e2d15147": {
+          "implementation": null,
+          "objectId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "declaration": null,
+          "nativeTypeId": "738bea1e-99bb-4f04-90bb-a7a567e74e3a",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement"
+          ],
+          "parentId": null
+        },
+        "6a7ce440-fb12-4e91-8750-0d092ece040b": {
+          "implementation": null,
+          "objectId": "6a7ce440-fb12-4e91-8750-0d092ece040b",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD2048_SD2559"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "3cdf2fe1-db22-421f-9905-fa20df0b515d": {
+          "implementation": null,
+          "objectId": "3cdf2fe1-db22-421f-9905-fa20df0b515d",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD8192_SD8703"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "b7fd81da-efc6-485b-99e0-550fbc36c092": {
+          "implementation": null,
+          "objectId": "b7fd81da-efc6-485b-99e0-550fbc36c092",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM512_SM1023"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "887d4770-c693-4669-8ecf-c0a5c6976421": {
+          "implementation": null,
+          "objectId": "887d4770-c693-4669-8ecf-c0a5c6976421",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM7680_SM8191"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "d5667488-8888-4384-ae1d-0ee1132f49cc": {
+          "implementation": null,
+          "objectId": "d5667488-8888-4384-ae1d-0ee1132f49cc",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD9216_SD9727"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83": {
+          "implementation": null,
+          "objectId": "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD8704_SD9215"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "c14ce46e-025a-4d76-a28e-66d1a283c199": {
+          "implementation": null,
+          "objectId": "c14ce46e-025a-4d76-a28e-66d1a283c199",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM1536_SM2047"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "d38cc9cb-e60c-477a-b39b-d1df421a744f": {
+          "implementation": null,
+          "objectId": "d38cc9cb-e60c-477a-b39b-d1df421a744f",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD1536_SD2047"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "b7135532-48ad-4d79-903d-f7d628e79706": {
+          "implementation": null,
+          "objectId": "b7135532-48ad-4d79-903d-f7d628e79706",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD4608_SD5119"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf": {
+          "implementation": null,
+          "objectId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "declaration": null,
+          "nativeTypeId": "639b491f-5557-464c-af91-1471bac9f549",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application"
+          ],
+          "parentId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b"
+        },
+        "38d47f48-fa7e-434e-a719-4709da7a58e2": {
+          "implementation": null,
+          "objectId": "38d47f48-fa7e-434e-a719-4709da7a58e2",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM6144_SM6655"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "77ccab4a-75a2-4c94-866f-8f02fbd0e876": {
+          "implementation": null,
+          "objectId": "77ccab4a-75a2-4c94-866f-8f02fbd0e876",
+          "declaration": null,
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "HwConfiguratioinDevice"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "b98fee4d-62db-4ce8-a240-f2e9ec3119b5": {
+          "implementation": null,
+          "objectId": "b98fee4d-62db-4ce8-a240-f2e9ec3119b5",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM7168_SM7679"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "cfd8c710-45ec-4371-b532-9444ea4dbca2": {
+          "implementation": null,
+          "objectId": "cfd8c710-45ec-4371-b532-9444ea4dbca2",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD1024_SD1535"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "6b9df7c4-5031-4434-80b1-ddc9230e30f9": {
+          "implementation": null,
+          "objectId": "6b9df7c4-5031-4434-80b1-ddc9230e30f9",
+          "declaration": null,
+          "nativeTypeId": "86bab008-5846-4915-b0dc-6a79c0cc7c53",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Network Configuration",
+            "LocalBus Config"
+          ],
+          "parentId": "266b669b-473e-4a03-8c4b-455802429073"
+        },
+        "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d": {
+          "implementation": null,
+          "objectId": "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD7680_SD8191"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": {
+          "implementation": "// Native-created project: continued direct edit validation.\nProbeDelay := T#7s; // 离线测试延时设定\nProbeEnable := FALSE; // 离线测试使能\n",
+          "objectId": "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+          "declaration": "PROGRAM PLC_PRG\nVAR\n    ProbeDelay : TIME;\n    ProbeEnable : BOOL;\nEND_VAR",
+          "nativeTypeId": "6f9dac99-8de1-4efc-8465-68ac443b7d08",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [
+            "a9ed5b7e-75c5-4651-af16-d2c27e98cb94",
+            "3b83b776-fb25-43b8-99f2-3c507c9143fc"
+          ],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "PLC_PRG"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "835c7cde-7ae4-4919-9418-f39973975e87": {
+          "implementation": null,
+          "objectId": "835c7cde-7ae4-4919-9418-f39973975e87",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM2048_SM2559"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "b5da53d7-2520-4692-916b-da0ce8559a69": {
+          "implementation": null,
+          "objectId": "b5da53d7-2520-4692-916b-da0ce8559a69",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM0_SM511"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b": {
+          "implementation": null,
+          "objectId": "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD0_SD511"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+          "implementation": null,
+          "objectId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "declaration": null,
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device"
+          ],
+          "parentId": null
+        },
+        "5d558397-776b-478d-ab91-fa36aca5d60a": {
+          "implementation": null,
+          "objectId": "5d558397-776b-478d-ab91-fa36aca5d60a",
+          "declaration": null,
+          "nativeTypeId": "adb5cb65-8e1d-4a00-b70a-375ea27582f3",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "directLibraries": [
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#IoStandard",
+              "optional": false,
+              "id": "1217811713",
+              "qualified_only": false,
+              "effective_resolution": "IoStandard, 3.5.10.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "IoStandard, 3.5.10.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "IoStandard",
+              "system_library": true,
+              "placeholder_name": "IoStandard"
+            },
+            {
+              "is_redirected": true,
+              "explicit_redirection": "CmpHCUtils, 1.3.2.0 (Inovance)",
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpHCUtils",
+              "optional": false,
+              "id": "677195365",
+              "qualified_only": false,
+              "effective_resolution": "CmpHCUtils, 1.3.2.0 (Inovance)",
+              "resolution_info": "占位符重定向解析",
+              "default_resolution": "CmpHCUtils, * (Inovance)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpHCUtils",
+              "system_library": true,
+              "placeholder_name": "CmpHCUtils"
+            },
+            {
+              "is_redirected": true,
+              "explicit_redirection": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SysHCPlcInfo",
+              "optional": false,
+              "id": "1168205964",
+              "qualified_only": false,
+              "effective_resolution": "SysHCPlcInfo, 1.0.98.4 (Inovance)",
+              "resolution_info": "占位符重定向解析",
+              "default_resolution": "SysHCPlcInfo, * (Inovance)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SysHCPlcInfo",
+              "system_library": true,
+              "placeholder_name": "SysHCPlcInfo"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#3SLicense",
+              "optional": false,
+              "id": "2391188751",
+              "qualified_only": false,
+              "effective_resolution": "3SLicense, 3.5.10.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "许可机制解析",
+              "default_resolution": "3SLicense, 0.0.0.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "97c3b452-d9fa-4ac2-9d0c-3d420aa6d95b",
+              "namespace": "_3S_LICENSE",
+              "system_library": true,
+              "placeholder_name": "3SLicense"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#Standard",
+              "optional": false,
+              "id": "1554848619",
+              "qualified_only": false,
+              "effective_resolution": "Standard, 3.5.9.0 (System)",
+              "resolution_info": "库配置文件解析",
+              "default_resolution": "Standard, * (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "Standard",
+              "system_library": false,
+              "placeholder_name": "Standard"
+            },
+            {
+              "is_redirected": true,
+              "explicit_redirection": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#InoParamsConfigLib",
+              "optional": false,
+              "id": "688251431",
+              "qualified_only": false,
+              "effective_resolution": "InoParamsConfigLib, 1.0.0.0 (Inovance)",
+              "resolution_info": "占位符重定向解析",
+              "default_resolution": "InoParamsConfigLib, * (Inovance)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "InoParamsConfigLib",
+              "system_library": true,
+              "placeholder_name": "InoParamsConfigLib"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#BreakpointLogging",
+              "optional": false,
+              "id": "2510197305",
+              "qualified_only": false,
+              "effective_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "库配置文件解析",
+              "default_resolution": "Breakpoint Logging Functions, 3.5.5.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "BPLog",
+              "system_library": true,
+              "placeholder_name": "BreakpointLogging"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpEventMgr",
+              "optional": false,
+              "id": "3602500822",
+              "qualified_only": false,
+              "effective_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "CmpEventMgr, 3.5.8.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpEventMgr",
+              "system_library": false,
+              "placeholder_name": "CmpEventMgr"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#Component Manager",
+              "optional": false,
+              "id": "2121407659",
+              "qualified_only": false,
+              "effective_resolution": "Component Manager, 3.5.9.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "Component Manager, 3.5.9.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "Component_Manager",
+              "system_library": false,
+              "placeholder_name": "Component Manager"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpApp",
+              "optional": false,
+              "id": "3235431135",
+              "qualified_only": false,
+              "effective_resolution": "CmpApp, 3.5.11.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "CmpApp, 3.5.11.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpApp",
+              "system_library": false,
+              "placeholder_name": "CmpApp"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpIecTask",
+              "optional": false,
+              "id": "551989543",
+              "qualified_only": false,
+              "effective_resolution": "CmpIecTask, 3.5.9.0 (System)",
+              "resolution_info": "设备解析",
+              "default_resolution": "CmpIecTask, 3.5.9.0 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpIecTask",
+              "system_library": false,
+              "placeholder_name": "CmpIecTask"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#CmpHSIO",
+              "optional": false,
+              "id": "2432838545",
+              "qualified_only": false,
+              "effective_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+              "resolution_info": "库配置文件解析",
+              "default_resolution": "CmpHSIO, 0.0.0.7 (Inovance)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "CmpHSIO",
+              "system_library": true,
+              "placeholder_name": "CmpHSIO"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_Basic",
+              "optional": false,
+              "id": "3715034611",
+              "qualified_only": false,
+              "effective_resolution": "SM3_Basic, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_Basic, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SM3_Basic",
+              "system_library": true,
+              "placeholder_name": "SM3_Basic"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_CNC",
+              "optional": false,
+              "id": "1377484603",
+              "qualified_only": false,
+              "effective_resolution": "SM3_CNC, 4.2.1.1 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_CNC, 4.2.1.1 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SM3_CNC",
+              "system_library": true,
+              "placeholder_name": "SM3_CNC"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_Robotics",
+              "optional": false,
+              "id": "3746219342",
+              "qualified_only": false,
+              "effective_resolution": "SM3_Robotics, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_Robotics, 4.2.2.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SM3_Robotics",
+              "system_library": true,
+              "placeholder_name": "SM3_Robotics"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_Robotics_Visu",
+              "optional": false,
+              "id": "337965806",
+              "qualified_only": false,
+              "effective_resolution": "SM3_Robotics_Visu, 4.2.0.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_Robotics_Visu, 4.2.0.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "SM3_Robotics_Visu",
+              "system_library": true,
+              "placeholder_name": "SM3_Robotics_Visu"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#SM3_Transformation",
+              "optional": false,
+              "id": "2552443587",
+              "qualified_only": false,
+              "effective_resolution": "SM3_Transformation, 4.2.1.0 (3S - Smart Software Solutions GmbH)",
+              "resolution_info": "由SoftMotion配置文件4.2.2.0解决",
+              "default_resolution": "SM3_Transformation, 4.2.1.0 (3S - Smart Software Solutions GmbH)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "TRAFO",
+              "system_library": true,
+              "placeholder_name": "SM3_Transformation"
+            },
+            {
+              "is_redirected": false,
+              "explicit_redirection": null,
+              "is_managed": false,
+              "is_placeholder": true,
+              "name": "#IecVarAccess",
+              "optional": false,
+              "id": "2303837266",
+              "qualified_only": false,
+              "effective_resolution": "IecVarAccess, 3.5.11.0 (System)",
+              "resolution_info": "库配置文件解析",
+              "default_resolution": "IecVarAccess, 3.3.1.20 (System)",
+              "resolver_guid": "b303f5ce-75ff-4668-a777-7da8debb449c",
+              "namespace": "IecVarAccessLibrary",
+              "system_library": true,
+              "placeholder_name": "IecVarAccess"
+            }
+          ],
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "库管理器"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "55c9ca6d-38f8-4aec-803a-7aea99f5d50e": {
+          "implementation": null,
+          "objectId": "55c9ca6d-38f8-4aec-803a-7aea99f5d50e",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD512_SD1023"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "84e551e0-9601-4259-b802-9701ea519aa3": {
+          "implementation": null,
+          "objectId": "84e551e0-9601-4259-b802-9701ea519aa3",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM2560_SM3071"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "e0407851-3df6-4797-ad01-660b71986740": {
+          "implementation": null,
+          "objectId": "e0407851-3df6-4797-ad01-660b71986740",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD9728_SD9999"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": {
+          "taskFields": {
+            "core_binding": {
+              "nativeType": null,
+              "kind": "integer",
+              "value": "-2",
+              "pythonType": "int"
+            },
+            "external_event": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "",
+              "pythonType": "str"
+            },
+            "interval": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "t#20ms",
+              "pythonType": "str"
+            },
+            "priority": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "1",
+              "pythonType": "str"
+            },
+            "event_pou_guid": {
+              "nativeType": "System.Guid",
+              "kind": "guid",
+              "value": "e323573b-bb6f-457c-a753-f8fcab0feee4",
+              "pythonType": "Guid"
+            },
+            "parent_synchron_task": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "",
+              "pythonType": "str"
+            },
+            "kind_of_task": {
+              "nativeType": "_3S.CoDeSys.TaskConfig.KindOfTask",
+              "kind": "enum",
+              "value": "Cyclic",
+              "pythonType": "KindOfTask"
+            },
+            "interval_unit": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "ms",
+              "pythonType": "str"
+            },
+            "event": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "",
+              "pythonType": "str"
+            }
+          },
+          "implementation": null,
+          "objectId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+          "declaration": null,
+          "nativeTypeId": "98a2708a-9b18-4f31-82ed-a1465b24fa2d",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "calls": [
+            [
+              "PLC_PRG",
+              ""
+            ]
+          ],
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask"
+          ],
+          "parentId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "watchdog": {
+            "time_unit": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "ms",
+              "pythonType": "str"
+            },
+            "time": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "",
+              "pythonType": "str"
+            },
+            "sensitivity": {
+              "nativeType": null,
+              "kind": "text",
+              "value": "1",
+              "pythonType": "str"
+            },
+            "enabled": {
+              "nativeType": null,
+              "kind": "bool",
+              "value": false,
+              "pythonType": "bool"
+            }
+          }
+        },
+        "383a38c1-9989-474c-8dd3-91140579cf40": {
+          "implementation": null,
+          "objectId": "383a38c1-9989-474c-8dd3-91140579cf40",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM5632_SM6143"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "3ffb0926-b8f2-4569-a780-6378d149901c": {
+          "implementation": null,
+          "objectId": "3ffb0926-b8f2-4569-a780-6378d149901c",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD5120_SD5631"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "9012ecb5-5b8e-42b6-955d-7537670c899b": {
+          "implementation": null,
+          "objectId": "9012ecb5-5b8e-42b6-955d-7537670c899b",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM4608_SM5119"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "99761fc4-7d52-4d4c-b190-d029a12ff5ed": {
+          "implementation": null,
+          "objectId": "99761fc4-7d52-4d4c-b190-d029a12ff5ed",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD4096_SD4607"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "08fc481d-dd55-4f06-8554-7a1c21400ff9": {
+          "implementation": null,
+          "objectId": "08fc481d-dd55-4f06-8554-7a1c21400ff9",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD7168_SD7679"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "1f39e50c-7ccd-4361-8c72-eced6a8b6421": {
+          "implementation": null,
+          "objectId": "1f39e50c-7ccd-4361-8c72-eced6a8b6421",
+          "declaration": null,
+          "nativeTypeId": "72d5f3cf-74f0-4c4a-ad49-63c8bdb8e299",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "HIGH_SPEED_IO",
+            "HSIO"
+          ],
+          "parentId": "bf0d0fd8-de24-465d-a555-4bb14a9a8f37"
+        },
+        "6470a90f-b7cb-43ac-9ae5-94b2338b4573": {
+          "implementation": null,
+          "objectId": "6470a90f-b7cb-43ac-9ae5-94b2338b4573",
+          "declaration": null,
+          "nativeTypeId": "8753fe6f-4a22-4320-8103-e553c4fc8e04",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Project Settings"
+          ],
+          "parentId": null
+        },
+        "2267d37c-bdff-41ba-851d-59c7957b4908": {
+          "implementation": null,
+          "objectId": "2267d37c-bdff-41ba-851d-59c7957b4908",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM3584_SM4095"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "00bbadf4-4e2c-4805-bd26-e580550f2870": {
+          "implementation": null,
+          "objectId": "00bbadf4-4e2c-4805-bd26-e580550f2870",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM4096_SM4607"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": {
+          "implementation": null,
+          "objectId": "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e",
+          "declaration": null,
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "MODBUS_TCP"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": {
+          "implementation": null,
+          "objectId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "declaration": null,
+          "nativeTypeId": "ae1de277-a207-4a28-9efb-456c06bd52f3",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "125a163d-08e2-47f5-9cd0-8a5a64342622": {
+          "implementation": null,
+          "objectId": "125a163d-08e2-47f5-9cd0-8a5a64342622",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM3072_SM3583"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": {
+          "implementation": null,
+          "objectId": "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "declaration": null,
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "HIGH_SPEED_IO"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693": {
+          "implementation": null,
+          "objectId": "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM6656_SM7167"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "cb440091-3406-4785-8a33-f6722bf26ff3": {
+          "implementation": null,
+          "objectId": "cb440091-3406-4785-8a33-f6722bf26ff3",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM8192_SM8703"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "25563e27-cac7-4e3b-9d13-826f214d4ec2": {
+          "implementation": null,
+          "objectId": "25563e27-cac7-4e3b-9d13-826f214d4ec2",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM9216_SM9727"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "dad2379c-8339-43d5-8fad-fc936511cf0a": {
+          "implementation": null,
+          "objectId": "dad2379c-8339-43d5-8fad-fc936511cf0a",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD6656_SD7167"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "27f7c7ba-2364-4445-8a9e-6b707f8b498a": {
+          "implementation": null,
+          "objectId": "27f7c7ba-2364-4445-8a9e-6b707f8b498a",
+          "declaration": null,
+          "nativeTypeId": "8985beab-a1d2-4a9a-aac8-967a847520d2",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "ConfigStorage"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "586acdc4-2093-42df-aec9-6234cb1766ef": {
+          "implementation": null,
+          "objectId": "586acdc4-2093-42df-aec9-6234cb1766ef",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM9728_SM9999"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "26eed4cd-4fdc-4fac-a651-16c4a26571ba": {
+          "implementation": null,
+          "objectId": "26eed4cd-4fdc-4fac-a651-16c4a26571ba",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD3584_SD4095"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "a0329ce4-f69c-4e06-ac96-3022c3c516f6": {
+          "implementation": null,
+          "objectId": "a0329ce4-f69c-4e06-ac96-3022c3c516f6",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD2560_SD3071"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "1c272f52-6ad1-4581-a5a8-492b86e79bff": {
+          "implementation": null,
+          "objectId": "1c272f52-6ad1-4581-a5a8-492b86e79bff",
+          "declaration": null,
+          "nativeTypeId": "c3ac3f32-605b-4001-a449-9dbff0a9b9e1",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Resources List"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "6e99dfee-10c7-482f-a3ca-d5b1c247c679": {
+          "implementation": null,
+          "objectId": "6e99dfee-10c7-482f-a3ca-d5b1c247c679",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD3072_SD3583"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "c9a07ce0-dd7e-4c44-b13e-764a9643b32a": {
+          "implementation": null,
+          "objectId": "c9a07ce0-dd7e-4c44-b13e-764a9643b32a",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM1024_SM1535"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "266b669b-473e-4a03-8c4b-455802429073": {
+          "implementation": null,
+          "objectId": "266b669b-473e-4a03-8c4b-455802429073",
+          "declaration": null,
+          "nativeTypeId": "a982b7cc-8854-4279-846b-e90bf2ef02d4",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Network Configuration"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "5b3b1170-1a34-47eb-81ad-1fb25bc91256": {
+          "implementation": null,
+          "objectId": "5b3b1170-1a34-47eb-81ad-1fb25bc91256",
+          "declaration": null,
+          "nativeTypeId": "cb8fd02a-a8c8-42aa-81da-ea916f37707b",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "TaskEventPreStart"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "dccae013-65e3-4b75-b04e-6494c4881dbf": {
+          "implementation": null,
+          "objectId": "dccae013-65e3-4b75-b04e-6494c4881dbf",
+          "declaration": null,
+          "nativeTypeId": "8e687a04-7ca7-42d3-be06-fcbda676c5ef",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "__VisualizationStyle"
+          ],
+          "parentId": null
+        },
+        "e3a83141-aa59-4caf-bb34-4e823cebf5ce": {
+          "implementation": null,
+          "objectId": "e3a83141-aa59-4caf-bb34-4e823cebf5ce",
+          "declaration": null,
+          "nativeTypeId": "1ea44c06-38dc-4674-b0a1-6d8285a04a30",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "DifferentialMonitor"
+          ],
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        },
+        "f6a6ccb0-d225-4241-955b-eaf638b32c2b": {
+          "implementation": null,
+          "objectId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "declaration": null,
+          "nativeTypeId": "40b404f9-e5dc-42c6-907f-c89f4a517386",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "85cd3a25-83c0-4e33-b9c8-0db1d5ac3e15": {
+          "implementation": null,
+          "objectId": "85cd3a25-83c0-4e33-b9c8-0db1d5ac3e15",
+          "declaration": null,
+          "nativeTypeId": "413e2a7d-adb1-4d2c-be29-6ae6e4fab820",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask",
+            "PLC_PRG"
+          ],
+          "parentId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867"
+        },
+        "7bc4928b-bafb-40e3-8888-fc8c038335cb": {
+          "implementation": null,
+          "objectId": "7bc4928b-bafb-40e3-8888-fc8c038335cb",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM5120_SM5631"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        },
+        "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2": {
+          "implementation": null,
+          "objectId": "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2",
+          "declaration": null,
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SDElement",
+            "SD6144_SD6655"
+          ],
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988"
+        },
+        "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11": {
+          "implementation": null,
+          "objectId": "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11",
+          "declaration": null,
+          "nativeTypeId": "ed103b54-add2-4aaa-8e19-1402c5a26800",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "HardWare Configuration"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "aa3a87e0-dabe-467a-82c5-6688dc8f3376": {
+          "implementation": null,
+          "objectId": "aa3a87e0-dabe-467a-82c5-6688dc8f3376",
+          "declaration": null,
+          "nativeTypeId": "efe82feb-c219-43c6-84e7-abaa7867b5f9",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "Device",
+            "Device Diagnosis"
+          ],
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271"
+        },
+        "596d25cc-7ee0-4d22-a882-a51405b3fff1": {
+          "implementation": null,
+          "objectId": "596d25cc-7ee0-4d22-a882-a51405b3fff1",
+          "declaration": null,
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "embeddedObjectTypes": [],
+          "path": [
+            "SMElement",
+            "SM8704_SM9215"
+          ],
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147"
+        }
+      },
+      "applications": [
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+      ],
+      "thread": 1,
+      "projectPath": "D:\\InoPro-ResidentMCP-Acceptance-20261126\\engineering\\AM610_ResidentMCP.project",
+      "openedProjects": {
+        "56": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_basic\\4.2.2.0\\sm3_basic.compiled-library-ge33",
+          "primary": false,
+          "handle": 56,
+          "library": true
+        },
+        "46": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\component manager\\3.5.9.0\\cm.compiled-library-ge33",
+          "primary": false,
+          "handle": 46,
+          "library": true
+        },
+        "76": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_robotics_visu\\4.2.0.0\\sm3_robotics_visu.compiled-library-ge33",
+          "primary": false,
+          "handle": 76,
+          "library": true
+        },
+        "66": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_error\\4.2.0.0\\sm3_error.compiled-library-ge33",
+          "primary": false,
+          "handle": 66,
+          "library": true
+        },
+        "16": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa net base services\\3.5.9.50\\caa_netbaseservices.compiled-library-ge33",
+          "primary": false,
+          "handle": 16,
+          "library": true
+        },
+        "36": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa callback extern\\3.5.11.0\\caa_callback_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 36,
+          "library": true
+        },
+        "26": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\tcp\\3.5.9.50\\tcp.compiled-library-ge33",
+          "primary": false,
+          "handle": 26,
+          "library": true
+        },
+        "55": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iodriver parameter interfaces\\3.5.2.0\\iodrvparameter_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 55,
+          "library": true
+        },
+        "45": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\3slicense\\3.5.10.0\\3slicense.compiled-library-ge33",
+          "primary": false,
+          "handle": 45,
+          "library": true
+        },
+        "48": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\inovance\\inoparamsconfiglib\\1.0.0.0\\inoparamsconfiglib.compiled-library-ge33",
+          "primary": false,
+          "handle": 48,
+          "library": true
+        },
+        "58": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa device diagnosis\\3.5.11.0\\caa_devicediagnosis.compiled-library-ge33",
+          "primary": false,
+          "handle": 58,
+          "library": true
+        },
+        "15": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmplog\\3.5.5.0\\cmplog.compiled-library-ge33",
+          "primary": false,
+          "handle": 15,
+          "library": true
+        },
+        "18": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\syscpuhandling\\3.5.8.0\\syscpuhandling.compiled-library-ge33",
+          "primary": false,
+          "handle": 18,
+          "library": true
+        },
+        "35": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa memory block manager extern\\3.5.7.0\\caa_memblockman_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 35,
+          "library": true
+        },
+        "25": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\syssocket\\3.5.9.0\\syssocket.compiled-library-ge33",
+          "primary": false,
+          "handle": 25,
+          "library": true
+        },
+        "28": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systime\\3.5.5.0\\systime.compiled-library-ge33",
+          "primary": false,
+          "handle": 28,
+          "library": true
+        },
+        "38": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpeventmgr\\3.5.8.0\\cmpeventmgr.compiled-library-ge33",
+          "primary": false,
+          "handle": 38,
+          "library": true
+        },
+        "40": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\collections\\3.5.11.0\\collections.compiled-library-ge33",
+          "primary": false,
+          "handle": 40,
+          "library": true
+        },
+        "50": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpiectask\\3.5.9.0\\cmpiectask.compiled-library-ge33",
+          "primary": false,
+          "handle": 50,
+          "library": true
+        },
+        "60": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\commfb\\3.5.11.0\\commfb.compiled-library-ge33",
+          "primary": false,
+          "handle": 60,
+          "library": true
+        },
+        "10": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\sysmem\\3.5.5.0\\sysmem.compiled-library-ge33",
+          "primary": false,
+          "handle": 10,
+          "library": true
+        },
+        "65": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_math\\4.2.0.0\\sm3_math.compiled-library-ge33",
+          "primary": false,
+          "handle": 65,
+          "library": true
+        },
+        "30": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systask\\3.5.10.0\\systask.compiled-library-ge33",
+          "primary": false,
+          "handle": 30,
+          "library": true
+        },
+        "20": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa tickutil extern\\3.5.7.0\\caa_tickutil_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 20,
+          "library": true
+        },
+        "68": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_cnc\\4.2.1.1\\sm3_cnc.compiled-library-ge33",
+          "primary": false,
+          "handle": 68,
+          "library": true
+        },
+        "70": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\sysdir\\3.5.8.0\\sysdir.compiled-library-ge33",
+          "primary": false,
+          "handle": 70,
+          "library": true
+        },
+        "75": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_rcp\\4.2.2.0\\sm3_rcp.compiled-library-ge33",
+          "primary": false,
+          "handle": 75,
+          "library": true
+        },
+        "78": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\symbolicvarsbase\\3.5.11.0\\symbolicvarsbase.compiled-library-ge33",
+          "primary": false,
+          "handle": 78,
+          "library": true
+        },
+        "80": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\monitoring data interfaces\\3.5.2.0\\monitoringdata_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 80,
+          "library": true
+        },
+        "57": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\sysfile\\3.5.9.0\\sysfile.compiled-library-ge33",
+          "primary": false,
+          "handle": 57,
+          "library": true
+        },
+        "47": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpcodemeter\\3.5.5.0\\cmpcodemeter.compiled-library-ge33",
+          "primary": false,
+          "handle": 47,
+          "library": true
+        },
+        "77": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iecvaraccess\\3.5.11.0\\iecvaraccess.compiled-library-ge33",
+          "primary": false,
+          "handle": 77,
+          "library": true
+        },
+        "67": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_ramps\\4.2.1.0\\sm3_ramps.compiled-library-ge33",
+          "primary": false,
+          "handle": 67,
+          "library": true
+        },
+        "17": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa types extern\\3.5.10.0\\caa_types_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 17,
+          "library": true
+        },
+        "37": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\inovance\\syshcplcinfo\\1.0.98.4\\syshcplcinfo.compiled-library-ge33",
+          "primary": false,
+          "handle": 37,
+          "library": true
+        },
+        "27": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\udp\\3.5.10.0\\udp.compiled-library-ge33",
+          "primary": false,
+          "handle": 27,
+          "library": true
+        },
+        "52": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iodrvbase\\3.5.5.0\\iodrvbase.compiled-library-ge33",
+          "primary": false,
+          "handle": 52,
+          "library": true
+        },
+        "42": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iecvaraccess3 interfaces\\3.5.11.0\\iecvaraccess3_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 42,
+          "library": true
+        },
+        "72": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\datasources interfaces\\3.5.11.0\\datasources_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 72,
+          "library": true
+        },
+        "62": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_trajectorygeneration\\4.2.1.0\\sm3_trajectorygeneration.compiled-library-ge33",
+          "primary": false,
+          "handle": 62,
+          "library": true
+        },
+        "12": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmperrors\\3.3.1.40\\cmperrors.compiled-library-ge33",
+          "primary": false,
+          "handle": 12,
+          "library": true
+        },
+        "32": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\syssem\\3.5.5.0\\syssem.compiled-library-ge33",
+          "primary": false,
+          "handle": 32,
+          "library": true
+        },
+        "22": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa segmented buffer manager extern\\3.5.11.0\\caa_segbufferman_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 22,
+          "library": true
+        },
+        "59": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa fb factory\\3.5.10.0\\caa_fbfactory.compiled-library-ge33",
+          "primary": false,
+          "handle": 59,
+          "library": true
+        },
+        "49": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\breakpoint logging functions\\3.5.5.0\\breakpointloggingfunctions.compiled-library-ge33",
+          "primary": false,
+          "handle": 49,
+          "library": true
+        },
+        "79": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\data server interfaces\\3.5.2.0\\dataserver_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 79,
+          "library": true
+        },
+        "69": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\visudialogs\\3.5.11.0\\visudialogs.compiled-library-ge33",
+          "primary": false,
+          "handle": 69,
+          "library": true
+        },
+        "19": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa behaviour model\\3.5.11.0\\caa_behaviourmodel.compiled-library-ge33",
+          "primary": false,
+          "handle": 19,
+          "library": true
+        },
+        "39": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpiecvaraccess\\3.5.10.0\\cmpiecvaraccess.compiled-library-ge33",
+          "primary": false,
+          "handle": 39,
+          "library": true
+        },
+        "29": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpasyncmgr\\3.5.10.0\\cmpasyncmgr.compiled-library-ge33",
+          "primary": false,
+          "handle": 29,
+          "library": true
+        },
+        "51": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\inovance\\cmphsio\\0.0.0.7\\hsio.library",
+          "primary": false,
+          "handle": 51,
+          "library": true
+        },
+        "41": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\collections interfaces\\3.5.2.0\\collections_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 41,
+          "library": true
+        },
+        "71": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\standard64\\3.5.11.0\\standard64.compiled-library-ge33",
+          "primary": false,
+          "handle": 71,
+          "library": true
+        },
+        "61": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iodriver profibus2 interfaces\\3.5.6.0\\iodrvprofibus2_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 61,
+          "library": true
+        },
+        "11": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systypes\\3.1.2.0\\systypes.compiled-library",
+          "primary": false,
+          "handle": 11,
+          "library": true
+        },
+        "5": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\inovance\\cmphcutils\\1.3.2.0\\cmphcutils.compiled-library-ge33",
+          "primary": false,
+          "handle": 5,
+          "library": true
+        },
+        "4": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmperrors2 interfaces\\3.5.11.0\\cmperrors2_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 4,
+          "library": true
+        },
+        "7": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systimecore\\3.5.5.0\\systimecore.compiled-library-ge33",
+          "primary": false,
+          "handle": 7,
+          "library": true
+        },
+        "6": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systimertc\\3.5.5.0\\systimertc.compiled-library-ge33",
+          "primary": false,
+          "handle": 6,
+          "library": true
+        },
+        "1": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iostandard\\3.5.10.0\\iostandard.compiled-library-ge33",
+          "primary": false,
+          "handle": 1,
+          "library": true
+        },
+        "0": {
+          "path": "D:\\InoPro-ResidentMCP-Acceptance-20261126\\engineering\\AM610_ResidentMCP.project",
+          "primary": true,
+          "handle": 0,
+          "library": false
+        },
+        "3": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systypes2 interfaces\\3.5.4.0\\systypes_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 3,
+          "library": true
+        },
+        "2": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\base interfaces\\3.5.2.0\\base_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 2,
+          "library": true
+        },
+        "21": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa tick extern\\3.5.7.0\\caa_tick_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 21,
+          "library": true
+        },
+        "31": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systime\\3.5.9.0\\systime.compiled-library-ge33",
+          "primary": false,
+          "handle": 31,
+          "library": true
+        },
+        "9": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\standard\\3.5.9.0\\standard.compiled-library-ge33",
+          "primary": false,
+          "handle": 9,
+          "library": true
+        },
+        "8": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\util\\3.5.11.0\\util.compiled-library-ge33",
+          "primary": false,
+          "handle": 8,
+          "library": true
+        },
+        "54": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systypes interfaces\\3.5.2.0\\systypes_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 54,
+          "library": true
+        },
+        "44": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\stringutils\\3.5.11.0\\stringutils.compiled-library-ge33",
+          "primary": false,
+          "handle": 44,
+          "library": true
+        },
+        "74": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_transformation\\4.2.1.0\\sm3_transformation.compiled-library-ge33",
+          "primary": false,
+          "handle": 74,
+          "library": true
+        },
+        "64": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_rbase\\4.2.0.0\\sm3_rbase.compiled-library-ge33",
+          "primary": false,
+          "handle": 64,
+          "library": true
+        },
+        "14": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\floatingpointutils\\3.5.9.0\\floatingpointutils.compiled-library-ge33",
+          "primary": false,
+          "handle": 14,
+          "library": true
+        },
+        "34": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\memoryutils\\3.5.15.0\\memoryutils.compiled-library-ge33",
+          "primary": false,
+          "handle": 34,
+          "library": true
+        },
+        "24": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa list and tree\\3.5.11.0\\caa_listandtree.compiled-library-ge33",
+          "primary": false,
+          "handle": 24,
+          "library": true
+        },
+        "53": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\iodriver interfaces\\3.5.2.0\\iodriver_itfs.compiled-library-ge33",
+          "primary": false,
+          "handle": 53,
+          "library": true
+        },
+        "43": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\cmpapp\\3.5.11.0\\cmpapp.compiled-library-ge33",
+          "primary": false,
+          "handle": 43,
+          "library": true
+        },
+        "73": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_robotics\\4.2.2.0\\sm3_robotics.compiled-library-ge33",
+          "primary": false,
+          "handle": 73,
+          "library": true
+        },
+        "63": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_addrampsdefault\\4.1.0.0\\sm3_addrampsdefault.compiled-library-ge33",
+          "primary": false,
+          "handle": 63,
+          "library": true
+        },
+        "13": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\3s - smart software solutions gmbh\\sm3_shared\\3.5.5.0\\sm3_shared.compiled-library-ge33",
+          "primary": false,
+          "handle": 13,
+          "library": true
+        },
+        "33": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\system\\systarget\\3.5.5.0\\systarget.compiled-library-ge33",
+          "primary": false,
+          "handle": 33,
+          "library": true
+        },
+        "23": {
+          "path": "d:\\inproshop\\codesys\\repository\\managed libraries\\caa technical workgroup\\caa ressource manager extern\\3.5.11.0\\caa_resman_extern.compiled-library-ge33",
+          "primary": false,
+          "handle": 23,
+          "library": true
+        }
+      },
+      "projectHandle": 0
+    },
+    "diskHash": "8260c5bb670fa918830db8107e55207662ea496bbf14e31b2e6d88737f46286c"
+  },
+  "build-context-before": {
+    "children": {
+      "299aa5b3-9792-46d2-9b16-8a6e6466473a": [],
+      "$project": [
+        "57cc0e65-1907-423b-989c-1487e2d15147",
+        "7eb281f0-5127-471a-adcf-3004567f8988",
+        "6470a90f-b7cb-43ac-9ae5-94b2338b4573",
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+        "dccae013-65e3-4b75-b04e-6494c4881dbf"
+      ],
+      "7eb281f0-5127-471a-adcf-3004567f8988": [
+        "3cdf2fe1-db22-421f-9905-fa20df0b515d",
+        "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d",
+        "26eed4cd-4fdc-4fac-a651-16c4a26571ba",
+        "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83",
+        "3ffb0926-b8f2-4569-a780-6378d149901c",
+        "d38cc9cb-e60c-477a-b39b-d1df421a744f",
+        "99761fc4-7d52-4d4c-b190-d029a12ff5ed",
+        "dad2379c-8339-43d5-8fad-fc936511cf0a",
+        "6a7ce440-fb12-4e91-8750-0d092ece040b",
+        "cfd8c710-45ec-4371-b532-9444ea4dbca2",
+        "b7135532-48ad-4d79-903d-f7d628e79706",
+        "6e99dfee-10c7-482f-a3ca-d5b1c247c679",
+        "55c9ca6d-38f8-4aec-803a-7aea99f5d50e",
+        "d5667488-8888-4384-ae1d-0ee1132f49cc",
+        "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2",
+        "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b",
+        "e0407851-3df6-4797-ad01-660b71986740",
+        "a0329ce4-f69c-4e06-ac96-3022c3c516f6",
+        "08fc481d-dd55-4f06-8554-7a1c21400ff9",
+        "299aa5b3-9792-46d2-9b16-8a6e6466473a"
+      ],
+      "57cc0e65-1907-423b-989c-1487e2d15147": [
+        "383a38c1-9989-474c-8dd3-91140579cf40",
+        "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693",
+        "38d47f48-fa7e-434e-a719-4709da7a58e2",
+        "125a163d-08e2-47f5-9cd0-8a5a64342622",
+        "b98fee4d-62db-4ce8-a240-f2e9ec3119b5",
+        "2267d37c-bdff-41ba-851d-59c7957b4908",
+        "586acdc4-2093-42df-aec9-6234cb1766ef",
+        "b5da53d7-2520-4692-916b-da0ce8559a69",
+        "b7fd81da-efc6-485b-99e0-550fbc36c092",
+        "c14ce46e-025a-4d76-a28e-66d1a283c199",
+        "9012ecb5-5b8e-42b6-955d-7537670c899b",
+        "00bbadf4-4e2c-4805-bd26-e580550f2870",
+        "c9a07ce0-dd7e-4c44-b13e-764a9643b32a",
+        "887d4770-c693-4669-8ecf-c0a5c6976421",
+        "7bc4928b-bafb-40e3-8888-fc8c038335cb",
+        "596d25cc-7ee0-4d22-a882-a51405b3fff1",
+        "84e551e0-9601-4259-b802-9701ea519aa3",
+        "835c7cde-7ae4-4919-9418-f39973975e87",
+        "cb440091-3406-4785-8a33-f6722bf26ff3",
+        "25563e27-cac7-4e3b-9d13-826f214d4ec2"
+      ],
+      "6a7ce440-fb12-4e91-8750-0d092ece040b": [],
+      "3cdf2fe1-db22-421f-9905-fa20df0b515d": [],
+      "b7fd81da-efc6-485b-99e0-550fbc36c092": [],
+      "887d4770-c693-4669-8ecf-c0a5c6976421": [],
+      "d5667488-8888-4384-ae1d-0ee1132f49cc": [],
+      "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83": [],
+      "c14ce46e-025a-4d76-a28e-66d1a283c199": [],
+      "d38cc9cb-e60c-477a-b39b-d1df421a744f": [],
+      "b7135532-48ad-4d79-903d-f7d628e79706": [],
+      "e88ddc35-95de-4cd2-886e-100ccb300ecf": [
+        "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+        "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+        "e3a83141-aa59-4caf-bb34-4e823cebf5ce",
+        "5d558397-776b-478d-ab91-fa36aca5d60a",
+        "5b3b1170-1a34-47eb-81ad-1fb25bc91256"
+      ],
+      "38d47f48-fa7e-434e-a719-4709da7a58e2": [],
+      "77ccab4a-75a2-4c94-866f-8f02fbd0e876": [],
+      "cfd8c710-45ec-4371-b532-9444ea4dbca2": [],
+      "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": [],
+      "b98fee4d-62db-4ce8-a240-f2e9ec3119b5": [],
+      "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d": [],
+      "6b9df7c4-5031-4434-80b1-ddc9230e30f9": [],
+      "835c7cde-7ae4-4919-9418-f39973975e87": [],
+      "b5da53d7-2520-4692-916b-da0ce8559a69": [],
+      "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b": [],
+      "bae96937-5e0e-48a6-8b2a-2ca00576a271": [
+        "266b669b-473e-4a03-8c4b-455802429073",
+        "1c272f52-6ad1-4581-a5a8-492b86e79bff",
+        "aa3a87e0-dabe-467a-82c5-6688dc8f3376",
+        "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+        "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11",
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e",
+        "27f7c7ba-2364-4445-8a9e-6b707f8b498a",
+        "77ccab4a-75a2-4c94-866f-8f02fbd0e876"
+      ],
+      "5d558397-776b-478d-ab91-fa36aca5d60a": [],
+      "55c9ca6d-38f8-4aec-803a-7aea99f5d50e": [],
+      "84e551e0-9601-4259-b802-9701ea519aa3": [],
+      "e0407851-3df6-4797-ad01-660b71986740": [],
+      "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": [
+        "85cd3a25-83c0-4e33-b9c8-0db1d5ac3e15"
+      ],
+      "383a38c1-9989-474c-8dd3-91140579cf40": [],
+      "3ffb0926-b8f2-4569-a780-6378d149901c": [],
+      "9012ecb5-5b8e-42b6-955d-7537670c899b": [],
+      "99761fc4-7d52-4d4c-b190-d029a12ff5ed": [],
+      "08fc481d-dd55-4f06-8554-7a1c21400ff9": [],
+      "1f39e50c-7ccd-4361-8c72-eced6a8b6421": [],
+      "6470a90f-b7cb-43ac-9ae5-94b2338b4573": [],
+      "2267d37c-bdff-41ba-851d-59c7957b4908": [],
+      "00bbadf4-4e2c-4805-bd26-e580550f2870": [],
+      "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": [],
+      "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": [
+        "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867"
+      ],
+      "125a163d-08e2-47f5-9cd0-8a5a64342622": [],
+      "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": [
+        "1f39e50c-7ccd-4361-8c72-eced6a8b6421"
+      ],
+      "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693": [],
+      "cb440091-3406-4785-8a33-f6722bf26ff3": [],
+      "25563e27-cac7-4e3b-9d13-826f214d4ec2": [],
+      "dad2379c-8339-43d5-8fad-fc936511cf0a": [],
+      "27f7c7ba-2364-4445-8a9e-6b707f8b498a": [],
+      "586acdc4-2093-42df-aec9-6234cb1766ef": [],
+      "26eed4cd-4fdc-4fac-a651-16c4a26571ba": [],
+      "a0329ce4-f69c-4e06-ac96-3022c3c516f6": [],
+      "1c272f52-6ad1-4581-a5a8-492b86e79bff": [],
+      "6e99dfee-10c7-482f-a3ca-d5b1c247c679": [],
+      "c9a07ce0-dd7e-4c44-b13e-764a9643b32a": [],
+      "266b669b-473e-4a03-8c4b-455802429073": [
+        "6b9df7c4-5031-4434-80b1-ddc9230e30f9"
+      ],
+      "5b3b1170-1a34-47eb-81ad-1fb25bc91256": [],
+      "dccae013-65e3-4b75-b04e-6494c4881dbf": [],
+      "e3a83141-aa59-4caf-bb34-4e823cebf5ce": [],
+      "f6a6ccb0-d225-4241-955b-eaf638b32c2b": [
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+      ],
+      "85cd3a25-83c0-4e33-b9c8-0db1d5ac3e15": [],
+      "7bc4928b-bafb-40e3-8888-fc8c038335cb": [],
+      "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2": [],
+      "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11": [],
+      "aa3a87e0-dabe-467a-82c5-6688dc8f3376": [],
+      "596d25cc-7ee0-4d22-a882-a51405b3fff1": []
+    },
+    "scheme": "resident-build-context-v1",
+    "devices": {
+      "77ccab4a-75a2-4c94-866f-8f02fbd0e876": {
+        "identity": {
+          "version": "00.00.00.10",
+          "id": "10F4 0005",
+          "type": "40005"
+        },
+        "connectors": [
+          {
+            "id": 1,
+            "interface": "Common.PCI",
+            "role": "Child",
+            "hostPath": -1
+          },
+          {
+            "id": 2,
+            "interface": "Inovance:System",
+            "role": "Parent",
+            "hostPath": 1
+          }
+        ]
+      },
+      "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": {
+        "identity": {
+          "version": "00.00.00.10",
+          "id": "10F4 0510",
+          "type": "40510"
+        },
+        "connectors": [
+          {
+            "id": 1,
+            "interface": "Common.PCI",
+            "role": "Child",
+            "hostPath": -1
+          },
+          {
+            "id": 2,
+            "interface": "Common.ModbusTcpSerialDevice",
+            "role": "Parent",
+            "hostPath": 1
+          }
+        ]
+      },
+      "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": {
+        "identity": {
+          "version": "00.00.00.20",
+          "id": "10F4 0600",
+          "type": "40600"
+        },
+        "connectors": [
+          {
+            "id": 1,
+            "interface": "Common.PCI",
+            "role": "Child",
+            "hostPath": -1
+          },
+          {
+            "id": 2,
+            "interface": "Common.inovance2",
+            "role": "Parent",
+            "hostPath": 1
+          }
+        ]
+      },
+      "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+        "identity": {
+          "version": "3.5.11.11",
+          "id": "10f4 0002",
+          "type": "4102"
+        },
+        "connectors": [
+          {
+            "id": 0,
+            "interface": "Common.SoftMotion.General",
+            "role": "Parent",
+            "hostPath": -1
+          },
+          {
+            "id": 1,
+            "interface": "Common.PCI",
+            "role": "Parent",
+            "hostPath": -1
+          }
+        ]
+      }
+    }
+  },
+  "compiler-result": {
+    "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+    "completed": true,
+    "diagnostics": [
+      {
+        "prefix": {
+          "nativeType": null,
+          "kind": "text",
+          "value": "C",
+          "pythonType": "str"
+        },
+        "number": {
+          "value": null,
+          "kind": "null"
+        },
+        "text": "------ 开始构建应用程序 Device.Application -------",
+        "severity": "text",
+        "category": "97f48d64-a2a3-4856-b640-75c046e37ea9"
+      },
+      {
+        "prefix": {
+          "nativeType": null,
+          "kind": "text",
+          "value": "C",
+          "pythonType": "str"
+        },
+        "number": {
+          "value": null,
+          "kind": "null"
+        },
+        "text": "代码典型化 ...",
+        "severity": "text",
+        "category": "97f48d64-a2a3-4856-b640-75c046e37ea9"
+      },
+      {
+        "prefix": {
+          "nativeType": null,
+          "kind": "text",
+          "value": "C",
+          "pythonType": "str"
+        },
+        "number": {
+          "value": null,
+          "kind": "null"
+        },
+        "text": "编译完成 -- 0 错误, 0 警告",
+        "severity": "text",
+        "category": "97f48d64-a2a3-4856-b640-75c046e37ea9"
+      }
+    ],
+    "categories": [
+      {
+        "endObserved": true,
+        "category": "194b48a9-ab51-43ae-b9a9-51d3edaaddf3",
+        "count": 0
+      },
+      {
+        "endObserved": true,
+        "category": "97f48d64-a2a3-4856-b640-75c046e37ea9",
+        "count": 3
+      }
+    ],
+    "diagnosticsComplete": true
+  },
+  "origin": {
+    "operationId": "bf310d71-3e21-421b-9c78-233f4a72dd17",
+    "status": "unknown",
+    "fileHashes": {
+      "before.json": "6af27102da3e9317dc9ab33afd3af8ec2118112917f2a164f1d05ee51fe7dcfb",
+      "after.json": "0f0d3fab6bd984953261ac1afad15f86d882d964d1a6099fcabaa3ae072a3e09",
+      "build-context-before.json": "f5a1dc19569d3da386b30048def9fb759e1c9cc693944e15183504534000eee2",
+      "compiler-result.json": "eee25e0c7e9e27f4b0d00e639386ed5ec5895baefbf77287e3011ef8fe60c28a"
+    }
+  }
+}
