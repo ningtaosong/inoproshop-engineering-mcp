@@ -2,7 +2,7 @@
 
 本轮基于 `codex/resident-mcp-session / b5335aa22b00a93c7d3a184fc73e87582a485ec0`，核实远端 main 仍为 `55bb58fc97b266215ad536b6b0f9d4f66c80670f`。只迁移 `project_build`，38项工具不增加。未合并、未部署；保留尚未完成真实验收的0.39 `add-struct-field`。
 
-下文固定构建和授权状态保留最初离线交付时点。随后用户已允许旧实例不保存正常关闭；该IDE已正常退出，但旧SDK控制器的finish前置条件形成循环，尚未移交服务。必要的收尾顺序及原Application选择兼容补修、独立新固定构建和当前等待点见[后续移交记录](resident-build-handoff-fix.md)。真实内存编译仍未执行。
+下文固定构建和授权状态保留最初离线交付时点。[后续移交记录](resident-build-handoff-fix.md)保留finish前置条件循环及Application选择兼容补修。随后已按补充授权完成旧服务移交；[真实MCP首轮](resident-memory-build-real-20261126.md)完成一次0错误／0警告内存编译，但直接库清单新增使保全核对unknown，后续修改未执行。新IDE和服务保留，不能把下文最初的“未执行”当作当前状态。
 
 ## 实际实现
 
