@@ -102,9 +102,15 @@ export class ResidentAcceptanceRounds {
   const listed=await this.listCurrent(command.limit),matches=listed.rows.filter(r=>r.objectId.toLowerCase()===command.objectId.toLowerCase());
   if(matches.length!==1)throw new BeforeWriteConflict('Target is not uniquely present in current supported view');
   const args={...this.target,objectId:matches[0].objectId},before=await this.request('object_read',args),d=before.data;
-  if(d.residentVersion!==listed.version||d.diskHash!==this.diskHash||d.implementation!==command.beforeImplementation)throw new BeforeWriteConflict('Current target/version differs; no write dispatched');
+  // Pagination is one view. The following object_read is a separate current
+  // snapshot; bind the write to that response, never refresh/retry an old write.
+  if(d.diskHash!==this.diskHash||d.implementation!==command.beforeImplementation)throw new BeforeWriteConflict('Current target/source/disk differs; no write dispatched');
   if(d.objectId!==args.objectId||d.applicationId!==this.target.applicationId||typeof d.declaration!=='string'||!hash.test(d.contentHash??''))throw Error('Object read evidence incomplete');
-  await this.log('write-plan',{commandId:command.id,objectId:d.objectId,declaration:d.declaration,before:d.implementation,after:command.afterImplementation,expectedHash:d.contentHash,expectedResidentVersion:d.residentVersion,diskHash:d.diskHash});
+  for(const key of ['objectId','applicationId','path','nativeTypeId','embeddedObjectTypes','language','objectType','hasImplementation']){
+   if(!Object.hasOwn(matches[0],key)||!Object.hasOwn(d,key))throw Error('Object identity evidence incomplete: '+key);
+   if(JSON.stringify(matches[0][key])!==JSON.stringify(d[key]))throw new BeforeWriteConflict('Located object identity changed: '+key);
+  }
+  await this.log('write-plan',{commandId:command.id,objectId:d.objectId,declaration:d.declaration,before:d.implementation,after:command.afterImplementation,listedVersion:listed.version,expectedHash:d.contentHash,expectedResidentVersion:d.residentVersion,diskHash:d.diskHash});
   this.writeAttempted=true;
   let changed;
   try{changed=await this.request('code_apply_change',{...args,requestId:command.id,expectedHash:d.contentHash,expectedResidentVersion:d.residentVersion,declaration:d.declaration,implementation:command.afterImplementation});}
