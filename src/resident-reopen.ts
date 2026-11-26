@@ -8,6 +8,22 @@ import {residentHash,verifyResidentCompletion} from './resident.js';
 const equal=(a:unknown,b:unknown)=>residentHash(a)===residentHash(b);
 const uuid=(s:any)=>typeof s==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(s);
 
+// project_open permits omitting Application only for the original unambiguous
+// selection. Keep that request immutable; its published result and registry
+// must agree. All completion/service-verification checks still run below.
+export function closedApplicationBinding(op:any,request:any,result:any,s:any){
+ if(request?.args?.applicationId===s.applicationId)return true;
+ if(!request?.args||Object.hasOwn(request.args,'applicationId')||op.tool!=='project_open'||request.command!=='inspect'||request.sequence!==1||!uuid(s.applicationId))return false;
+ const apps=result?.data?.applications;
+ return Array.isArray(apps)&&apps.length===1&&apps[0]?.applicationId===s.applicationId&&
+  Array.isArray(apps[0].path)&&apps[0].path.length>0&&apps[0].path.every((x:any)=>typeof x==='string'&&x.length>0)&&
+  result.data.applicationId===s.applicationId&&op.project&&
+  (!Object.hasOwn(op.project,'applicationId')||op.project.applicationId===s.applicationId)&&
+  op.response?.data?.session?.applicationId===s.applicationId&&
+  op.response.data.session.projectId===s.projectId&&op.response.data.session.sessionId===s.sessionId&&
+  equal(apps,op.response.data.session.applications)&&equal(apps,s.applications);
+}
+
 // Read-only proof for an EXPLICIT fresh open of unchanged saved bytes. This
 // neither reconnects to memory nor resets a previous operation/session record.
 export async function verifyClosedResident(store:Store,s:Session,newOperationId:string,probe:ProcessProbe=probeProcess){
@@ -36,7 +52,7 @@ export async function verifyClosedResident(store:Store,s:Session,newOperationId:
    if(pathKey(op.bridge?.directory??'')!==pathKey(ipc))throw refuse('IPC path differs');
    const [request,result,check]=await Promise.all(['request.json','result.json','service-verification.json'].map(n=>readJson(path.join(ipc,n))));
    if(!request||request.operationId!==op.operationId||request.requestId!==op.requestId||request.requestFingerprint!==op.fingerprint||request.launchId!==launchId||request.fileIdentity!==fileIdentity||request.diskHash!==diskHash||pathKey(request.projectPath)!==pathKey(s.workingPath)||
-    request.args?.applicationId!==s.applicationId||!result||result.status!==op.status||!equal(result.data?.residentEvidence,op.response?.data?.residentEvidence)||
+    !closedApplicationBinding(op,request,result,s)||!result||result.status!==op.status||!equal(result.data?.residentEvidence,op.response?.data?.residentEvidence)||
     check?.passed!==true||check.launchId!==launchId||check.sequence!==request.sequence||!equal(check.processIdentity,identity)||check.requestHash!==residentHash(request)||check.resultHash!==residentHash(result))throw refuse('Prior request/result/verification binding differs');
    // The immutable original service-verification above binds these exact bytes.
    // Do not reclassify an old successful list using a newer supported-object rule.

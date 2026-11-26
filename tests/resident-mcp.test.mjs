@@ -2,7 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import {E
 import {ResidentChannel,residentDependencies as deps,residentHash as hash,residentObject,verifyResidentResult} from '../dist/resident.js';
 import {ServiceLifecycle,releaseObservedLease} from '../dist/service-lifecycle.js';
 import {buildConservation,buildSourceVersion,checkedDiagnostics} from '../dist/resident-build.js';
-import {verifyClosedResident} from '../dist/resident-reopen.js';
+import {verifyClosedResident,closedApplicationBinding} from '../dist/resident-reopen.js';
 import {EngineeringService} from '../dist/service.js';import {digest,readJson} from '../dist/storage.js';import {exclusiveJson} from '../dist/exit-journal.js';import {schemas,outputSchemas,VERSION} from '../dist/contracts.js';
 const APP='10000000-0000-4000-8000-000000000001',OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
 function state(file){const row=(id,parent,name,type,d,i)=>({objectId:id,applicationId:APP,parentId:parent,path:parent?['Application',name]:['Application'],nativeTypeId:type,declaration:d,implementation:i,embeddedObjectTypes:i===null?[]:[ST]});return {projectPath:file,projectHandle:0,thread:9,applications:[APP],openedProjects:{'0':{handle:0,path:file,library:false,primary:true}},nodes:{[APP]:row(APP,null,'Application',APP,null,null),[OBJ]:row(OBJ,APP,'Logic',POU,'PROGRAM Logic\nVAR\nx: DINT;\nEND_VAR','x := 1; // 中文')}};}
@@ -10,7 +10,7 @@ test('archived native declaration and ST pair is a supported root PROGRAM',async
  const archive=JSON.parse(await fs.readFile(new URL('./fixtures/resident-first-list-20261126.json',import.meta.url),'utf8'));
  for(const {dependencies:s} of archive.snapshots){const id='76817b8e-cf3d-4b51-82a0-fb6e8bc7c778',raw=structuredClone(s),r=residentObject(s,id,s.applications[0]);assert.equal(r.objectId,id);assert.equal(r.implementation,s.nodes[id].implementation);assert.deepEqual(r.embeddedObjectTypes,s.nodes[id].embeddedObjectTypes);assert.deepEqual(s,raw);}
 });
-async function fixture(t){
+async function fixture(t,{omitApplication=false}={}){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'InoPro resident ')),file=path.join(root,'case.project');await fs.writeFile(file,'fixed project');
  const identity={version:1,platform:process.platform,host:os.hostname().toLowerCase(),pid:12345,startId:'987654321'};
  const n={state:state(file),writes:0,builds:0,requests:[],launches:0,fault:null,child:null,loops:[],running:true};
@@ -75,7 +75,7 @@ async function fixture(t){
  t.after(async()=>{n.loops.forEach(clearInterval);if(n.child&&n.running){n.running=false;n.child.emit('exit',0,null);}await channel.observe();await service.store.release();});
  const done=async r=>{while(r.status==='running'){await new Promise(res=>setTimeout(res,10));r=await service.call('operation_status',{operationId:r.operationId});}return r;};
  const call=async(name,args)=>{try{return await done(await service.call(name,args));}catch(e){return {status:e.status,error:{code:e.code,message:e.message}};}};
- const opened=await call('project_open',{requestId:'open',projectPath:file,applicationId:APP,sessionMode:'resident'});assert.equal(opened.status,'succeeded',JSON.stringify(opened));const target={projectId:opened.data.session.projectId,applicationId:APP,targetKind:'application'};
+ const opened=await call('project_open',{requestId:'open',projectPath:file,...(omitApplication?{}:{applicationId:APP}),sessionMode:'resident'});assert.equal(opened.status,'succeeded',JSON.stringify(opened));const target={projectId:opened.data.session.projectId,applicationId:APP,targetKind:'application'};
  const read=()=>call('object_read',{...target,objectId:OBJ});
  const change=(r,requestId,implementation='x := 8; // 改动')=>call('code_apply_change',{...target,objectId:OBJ,requestId,expectedHash:r.data.contentHash,expectedResidentVersion:r.data.residentVersion,declaration:r.data.declaration,implementation});
  return {root,file,n,config,channel,service,call,target,read,change,opened};
@@ -168,6 +168,29 @@ test('explicit new service project_open reaches native fresh open only after pro
  assert.equal(calls,1,JSON.stringify(result));assert.equal(newRequest.command,'inspect');
  const op=await next.store.operation(result.operationId);assert.equal(op.project.projectId,oldSession.projectId);assert.notEqual(op.project.sessionId,oldSession.sessionId);
  assert.equal((await next.store.session()).sessionId,oldSession.sessionId,'failed new open must not rewrite prior registry');await next.store.release();
+});
+
+test('closed resident proof accepts original legal initial open with inferred unique Application',async t=>{
+ const f=await fixture(t,{omitApplication:true});f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();
+ const s=await f.service.store.session(),original=f.n.requests[0];assert.equal(Object.hasOwn(original.args,'applicationId'),false);
+ const p=await verifyClosedResident(f.service.store,s,'new-explicit',async()=>({state:'exited'}));
+ assert.equal(p.priorSessionId,s.sessionId);assert.equal(p.operationIds.length,1);assert.equal(f.n.launches,1);assert.equal(f.n.writes,0);assert.equal(Object.hasOwn(original.args,'applicationId'),false);
+});
+test('archived legal inferred Application projection retains original absence and matches published selection',async()=>{
+ const f=JSON.parse(await fs.readFile(new URL('./fixtures/resident-inferred-open-20261126.json',import.meta.url),'utf8'));
+ const before=JSON.stringify(f);assert.equal(Object.hasOwn(f.request.args,'applicationId'),false);assert.equal(closedApplicationBinding(f.operation,f.request,f.result,f.session),true);assert.equal(JSON.stringify(f),before);
+});
+
+for(const fault of ['none','preselection-project','different-tool','different-command','later-sequence','explicit-null','explicit-other','missing-list','multiple-apps','selected-other','registered-other','anchor-list-other','missing-path','missing-response-session','different-response-session'])test('original inferred Application binding '+fault,()=>{
+ const q={command:'inspect',sequence:1,args:{}},r={data:{applicationId:APP,applications:[{applicationId:APP,path:['Application']}]}},s={projectId:OBJ,sessionId:APP,applicationId:APP,applications:structuredClone(r.data.applications)},op={tool:'project_open',project:{applicationId:APP},response:{data:{session:structuredClone(s)}}};
+ if(fault==='preselection-project')delete op.project.applicationId;
+ if(fault==='different-tool')op.tool='object_read';if(fault==='different-command')q.command='read';if(fault==='later-sequence')q.sequence=2;
+ if(fault==='explicit-null')q.args.applicationId=null;if(fault==='explicit-other')q.args.applicationId=OBJ;
+ if(fault==='missing-list')delete r.data.applications;if(fault==='multiple-apps')r.data.applications.push({applicationId:OBJ,path:['Other']});
+ if(fault==='selected-other')r.data.applicationId=OBJ;if(fault==='registered-other')op.project.applicationId=OBJ;
+ if(fault==='anchor-list-other')s.applications=[{applicationId:OBJ,path:['Other']}];if(fault==='missing-path')delete r.data.applications[0].path;
+ if(fault==='missing-response-session')delete op.response.data.session;if(fault==='different-response-session')op.response.data.session.sessionId=OBJ;
+ const before=JSON.stringify([op,q,r,s]);assert.equal(closedApplicationBinding(op,q,r,s),['none','preselection-project'].includes(fault));assert.equal(JSON.stringify([op,q,r,s]),before);
 });
 
 for(const fault of ['none','live-ide','live-service','unconfirmed','missing-exit','nonzero','missing-start','exit-identity','disk-change','file-replaced','unknown','different-launch','sequence-gap','missing-completion','missing-verification','request-fingerprint','root-stop'])test('closed resident fresh-open proof '+fault,async t=>{
