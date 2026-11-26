@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""One fixed five-request diagnostic; project remains open and unsaved."""
+"""Two explicit external rounds, five internal steps; no idle auto-save/close."""
 import os,sys,json,hashlib,datetime,traceback
 
 def sha(path):
@@ -23,7 +23,7 @@ def start():
     base=load_fixed(intent['twoReadModule'],intent['twoReadSha256'],'resident_read_helpers')
     base['_root']=root;base['_binding']=dict((k,intent[k]) for k in ('operationId','requestId','launchId','requestFingerprint','scriptSha256'))
     try:
-        if intent['scope']!='one-owned-project-five-unsaved-requests' or sha(__file__)!=intent['scriptSha256']:raise ValueError('Fixed scope/script differs')
+        if intent['scope']!='one-owned-project-two-explicit-rounds' or sha(__file__)!=intent['scriptSha256']:raise ValueError('Fixed scope/script differs')
         for item in intent['fixedFiles']:
             if sha(item['path'])!=item['sha256']:raise ValueError('Fixed dependency changed: '+item['path'])
         module=load_fixed(intent['sessionModule'],intent['sessionSha256'],'resident_session_helpers')
@@ -50,8 +50,15 @@ def start():
         class Probe(base['TwoReadProbe']):
             def __init__(self):
                 base['TwoReadProbe'].__init__(self,intent)
+                self.startup_complete=False;self.active_sequence=None
                 self.adapter=module['NativeProjectAdapter'](projects,intent['projectPath'],module['same_public_identity'],lambda:Thread.CurrentThread.ManagedThreadId,lambda proof:base['record']('project-ownership-observed',proof=proof))
                 self.session=module['ResidentSequence'](session_intent,self.adapter,self.engineering_admission,self.primary_dispatch,base['publish'],process_identity,file_identity)
+            def admission(self):
+                if base['_first_error'] is not None or os.path.exists(os.path.join(root,'observer-stop.json')):raise ValueError('Observation stopped; no next dispatch')
+                receipt=base['read_json'](os.path.join(root,'native-admission.json'))
+                # Startup is bounded. Completed turns waiting for a user have no timer.
+                gate=base['read_json'](os.path.join(root,'gate-%d.json'%self.active_sequence),1048576) if self.active_sequence is not None else None
+                module['validate_session_admission'](receipt,intent,datetime.datetime.utcnow(),self.startup_complete,self.active_sequence,gate)
             def project_status(self):
                 if self.adapter.project is None:return base['TwoReadProbe'].project_status(self)
                 self.adapter._owned()
@@ -60,10 +67,17 @@ def start():
             def engineering_admission(self):
                 self.admission()
                 sequence=self.session.completed+1
+                if self.active_sequence!=sequence:raise ValueError('No active explicit request')
                 receipt=base['read_json'](os.path.join(root,'gate-%d.json'%sequence),1048576)
                 if receipt['launchId']!=intent['launchId'] or receipt['sequence']!=sequence or receipt['projectPath']!=intent['projectPath'] or receipt['globalFrozen'] or receipt['related'] or receipt['processIdentity']!=identity:raise ValueError('Current formal engineering gate denies request')
                 limit=datetime.datetime.strptime(receipt['deadlineUtc'],'%Y-%m-%dT%H:%M:%S.%fZ')
                 if datetime.datetime.utcnow()>=limit:raise ValueError('Engineering admission expired')
+                number=module['round_for_step'](sequence)
+                ticket=base['read_json'](os.path.join(root,'round-%d.json'%number))
+                waiting=base['read_json'](os.path.join(root,'awaiting-round-%d.json'%number))
+                previous=base['read_json'](os.path.join(root,'round-1-result.json')) if number==2 else None
+                ticket_hash=module['validate_round_submission'](ticket,waiting,previous,intent['launchId'],intent['projectPath'],identity,sequence,self.session.previous)
+                if receipt.get('round')!=number or receipt.get('roundSubmissionHash')!=ticket_hash:raise ValueError('Engineering gate belongs to another round')
                 for row in receipt['protectedFiles']:
                     if bool(os.path.exists(row['path']))!=row['exists'] or (sha(row['path']) if row['exists'] else None)!=row['sha256']:raise ValueError('Formal evidence changed inside request')
                 return True
@@ -86,17 +100,22 @@ def start():
                     while True:
                         self.admission();state=self.on_primary();base['stable_identity'](self.first_state,state)
                         if not state['startupFramesPresent']:
-                            base['publish']('ready.json',dict(binding=dict(base['_binding']),state=state));break
+                            base['publish']('ready.json',dict(binding=dict(base['_binding']),state=state));self.startup_complete=True;break
                         Thread.Sleep(100)
                     for seq in range(1,6):
                         path=os.path.join(root,'request-%d.json'%seq)
+                        base['record']('awaiting-request',sequence=seq,round=module['round_for_step'](seq),idleDeadline=None)
                         while not os.path.exists(path):self.admission();Thread.Sleep(100)
-                        self.engineering_admission()
-                        base['record']('request-entered',sequence=seq,requestSha256=sha(path))
-                        response=module['process_request_file'](self.session,path)
-                        if response['status']!='memory-verified':raise ValueError('Request stopped: '+response['status'])
-                        state=self.on_primary();base['stable_identity'](self.first_state,state)
-                        base['record']('request-completed',sequence=seq,memoryVersion=response['memoryVersion'],context=state)
+                        self.active_sequence=seq
+                        try:
+                            self.engineering_admission()
+                            base['record']('request-entered',sequence=seq,requestSha256=sha(path))
+                            response=module['process_request_file'](self.session,path)
+                            if response['status']!='memory-verified':raise ValueError('Request stopped: '+response['status'])
+                            state=self.on_primary();base['stable_identity'](self.first_state,state)
+                            base['record']('request-completed',sequence=seq,memoryVersion=response['memoryVersion'],context=state)
+                            base['publish']('native-step-%d-completed.json'%seq,dict(binding=dict(base['_binding']),sequence=seq,resultHash=module['digest'](response)))
+                        finally:self.active_sequence=None
                     base['record']('sequence-completed',requests=self.session.completed,modifications=self.session.modifications,saved=False,closed=False,ideRetained=True)
                 except Exception as error:base['fail']('resident-receiver',error)
                 finally:

@@ -12,6 +12,7 @@ import copy
 import hashlib
 import traceback
 import math
+import datetime
 try:
     text_type=unicode
     string_types=(basestring,)
@@ -24,9 +25,37 @@ except NameError:
 ST='3b83b776-fb25-43b8-99f2-3c507c9143fc'
 POU='6f9dac99-8de1-4efc-8465-68ac443b7d08'
 ACTIONS=('read','append-comment-1','read','append-comment-2','read')
+ROUND_STEPS=((1,2,3),(4,5))
 COMMENTS=(u'(* 未保存连续请求：第一处注释 *)',u'(* 未保存连续请求：第二处注释 *)')
 TASK_FIELDS=('kind_of_task','priority','interval','interval_unit','event_pou_guid','event','external_event','core_binding','parent_synchron_task')
 class Conflict(ValueError):pass
+
+def validate_session_admission(receipt,intent,now,startup_complete,active_sequence,gate=None):
+    if receipt['launchId']!=intent['launchId'] or receipt['scriptSha256']!=intent['scriptSha256']:raise Conflict('Admission binding differs')
+    if not startup_complete and now>=datetime.datetime.strptime(receipt['deadlineUtc'],'%Y-%m-%dT%H:%M:%S.%fZ'):raise Conflict('Startup deadline expired')
+    if active_sequence is not None:
+        if gate is None or gate['launchId']!=intent['launchId'] or gate['sequence']!=active_sequence:raise Conflict('Active request admission differs')
+        if now>=datetime.datetime.strptime(gate['deadlineUtc'],'%Y-%m-%dT%H:%M:%S.%fZ'):raise Conflict('Active request deadline expired')
+    return True
+
+def round_for_step(sequence):
+    if sequence not in (1,2,3,4,5):raise Conflict('Invalid diagnostic step')
+    return 1 if sequence<=3 else 2
+
+def validate_round_submission(ticket,waiting,previous,launch_id,project_path,process_identity,sequence,previous_step_hash):
+    """Explicit external turn, not elapsed idle time. No engineering calls here."""
+    number=round_for_step(sequence)
+    if waiting.get('schemaVersion')!=1 or waiting.get('status')!='awaiting-explicit-round' or waiting.get('round')!=number or waiting.get('launchId')!=launch_id or waiting.get('projectPath')!=project_path or waiting.get('processIdentity')!=process_identity or waiting.get('nextSequence')!=ROUND_STEPS[number-1][0]:raise Conflict('Round waiting receipt differs')
+    guid(waiting['readyId'])
+    if number==1:
+        if previous is not None or waiting['previousRoundHash'] is not None or waiting['previousStepResultHash'] is not None:raise Conflict('Unexpected previous round')
+    else:
+        if previous is None or previous.get('status')!='round-completed' or previous.get('round')!=1 or previous.get('launchId')!=launch_id or previous.get('processIdentity')!=process_identity or previous.get('projectPath')!=project_path or previous.get('completedSequences')!=list(ROUND_STEPS[0]) or previous.get('saved') is not False or previous.get('closed') is not False or previous.get('modifications')!=1:raise Conflict('First round completion missing')
+        if waiting['previousRoundHash']!=digest(previous) or waiting['previousStepResultHash']!=previous['lastStepResultHash']:raise Conflict('Previous round receipt changed')
+        if sequence==4 and previous['lastStepResultHash']!=previous_step_hash:raise Conflict('First unsaved round no longer matches receiver')
+    expected=dict(schemaVersion=1,launchId=launch_id,round=number,projectPath=project_path,processIdentity=process_identity,waitingHash=digest(waiting),previousRoundHash=waiting['previousRoundHash'])
+    if type(ticket.get('round')) is not int or type(ticket.get('schemaVersion')) is not int or canonical(ticket)!=canonical(expected):raise Conflict('Explicit round submission differs')
+    return digest(ticket)
 
 def canonical(value):
     return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')

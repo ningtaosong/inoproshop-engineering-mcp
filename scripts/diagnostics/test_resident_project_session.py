@@ -263,6 +263,51 @@ def run_cases_json():
         check(calls==(1 if name=='request-2-readback-check.json' else 0))
         check(x.s.accept(req)==r and x.counts['replace']==calls)
     for name in ('request-2-precondition-check.json','request-2-predispatch-check.json','request-2-readback-check.json'):case('comparison evidence publication failure '+name,lambda name=name:proof_failure(name))
+    def two_rounds(change=None):
+        x=fixture();first=[send(x) for ignored in range(3)];saved=copy.deepcopy(x.pub)
+        check(all(r['status']=='memory-verified' for r in first) and x.counts['replace']==1 and x.s.completed==3)
+        # User idle does not invoke the receiver, reset the session, or mutate a result.
+        check(x.pub==saved and x.counts['save']==x.counts['close']==0)
+        if change=='source':x.target.textual_implementation.text+=u'user edit between rounds'
+        if change=='disk':
+            with open(x.intent['projectPath'],'ab') as f:f.write(b'user save between rounds')
+        if change=='closed':x.projects.primary=None;x.projects.all=[]
+        result=send(x)
+        if change:
+            check(result['frozen'] and x.counts['replace']==1 and x.pub['result-3.json']==saved['result-3.json'])
+            check(x.s.accept(first[-1]['request'])==first[-1] and x.counts['replace']==1)
+        else:
+            final=send(x);check(result['status']==final['status']=='memory-verified' and x.counts['replace']==2)
+            check(x.pub['request-4-memory-checkpoint.json']['state']['nodes'][x.target.guid]['implementation']==first[-1]['state']['nodes'][x.target.guid]['implementation'])
+        check(x.counts['save']==x.counts['close']==0)
+    for change in (None,'source','disk','closed'):case('explicit-round boundary preserves prior completion '+str(change),lambda change=change:two_rounds(change))
+    def deadlines(kind):
+        now=m.datetime.datetime(2026,11,26,12);intent=dict(launchId='id',scriptSha256='hash')
+        receipt=dict(launchId='id',scriptSha256='hash',deadlineUtc='2026-11-25T00:00:00.000Z')
+        gate=dict(launchId='id',sequence=4,deadlineUtc='2026-11-26T12:01:00.000Z')
+        active=None if kind in ('idle','startup') else 4
+        if kind=='active-expired':gate['deadlineUtc']='2026-11-26T11:59:00.000Z'
+        if kind=='wrong-launch':gate['launchId']='another'
+        if kind=='wrong-step':gate['sequence']=2
+        try:ok=m.validate_session_admission(receipt,intent,now,kind!='startup',active,gate)
+        except m.Conflict:check(kind not in ('idle','active'));return
+        check(ok and kind in ('idle','active'))
+    for kind in ('idle','startup','active','active-expired','wrong-launch','wrong-step'):case('startup and active deadlines exclude user idle '+kind,lambda kind=kind:deadlines(kind))
+    def round_ticket(kind):
+        x=fixture();results=[send(x) for ignored in range(3)];prior=results[-1]
+        previous=dict(status='round-completed',round=1,launchId=x.intent['launchId'],projectPath=x.intent['projectPath'],processIdentity=x.intent['processIdentity'],completedSequences=[1,2,3],modifications=1,saved=False,closed=False,lastStepResultHash=m.digest(prior))
+        waiting=dict(schemaVersion=1,status='awaiting-explicit-round',launchId=x.intent['launchId'],round=2,readyId=str(uuid.uuid4()),projectPath=x.intent['projectPath'],processIdentity=x.intent['processIdentity'],previousRoundHash=m.digest(previous),previousStepResultHash=m.digest(prior),nextSequence=4)
+        ticket=dict(schemaVersion=1,launchId=x.intent['launchId'],round=2,projectPath=x.intent['projectPath'],processIdentity=x.intent['processIdentity'],waitingHash=m.digest(waiting),previousRoundHash=waiting['previousRoundHash'])
+        if kind=='old-receipt':waiting['readyId']=str(uuid.uuid4())
+        if kind=='wrong-owner':ticket['processIdentity']=dict(pid=124,startId='other')
+        if kind=='missing-completion':previous=None
+        if kind=='changed-completion':previous['saved']=True
+        if kind=='early-second':waiting['nextSequence']=2
+        if kind=='boolean-round':ticket['round']=True
+        try:m.validate_round_submission(ticket,waiting,previous,x.intent['launchId'],x.intent['projectPath'],x.intent['processIdentity'],4,x.s.previous)
+        except m.Conflict:check(kind!='valid');return
+        check(kind=='valid')
+    for kind in ('valid','old-receipt','wrong-owner','missing-completion','changed-completion','early-second','boolean-round'):case('native explicit-round evidence '+kind,lambda kind=kind:round_ticket(kind))
     if sys.platform=='cli':
         def clr_project_fields():
             from System import Int32,Boolean
