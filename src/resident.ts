@@ -8,6 +8,7 @@ import {digest,codeHash,pathKey,readJson} from './storage.js';
 import {exclusiveJson,errorDetails} from './exit-journal.js';
 import {probeProcess,sameProcess,type ProcessIdentity,type ProcessProbe} from './lease-process.js';
 import type {BridgeRequest,Config} from './adapter.js';
+import {verifyResidentBuild} from './resident-build.js';
 
 const stable=(v:any):string=>Array.isArray(v)?'['+v.map(stable).join(',')+']':v&&typeof v==='object'?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}':JSON.stringify(v);
 export const residentHash=(v:unknown)=>digest(stable(v));
@@ -44,7 +45,7 @@ export async function verifyResidentCompletion(request:any,result:Reply,director
  const data=result.data as any,e=data?.residentEvidence,completed=await readJson(path.join(directory,'completed.json'));
  if(result.operationId!==request.operationId||result.requestId!==request.requestId||e?.requestHash!==residentHash(request)||e?.launchId!==request.launchId||e?.sequence!==request.sequence||!equal(e?.processIdentity,{pid:identity.pid,startId:identity.startId})||e?.requestCompleted!==true||e?.ideExitRequested!==false||!equal(completed,{launchId:request.launchId,sequence:request.sequence,processIdentity:e.processIdentity,requestHash:e.requestHash,resultHash:residentHash(result)}))throw Error('Resident completion/request/instance binding differs');
  if(result.status!=='succeeded'){if(data?.recoverableRejection===true&&(result.status!=='conflict'||data.firstError?.dispatched!==false||data.secondaryErrors?.length!==0||await readJson(path.join(directory,'dispatch.json'))))throw Error('Unproven zero-dispatch rejection');return;}
- if(data.saved!==false||data.closed!==false||data.reopened!==false||['saveCalls','compileCalls','closeCalls','exitCalls'].some(k=>data[k]!==0)||data.sessionMode!=='resident')throw Error('Resident lifecycle evidence differs');
+ if(data.saved!==false||data.closed!==false||data.reopened!==false||['saveCalls','closeCalls','exitCalls'].some(k=>data[k]!==0)||data.compileCalls!==(request.command==='build'?1:0)||data.sessionMode!=='resident')throw Error('Resident lifecycle evidence differs');
 }
 export async function verifyResidentResult(request:any,result:Reply,directory:string,identity:ProcessIdentity) {
  await verifyResidentCompletion(request,result,directory,identity);
@@ -53,6 +54,7 @@ export async function verifyResidentResult(request:any,result:Reply,directory:st
  const before=await readJson(path.join(directory,'before.json'));if(pathKey(before?.state?.projectPath??'')!==pathKey(request.projectPath))throw Error('Snapshot belongs to another project');const deps=residentDependencies(before?.state),version=residentHash({dependencies:deps,diskHash:before.diskHash});
  if(before.diskHash!==request.diskHash)throw Error('Disk changed between dispatch and native read');
  let final=before.state,finalDeps=deps;
+ if(request.command==='build'){final=await verifyResidentBuild(request,data,directory,before,version);finalDeps=residentDependencies(final);}
  if(request.command==='change'){
   const a=request.args,target=deps.nodes[a.objectId];
   if(!target||a.expectedResidentVersion!==version||codeHash(target.declaration,target.implementation)!==a.expectedHash||a.declaration!==target.declaration||typeof a.implementation!=='string')throw Error('Change preconditions differ');
@@ -144,7 +146,13 @@ export class ResidentChannel {
    await exclusiveJson(path.join(directory,'request.json'),envelope);await publishQueue(path.join(this.root!,'request-'+this.sequence+'.json'),envelope);
    const result=replySchema.parse(await this.wait(path.join(directory,'result.json'),Date.now()+this.config.timeoutMs));
    await this.wait(path.join(directory,'completed.json'),Date.now()+this.config.timeoutMs);
-   await verifyResidentResult(envelope,result,directory,this.identity!);await this.live();
+   try{await verifyResidentResult(envelope,result,directory,this.identity!);}
+   catch(first){
+    if(request.command==='build')try{await exclusiveJson(path.join(directory,'service-verification-failed.json'),{requestHash:residentHash(envelope),resultHash:residentHash(result),firstError:errorDetails(first)});}
+    catch(secondary){try{await exclusiveJson(path.join(this.root!,'build-verification-publication-error.json'),{sequence:this.sequence,firstError:errorDetails(first),publicationError:errorDetails(secondary)});}catch{};}
+    throw first;
+   }
+   await this.live();
    const now=await fs.stat(request.projectPath,{bigint:true});if(`${now.dev}:${now.ino}`!==envelope.fileIdentity||digest(await fs.readFile(request.projectPath))!==diskHash)throw Error('File changed during resident request');
    await exclusiveJson(path.join(directory,'service-verification.json'),{passed:true,launchId:this.launchId,sequence:this.sequence,requestHash:residentHash(envelope),resultHash:residentHash(result),processIdentity:this.identity,processState:'running',exitRequiredForRequest:false,diskHash});
    if(result.status!=='succeeded'&&result.data?.recoverableRejection!==true)this.failure=new DomainError('unknown','RESIDENT_STOPPED','原请求未成功；此会话停止后续派发');return result;

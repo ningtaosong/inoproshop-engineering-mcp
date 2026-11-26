@@ -98,11 +98,12 @@ def validate_owned_projects(proof,path,handle):
 
 class NativeProjectAdapter(object):
     """Only public open/get_children/text getters/text.replace; no business helper auto-save."""
-    def __init__(self,projects,path,same_reference,thread_id,observe_ownership=None):
+    def __init__(self,projects,path,same_reference,thread_id,observe_ownership=None,system=None):
         self.projects=projects;self.path=path;self.same_reference=same_reference
         self.thread_id=thread_id;self.thread=None;self.project=None;self.target=None;self.handle=None
         self.observe_ownership=observe_ownership;self.last_ownership=None
-        self.attempts=dict(open=0,replace=0,read=0)
+        self.attempts=dict(open=0,replace=0,read=0,build=0)
+        self.system=system
 
     def _owned(self):
         current=self.thread_id()
@@ -198,6 +199,61 @@ class NativeProjectAdapter(object):
         self.attempts['replace']+=1
         item.textual_implementation.replace(value)
 
+    def build_context(self,state):
+        """Additional public evidence, only for build. Never configure devices."""
+        self._owned();children={};devices={}
+        for key,parent in [(None,self.project)]+list(self.objects.items()):
+            children[key or '$project']=[guid(x.guid) for x in parent.get_children(False)]
+        for oid,item in self.objects.items():
+            if not bool(getattr(item,'is_device',False)):continue
+            ident=item.get_device_identification();ports=[]
+            for port in item.connectors:
+                ports.append(dict(id=int(port.connector_id),interface=source_text(port.interface),
+                                  role=text_type(port.connector_role),hostPath=int(port.host_path)))
+            devices[oid]=dict(identity=dict(type=text_type(ident.type),id=source_text(ident.id),version=source_text(ident.version)),connectors=ports)
+        value=dict(scheme='resident-build-context-v1',children=children,devices=devices)
+        validate_build_context(state,value)
+        return value
+
+    def prepare_build(self,aid):
+        self._owned()
+        item=self.objects.get(aid)
+        if item is None or not bool(getattr(item,'is_application',False)) or not callable(getattr(item,'build',None)) or self.system is None:
+            raise Rejection('Public Application.build / diagnostics unavailable')
+
+    def compile_application(self,aid,publish,gate):
+        self.compile_progress=dict(applicationId=aid,cleared=[],invoked=False,returned=False,categories=[],diagnostics=[])
+        self._owned();system=self.system;categories=list(system.get_message_categories())
+        for category in categories:
+            system.clear_messages(category);self.compile_progress['cleared'].append(text_type(category))
+        publish('diagnostics-cleared.json',dict(categories=[text_type(x) for x in categories]))
+        publish('build-call.json',dict(applicationId=aid))
+        gate()
+        self.compile_progress['invoked']=True
+        self.attempts['build']+=1
+        self.objects[aid].build()
+        self.compile_progress['returned']=True
+        publish('build-returned.json',dict(applicationId=aid))
+        # Re-enumerate: compilation may add categories. Empty/failed coverage is not zero errors.
+        categories=list(system.get_message_categories());rows=self.compile_progress['diagnostics'];groups=self.compile_progress['categories']
+        if not categories:raise ValueError('No compiler message category coverage')
+        for category in categories:
+            key=text_type(category)
+            if any(g['category']==key for g in groups):raise ValueError('Duplicate compiler category')
+            count=0
+            for msg in system.get_message_objects(category):
+                severity=text_type(msg.severity).lower()
+                if severity not in ('fatalerror','error','warning','information','text'):raise ValueError('Unknown compiler severity: '+severity)
+                row=dict(severity=severity,text=source_text(msg.text),category=key)
+                for name in ('prefix','number','line','column','object_name'):
+                    if hasattr(msg,name):row[name]=scalar(getattr(msg,name))
+                rows.append(row);count+=1
+                if len(rows)>50000:raise ValueError('Compiler diagnostics exceeded bound')
+            groups.append(dict(category=key,count=count,endObserved=True))
+        result=dict(applicationId=aid,completed=True,diagnosticsComplete=True,diagnostics=rows,categories=groups)
+        publish('compiler-result.json',result)
+        return result
+
 
 VERSION='resident-st-implementation-v1'
 
@@ -233,6 +289,81 @@ def object_data(state,oid,aid):
     norm=lambda x:x.replace('\r\n','\n').replace('\r','\n')
     return dict(objectId=oid,applicationId=aid,path=row['path'],nativeTypeId=row['nativeTypeId'],embeddedObjectTypes=row['embeddedObjectTypes'],language='ST',objectType='function_block' if m.group(1).upper()=='FUNCTION_BLOCK' else 'st_pou',hasImplementation=True,declaration=d,implementation=i,contentHash=digest([norm(d),norm(i)]))
 
+DEVICE_TYPE='225bfe47-7336-4dbc-9419-4105a7c831fa'
+ROOT_DESCRIPTION=dict(type='4102',id='10f4 0002',version='3.5.11.11')
+DERIVED_DESCRIPTION=dict(type='40005',id='10F4 0005',version='00.00.00.10')
+DERIVED_PORTS=[dict(id=1,role='Child',interface='Common.PCI',hostPath=-1),dict(id=2,role='Parent',interface='Inovance:System',hostPath=1)]
+
+def validate_build_context(state,context):
+    nodes=state['nodes'];children=context['children'];devices=context['devices']
+    build_state_view(state)
+    if set(context)!=set(['scheme','children','devices']) or context['scheme']!='resident-build-context-v1' or set(children)!=set(nodes)|set(['$project']):raise ValueError('Build tree coverage incomplete')
+    seen=[]
+    for parent,ids in children.items():
+        if not isinstance(ids,list):raise ValueError('Build children are not ordered records')
+        for oid in ids:
+            if oid not in nodes or nodes[oid]['parentId']!=(None if parent=='$project' else parent):raise ValueError('Build ancestry differs')
+            seen.append(oid)
+    if len(seen)!=len(set(seen)) or set(seen)!=set(nodes):raise ValueError('Duplicate/missing build tree identity')
+    if set(devices)!=set(k for k,v in nodes.items() if v['nativeTypeId']==DEVICE_TYPE):raise ValueError('Device coverage differs')
+    for oid,dev in devices.items():
+        if set(dev)!=set(['identity','connectors']) or set(dev['identity'])!=set(['type','id','version']) or not all(isinstance(x,string_types) and x for x in dev['identity'].values()):raise ValueError('Incomplete device identity')
+        ids=[]
+        for port in dev['connectors']:
+            if set(port)!=set(['id','role','interface','hostPath']) or type(port['id']) not in int_types or type(port['hostPath']) not in int_types or not isinstance(port['role'],string_types) or not isinstance(port['interface'],string_types):raise ValueError('Incomplete connector')
+            ids.append(port['id'])
+        if len(ids)!=len(set(ids)):raise ValueError('Duplicate connector')
+
+def build_source_version(state,aid):
+    return digest(dict(applicationId=aid,projectPath=state['projectPath'],projectHandle=state['projectHandle'],
+        sources=dict((k,v) for k,v in state['nodes'].items() if v['declaration'] is not None or v['implementation'] is not None)))
+
+def build_state_view(state):
+    dependencies(state)
+    owned=state['openedProjects'].get(str(state['projectHandle']))
+    validate_owned_projects(dict(returned=owned,primary=owned,all=list(state['openedProjects'].values()),readErrors=[]),state['projectPath'],state['projectHandle'])
+    return dict((k,v) for k,v in state.items() if k!='openedProjects')
+
+def build_conservation(before,after,pre,post):
+    """Only one evidenced compiler-derived AM610 child may appear. Never hide existing rows."""
+    validate_build_context(before,pre);validate_build_context(after,post)
+    old=before['nodes'];new=after['nodes']
+    if set(old)-set(new):raise ValueError('Compiler removed original node')
+    for oid,row in old.items():
+        if new[oid]!=row:raise ValueError('Compiler changed existing node: '+oid)
+    added=sorted(set(new)-set(old))
+    if len(added)>1:raise ValueError('Unexplained compiler-generated nodes')
+    for k in set(before)|set(after):
+        if k not in ('nodes','openedProjects') and before.get(k)!=after.get(k):raise ValueError('Build state changed: '+k)
+    # Background library ownership is checked independently; direct references above are exact.
+    for oid,dev in pre['devices'].items():
+        if post['devices'].get(oid)!=dev:raise ValueError('Existing device/connector changed')
+    if set(post['devices'])-set(pre['devices'])!=set(added):raise ValueError('Additional device coverage differs')
+    if added:
+        oid=added[0];r=new[oid];parent=r['parentId'];root=old.get(parent);dev=post['devices'][oid]
+        expected=dict(objectId=oid,path=root['path']+['HwConfiguratioinDevice'] if root else [],parentId=parent,
+            nativeTypeId=DEVICE_TYPE,applicationId=None,declaration=None,implementation=None,embeddedObjectTypes=[])
+        if root is None or root['parentId'] is not None or pre['devices'].get(parent,{}).get('identity')!=ROOT_DESCRIPTION or r!=expected or dev!=dict(identity=DERIVED_DESCRIPTION,connectors=DERIVED_PORTS):raise ValueError('Unproven compiler-derived device')
+        if any(x['identity']==DERIVED_DESCRIPTION for x in pre['devices'].values()):raise ValueError('Duplicate derived device')
+        if post['children'][oid]!=[]:raise ValueError('Unexpected derived subtree')
+    for parent,ids in pre['children'].items():
+        if [x for x in post['children'][parent] if x not in added]!=ids:raise ValueError('Compiler reordered existing siblings')
+    return dict(passed=True,addedDeviceIds=added,sourceUnchanged=True,directLibrariesUnchanged=True,taskCallsUnchanged=True)
+
+def checked_diagnostics(value,aid):
+    if value.get('applicationId')!=aid or value.get('completed') is not True or value.get('diagnosticsComplete') is not True:raise ValueError('Incomplete compiler invocation/diagnostics')
+    groups=value['categories'];rows=value['diagnostics']
+    if not groups or not isinstance(rows,list):raise ValueError('Compiler coverage missing')
+    keys=[]
+    for group in groups:
+        key=group['category'];keys.append(key)
+        if not isinstance(key,string_types) or not key or group.get('endObserved') is not True or type(group.get('count')) not in int_types or group['count']!=sum(1 for r in rows if r.get('category')==key):raise ValueError('Compiler category incomplete')
+    if len(keys)!=len(set(keys)):raise ValueError('Duplicate compiler category')
+    for row in rows:
+        if row.get('category') not in keys or row.get('severity') not in ('fatalerror','error','warning','information','text') or not isinstance(row.get('text'),string_types):raise ValueError('Invalid compiler diagnostic')
+    errors=sum(1 for r in rows if r['severity'] in ('fatalerror','error'));warnings=sum(1 for r in rows if r['severity']=='warning')
+    return dict(errorCount=errors,warningCount=warnings,buildPassed=errors==0)
+
 class ResidentSession(object):
     def __init__(self,adapter,disk_hash,publish,admission=lambda:None):
         self.adapter=adapter;self.disk_hash=disk_hash;self.publish=publish;self.admission=admission;self.poison=None;self.secondary=[];self.previous_disk=None;self.edits=0
@@ -241,7 +372,7 @@ class ResidentSession(object):
         dispatched=False;before=None
         try:
             command=request['command'];args=request['args']
-            if command not in ('inspect','list','read','change'):raise Rejection('Tool not adapted to resident mode')
+            if command not in ('inspect','list','read','change','build'):raise Rejection('Tool not adapted to resident mode')
             before=self.adapter.snapshot();disk=self.disk_hash();deps=dependencies(before)
             self.publish('before.json',dict(state=before,diskHash=disk))
             if self.previous_disk is not None and disk!=self.previous_disk:raise Conflict('Disk changed; cannot prove it is a manual save of this memory; no write permitted')
@@ -283,13 +414,49 @@ class ResidentSession(object):
                 self.publish('verification.json',check)
                 if not check['equal'] or self.disk_hash()!=disk:raise ValueError('Written state cannot be confirmed')
                 self.edits+=1;data.update(object_data(after,args['objectId'],aid),snapshot=digest(actual),residentVersion=digest(dict(dependencies=actual,diskHash=disk)),memoryModified=True,memoryEditsInSession=self.edits,persistedToProject=False,persistedToWorkingCopy=False,checkpoint=request['directory']+'/checkpoint.json')
+            elif command=='build':
+                if args.get('targetKind','application')!='application' or args.get('expectedResidentVersion')!=version:raise Rejection('Build requires current memory version and actual Application')
+                self.adapter.prepare_build(aid)
+                context=self.adapter.build_context(before)
+                self.publish('build-context-before.json',context)
+                self.publish('checkpoint.json',dict(request=request,state=before,diskHash=disk,residentVersion=version))
+                again=self.adapter.snapshot();again_context=self.adapter.build_context(again)
+                self.publish('predispatch.json',dict(state=again,diskHash=self.disk_hash(),buildContext=again_context))
+                if build_state_view(again)!=build_state_view(before) or again_context!=context or self.disk_hash()!=disk:raise Rejection('Build state changed before dispatch')
+                self.admission()
+                if self.disk_hash()!=disk:raise Conflict('Disk changed at final build gate')
+                self.publish('dispatch.json',dict(operationId=request['operationId'],requestId=request['requestId'],action='build-application',applicationId=aid,inputResidentVersion=version,sourceVersion=build_source_version(before,aid)))
+                dispatched=True
+                def final_build_gate():
+                    current=self.adapter.snapshot();current_context=self.adapter.build_context(current)
+                    self.publish('build-input.json',dict(state=current,diskHash=self.disk_hash(),buildContext=current_context))
+                    if build_state_view(current)!=build_state_view(before) or current_context!=context:raise Conflict('Memory changed immediately before native build')
+                    self.admission()
+                    if self.disk_hash()!=disk:raise Conflict('Disk changed at native build call')
+                compiled=self.adapter.compile_application(aid,self.publish,final_build_gate)
+                after=self.adapter.snapshot();self.publish('build-after-state.json',dict(state=after,diskHash=self.disk_hash()))
+                post=self.adapter.build_context(after)
+                self.publish('after.json',dict(state=after,diskHash=self.disk_hash(),buildContext=post))
+                check=build_conservation(before,after,context,post)
+                counts=checked_diagnostics(compiled,aid)
+                if self.disk_hash()!=disk:raise ValueError('Disk changed during memory build')
+                actual=dependencies(after)
+                self.publish('verification.json',check)
+                data.update(counts,completed=True,diagnosticsComplete=True,diagnostics=compiled['diagnostics'],targetKind='application',
+                    compileCalls=1,buildEvidenceScope='resident-memory',buildInputResidentVersion=version,
+                    builtSourceVersion=build_source_version(before,aid),buildConservation=check,compilerResultHash=digest(compiled),
+                    snapshot=digest(actual),residentVersion=digest(dict(dependencies=actual,diskHash=disk)),
+                    persistedToProject=False,persistedToWorkingCopy=False)
             elif self.disk_hash()!=disk:raise Conflict('Disk changed during read')
             self.previous_disk=disk
-            return dict(contractVersion='1.0.0',operationId=request['operationId'],status='succeeded',summary=u'同一工程内存请求完成；未保存、未编译、未关闭',data=data)
+            return dict(contractVersion='1.0.0',operationId=request['operationId'],status='succeeded',summary=u'当前内存编译已完成；检查buildPassed及诊断，未保存或关闭' if command=='build' else u'同一工程内存请求完成；未保存、未编译、未关闭',data=data)
         except Exception as error:
             detail=dict(type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc(),dispatched=dispatched)
             recoverable=isinstance(error,Rejection) and not dispatched
             if not recoverable:self.poison=detail
+            if request.get('command')=='build':
+                try:self.publish('build-failure.json',dict(firstError=detail,partial=getattr(self.adapter,'compile_progress',None)))
+                except Exception as secondary:self.secondary.append(dict(type=type(secondary).__name__,message=text_type(secondary),traceback=traceback.format_exc()));recoverable=False;self.poison=detail
             try:self.publish('first-error.json',detail)
             except Exception as secondary:self.secondary.append(dict(type=type(secondary).__name__,message=text_type(secondary),traceback=traceback.format_exc()));recoverable=False;self.poison=detail
             return dict(contractVersion='1.0.0',operationId=request['operationId'],status='unknown' if dispatched or not isinstance(error,Conflict) else 'conflict',summary=u'本次未派发；后续新指令可重新读取' if recoverable else u'已停止此常驻会话；保留现场，不重试或恢复性保存',error=dict(code='RESIDENT_UNCONFIRMED' if dispatched else 'RESIDENT_PRECONDITION',message=text_type(error)),data=dict(firstError=detail,secondaryErrors=self.secondary,recoverableRejection=recoverable,saved=False,reopened=False,closed=False))

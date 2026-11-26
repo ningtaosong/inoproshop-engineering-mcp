@@ -1,7 +1,9 @@
 # InoProShop MCP 后续开发计划
 
-当前功能分支为 **0.40.0 候选版、38 项工具**，基于已核实 main 0.38.0，尚未合并或部署。本文件前部集中记录唯一的当前路线及范围变更规则；[README 已交付表](README.md#已完成功能main)、第 2 节路线表及[逐工具范围核对](docs/mcp-scope-status.md)与此处同步。历史段落保留原时点，不覆盖这里的当前路线。
+当前功能分支为 **0.41.0 候选版、38 项工具**，基于已核实 main 0.38.0，尚未合并或部署。本文件前部集中记录唯一的当前路线及范围变更规则；[README 已交付表](README.md#已完成功能main)、第 2 节路线表及[逐工具范围核对](docs/mcp-scope-status.md)与此处同步。历史段落保留原时点，不覆盖这里的当前路线。
 
+
+本轮[常驻内存编译迁移](docs/resident-memory-build.md)将 `project_build` 接入当前工程句柄：绑定当前内存、实际 Application 和原磁盘版本，完整诊断中的编译错误可按后续授权修正；异常或缺证停止。此阶段只完成离线实现和固定构建准备，尚未在真实 IDE 或 DSH 中执行编译；当前7秒／TRUE未保存实例保持原状，移交须先由用户决定内容如何保留。0.39结构体新增字段的真实验收状态不变。
 2026-11-26正式MCP首轮的原[版本冲突](docs/resident-mcp-first-round-20261126.md)及后续写前停止记录保留。经[驱动及正常收尾补修](docs/resident-driver-lifecycle-fix.md)、[两端ST识别补修](docs/resident-st-parts-fix.md)、[旧会话完成证明兼容补修](docs/resident-closed-proof-compatibility.md)，新的[真实MCP第一轮](docs/resident-mcp-round1-passed-20261126.md)完成5秒→7秒修改；随后另获明确指令的[第二轮](docs/resident-mcp-round2-passed-20261126.md)在同一实例中将FALSE改为TRUE，保留7秒及两条中文，每轮均独立读回且只有授权字段变化。上述两轮当时保持打开，未保存或编译；随后按明确授权不保存正常关闭旧实例，并完成下述DSH第一轮。后续轮次仍须另一次明确指令，不自动连发。以下段落保留各自时点。
 
 [DSH连续客户端准备](docs/dsh-resident-continuous-preparation.md)保留原无工程预检时点；随后[DSH第一轮工程实测](docs/dsh-resident-round1-20261126.md)通过：一次模型提示词，正式MCP五请求、一次5秒→7秒修改并独立读回，FALSE／声明／中文保持。随后另获明确指令的[DSH第二轮](docs/dsh-resident-round2-20261126.md)在同一会话、连接、IDE将FALSE改为TRUE，保留7秒、声明及中文并独立读回。IDE67788／服务68004／SDK14220／驱动48624保持打开，保存／编译／关闭及第三轮为0。原初始化Schema取证首败、第一轮24次和第二轮18次状态查询分别保留。

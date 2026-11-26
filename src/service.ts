@@ -21,6 +21,7 @@ import {bindDirect,guardDirect} from './direct-project.js';
 import {verifyClosedResident} from './resident-reopen.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskCallInventoryDifference,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
+import {residentBuildApplies} from './resident-build.js';
 import {organizationResult} from './organization.js';
 import {ioMappingPage} from './io-mapping.js';
 import {deviceCatalogResult} from './device-catalog.js';
@@ -345,8 +346,9 @@ export class EngineeringService {
         if(!op.activation) {const r=await this.store.registry();op.activation={previousActiveProjectId:r.activeProjectId,revision:r.revision};}
         session.snapshot=result.data?.snapshot as string;session.diskHash=result.data?.diskHash as string;
         if(op.resident)session.residentVersion=result.data?.residentVersion as string;
-        if(session.lastBuild && !buildApplies(session,session))delete session.lastBuild;
-        session.buildApplicable=!!session.lastBuild;session.lastStateOperationId=op.operationId;
+        const applicable=op.resident?residentBuildApplies(session,result.data):buildApplies(session,session);
+        if(session.lastBuild && !applicable)delete session.lastBuild;
+        session.buildApplicable=applicable;session.lastStateOperationId=op.operationId;
         const committed=await this.store.activate(session,op);
         result={...result,data:{...result.data,projectPath:committed.workingPath,editMode:committed.editMode||'copy',session:committed,
           reused:op.tool==='project_activate'||(await this.store.operations()).some(o=>o.operationId!==op.operationId&&o.status==='succeeded'&&o.project?.projectId===committed.projectId)}};
@@ -362,7 +364,7 @@ export class EngineeringService {
         if(result.data?.diskHash)s.diskHash=result.data.diskHash as string;
         if(op.resident)s.residentVersion=result.data?.residentVersion as string;
         if(result.data?.taskConfigurationVersion)s.taskConfigurationVersion=result.data.taskConfigurationVersion as string;
-        s.buildApplicable=buildApplies(s,s);
+        s.buildApplicable=op.resident?residentBuildApplies(s,result.data):buildApplies(s,s);
         s.lastStateOperationId=op.operationId;await this.store.saveSession(s);
       }
     }
@@ -833,7 +835,7 @@ export class EngineeringService {
   private async execute(op:Operation):Promise<Reply> {
     const a=op.args;
     const residentActive=this.adapter.residentOwned?.()||(await this.store.session())?.sessionMode==='resident';
-    if(residentActive&&!['project_open','object_list','object_read','code_apply_change'].includes(op.tool))throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','当前常驻工程只支持定位、读取和限定实现区修改；不保存、编译、切换或回落旧路径');
+    if(residentActive&&!['project_open','object_list','object_read','code_apply_change','project_build'].includes(op.tool))throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','当前常驻工程只支持定位、读取、限定实现区修改及内存编译；不保存、切换或回落旧路径');
     if(op.tool==='library_catalog'||op.tool==='device_catalog'){
       await maintenanceGuard();
       op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
@@ -908,8 +910,9 @@ export class EngineeringService {
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
     if(s.sessionMode==='resident'){
-      const command=({object_list:'list',object_read:'read',code_apply_change:'change'} as Record<string,string>)[op.tool];
+      const command=({object_list:'list',object_read:'read',code_apply_change:'change',project_build:'build'} as Record<string,string>)[op.tool];
       if(!command)throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','此工具尚未迁移到常驻模式');
+      if(command==='build'&&(!a.expectedResidentVersion||a.expectedResidentVersion!==s.residentVersion))throw new DomainError('conflict','RESIDENT_BUILD_VERSION_REQUIRED','编译需当前读取的residentVersion，版本变化先重新读取');
       return this.bridge(op,command,s,a);
     }
     if(a.expectedResidentVersion!==undefined)throw new DomainError('conflict','RESIDENT_MODE_REQUIRED','resident版本不能用于旧批处理');

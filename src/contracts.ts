@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.40.0';
+export const VERSION = '0.41.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -165,7 +165,7 @@ export const schemas = {
     fbId:uuid.optional(),expectedPropertyHash:hash.optional(),expectedAccessorVersion:hash.optional(),expectedSnapshot:hash.optional(),expectedDiskHash:hash.optional() }).strict()
     .refine(a=>['method','property_get','property_set'].includes(a.objectType??'')?a.parentId!==undefined:a.parentId===undefined,'子对象修改须显式类型和精确parentId')
     .refine(a=>['property_get','property_set'].includes(a.objectType??'')?[a.fbId,a.expectedPropertyHash,a.expectedAccessorVersion,a.expectedSnapshot,a.expectedDiskHash,a.implementation].every(x=>x!==undefined):[a.fbId,a.expectedPropertyHash,a.expectedAccessorVersion,a.expectedSnapshot,a.expectedDiskHash].every(x=>x===undefined),'Get/Set修改须绑定FB、Property声明、访问器结构、工程和磁盘版本；其他类型不接收访问器专用参数'),
-  project_build: z.object({ ...request, ...target }).strict(),
+  project_build: z.object({ ...request, ...target, expectedResidentVersion:hash.optional() }).strict(),
   variable_edit:z.object({...request,projectId:uuid,targetKind:z.literal('application').default('application'),applicationId:uuid,
     objectId:uuid,expectedHash:hash,expectedSnapshot:hash,expectedDiskHash:hash,action:z.enum(['add','set-initializer','set-member-initializer','set-type','add-member-initializer','add-initializer','add-struct-field']),
     name:z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,62}$/),type:z.enum(['BOOL','DINT','TIME']).optional(),initializer:z.string().min(1).max(80).optional(),

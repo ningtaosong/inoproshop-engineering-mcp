@@ -134,5 +134,5 @@ test('candidate package and initialize version match', async () => {
  const { VERSION } = await import('../dist/contracts.js');
  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
  assert.equal(VERSION, pkg.version);
- assert.equal(VERSION, '0.40.0');
+ assert.equal(VERSION, '0.41.0');
 });

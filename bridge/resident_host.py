@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Public primary-thread receiver. One owned project; requests arrive independently.
-No IDE exit, project close, compile, save, private editor or user-code evaluation.
+No IDE exit, project close, save, private editor or user-code evaluation.
 """
 import os,sys,json,hashlib,datetime,traceback
 _controller=None
@@ -47,7 +47,7 @@ def start():
     class Controller(object):
         def __init__(self):
             self.frame=None;self.sequence=0;self.first=None;self.directory=None;self.request=None
-            self.adapter=core['NativeProjectAdapter'](projects,intent['projectPath'],core['same_public_identity'],lambda:Thread.CurrentThread.ManagedThreadId)
+            self.adapter=core['NativeProjectAdapter'](projects,intent['projectPath'],core['same_public_identity'],lambda:Thread.CurrentThread.ManagedThreadId,system=system)
             self.session=core['ResidentSession'](self.adapter,lambda:core['file_hash'](intent['projectPath']),self.evidence,lambda:self.admission(self.request))
         def evidence(self,name,value):publish(os.path.join(self.directory,name),value)
         def capture(self):

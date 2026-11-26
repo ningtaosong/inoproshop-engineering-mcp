@@ -1,14 +1,14 @@
 # InoProShop 离线工程工作流程
 
-你通过本地InoProShop MCP 0.40.0候选版的38项工具操作工程。先environment_inspect、session_status、project_list；纯源码问答不启动工程工具。检查实际能力、testMode、未决状态和身份，fixture-test-only不是真实IDE。设备、映射、库和引用查询遵守各自范围、分页和覆盖要求，不由描述版本推断现场固件。
+你通过本地InoProShop MCP 0.41.0候选版的38项工具操作工程。先environment_inspect、session_status、project_list；纯源码问答不启动工程工具。检查能力、testMode、未决状态和身份，fixture-test-only不是真实IDE。设备、映射、库和引用查询遵守范围、分页和覆盖要求，描述版本不是现场固件。
 
 ## 连续操作优先规则
 
-默认显式project_open(sessionMode="resident")直接打开指定文件；同服务自有IDE保留工程和未保存内容，每次完成后等待下一条独立指令。仅object_list、object_read、code_apply_change已迁移；限定Application根、无子对象的普通ST PROGRAM/FUNCTION/FUNCTION_BLOCK实现区，声明原文不变。修改绑定当前contentHash→expectedHash、residentVersion→expectedResidentVersion；列表续页同版本，excluded是未覆盖对象。内部ID由你处理。memoryModified不是saved；零保存、编译、关闭、退出。
+默认显式project_open(sessionMode="resident")直接打开指定文件，同服务自有IDE保留内容，默认不保存；每条用户任务完成后等待下条指令。object_list/read定位Application根无子对象的普通ST POU；code_apply_change只改实现区，声明保持。修改参数expectedHash=当前contentHash、expectedResidentVersion=当前residentVersion；续页同版本，excluded为未覆盖。内部ID由你处理。
 
-创建、声明编辑、编译、保存、切换及跨客户端重接未迁移，resident内拒绝且不降级。手动源码变化后重读再决定；磁盘改变来源无法确认则停止，手动关闭不重开。明确零派发的版本拒绝可在后续新指令重读；unknown、超时、缺证停止，不重放或回滚。客户端断开不授权关闭，服务保留观察与所有权。
+project_build带当前expectedResidentVersion编译指定Application的内存。completed/diagnosticsComplete确认后才解释buildPassed；编译报错可按授权修正，异常/缺证则停止。buildInputResidentVersion和builtSourceVersion绑定内存，不证明磁盘文件已编译；后续修改使旧编译失效。不会保存、关闭、重开或退出，编译派生结构单列。
 
-下文自动保存重开及其他工具规则仅适用于用户明确选择的旧batch模式。省略模式保留旧契约，不是默认推荐；不得为绕过resident拒绝切到batch。均不接管外部IDE。
+其余工程工具未迁移，不降级batch或接管外部IDE。手动源码变化须重读；磁盘变化不明、关闭原句柄、unknown、超时或缺证则停止，不重放回滚。零派发版本拒绝可按后续新指令重读。断开不授权关闭。下文自动保存重开仅适用于明确选择的batch；省略模式保留旧契约，不能为绕过拒绝切换。
 
 问这条声明在哪里使用时，用 variable_inspect 定位精确条目，再把 objectId、section、name、contentHash 和 namePosition 的两个 UTF-16 偏移传给 variable_usages，用户无需提供内部 ID。处理全部实际 nextOffset，分别报告 usages（限定 ST 静态推导）、unknown（未绑定）和 coverage。不要把同名词元、声明本身或数组成员算入目标。零结果只限已读且受支持范围。全程只读，不编译、保存或判断重命名删除安全。
 

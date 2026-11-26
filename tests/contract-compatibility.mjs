@@ -4,6 +4,7 @@ export function withoutResidentExtension(schema){
  const p=schema?.properties;if(!p)return schema;
  if(p.sessionMode&&p.projectPath&&p.requestId)delete p.sessionMode;
  if(p.expectedResidentVersion&&((p.expectedHash&&p.declaration)||(p.projectId&&p.offset&&p.limit&&!p.query)))delete p.expectedResidentVersion;
+ if(p.expectedResidentVersion&&p.requestId&&p.projectId&&p.applicationId&&p.targetKind&&Object.keys(p).length===5)delete p.expectedResidentVersion;
  return schema;
 }
 // Model-facing guidance is non-validating metadata. Exclude only the newly documented library fields in old snapshots.

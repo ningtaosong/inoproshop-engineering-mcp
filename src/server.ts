@@ -27,7 +27,7 @@ const descriptions:Record<string,string>={
   session_status:'查询受管理工程、Application 及未决请求，不进入工程队列。',
   project_list:'只读列出本数据目录已登记工程、实际工程路径、应用选择和各自最后确认状态；不启动 IDE。',
   project_create:'仅新建固定 AM610-CPU1608TP 最小预设：原生 OEM 向导、已安装设备描述4102/10f4 0002/3.5.11.11（非固件），空ST PLC_PRG，20ms周期MainTask调用PLC_PRG；含OEM标准支持节点/库。只需新的本机绝对.project路径，必要目录可创建，已存在/占用/登记冲突拒绝，不覆盖或改名。原生初始化暂存仅作操作证据，排他发布到指定路径后关闭重开核对并按直接模式登记，无第二份业务副本。不提供通用设备/任务/I/O编辑。requestId复用原操作；不确定时保留文件冻结，不删除重试，无创建前检查点/原子事务/自动回滚。后续project_open复用同一路径身份；编译仍须实际project_build，未要求比较不调用project_compare。',
-  project_open:'连续工作请显式sessionMode=resident：同服务自有IDE保持工程打开，不保存或关闭。仅object_list/object_read及根级普通ST POU实现区code_apply_change已迁移；其他工程工具明确拒绝。省略模式或batch保留旧行为。默认直接打开指定 projectPath，后续修改保存回同一文件，不创建业务副本。已登记副本路径可按原身份同路径复用；不会按来源路径重定向到旧副本。外部占用/版本冲突停止，不接管外部 IDE。',
+  project_open:'连续工作显式sessionMode=resident：同服务自有IDE保持工程打开，不保存或关闭。支持object_list/read、根ST POU实现区code_apply_change及内存project_build；其余工程工具拒绝。省略模式或batch保留旧行为。直接打开指定路径，不创建业务副本、不接管外部IDE。已登记副本可按原身份同路径复用，不按来源重定向。',
   project_open_copy:'新源创建独立副本并激活；已登记源或副本复用原副本，核对成功后切换。禁止覆盖源工程。',
   project_activate:'按已查询的 projectId 核对并激活原登记工程（保持直接/副本模式）；有未决操作时拒绝，失败保留原活动工程。',
   library_catalog:'只读列出当前本机原生已安装库，不需要工程身份。返回原生名称、版本、厂商、默认命名空间、仓库文件与精确身份；可用 query 过滤名称/厂商/版本/命名空间，按同一目录版本分页，或用 detailIdentity 取精确详情。过滤不是精确身份判定；读取不完整或截断明确标注。此查询不代表工程已引用、解析或运行加载。',
@@ -56,7 +56,7 @@ const descriptions:Record<string,string>={
   pou_create:'在精确 Application 根节点创建 ST FUNCTION_BLOCK、PROGRAM 或 FUNCTION；pouType 显式选择，FUNCTION 必须显式传 returnType=DINT/BOOL/INT/REAL/TIME 之一，且同名声明首部返回类型匹配；PROGRAM/FUNCTION_BLOCK 不接收 returnType。不扩展其他创建返回类型，也不限制读取既有其他类型。支持声明/实现，检查快照/同名冲突和检查点，保存重开核对原生身份、类型首部及全文。PROGRAM 不自动加入任务；不覆盖对象。',
   declaration_create:'仅在精确 Application 根节点创建 GVL、结构体、普通枚举或一维定长数组 DUT。objectType=gvl|structure|enum|array，只提交完整同名声明。枚举成员须显式十进制整数-32768..32767，名称和值不重复；使用已验证的 DutType.Enumeration、空 baseType（IDE默认），不接受属性/显式基类型/表达式/继承。原生工厂、DUT身份、声明及全文读回为证据，无独立枚举/成员/基类型getter。数组仅同名TYPE声明、ARRAY [下界..上界] OF DINT，显式十进制0<=下界<=上界<=255、最多256项，无初始化/属性/表达式/其他别名；实际Alias工厂接收完整ARRAY类型。沿用快照、同名、检查点、去重及保存重开核对。',
   code_apply_change:'resident模式必须带当前object_read.expectedHash=contentHash及expectedResidentVersion=residentVersion，只改根级普通ST POU实现区，declaration原文必须不变；结果memoryModified与saved/reopened分开，不保存不关闭。其他对象/声明写入尚未迁移。旧批处理校验旧哈希、检查点、类型和全文。原生PUBLIC ST Method须显式objectType=method和精确parentId，声明/实现均提供，名称/访问/返回类型保持，不能改父关系。POU 提供声明/实现；GVL/结构体/普通枚举/一维定长数组只写声明，implementation 省略或空串，可用 objectType 限定目标；枚举沿用显式整数窄范围，数组修改沿用创建边界，不转换结构体/枚举/数组，不增加属性。保存重开核对。',
-  project_build:'按 targetKind 编译精确 Application 或无设备工程对象池；pool 的 applicationId 必须为 null。返回本次快照和诊断完整性。',
+  project_build:'resident需当前expectedResidentVersion，只编译指定Application的未保存内存；诊断完整才解释buildPassed，编译报错不等于请求失败。内存/源码版本单独绑定；不保存、关闭或退出。batch保留按targetKind编译Application或对象池，pool的applicationId须null。',
   project_save:'校验预期全工程文本快照，保存并关闭重开核对。',
   operation_status:'查询持久化原操作；reconcile 只核对原结果，绝不重放。'
 };

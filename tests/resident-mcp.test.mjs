@@ -1,6 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import {promises as fs} from 'node:fs';import path from 'node:path';import os from 'node:os';import {randomUUID} from 'node:crypto';
 import {ResidentChannel,residentDependencies as deps,residentHash as hash,residentObject,verifyResidentResult} from '../dist/resident.js';
 import {ServiceLifecycle,releaseObservedLease} from '../dist/service-lifecycle.js';
+import {buildConservation,buildSourceVersion,checkedDiagnostics} from '../dist/resident-build.js';
 import {verifyClosedResident} from '../dist/resident-reopen.js';
 import {EngineeringService} from '../dist/service.js';import {digest,readJson} from '../dist/storage.js';import {exclusiveJson} from '../dist/exit-journal.js';import {schemas,outputSchemas,VERSION} from '../dist/contracts.js';
 const APP='10000000-0000-4000-8000-000000000001',OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
@@ -12,7 +13,7 @@ test('archived native declaration and ST pair is a supported root PROGRAM',async
 async function fixture(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'InoPro resident ')),file=path.join(root,'case.project');await fs.writeFile(file,'fixed project');
  const identity={version:1,platform:process.platform,host:os.hostname().toLowerCase(),pid:12345,startId:'987654321'};
- const n={state:state(file),writes:0,requests:[],launches:0,fault:null,child:null,loops:[],running:true};
+ const n={state:state(file),writes:0,builds:0,requests:[],launches:0,fault:null,child:null,loops:[],running:true};
  const config={dataDir:path.join(root,'data'),executable:process.execPath,profile:'InoProShop(V1.9.1.6)',noUI:false,timeoutMs:1000,responseWaitMs:5000,testMode:true};
  const spawnHook=(_e,_a,options)=>{
   n.launches++;const child=new EventEmitter();child.pid=identity.pid;n.child=child;
@@ -34,6 +35,28 @@ async function fixture(t){
       await put('after.json',{state:after,diskHash:req.diskHash});await put('verification.json',{equal:true,expected:actual,actual});
       Object.assign(data,{snapshot:hash(actual),residentVersion:hash({dependencies:actual,diskHash:req.diskHash}),memoryModified:true,memoryEditsInSession:n.writes,persistedToProject:false});
      }
+    }
+    if(req.command==='build'){
+     const context=s=>{const children=Object.fromEntries(['$project',...Object.keys(s.nodes)].map(k=>[k,[]]));for(const [id,r]of Object.entries(s.nodes))children[r.parentId??'$project'].push(id);return {scheme:'resident-build-context-v1',children,devices:{}};};
+     const ctx=context(before),pre=structuredClone(before);
+     if(n.fault==='background-library')pre.openedProjects['7']={handle:7,path:'background.library',primary:false,library:true};
+     if(n.fault==='foreign-project')pre.openedProjects['7']={handle:7,path:'foreign.project',primary:false,library:false};
+     await put('build-context-before.json',ctx);await put('checkpoint.json',{request:req,state:before,diskHash:req.diskHash,residentVersion:version});await put('predispatch.json',{state:pre,diskHash:req.diskHash,buildContext:ctx});
+     await put('dispatch.json',{operationId:req.operationId,requestId:req.requestId,action:'build-application',applicationId:APP,inputResidentVersion:version,sourceVersion:buildSourceVersion(before,APP)});
+     await put('diagnostics-cleared.json',{categories:['c']});await put('build-call.json',{applicationId:APP});const input=structuredClone(pre);if(n.fault==='build-input-change')input.nodes[OBJ].implementation='changed during clearing';await put('build-input.json',{state:input,diskHash:req.diskHash,buildContext:ctx});n.builds++;n.built=structuredClone(n.state);
+     await put('build-returned.json',{applicationId:APP});
+     const rows=n.fault==='compiler-error'?[{severity:'error',text:'真实替身错误',category:'c'}]:[],compiler={applicationId:APP,completed:true,diagnosticsComplete:true,diagnostics:rows,categories:[{category:'c',count:rows.length,endObserved:true}]};
+     if(n.fault==='diagnostic-gap')compiler.diagnosticsComplete=false;
+     await put('compiler-result.json',compiler);
+     if(n.fault==='source-change')n.state.nodes[OBJ].implementation='unauthorized';
+     const after=structuredClone(n.state),post=context(after);await put('build-after-state.json',{state:after,diskHash:req.diskHash});await put('after.json',{state:after,diskHash:req.diskHash,buildContext:post});
+     // A dishonest producer is intentionally tested; the Node verifier must independently reject.
+     const proof={passed:true,addedDeviceIds:[],sourceUnchanged:true,directLibrariesUnchanged:true,taskCallsUnchanged:true};await put('verification.json',proof);
+     Object.assign(data,{completed:true,diagnosticsComplete:true,diagnostics:rows,targetKind:'application',errorCount:rows.length,warningCount:0,buildPassed:!rows.length,compileCalls:1,buildEvidenceScope:'resident-memory',buildInputResidentVersion:version,builtSourceVersion:buildSourceVersion(before,APP),compilerResultHash:hash(compiler),buildConservation:proof,persistedToProject:false,persistedToWorkingCopy:false,snapshot:hash(deps(after)),residentVersion:hash({dependencies:deps(after),diskHash:req.diskHash})});
+     if(n.fault==='wrong-build-version')data.buildInputResidentVersion='f'.repeat(64);
+     if(n.fault==='wrong-source-version')data.builtSourceVersion='f'.repeat(64);
+     if(n.fault==='false-pass')data.buildPassed=false;
+     if(n.fault==='extra-build')data.compileCalls=2;
     }
     if(['read','change'].includes(req.command)&&status==='succeeded')Object.assign(data,residentObject(n.state,OBJ,APP));
     if(req.command==='list'){const {declaration,implementation,...o}=residentObject(n.state,OBJ,APP);Object.assign(data,{objects:[o],total:1,complete:true,nextOffset:null,excluded:[{objectId:APP,path:['Application'],reason:'not a root POU'}]});}
@@ -62,7 +85,7 @@ test('resident service: five independent edits, same owned process/handle, no sa
  assert.equal(f.n.launches,1);assert.equal(f.n.writes,5);assert.deepEqual(await fs.readFile(f.file),original);assert.equal(f.n.requests.length,16);assert.equal(f.n.error,undefined);
 });
 test('resident service: stale memory is zero-write rejection; later new read and explicit change supported',async t=>{const f=await fixture(t),r=await f.read();f.n.state.nodes[OBJ].implementation='x := 3;';assert.equal((await f.change(r,'stale')).status,'conflict');assert.equal(f.n.writes,0);assert.equal((await f.change(await f.read(),'new')).status,'succeeded');});
-test('resident service: unadapted build/save/create/copy/variables never use batch path',async t=>{const f=await fixture(t);for(const name of ['project_build','project_save','project_create','project_open_copy','variable_edit','task_inspect','library_catalog']){const r=await f.call(name,{...f.target,requestId:name});assert.equal(r.status,'unsupported',JSON.stringify(r));assert.equal(r.error.code,'RESIDENT_TOOL_NOT_ADAPTED');}assert.equal(f.n.requests.length,1);});
+test('resident service: unadapted save/create/copy/variables never use batch path',async t=>{const f=await fixture(t);for(const name of ['project_save','project_create','project_open_copy','variable_edit','task_inspect','library_catalog']){const r=await f.call(name,{...f.target,requestId:name});assert.equal(r.status,'unsupported',JSON.stringify(r));assert.equal(r.error.code,'RESIDENT_TOOL_NOT_ADAPTED');}assert.equal(f.n.requests.length,1);});
 test('resident same-path file replacement is blocked even with identical bytes',async t=>{const f=await fixture(t);await fs.rename(f.file,f.file+'.original');await fs.copyFile(f.file+'.original',f.file);const r=await f.read();assert.equal(r.error.code,'RESIDENT_FILE_REPLACED');assert.equal(f.n.requests.length,1);});
 for(const fault of ['wrong-path','saved','missing-completion','exit'])test('resident evidence failure freezes without retry: '+fault,async t=>{const f=await fixture(t);f.n.fault=fault;const r=await f.read();assert.equal(r.status,'unknown',JSON.stringify(r));const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.launches,1);});
 test('resident list independent result identity check',async t=>{const f=await fixture(t);f.n.fault='list-row';const r=await f.call('object_list',{...f.target,offset:0,limit:50});assert.equal(r.status,'unknown');});
@@ -172,7 +195,7 @@ for(const fault of ['none','live-ide','live-service','unconfirmed','missing-exit
 test('resident write completion missing remains unknown, duplicate and reconcile do not rewrite',async t=>{const f=await fixture(t),r=await f.read();f.n.fault='missing-completion';const changed=await f.change(r,'uncertain');assert.equal(changed.status,'unknown');assert.equal(f.n.writes,1);assert.equal((await f.change(r,'uncertain')).operationId,changed.operationId);await f.call('operation_status',{operationId:changed.operationId,reconcile:true});assert.equal(f.n.writes,1);});
 test('resident request timeout creates stop evidence, no automatic retry',async t=>{const f=await fixture(t);f.n.fault='timeout';assert.equal((await f.read()).error.code,'RESIDENT_TIMEOUT');assert.ok(await readJson(path.join(f.n.intent.directory,'stop.json')));assert.equal(f.n.writes,0);});
 test('resident lifecycle observer waits for real exit and does not request it',async t=>{const f=await fixture(t);let done=false;const pending=f.channel.observe().then(()=>done=true);await new Promise(r=>setTimeout(r,30));assert.equal(done,false);assert.equal(f.n.running,true);f.n.running=false;f.n.child.emit('exit',0,null);await pending;assert.equal(done,true);});
-test('resident input contract: explicit mode, version only additive; no new tools',()=>{assert.equal(VERSION,'0.40.0');assert.equal(Object.keys(schemas).length,38);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x'}).sessionMode,undefined);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x',sessionMode:'resident'}).sessionMode,'resident');assert.equal(Object.keys(outputSchemas).length,38);});
+test('resident input contract: explicit mode, version only additive; no new tools',()=>{assert.equal(VERSION,'0.41.0');assert.equal(Object.keys(schemas).length,38);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x'}).sessionMode,undefined);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x',sessionMode:'resident'}).sessionMode,'resident');assert.equal(Object.keys(outputSchemas).length,38);});
 for(const change of ['wrong-app','not-root','mixed-st','child','wrong-header','wrong-type'])test('independent native whitelist rejects '+change,()=>{const s=state('x');if(change==='wrong-app')s.nodes[OBJ].applicationId=OBJ;if(change==='not-root')s.nodes[OBJ].parentId=null;if(change==='mixed-st')s.nodes[OBJ].embeddedObjectTypes.push(APP);if(change==='child')s.nodes.extra={parentId:OBJ};if(change==='wrong-header')s.nodes[OBJ].declaration='PROGRAM Another';if(change==='wrong-type')s.nodes[OBJ].nativeTypeId=APP;assert.throws(()=>residentObject(s,OBJ,APP));});
 for(const event of ['spawn-error','immediate-exit','close-without-exit'])test('resident early process event is observed: '+event,async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'Resident early ')),file=path.join(root,'case.project');await fs.writeFile(file,'fixture');
@@ -194,3 +217,37 @@ test('all 0.39 inputs remain exact after only documented optional additions; out
 });
 
 for(const mutate of [s=>s.openedProjects['0'].handle=2,s=>s.openedProjects['0'].primary='true',s=>s.thread=null,s=>s.nodes[OBJ].declaration=4,s=>s.applications.push(APP)])test('malformed ownership/source coverage never produces dependency version',()=>{const s=state('x');mutate(s);assert.throws(()=>deps(s));});
+
+test('resident service build binds unsaved memory and later change invalidates lastBuild, dedup compiles once',async t=>{
+ const f=await fixture(t),disk=await fs.readFile(f.file);const changed=await f.change(await f.read(),'change-before-build','x := 7; // 未保存');assert.equal(changed.status,'succeeded');
+ const args={...f.target,requestId:'memory-build',expectedResidentVersion:changed.data.residentVersion};
+ const built=await f.call('project_build',args);assert.equal(built.status,'succeeded',JSON.stringify(built));assert.equal(built.data.buildPassed,true);assert.equal(built.data.buildEvidenceScope,'resident-memory');
+ assert.equal(f.n.built.nodes[OBJ].implementation,changed.data.implementation);assert.equal((await f.service.store.session()).buildApplicable,true);
+ assert.equal((await f.call('project_build',args)).operationId,built.operationId);assert.equal(f.n.builds,1);
+ assert.equal((await f.read()).data.implementation,changed.data.implementation);
+ assert.equal((await f.change(await f.read(),'next-memory-change','x := 8;')).status,'succeeded');assert.equal((await f.service.store.session()).buildApplicable,false);
+ assert.deepEqual(await fs.readFile(f.file),disk);assert.equal(f.n.launches,1);assert.equal(f.n.running,true);
+});
+test('resident service compiler errors are succeeded with failed build, allow later authorized correction',async t=>{
+ const f=await fixture(t);f.n.fault='compiler-error';const r=await f.call('project_build',{...f.target,requestId:'bad-source-build',expectedResidentVersion:(await f.read()).data.residentVersion});
+ assert.equal(r.status,'succeeded',JSON.stringify(r));assert.equal(r.data.buildPassed,false);assert.equal(r.data.errorCount,1);assert.equal(r.data.diagnosticsComplete,true);
+ f.n.fault=null;assert.equal((await f.change(await f.read(),'correct-source')).status,'succeeded');assert.equal((await f.service.store.session()).buildApplicable,false);
+});
+test('resident build stale/missing version rejected before native dispatch',async t=>{
+ const f=await fixture(t);for(const v of [undefined,'b'.repeat(64)]){const r=await f.call('project_build',{...f.target,requestId:'bad-'+v,...(v?{expectedResidentVersion:v}:{})});assert.equal(r.status,'conflict',JSON.stringify(r));}
+ assert.equal(f.n.builds,0);assert.equal(f.n.requests.length,1);
+});
+test('resident project_open cannot revive same-version build from another launch',async t=>{
+ const f=await fixture(t),r=await f.read();const b=await f.call('project_build',{...f.target,requestId:'built',expectedResidentVersion:r.data.residentVersion});assert.equal(b.status,'succeeded');
+ const current=await f.service.store.session();assert.equal(current.buildApplicable,true);current.lastBuild.residentEvidence.launchId=randomUUID();await f.service.store.saveSession(current);
+ const opened=await f.call('project_open',{requestId:'inspect-again',projectPath:f.file,applicationId:APP,sessionMode:'resident'});
+ assert.equal(opened.status,'succeeded',JSON.stringify(opened));assert.equal(opened.data.session.buildApplicable,false);assert.equal(opened.data.session.lastBuild,undefined);assert.equal(f.n.builds,1);assert.equal(f.n.launches,1);
+});
+test('resident build permits public background library before compile, not foreign engineering project',async t=>{
+ const f=await fixture(t);f.n.fault='background-library';const r=await f.call('project_build',{...f.target,requestId:'library-load',expectedResidentVersion:(await f.read()).data.residentVersion});assert.equal(r.status,'succeeded',JSON.stringify(r));
+});
+for(const fault of ['foreign-project','build-input-change','source-change','diagnostic-gap','wrong-build-version','wrong-source-version','false-pass','extra-build','saved','missing-completion','exit'])test('resident build independent verifier freezes '+fault,async t=>{
+ const f=await fixture(t),read=await f.read();f.n.fault=fault;const args={...f.target,requestId:'build-fault',expectedResidentVersion:read.data.residentVersion},r=await f.call('project_build',args);
+ assert.equal(r.status,'unknown',JSON.stringify(r));assert.equal((await f.call('project_build',args)).operationId,r.operationId);assert.equal((await f.call('operation_status',{operationId:r.operationId,reconcile:true})).status,'unknown');const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.builds,1);
+ if(!['missing-completion','exit'].includes(fault))assert.ok((await readJson(path.join(f.config.dataDir,'ipc',r.operationId,'service-verification-failed.json')))?.firstError);
+});
