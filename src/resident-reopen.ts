@@ -4,7 +4,7 @@ import os from 'node:os';
 import {DomainError} from './contracts.js';
 import {type Store,type Session,readJson,digest,pathKey} from './storage.js';
 import {probeProcess,sameProcess,validProcessIdentity,type ProcessProbe} from './lease-process.js';
-import {residentHash,verifyResidentResult} from './resident.js';
+import {residentHash,verifyResidentCompletion} from './resident.js';
 const equal=(a:unknown,b:unknown)=>residentHash(a)===residentHash(b);
 const uuid=(s:any)=>typeof s==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(s);
 
@@ -38,7 +38,9 @@ export async function verifyClosedResident(store:Store,s:Session,newOperationId:
    if(!request||request.operationId!==op.operationId||request.requestId!==op.requestId||request.requestFingerprint!==op.fingerprint||request.launchId!==launchId||request.fileIdentity!==fileIdentity||request.diskHash!==diskHash||pathKey(request.projectPath)!==pathKey(s.workingPath)||
     request.args?.applicationId!==s.applicationId||!result||result.status!==op.status||!equal(result.data?.residentEvidence,op.response?.data?.residentEvidence)||
     check?.passed!==true||check.launchId!==launchId||check.sequence!==request.sequence||!equal(check.processIdentity,identity)||check.requestHash!==residentHash(request)||check.resultHash!==residentHash(result))throw refuse('Prior request/result/verification binding differs');
-   await verifyResidentResult(request,result,ipc,identity);
+   // The immutable original service-verification above binds these exact bytes.
+   // Do not reclassify an old successful list using a newer supported-object rule.
+   await verifyResidentCompletion(request,result,ipc,identity);
    if(op.status==='conflict'&&(result.data?.recoverableRejection!==true||result.data?.firstError?.dispatched!==false||result.data?.secondaryErrors?.length!==0))throw refuse('Prior conflict is not proven zero-dispatch');
    if(Date.parse(op.finishedAt??'')>Date.parse(exit.at)||!Number.isFinite(Date.parse(op.finishedAt??'')))throw refuse('Exit precedes completion');
    sequences.push(request.sequence);

@@ -165,3 +165,8 @@ test('unproven recovery claim or cleanup error cannot restart a round',async()=>
   assert.equal((await n.controller.submit(n.edit())).status,'frozen');assert.equal(n.writes,0);
  }
 });
+test('predispatch MCP conflict without resident receipt retains its original error and stays stopped',async()=>{
+ const n=fake(),command=n.command('open',{projectPath:current.dependencies.projectPath,applicationId:APP}),original={contractVersion:'1.0.0',status:'conflict',operationId:randomUUID(),requestId:command.id,error:{code:'RESIDENT_RECONNECT_UNSUPPORTED',message:'Prior resident reopen proof unavailable: Excluded object coverage differs'}};
+ n.controller.call=async()=>original;const result=await n.controller.submit(command);assert.equal(result.status,'frozen');assert.deepEqual(result.originalResult,original);assert.equal(result.error.message,original.error.message);assert.equal(result.writeAttempted,false);
+ await assert.rejects(n.controller.submit(n.edit()),/not permitted/);assert.equal((await n.controller.submit(n.command('finish'))).status,'finished');assert.equal(n.writes,0);
+});

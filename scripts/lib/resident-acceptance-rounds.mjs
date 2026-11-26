@@ -57,6 +57,9 @@ export class ResidentAcceptanceRounds {
   }
   if(!uuid.test(result?.operationId??'')||!result.requestId||operationId&&operationId!==result.operationId||args.requestId&&args.requestId!==result.requestId)throw Error('Operation/request binding missing or changed');
   const d=result.data,e=d?.residentEvidence;
+  // A service-side rejection can precede native dispatch. Preserve it verbatim;
+  // absence of a native receipt is NOT proof that a new business round is safe.
+  if(result.status!=='succeeded'&&!e)throw new RoundEnd(result,false);
   if(!e||e.requestCompleted!==true||e.ideExitRequested!==false||!uuid.test(e.launchId??'')||!hash.test(e.requestHash??'')||
    !Number.isSafeInteger(e.sequence)||e.sequence<=this.sequence||!Number.isSafeInteger(e.processIdentity?.pid)||e.processIdentity.pid<=0||!/^\d+$/.test(e.processIdentity?.startId??''))throw Error('Resident completion/creation evidence missing or changed');
   const identity=JSON.stringify([e.launchId,e.processIdentity.pid,e.processIdentity.startId]);

@@ -38,11 +38,18 @@ export function residentObject(state:any,oid:string,aid:string){
  const m=/^\s*(PROGRAM|FUNCTION_BLOCK|FUNCTION)\s+([A-Za-z_][A-Za-z0-9_]*)\b/i.exec(r.declaration);if(!m||m[2].toLowerCase()!==r.path.at(-1).toLowerCase())throw Error('POU declaration/name differs');
  return {objectId:oid,applicationId:aid,path:r.path,nativeTypeId:r.nativeTypeId,embeddedObjectTypes:r.embeddedObjectTypes,language:'ST',objectType:m[1].toUpperCase()==='FUNCTION_BLOCK'?'function_block':'st_pou',hasImplementation:true,declaration:r.declaration,implementation:r.implementation,contentHash:codeHash(r.declaration,r.implementation)};
 }
-export async function verifyResidentResult(request:any,result:Reply,directory:string,identity:ProcessIdentity) {
+// Stable completion envelope. Closed-session proofs validate the original
+// producer's bound service verification, not today's business classification.
+export async function verifyResidentCompletion(request:any,result:Reply,directory:string,identity:ProcessIdentity) {
  const data=result.data as any,e=data?.residentEvidence,completed=await readJson(path.join(directory,'completed.json'));
  if(result.operationId!==request.operationId||result.requestId!==request.requestId||e?.requestHash!==residentHash(request)||e?.launchId!==request.launchId||e?.sequence!==request.sequence||!equal(e?.processIdentity,{pid:identity.pid,startId:identity.startId})||e?.requestCompleted!==true||e?.ideExitRequested!==false||!equal(completed,{launchId:request.launchId,sequence:request.sequence,processIdentity:e.processIdentity,requestHash:e.requestHash,resultHash:residentHash(result)}))throw Error('Resident completion/request/instance binding differs');
  if(result.status!=='succeeded'){if(data?.recoverableRejection===true&&(result.status!=='conflict'||data.firstError?.dispatched!==false||data.secondaryErrors?.length!==0||await readJson(path.join(directory,'dispatch.json'))))throw Error('Unproven zero-dispatch rejection');return;}
  if(data.saved!==false||data.closed!==false||data.reopened!==false||['saveCalls','compileCalls','closeCalls','exitCalls'].some(k=>data[k]!==0)||data.sessionMode!=='resident')throw Error('Resident lifecycle evidence differs');
+}
+export async function verifyResidentResult(request:any,result:Reply,directory:string,identity:ProcessIdentity) {
+ await verifyResidentCompletion(request,result,directory,identity);
+ if(result.status!=='succeeded')return;
+ const data=result.data as any;
  const before=await readJson(path.join(directory,'before.json'));if(pathKey(before?.state?.projectPath??'')!==pathKey(request.projectPath))throw Error('Snapshot belongs to another project');const deps=residentDependencies(before?.state),version=residentHash({dependencies:deps,diskHash:before.diskHash});
  if(before.diskHash!==request.diskHash)throw Error('Disk changed between dispatch and native read');
  let final=before.state,finalDeps=deps;
