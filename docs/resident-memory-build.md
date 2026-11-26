@@ -4,6 +4,8 @@
 
 下文固定构建和授权状态保留最初离线交付时点。[后续移交记录](resident-build-handoff-fix.md)保留finish前置条件循环及Application选择兼容补修。随后已按补充授权完成旧服务移交；[真实MCP首轮](resident-memory-build-real-20261126.md)完成一次0错误／0警告内存编译，但直接库清单新增使保全核对unknown，后续修改未执行。新IDE和服务保留，不能把下文最初的“未执行”当作当前状态。
 
+后续[IecVarAccess限定保全补修](resident-compiler-library-fix.md)已完成安装件依据及离线验证；本页原测试和真实首轮保持原归属。只有精确证明成立的一项编译依赖可新增，整个直接库清单并非必然不变；当前unknown不改判。
+
 ## 实际实现
 
 resident 的 `project_build` 新增可选输入 `expectedResidentVersion`：在resident执行时必须来自当前读取，服务队列和实际IDE句柄再次核对。旧batch输入与执行不变；该字段不能用于batch。其他37项输入与全部38项输出Schema保持，新增结果字段使用已有passthrough契约。内部身份仍由Agent读取，用户无需填写GUID或版本。

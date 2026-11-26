@@ -4,6 +4,7 @@
 
 
 本轮[常驻内存编译迁移](docs/resident-memory-build.md)已完成[一次真实MCP首轮](docs/resident-memory-build-real-20261126.md)：实际读取5秒／FALSE，修改7秒并独立读回；原生内存编译完成0错误／0警告，但库管理器直接引用17→18项使保全校验返回unknown，未执行后续TRUE修改、保存或关闭。新IDE66304、服务67192和控制器66352保留，接收器已停止；不继续工程请求。旧IDE已按授权不保存正常退出；旧辅助控制器经补充授权结束，SDK及MCP独立观察退出0。[移交首败和必要补修](docs/resident-build-handoff-fix.md)保留，不用此次结果覆盖。0.39结构体新增字段的真实验收状态不变；0.41尚无DSH模型编译验收。
+随后已完成[IecVarAccess 编译依赖的限定补修](docs/resident-compiler-library-fix.md)：安装件静态链与本次新增直接引用相符，桥接和服务端保留原清单并精确核对单项编译依赖，离线通过。新固定产品尚未真实复验；上述unknown和当前未保存实例不改判、不收尾，维护与重开准入仍待明确。
 从[简明使用指南](docs/getting-started.md)开始；查能力看下方[已交付功能](#已完成功能main)，查剩余主线看[未完成事项](#未完成功能与计划阶段)和[38 项工具范围核对](docs/mcp-scope-status.md)。直接编辑指定文件，工程比较仅按用户要求执行，显式旧副本接口兼容保留。
 
 **同一工程连续操作已接入候选产品，真实 MCP 两轮分别授权的修改及独立读回通过；DSH 两轮分别提交的工程任务也已通过；两轮原实例随后已按授权关闭，当前0.41首轮停止状态见上段。** [第一轮](docs/resident-mcp-round1-passed-20261126.md)将 `ProbeDelay` 从5秒改为7秒；[第二轮](docs/resident-mcp-round2-passed-20261126.md)复用同一 IDE／服务，只将 `ProbeEnable := FALSE` 改为 `TRUE`，保留7秒和两条中文注释。两轮当时保持打开、未保存或编译；随后经明确授权不保存正常关闭，移交到下述DSH新实例。此前[首查版本冲突](docs/resident-mcp-first-round-20261126.md)、[根 ST PROGRAM 识别缺口及补修](docs/resident-st-parts-fix.md)、[旧会话完成证明兼容补修](docs/resident-closed-proof-compatibility.md)保留原结果，不用本次成功覆盖。新推荐流程显式使用 `project_open(sessionMode="resident")`，随后每条独立指令读取当前内存并按版本修改。原0.40首批迁移 `object_list`、`object_read` 和普通根ST POU实现区的 `code_apply_change`；本轮另加入下述内存编译，其他工程工具仍拒绝。省略模式或显式batch仍保留旧行为，不代表旧38项工具全部支持保持打开。详见[接口、迁移清单及停止条件](docs/resident-mcp-session.md)。

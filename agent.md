@@ -4,6 +4,7 @@
 
 
 本轮[常驻内存编译迁移](docs/resident-memory-build.md)已完成[一次真实MCP首轮](docs/resident-memory-build-real-20261126.md)：实际读取5秒／FALSE，修改7秒并独立读回；原生内存编译完成0错误／0警告，但库管理器直接引用17→18项使保全校验返回unknown，未执行后续TRUE修改、保存或关闭。新IDE66304、服务67192和控制器66352保留，接收器已停止；不继续工程请求。旧IDE已按授权不保存正常退出；旧辅助控制器经补充授权结束，SDK及MCP独立观察退出0。[移交首败和必要补修](docs/resident-build-handoff-fix.md)保留，不用此次结果覆盖。0.39结构体新增字段的真实验收状态不变；0.41尚无DSH模型编译验收。
+随后已完成[IecVarAccess 编译依赖的限定补修](docs/resident-compiler-library-fix.md)：安装件静态链与本次新增直接引用相符，桥接和服务端保留原清单并精确核对单项编译依赖，离线通过。新固定产品尚未真实复验；上述unknown和当前未保存实例不改判、不收尾，维护与重开准入仍待明确。
 2026-11-26正式MCP首轮的原[版本冲突](docs/resident-mcp-first-round-20261126.md)及后续写前停止记录保留。经[驱动及正常收尾补修](docs/resident-driver-lifecycle-fix.md)、[两端ST识别补修](docs/resident-st-parts-fix.md)、[旧会话完成证明兼容补修](docs/resident-closed-proof-compatibility.md)，新的[真实MCP第一轮](docs/resident-mcp-round1-passed-20261126.md)完成5秒→7秒修改；随后另获明确指令的[第二轮](docs/resident-mcp-round2-passed-20261126.md)在同一实例中将FALSE改为TRUE，保留7秒及两条中文，每轮均独立读回且只有授权字段变化。上述两轮当时保持打开，未保存或编译；随后按明确授权不保存正常关闭旧实例，并完成下述DSH第一轮。后续轮次仍须另一次明确指令，不自动连发。以下段落保留各自时点。
 
 [DSH连续客户端准备](docs/dsh-resident-continuous-preparation.md)保留原无工程预检时点；随后[DSH第一轮工程实测](docs/dsh-resident-round1-20261126.md)通过：一次模型提示词，正式MCP五请求、一次5秒→7秒修改并独立读回，FALSE／声明／中文保持。随后另获明确指令的[DSH第二轮](docs/dsh-resident-round2-20261126.md)在同一会话、连接、IDE将FALSE改为TRUE，保留7秒、声明及中文并独立读回。当轮IDE67788／服务68004／SDK14220／驱动48624保持打开，保存／编译／关闭及第三轮为0；其后已按明确维护授权关闭旧IDE并完成服务移交，当前0.41首轮unknown见前段。原初始化Schema取证首败、第一轮24次和第二轮18次状态查询分别保留。
