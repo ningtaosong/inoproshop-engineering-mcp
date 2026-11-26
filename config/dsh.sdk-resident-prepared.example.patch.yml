@@ -1,0 +1,81 @@
+# Prepared only; NOT activated or engineering-tested in this SDK connection.
+# Keep disabled: true until the current unsaved resident IDE/service is normally handed off.
+# Official installed DSH 0.2.1-rc.5 sdk profile, account services reused without credentials.
+# See docs/dsh-resident-continuous-preparation.md for the two separate user turns and stop rules.
+- id: tool-plugin-manager
+  disabled: true
+- id: tool-working-directory
+  disabled: true
+- id: tool-bash
+  disabled: true
+- id: tool-pwsh
+  disabled: true
+- id: tool-jobs
+  disabled: true
+- id: tool-fs
+  disabled: true
+- id: tool-fs-search
+  disabled: true
+- id: tool-skill
+  disabled: true
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-workflow
+  disabled: true
+- id: timeout-policy
+  disabled: true
+- id: tool-result-pruner
+  disabled: true
+- id: tool-todo
+  disabled: true
+- id: tool-goal
+  disabled: true
+- id: tool-web
+  disabled: true
+- id: workspace-dependencies
+  disabled: true
+- id: mcp-resources
+  disabled: true
+- id: plan-mode
+  disabled: true
+- id: session-title-llm
+  disabled: true
+- id: agent-instructions
+  disabled: true
+- id: skill-filesystem
+  disabled: true
+- id: skill-office
+  disabled: true
+- id: credentials
+  disabled: false
+- id: deepseek-account
+  disabled: false
+- id: authorization
+  disabled: false
+- id: tools
+  config:
+    mode: native
+- insert:
+    - id: mcp-inoproshop
+      disabled: true
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: inoproshop
+        transport: stdio
+        command: C:/Program Files/nodejs/node.exe
+        args:
+          - D:/InoPro-ResidentDriver-Fix-20261126/fixed-3f8c421afebb/dist/server.js
+        cwd: D:/InoPro-ResidentDriver-Fix-20261126/fixed-3f8c421afebb
+        env:
+          INOPRO_DATA_DIR: D:/InoPro/.local/dsh-phase4-repair-20261028-A1
+          INOPRO_TIMEOUT_MS: '120000'
+          INOPRO_RESPONSE_WAIT_MS: '800'
+        maxInstructionBytes: 65536
+        reconnect:
+          enabled: false
