@@ -1,6 +1,6 @@
 # InoProShop MCP 后续开发计划
 
-当前 **codex/resident-merge-prep：0.41.0 候选版、38 项工具**。main仍为0.38.0；本轮只完成独立候选拆分、离线验证和固定构建，不合并、不部署、不重放工程。当前范围与依赖见[合并准备说明](docs/resident-merge-preparation.md)，历史段落按原时点保留。后续[默认环境测试补修](docs/resident-default-test-diagnosis.md)解决三类代表问题，仅修改测试；默认4/4、独立目录4/4及相关184/184分别记录，可进入合并复核，不代表全部默认失败已清零。
+当前 **codex/resident-merge-prep：0.41.0 候选版、38 项工具**。main仍为0.38.0；本轮只完成独立候选拆分、离线验证和固定构建，不合并、不部署、不重放工程。当前范围与依赖见[合并准备说明](docs/resident-merge-preparation.md)，历史段落按原时点保留。后续[默认环境测试补修](docs/resident-default-test-diagnosis.md)解决三类代表问题，仅修改测试；默认4/4、独立目录4/4及相关184/184分别记录，可进入合并复核，不代表全部默认失败已清零。[合并前复核](docs/resident-premerge-review.md)区分正常合并条件与未验边界；用户手动保存后继续旧resident会话目前尚不支持。
 
 
 2026-11-26[常驻内存编译首轮](docs/resident-memory-build-real-20261126.md)的unknown及[2026-11-27写前类型元数据冲突](docs/resident-build-recheck-20261127.md)保留原结果。随后按明确授权正常不保存关闭旧实例，使用固定产品02e5099完成[同一保存工程的新一轮真实MCP复验](docs/resident-build-scalar-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告、独立读回通过，FALSE／声明／中文保持。原直接库保持，编译新增IecVarAccess系统依赖的实际安装件与保全证据通过；没有新增派生设备。当轮IDE72140、MCP67608、驱动71748保持打开，7秒／FALSE未保存；随后按明确授权不保存正常关闭并移交。新的[DSH内存编译任务](docs/dsh-resident-build-20261127.md)在读取未返回终态时发起额外查询，因PENDING_UNKNOWN冲突停止，三项原生读取成功、0修改／0编译。该时点IDE24836、MCP72960、SDK61000及驱动22724保持打开，内存和磁盘均为5秒／FALSE；当轮仅补修说明。随后按明确授权完成[替身线传修正、串行补证及同一连接的一次新真实任务](docs/dsh-resident-sequence-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告和独立读回通过，FALSE／声明／中文保持。当前原四个进程仍保持打开，7秒未保存，主文件哈希不变，autosave等附属变化单列；39次状态查询及5次本轮原操作reconcile保留，不含历史查询。前三次替身的首败、审计过窄及独立补证均保留，不重写旧任务。0.39及其他未验范围不变。

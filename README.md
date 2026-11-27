@@ -1,6 +1,6 @@
 # InoProShop Engineering MCP
 
-当前 **codex/resident-merge-prep：0.41.0 候选版、38 项 MCP 工具**，是基于 main 0.38.0 的独立合并准备分支，尚未合并或部署。候选仅保留常驻连续读改、明确请求的内存编译及其必要保护；未完成真实验收的 `add-struct-field` 已从产品、契约和初始化说明中移除，原分支与失败证据保留。详见[合并准备范围与验证归属](docs/resident-merge-preparation.md)。后续[默认环境代表失败诊断与测试补修](docs/resident-default-test-diagnosis.md)已完成，产品未变；其余默认失败仍未逐项复验。推荐显式 `project_open(sessionMode="resident")`，必要读取定位后修改根普通 ST POU 实现区，按明确请求编译，保持工程打开且不自动保存；省略模式仍为兼容 batch，并非默认 resident。
+当前 **codex/resident-merge-prep：0.41.0 候选版、38 项 MCP 工具**，是基于 main 0.38.0 的独立合并准备分支，尚未合并或部署。候选仅保留常驻连续读改、明确请求的内存编译及其必要保护；未完成真实验收的 `add-struct-field` 已从产品、契约和初始化说明中移除，原分支与失败证据保留。详见[合并准备范围与验证归属](docs/resident-merge-preparation.md)。后续[默认环境代表失败诊断与测试补修](docs/resident-default-test-diagnosis.md)已完成，产品未变；其余默认失败仍未逐项复验。[合并前复核与清单](docs/resident-premerge-review.md)未发现限定范围的产品阻断；本轮仍不合并、不部署。推荐显式 `project_open(sessionMode="resident")`，必要读取定位后修改根普通 ST POU 实现区，按明确请求编译，保持工程打开且不自动保存；省略模式仍为兼容 batch，并非默认 resident。
 
 
 2026-11-26[常驻内存编译首轮](docs/resident-memory-build-real-20261126.md)的unknown及[2026-11-27写前类型元数据冲突](docs/resident-build-recheck-20261127.md)保留原结果。随后按明确授权正常不保存关闭旧实例，使用固定产品02e5099完成[同一保存工程的新一轮真实MCP复验](docs/resident-build-scalar-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告、独立读回通过，FALSE／声明／中文保持。原直接库保持，编译新增IecVarAccess系统依赖的实际安装件与保全证据通过；没有新增派生设备。当轮IDE72140、MCP67608、驱动71748保持打开，7秒／FALSE未保存；随后按明确授权不保存正常关闭并移交。新的[DSH内存编译任务](docs/dsh-resident-build-20261127.md)在读取未返回终态时发起额外查询，因PENDING_UNKNOWN冲突停止，三项原生读取成功、0修改／0编译。该时点IDE24836、MCP72960、SDK61000及驱动22724保持打开，内存和磁盘均为5秒／FALSE；当轮仅补修说明。随后按明确授权完成[替身线传修正、串行补证及同一连接的一次新真实任务](docs/dsh-resident-sequence-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告和独立读回通过，FALSE／声明／中文保持。当前原四个进程仍保持打开，7秒未保存，主文件哈希不变，autosave等附属变化单列；39次状态查询及5次本轮原操作reconcile保留，不含历史查询。前三次替身的首败、审计过窄及独立补证均保留，不重写旧任务。0.39及其他未验范围不变。
@@ -161,7 +161,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | S9b 限定运行参数写值 | S9a 通过，再限定类型、范围、预期旧值与写后读回 | 不含强制，不默认修改源码初值 |
 | S9c Online Change | 可信在线会话、运行应用版本对应及厂商接口证据 | 不自动退化为完整下载、启停或复位 |
 
-推进顺序按 [agent.md 的当前路线](agent.md#当前路线与范围变更规则)：**本分支实施已授权 S4b 普通结构体 DUT 新增字段，完成后先复核，不自动合并；其余 S4b／S5 离线子项逐项限定，S6／S7 按明确需求，S8 补齐恢复条件后继续且不阻塞离线交付，S9 因缺少测试 PLC 暂缓。** 调整顺序或新增范围须经用户明确确认，不承诺日期。详见[范围状态](docs/mcp-scope-status.md)。
+推进顺序按 [agent.md 的当前路线](agent.md#当前路线与范围变更规则)：**本分支仅完成常驻候选的合并准备与复核，不自动合并、部署或启动下一阶段。未完成真实验收的结构体字段新增已从候选产品移除，原分支与证据保留；其余 S4b／S5 离线子项逐项限定，S6／S7 按明确需求，S8 补齐恢复条件后继续且不阻塞离线交付，S9 因缺少测试 PLC 暂缓。** 调整顺序或新增范围须经用户明确确认，不承诺日期。详见[范围状态](docs/mcp-scope-status.md)。
 
 DSH 欢迎页／认证、CLI 接入、转储诊断和采证属于辅助维护；租约、去重、隔离与退出保护属于必要工程保护，不作为新增业务功能计入完成率，也不删除其实现。通用图形语言编辑、普通下载／运行控制、强制、仿真、自动回滚及多客户端并发工程执行没有当前交付承诺。
 
@@ -169,10 +169,12 @@ DSH 欢迎页／认证、CLI 接入、转储诊断和采证属于辅助维护；
 
 1. 阅读[安装与日常使用](docs/getting-started.md)，确认环境和直接编辑指定工程的使用方式。
 2. 选择一个客户端：[DSH 接入](docs/getting-started.md#接入-dsh)或 [Codex 固定版本接入](docs/codex-integration.md)。已有部署沿用原登记数据目录；一次只允许一个客户端占用工程服务。
-3. 在客户端指定 `.project` 文件或提供完整路径，说明要改什么，按[日常修改闭环](docs/getting-started.md#日常修改闭环)执行；有原值条件或保留项时一并说明。也可先做[只读解释](docs/getting-started.md#首次试用)，但不是修改前置任务。
+3. 在客户端指定 `.project` 文件或提供完整路径，说明需求与保留项。候选使用[常驻连续流程](docs/resident-merge-preparation.md#推荐使用与兼容边界)，不自动保存关闭；明确选择 batch 时才按[修改与持久化闭环](docs/getting-started.md#日常修改闭环)执行。未迁移工具不能在resident中自动降级；指南中的[只读解释](docs/getting-started.md#首次试用)示例保留其batch范围。
 4. 遇到运行中、冲突、unknown 或冻结，按[停止与保全](docs/getting-started.md#停止与保全)处理。切换客户端先走[正常服务移交](docs/startup-handoff.md#正常移交步骤与停止条件)，保留用户输入，确认原服务退出。
 
 ### 已验综合流程
+
+以下是旧 batch 的已验流程，未迁移到resident；不作为常驻会话自动创建、保存或关闭的依据。
 
 可以通过 DSH CLI 用自然语言要求：在指定路径原生新建 AM610 工程、编写双路延时报警、创建任务并绑定 PROGRAM、编译及保存关闭重开。见 [0.34.2 单次综合工程验收](docs/offline-alarm-acceptance-0342.md)。
 
