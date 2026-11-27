@@ -5,9 +5,9 @@ import {z} from 'zod';
 import {schemas,outputSchemas,VERSION} from '../dist/contracts.js';
 
 test('split candidate restores exact main variable_edit contract, including required initializer',async()=>{
- const main=JSON.parse(await readFile('tests/fixtures/struct-field-0380-contracts.json','utf8'));
- assert.deepEqual(z.toJSONSchema(schemas.variable_edit,{io:'input'}),main.variable_edit.input);
- assert.deepEqual(z.toJSONSchema(outputSchemas.variable_edit),main.variable_edit.output);
+ const main=JSON.parse(await readFile('tests/fixtures/resident-main-0380-contracts.json','utf8')).variableEdit;
+ assert.deepEqual(z.toJSONSchema(schemas.variable_edit,{io:'input'}),main.inputSchema);
+ assert.deepEqual(z.toJSONSchema(outputSchemas.variable_edit),main.outputSchema);
  const s=z.toJSONSchema(schemas.variable_edit,{io:'input'});
  assert.equal(VERSION,'0.41.0');assert.equal(Object.keys(schemas).length,38);
  assert.ok(s.required.includes('initializer'));assert.ok(!s.properties.action.enum.includes('add-struct-field'));
