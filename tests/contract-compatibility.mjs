@@ -1,5 +1,5 @@
-// Only the three optional 0.40 resident request fields are projected for older fixtures.
-// The complete 0.39 contract fingerprint is independently checked in resident-mcp.test.
+// Only documented optional resident request fields are projected for older fixtures.
+// The complete main 0.38 contract fingerprint is independently checked in resident-mcp.test.
 export function withoutResidentExtension(schema){
  const p=schema?.properties;if(!p)return schema;
  if(p.sessionMode&&p.projectPath&&p.requestId)delete p.sessionMode;

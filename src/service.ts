@@ -1,4 +1,3 @@
-import {planStructField,structTarget,verifyStructReadback} from './struct-field.js';
 import {placeholderReferenceConflict} from './library-guidance.js';
 import {clearTarget,validateClearResult} from './library-placeholder-clear.js';
 import { promises as fs } from 'node:fs';
@@ -478,7 +477,7 @@ export class EngineeringService {
     if(op.tool==='variable_edit'&&result.status==='succeeded'&&(op as any).variableOriginal){
       const before=(op as any).variableOriginal;
       const type=(op as any).variableTypeOriginal;
-      const plan=op.args.action==='add-struct-field'?planStructField(before.declaration,before.path.at(-1),op.args):isMemberInitializerAction(op.args.action)?
+      const plan=isMemberInitializerAction(op.args.action)?
         planMemberInitializerEdit(before.declaration,type.declaration,before.path.at(-1),type.path.at(-1),op.args):
         planVariableEdit(before.declaration,before.objectType,before.path.at(-1),op.args,(op as any).variableDirectChildNames);
       return {...result,data:{...result.data,editEvidence:{action:op.args.action,name:op.args.name,
@@ -651,7 +650,7 @@ export class EngineeringService {
             original.implementation!==d!.implementation)invalid();
           let plan;
           const type=(op as any).variableTypeOriginal;
-          try {plan=op.args.action==='add-struct-field'?planStructField(original.declaration,original.path.at(-1),op.args):isMemberInitializerAction(op.args.action)?
+          try {plan=isMemberInitializerAction(op.args.action)?
             planMemberInitializerEdit(original.declaration,type.declaration,original.path.at(-1),type.path.at(-1),op.args):
             planVariableEdit(original.declaration,original.objectType,original.path.at(-1),op.args,(op as any).variableDirectChildNames);}catch{return invalid();}
           if(plan.declaration!==args.declaration||d!.declaration!==plan.declaration||d!.implementation!==original.implementation)invalid();
@@ -676,15 +675,9 @@ export class EngineeringService {
           if(childGuard){const e=d!.variableChildEvidence as any;
             if(!e||canonical(e.before)!==canonical(childGuard)||canonical(e.after)!==canonical(childGuard))invalid();}
           const parsed=parseDeclaration(d!.declaration as string,d!.objectType as string,(d!.path as string[]).at(-1)!);
-          if(op.args.action==='add-struct-field'){
-            try {verifyStructReadback(original,d,plan);}catch{return invalid();}
-            const target=parsed.rows.filter((r:any)=>r.category==='type-field'&&r.name===op.args.name);
-            if(!parsed.complete||target.length!==1||target[0].hasExplicitInitializer||target[0].typeRaw!==op.args.type)invalid();
-          }else{
-            const target=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===(op.args.section??(d!.objectType==='gvl'?'VAR_GLOBAL':'VAR'))&&r.name.toLowerCase()===op.args.name.toLowerCase());
-            if(!parsed.complete||target.length!==1||!isMemberInitializerAction(op.args.action)&&target[0].initializerRaw!==op.args.initializer||
-              op.args.action==='set-type'&&target[0].typeRaw.toUpperCase()!==op.args.type)invalid();
-          }
+          const target=parsed.rows.filter((r:any)=>r.category==='variable'&&r.section===(op.args.section??(d!.objectType==='gvl'?'VAR_GLOBAL':'VAR'))&&r.name.toLowerCase()===op.args.name.toLowerCase());
+          if(!parsed.complete||target.length!==1||!isMemberInitializerAction(op.args.action)&&target[0].initializerRaw!==op.args.initializer||
+            op.args.action==='set-type'&&target[0].typeRaw.toUpperCase()!==op.args.type)invalid();
         }
       }
       if(command==='create_method'){
@@ -1037,27 +1030,22 @@ export class EngineeringService {
     const dir=this.store.file('ipc/'+op.operationId),pre=path.join(dir,'preflight');
     op.bridge={directory:pre};await this.store.saveOp(op);
     const raw=replySchema.parse(await this.executeNative(op,{operationId:op.operationId,command:'read',projectPath:s.workingPath,
-      args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.objectId,...(a.action==='add-struct-field'?{structFieldTarget:true}:{}),...(a.action==='add-initializer'?{initializerTarget:true,...(a.section?{initializerSection:a.section}:{})}:{})},
+      args:{projectId:a.projectId,targetKind:'application',applicationId:a.applicationId,objectId:a.objectId,...(a.action==='add-initializer'?{initializerTarget:true,...(a.section?{initializerSection:a.section}:{})}:{})},
       ...(s.editMode==='direct'?{fileGuard:{expectedDiskHash:s.diskHash!,mode:'direct' as const}}:{})},pre,
       async pid=>{op.bridge!.pid=pid;await this.store.saveOp(op);}));
     if(raw.status!=='succeeded')return raw;
     this.validateDirect(raw,s);
     const before=raw.data as any;
     if(before.objectId!==a.objectId||before.applicationId!==a.applicationId||before.contentHash!==a.expectedHash||
-      !(a.action==='add-struct-field'?['structure']:['gvl','st_pou','function_block']).includes(before.objectType)||typeof before.declaration!=='string'||typeof before.implementation!=='string'||
+      !['gvl','st_pou','function_block'].includes(before.objectType)||typeof before.declaration!=='string'||typeof before.implementation!=='string'||
       codeHash(before.declaration,before.implementation)!==before.contentHash||
-      (['gvl','structure'].includes(before.objectType)?!Array.isArray(before.path)||before.path.length!==(s.applications?.find(x=>x.applicationId===a.applicationId)?.path.length??-2)+1:before.hasImplementation!==true))
+      (before.objectType==='gvl'?!Array.isArray(before.path)||before.path.length!==(s.applications?.find(x=>x.applicationId===a.applicationId)?.path.length??-2)+1:before.hasImplementation!==true))
       throw new DomainError('conflict','VARIABLE_TARGET_CHANGED','目标身份或原内容不匹配，未修改');
     if(a.action==='set-type'&&before.objectType!=='gvl'&&
       (before.nativeTypeId!=='6f9dac99-8de1-4efc-8465-68ac443b7d08'||
         before.pouTypeSource!=='native-pou-type-id-and-declaration-header'||
         !['program','function','function_block'].includes(before.pouType)))
       throw new DomainError('unsupported','VARIABLE_TYPE_SCOPE','类型修改仅支持原生普通 ST POU 的 VAR 或Application根GVL，未修改');
-    let structFieldGuard:any;
-    if(a.action==='add-struct-field'){
-      try {structFieldGuard=structTarget(before,s.applications!.find(x=>x.applicationId===a.applicationId)!.path,a.projectId,s.workingPath);}
-      catch(e:any){throw new DomainError('unsupported','STRUCT_FIELD_SCOPE',e.message);}
-    }
     let initializerGuard:any;
     if(a.action==='add-initializer'){
       try {initializerGuard=initializerTargetEvidence(before,s.applications!.find(x=>x.applicationId===a.applicationId)!.path,a.section);}
@@ -1156,7 +1144,7 @@ export class EngineeringService {
       (op as any).variableTypeOriginal=typeOriginal;
     }
     let plan;
-    try {plan=a.action==='add-struct-field'?planStructField(before.declaration,before.path.at(-1),a):typeOriginal?planMemberInitializerEdit(before.declaration,typeOriginal.declaration,before.path.at(-1),typeOriginal.path.at(-1),a):
+    try {plan=typeOriginal?planMemberInitializerEdit(before.declaration,typeOriginal.declaration,before.path.at(-1),typeOriginal.path.at(-1),a):
       planVariableEdit(before.declaration,before.objectType,before.path.at(-1),a,(op as any).variableDirectChildNames);}
     catch(e:any){throw new DomainError('unsupported','VARIABLE_DECLARATION_UNSUPPORTED',e.message);}
     if(plan.declaration===before.declaration)return reply('succeeded','目标原值已相同，未修改或保存',{...before,snapshot:s.snapshot,diskHash:s.diskHash,noOp:true,
@@ -1166,7 +1154,6 @@ export class EngineeringService {
         ...('typeRange' in plan?{typeRange:plan.typeRange,beforeType:plan.beforeType,afterType:plan.afterType}:{})}});
     if(digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)throw new DomainError('conflict','VARIABLE_DISK_CHANGED','定位后磁盘版本改变，未修改');
     const effective={...a,declaration:plan.declaration,implementation:before.implementation,objectType:before.objectType,variableEdit:true,
-      ...(structFieldGuard?{structFieldGuard,structFieldInsertion:{...plan.range,text:plan.after}}:{}),
       ...(a.action==='add-member-initializer'?{memberInsertion:{...plan.range,text:plan.after}}:{}),
       ...(initializerGuard?{initializerInsertion:{...plan.range,text:plan.after},initializerTargetGuard:initializerGuard}:{}),
       ...(childGuard?{variableChildGuard:childGuard}:{}),

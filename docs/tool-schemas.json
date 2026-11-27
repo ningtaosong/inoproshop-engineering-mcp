@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.40.0",
+  "serverVersion": "0.41.0",
   "contractVersion": "1.0.0",
   "toolCount": 38,
   "tools": [
@@ -14093,6 +14093,10 @@
                 "type": "null"
               }
             ]
+          },
+          "expectedResidentVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -14270,8 +14274,7 @@
               "set-member-initializer",
               "set-type",
               "add-member-initializer",
-              "add-initializer",
-              "add-struct-field"
+              "add-initializer"
             ]
           },
           "name": {
@@ -14333,7 +14336,8 @@
           "expectedSnapshot",
           "expectedDiskHash",
           "action",
-          "name"
+          "name",
+          "initializer"
         ],
         "additionalProperties": false
       },

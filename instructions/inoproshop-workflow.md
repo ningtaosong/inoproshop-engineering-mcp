@@ -25,7 +25,6 @@ resident不调用variable_inspect/variable_usages；仅object_list/read定位。
 用户明确要求普通 POU VAR 或 Application 根 GVL VAR_GLOBAL 的已有 BOOL／DINT／TIME 单变量同时改类型与显式初值时，先必要读取声明和相关调用；用 variable_edit 的 set-type 明确提供新 type、initializer，并绑定 expectedOldType、expectedOldInitializer 与当前对象/工程/磁盘版本。服务重读原文只改类型及初值，不转换旧值、不自动改使用位置或做语义引用分析。必要调用调整沿用原源码工具，真实编译失败时报告已写入内容与诊断，不擅自扩围或回滚；unknown 停止。VAR_INPUT／VAR_OUTPUT、成员、数组、特殊或缺初值声明不使用 set-type。
 普通 ST FUNCTION_BLOCK 已有且唯一的 VAR_INPUT 或 VAR_OUTPUT 声明块，也可对普通 BOOL／DINT／TIME 单变量使用 variable_edit 的 add 或 set-initializer；必须显式给出 section。新增前核对同一 FB 其他声明区及直接 Method／Property 名称，不凭同名或旧偏移推断目标区。缺失、重复、联合、特殊或解析不全时停止。输入初值在实例初始化时生效；调用显式传参会为该次调用赋值，不能把源码初值当作该调用或运行时实测值。省略 section 时继续使用旧 VAR／VAR_GLOBAL 范围；两种聚合成员动作均不接收 section。
 
-结构体新增字段用variable_edit/action=add-struct-field：objectId指向Application根普通DUT，name/type为新增字段，不传initializer。仅完整非空结构体；新旧字段限唯一普通BOOL/DINT/TIME，既有初值限已支持字面量。拒绝复杂、歧义、重复或缺证，保留原文、实例源码和任务配置。不保证在线布局；沿用编译、保存重开、读回及unknown停止。
 
 用户明确要求修改根 GVL 单变量的已有具名聚合直接成员时，先用 variable_inspect 定位父变量和成员，再独立读取 GVL 与同 Application 根的结构体 DUT 原文和哈希。仅在类型名及字段唯一、成员显式值为已支持字面量、当前工程和磁盘版本一致时，用 variable_edit 的 set-member-initializer，分别传父变量 name、memberName、typeObjectId、expectedTypeHash 及原值。服务会在队列内重读父变量、完整类型和当前成员位置；类型、成员、归属或原值有歧义便停止。明确补写尚未显式初始化的直接字段时，改用 add-member-initializer，不传 expectedOldInitializer；字段须在同一根结构体 DUT 已存在且唯一，类型为 BOOL/DINT/TIME，父聚合必须完整、非空且无嵌套或数组。服务完整解析确认目标缺失，仅在原文闭括号前插入逗号和新成员，保留其余字节；已存在便拒绝，不自动覆盖。两种动作均不创建 DUT 字段、无聚合时不自动建立，不把源码初值说成运行值；旧成员分页零结果不能证明目标缺失。其余编译、保存重开和目标读回沿用上段流程。
 

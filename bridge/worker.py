@@ -284,152 +284,6 @@ def member_initializer_insertion(raw, before, args, delimiter=u')'):
     return planned,dict(startOffset=start,endOffset=end,text=added,beforeRawHash=sha(raw),
                         afterRawHash=sha(planned),preservedRawSurroundings=True)
 
-
-def struct_field_state_view(state):
-    """Compare only native identity directories as sets; nested sequences stay ordered."""
-    def native(value):
-        return isinstance(value,basestring) and re.match(r'^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z',value) and value!='00000000-0000-0000-0000-000000000000'
-    target=state.get('target',{})
-    if (state.get('scheme')!='struct-field-source-tasks-v1' or state.get('complete') is not True or
-        not native(target.get('objectId')) or not native(target.get('applicationId')) or target.get('parentId')!=target['applicationId'] or
-        target.get('nativeTypeId')!='2db5746d-d284-4425-9f7f-2663a34b0ebc' or
-        target.get('kindEvidence')!='native-DUT-id-and-complete-STRUCT-source'):
-        raise ValueError('Incomplete native structure identity')
-    sources=state.get('sources');by_id={}
-    if not isinstance(sources,list) or not sources or len(sources)>5000:raise ValueError('Incomplete source coverage')
-    for row in sources:
-        identity=row.get('objectId')
-        if (not native(identity) or identity.lower() in by_id or not native(row.get('nativeTypeId')) or
-            row.get('applicationId') is not None and not native(row['applicationId']) or
-            not isinstance(row.get('path'),list) or not row['path'] or any(not isinstance(x,basestring) or not x for x in row['path'])):
-            raise ValueError('Incomplete or duplicate source identity')
-        for flag,key in [('hasDeclaration','declaration'),('hasImplementation','implementation')]:
-            if type(row.get(flag)) is not bool or key not in row or (not isinstance(row[key],basestring) if row[flag] else row[key] is not None):
-                raise ValueError('Incomplete raw source field '+key)
-        if not isinstance(row.get('embeddedObjectTypes'),list) or any(not native(x) for x in row['embeddedObjectTypes']):raise ValueError('Missing embedded type evidence')
-        by_id[identity.lower()]=row
-    own=by_id.get(target['objectId'].lower())
-    if (not own or own['applicationId']!=target['applicationId'] or own['nativeTypeId']!=target['nativeTypeId'] or
-        own['path']!=target.get('path') or not own['hasDeclaration'] or own['hasImplementation']):
-        raise ValueError('Structure identity outside source coverage')
-    tasks=task_call_inventory_view(state['tasks'])
-    if state['tasks'].get('applicationId')!=target['applicationId']:raise ValueError('Task Application mismatch')
-    return dict(state,sources=by_id,tasks=tasks)
-
-def struct_field_state(project,args,item,names,aid):
-    app=application(project,aid)
-    if (object_kind(item)!='structure' or text(item.type).lower()!='2db5746d-d284-4425-9f7f-2663a34b0ebc' or
-        text(item.parent.guid).lower()!=aid or item.has_textual_implementation or
-        len([x for x in app.get_children(False) if text(x.get_name()).lower()==text(item.get_name()).lower()])!=1):
-        raise ValueError('Unique native root structure required')
-    target={'objectId':text(item.guid).lower(),'applicationId':aid,'parentId':text(item.parent.guid).lower(),
-            'nativeTypeId':text(item.type).lower(),'path':names,'kindEvidence':'native-DUT-id-and-complete-STRUCT-source'}
-    rows=[]
-    for obj,path,owner in walk(project):
-        has_d=bool(obj.has_textual_declaration);has_i=bool(obj.has_textual_implementation)
-        if not has_d and not has_i:continue
-        rows.append({'objectId':text(obj.guid).lower(),'applicationId':owner,'path':path,'nativeTypeId':text(obj.type).lower(),
-            'hasDeclaration':has_d,'hasImplementation':has_i,
-            'declaration':task_append_call_row([u'source',obj.textual_declaration.text])[1] if has_d else None,
-            'implementation':task_append_call_row([u'source',obj.textual_implementation.text])[1] if has_i else None,
-            'embeddedObjectTypes':sorted(text(t).lower() for t in obj.embedded_object_types) if has_i else []})
-    state={'scheme':'struct-field-source-tasks-v1','complete':True,'target':target,'sources':rows,
-           'tasks':task_inventory(project,args,task_append_call_row)}
-    struct_field_state_view(state)
-    return state
-
-def struct_field_name(name):
-    if not isinstance(name,basestring) or not re.match(r'^[A-Za-z_][A-Za-z0-9_]{0,62}\Z',name) or '__' in name:raise ValueError('Invalid field name')
-    reserved=set(u"""ACTION END_ACTION PROGRAM END_PROGRAM FUNCTION END_FUNCTION FUNCTION_BLOCK END_FUNCTION_BLOCK
- METHOD PROPERTY GET SET INTERFACE NAMESPACE END_NAMESPACE EXTENDS IMPLEMENTS
- PUBLIC PRIVATE PROTECTED INTERNAL ABSTRACT FINAL OVERRIDE
- VAR END_VAR VAR_INPUT VAR_OUTPUT VAR_IN_OUT VAR_INOUT VAR_GLOBAL VAR_EXTERNAL VAR_ACCESS
- VAR_TEMP VAR_STAT VAR_INST VAR_CONFIG CONSTANT RETAIN PERSISTENT NON_RETAIN AT
- TYPE END_TYPE STRUCT END_STRUCT UNION END_UNION ARRAY OF ENUM
- IF THEN ELSIF ELSE END_IF CASE END_CASE FOR FROM TO BY DO END_FOR
- WHILE END_WHILE REPEAT UNTIL END_REPEAT EXIT CONTINUE RETURN WITH
- AND OR XOR NOT MOD DIV MUL AND_THEN OR_ELSE
- TRUE FALSE NULL THIS SUPER REF REFERENCE POINTER
- BOOL BYTE WORD DWORD LWORD SINT INT DINT LINT USINT UINT UDINT ULINT
- REAL LREAL T TIME LTIME DATE LDATE TIME_OF_DAY TOD LTOD DATE_AND_TIME DT LDT
- STRING WSTRING CHAR WCHAR BIT
- ANY ANY_BIT ANY_INT ANY_NUM ANY_REAL ANY_STRING ANY_DATE ANY_DERIVED
- ANY_ELEMENTARY ANY_MAGNITUDE ANY_SIGNED ANY_DURATION ANY_CHARS
- CHAR_TO TO_CHAR WCHAR_TO TO_WCHAR ATAN2 USING CLASS
- READ_ONLY READ_WRITE PARAMS""".split())
-    operators=set(u"""ADD SUB MUL DIV MOD MOVE INDEXOF SIZEOF XSIZEOF
- AND OR XOR NOT AND_THEN OR_ELSE SHL SHR ROL ROR
- SEL MAX MIN LIMIT MUX GT LT LE GE EQ NE ADR BITADR CAL
- TRUNC TRUNC_INT ABS SQRT LN LOG EXP EXPT SIN ASIN COS ACOS TAN ATAN
- TEST_AND_SET INI""".split())
-    types=set(u"""BIT BOOL BYTE WORD DWORD LWORD SINT INT DINT LINT USINT UINT UDINT ULINT
- REAL LREAL TIME LTIME DATE LDATE TOD LTOD DT LDT STRING WSTRING""".split())
-    upper=name.upper()
-    conversion=(upper.startswith('TO_') and upper[3:] in types.union(['DATE_AND_TIME','TIME_OF_DAY'])) or any(upper.startswith(t+'_TO_') and upper[len(t)+4:] in types for t in types)
-    if upper in reserved or upper in operators or conversion:raise ValueError('Reserved field name')
-
-def struct_field_insertion(raw,before,args):
-    """Independent complete scalar STRUCT boundary check; offsets are LF UTF-16."""
-    name=args.get('name');kind=args.get('type');guard=args.get('structFieldInsertion',{})
-    if (not isinstance(name,basestring) or not re.match(r'^[A-Za-z_][A-Za-z0-9_]{0,62}\Z',name) or
-        kind not in ('BOOL','DINT','TIME') or args.get('initializer') is not None or before['hasImplementation']):
-        raise ValueError('Invalid structure field request')
-    struct_field_name(name)
-    source=normalize(raw);code=declaration_code(source)
-    pattern=r'\s*TYPE\s+'+re.escape(before['path'][-1])+r'\s*:\s*STRUCT\s+(.+?)\s*END_STRUCT\s+END_TYPE\s*\Z'
-    match=re.match(pattern,code or '',re.I|re.S)
-    if not match:raise ValueError('Complete nonempty ordinary STRUCT required')
-    rows=match.group(1).split(';')
-    if rows[-1].strip():raise ValueError('Missing field delimiter')
-    seen=set()
-    for row in rows[:-1]:
-        field=re.match(r'\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(BOOL|DINT|TIME)\s*(?::=\s*(.+?))?\s*\Z',row,re.I|re.S)
-        if not field or field.group(1).lower() in seen:raise ValueError('Duplicate or unsupported existing field')
-        struct_field_name(field.group(1))
-        seen.add(field.group(1).lower());value=field.group(3);typ=field.group(2).upper()
-        if value is not None:
-            valid=False
-            if typ=='BOOL':valid=value.upper() in ('TRUE','FALSE')
-            elif typ=='DINT':valid=bool(re.match(r'(?:0|[1-9][0-9]*|-[1-9][0-9]*)\Z',value)) and -2147483648<=int(value)<=2147483647
-            else:
-                lit=re.match(r'T#(0|[1-9][0-9]*)(ms|s)\Z',value,re.I)
-                valid=bool(lit) and int(lit.group(1))*(1000 if lit.group(2).lower()=='s' else 1)<=60000
-            if not valid:raise ValueError('Unsupported existing scalar initializer')
-    if name.lower() in seen or name.lower()==before['path'][-1].lower():raise ValueError('Field name already exists')
-    start=guard.get('startOffset');added=guard.get('text')
-    if isinstance(start,bool) or not isinstance(start,(int,long)) or start<0 or start!=guard.get('endOffset') or not isinstance(added,unicode):
-        raise ValueError('Invalid structure insertion range')
-    enc=source.encode('utf-16-le')
-    if start*2>len(enc):raise ValueError('Invalid structure offset')
-    prefix=enc[:start*2].decode('utf-16-le');suffix=enc[start*2:].decode('utf-16-le')
-    if (source!=before['declaration'] or not re.match(r'^[ \t]*END_STRUCT\b',suffix,re.I) or
-        not re.match(r'^\s*'+re.escape(name)+r' : '+kind+r';\s*\Z',added) or
-        prefix+added+suffix!=args['declaration']):raise ValueError('Structure insertion boundary changed')
-    index=0;consumed=0
-    while consumed<len(prefix):
-        index+=2 if raw[index:index+2]==u'\r\n' else 1;consumed+=1
-    if normalize(raw[:index])!=prefix:raise ValueError('Raw structure insertion boundary changed')
-    endings=re.findall(r'\r\n|\r|\n',raw[:index]);newline=endings[-1] if endings else u'\n'
-    planned=raw[:index]+added.replace(u'\n',newline)+raw[index:]
-    if normalize(planned)!=args['declaration']:raise ValueError('Raw structure preservation failed')
-    return planned,dict(guard,beforeRawHash=sha(raw),afterRawHash=sha(planned),preservedRawSurroundings=True)
-
-def struct_field_verify(project,args,directory,stage,expected,diagnostic_errors):
-    captured=None
-    try:
-        located=locate(project,args['applicationId'],args['objectId'])
-        captured=struct_field_state(project,args,*located)
-        publish(os.path.join(directory,'struct-field-'+stage+'.json'),captured)
-        diff=task_create_difference(struct_field_state_view(expected),struct_field_state_view(captured))
-        publish(os.path.join(directory,'struct-field-'+stage+'-verification.json'),{'matches':diff is None,'difference':diff})
-        if diff is not None:raise ValueError('Structure preservation mismatch: '+encode(diff))
-        return captured
-    except Exception as error:
-        primary=exception_evidence(error)
-        try:publish(os.path.join(directory,'struct-field-'+stage+'-failure.json'),{'primaryException':primary,'captured':captured})
-        except Exception as diagnostic:diagnostic_errors.append({'stage':stage,'exception':exception_evidence(diagnostic)})
-        raise
-
 def variable_type_guard(project, app_id, guard):
     # Recheck the exact local DUT at the native write boundary, not merely in
     # the service preflight. An unsaved IDE change need not alter diskHash.
@@ -2119,9 +1973,6 @@ def dispatch(req):
             elif command == "read":
                 located=locate(project,app_id,args["objectId"])
                 observed=read_object(*located)
-                if args.get('structFieldTarget'):
-                    try:observed['structFieldState']=struct_field_state(project,args,*located)
-                    except Exception as e:lifecycle_reject(lifecycle,failure('unsupported','STRUCT_FIELD_SCOPE',text(e),{'primaryException':exception_evidence(e)}))
                 if args.get('initializerTarget'):
                     try:observed['initializerTargetEvidence']=initializer_target_evidence(project,located[0],located[1],located[2],args.get('initializerSection'))
                     except Exception as e:lifecycle_reject(lifecycle,failure('unsupported','VARIABLE_INITIALIZER_SCOPE',text(e),{'primaryException':exception_evidence(e)}))
@@ -2143,19 +1994,9 @@ def dispatch(req):
                 guarded_type=variable_type_guard(project,app_id,args['variableTypeGuard']) if args.get('variableTypeGuard') else None
                 guarded_children=variable_child_guard(project,app_id,args['variableChildGuard']) if args.get('variableChildGuard') else None
                 insertion_raw=None;insertion_evidence=None;insertion_error=None
-                initializer_evidence=None;struct_evidence=None;struct_expected=None;struct_diagnostic_errors=[]
+                initializer_evidence=None
                 insertion_field='initializerInsertionEvidence' if args.get('action')=='add-initializer' else 'memberInsertionEvidence'
                 insertion_prefix='initializer-insertion' if args.get('action')=='add-initializer' else 'member-insertion'
-                if args.get('action')=='add-struct-field':
-                    insertion_field='structFieldInsertionEvidence';insertion_prefix='struct-field-insertion'
-                    try:
-                        actual=struct_field_state(project,args,item,names,aid)
-                        guard={'target':actual['target'],'version':sha(encode(struct_field_state_view(actual)))}
-                        if guard!=args.get('structFieldGuard'):raise ValueError('Structure or protected source/task version changed')
-                        insertion_raw,insertion_evidence=struct_field_insertion(text(item.textual_declaration.text),before,args)
-                        struct_evidence={'before':actual};struct_expected=json.loads(encode(actual))
-                        next(row for row in struct_expected['sources'] if row['objectId']==before['objectId'])['declaration']=insertion_raw
-                    except Exception as e:insertion_error=exception_evidence(e)
                 if args.get('action')=='add-initializer':
                     try:
                         actual=initializer_target_evidence(project,item,names,aid,args.get('section'))
@@ -2201,7 +2042,7 @@ def dispatch(req):
                     response = failure('conflict','VARIABLE_VERSION_CHANGED',u'变量修改前工程或磁盘版本已变化，未写入')
                 elif args.get('action') in ('set-member-initializer','add-member-initializer') and not args.get('variableTypeGuard'):
                     response = failure('conflict','MEMBER_TYPE_GUARD_MISSING',u'成员修改缺少结构体原版本保护，未写入')
-                elif args.get('action') in ('add-member-initializer','add-initializer','add-struct-field') and insertion_error is not None:
+                elif args.get('action') in ('add-member-initializer','add-initializer') and insertion_error is not None:
                     response = failure('conflict','MEMBER_INSERTION_CHANGED',insertion_error['message'],{'primaryException':insertion_error})
                 elif args.get('variableTypeGuard') and guarded_type is None:
                     response = failure('conflict','MEMBER_TYPE_CHANGED',u'结构体身份、源码或原生类型已变化，未写入')
@@ -2212,7 +2053,6 @@ def dispatch(req):
                 else:
                     publish(os.path.join(os.path.dirname(req["resultPath"]), "before.json"), before)
                     try:
-                        if struct_evidence is not None:publish(os.path.join(os.path.dirname(req['resultPath']),'struct-field-before.json'),struct_evidence['before'])
                         if insertion_evidence:publish(os.path.join(os.path.dirname(req['resultPath']),insertion_prefix+'-plan.json'),insertion_evidence)
                         item.textual_declaration.replace(insertion_raw if insertion_evidence else normalize(args["declaration"]))
                         if before["hasImplementation"] and args.get('action')!='add-initializer':item.textual_implementation.replace(normalize(args["implementation"]))
@@ -2231,9 +2071,7 @@ def dispatch(req):
                                 if initializer_evidence['immediate']!=initializer_evidence['before']:raise ValueError('Initializer native identity changed after insertion')
                             insertion_evidence['immediateRawHash']=sha(immediate)
                             publish(os.path.join(os.path.dirname(req['resultPath']),insertion_prefix+'-immediate.json'),dict(observed,**{insertion_field:insertion_evidence}))
-                        if struct_evidence is not None:struct_evidence['immediate']=struct_field_verify(project,args,os.path.dirname(req['resultPath']),'immediate',struct_expected,struct_diagnostic_errors)
                         project = lifecycle_save_reopen(lifecycle)
-                        if struct_evidence is not None:struct_evidence['reopened']=struct_field_verify(project,args,os.path.dirname(req['resultPath']),'reopened',struct_expected,struct_diagnostic_errors)
                         reopened = read_object(*locate(project, app_id, args["objectId"]))
                         if insertion_evidence:
                             reopened_item=locate(project,app_id,args['objectId'])[0]
@@ -2251,7 +2089,6 @@ def dispatch(req):
                         if reopened["objectType"]!=kind or reopened["contentHash"] != observed["contentHash"] or reopened["path"]!=before["path"]:
                             raise ValueError("Disk reopen does not match write readback")
                         type_evidence={insertion_field:insertion_evidence} if insertion_evidence else {}
-                        if struct_evidence is not None:type_evidence['structFieldEvidence']=struct_evidence
                         if initializer_evidence is not None:type_evidence['initializerTargetReadback']=initializer_evidence
                         if guarded_type:
                             after_type=variable_type_guard(project,app_id,args['variableTypeGuard'])
@@ -2276,7 +2113,7 @@ def dispatch(req):
                         recovery = {"status": "unknown"}
                         detail = exception_evidence(e)
                         try:
-                            if args.get('action') in ('set-type','add-initializer','add-struct-field'):
+                            if args.get('action') in ('set-type','add-initializer'):
                                 raise ValueError("Set-type partial write is uncertain; preserve checkpoint and freeze without rollback writes or another open")
                             if kind in ('method','property_get','property_set') or args.get('action') in ('set-member-initializer','add-member-initializer') or args.get('section') or req.get("fileGuard") or lifecycle["saveAttempts"] or lifecycle["closeUnconfirmed"] or lifecycle["project"] is None:
                                 raise ValueError("Persistence/lifecycle already attempted; preserve checkpoint and freeze, without rollback writes or another open")
@@ -2292,7 +2129,6 @@ def dispatch(req):
                             recovery.update(error=text(recover_error),detail=exception_evidence(recover_error))
                         response = failure("failed" if recovery["status"] == "succeeded" else "unknown", "PARTIAL_WRITE", text(e),
                             {"partialContent": observed, "recovery": recovery, "checkpoint": req["checkpointPath"],"primaryException":detail})
-                        if args.get('action')=='add-struct-field':response['data']['diagnosticErrors']=struct_diagnostic_errors
             elif command == "build":
                 task_before=task_configuration_version(task_inventory(project,args)) if target_kind=='application' else None
                 response = compile_application(project, app_id, target_kind)

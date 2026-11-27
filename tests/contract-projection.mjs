@@ -1,11 +1,3 @@
 import {withoutResidentExtension} from './contract-compatibility.mjs';
-// Project only the additive 0.39 input action for historical contract checks.
-// Old actions still require initializer in Zod refinement; new test checks that.
-export function beforeStructFieldInput(name,input){
- input=withoutResidentExtension(structuredClone(input));
- if(name!=='variable_edit')return input;
- input=structuredClone(input);
- input.properties.action.enum=input.properties.action.enum.filter(x=>x!=='add-struct-field');
- input.required=Object.keys(input.properties).filter(k=>input.required.includes(k)||k==='initializer');
- return input;
-}
+// Compatibility view for pre-resident releases; variable_edit now matches main 0.38 exactly.
+export function beforeStructFieldInput(_name,input){return withoutResidentExtension(structuredClone(input));}

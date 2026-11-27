@@ -81,8 +81,6 @@ Agent 查询内部对象身份及当前 expectedHash、expectedSnapshot、expect
 0.36.0真实工程覆盖PROGRAM VAR与根GVL；FUNCTION、FUNCTION_BLOCK普通VAR的保护有离线测试，本轮没有其新增真实工程验收。构建、入口和连接状态见[合并收尾](variable-initializer-0360-merge.md)，不代表整个S4b完成。
 
 
-## 0.39.0 功能分支：已有普通结构体新增字段
+## 历史0.39分支：已有普通结构体新增字段（未纳入本候选）
 
-`add-struct-field` 与聚合初值动作不同：它向精确Application根DUT增加一个无初值字段。用户可要求“在指定工程的ST_Config结构体末尾增加BOOL字段Enable，保留已有字段、实例源码与任务配置，编译并保存重开核对”。Agent读取真实身份和版本后传 `objectId`、`name`、`type` 及原版本，不传 `initializer` 或其他动作专用参数。
-
-范围、复杂声明拒绝、原文字节保全和验证归属见[结构体字段新增](struct-field-add.md)。旧动作语义不变；输入Schema新增动作，initializer对新动作禁止、对旧动作仍必需。任务调用顺序不是结构体字段目录，不进行重排。此示例不代表在线布局或PLC行为已验证。
+`add-struct-field` 保留在原 `codex/struct-field-add` 与 `codex/resident-mcp-session` 历史中；真实验收在准备阶段停止。当前 `codex/resident-merge-prep` 已移除此动作，`variable_edit` 恢复main 0.38输入及原动作语义；不可调用新增字段。原[设计](struct-field-add.md)、[失败记录](struct-field-add-acceptance.md)保持原样。其恢复需另行授权及真实验收，本轮不继续。

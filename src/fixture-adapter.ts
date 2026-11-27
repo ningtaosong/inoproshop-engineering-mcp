@@ -1,4 +1,3 @@
-import {planStructField,applyStructInsertion,structStateView,structGuard} from './struct-field.js';
 // 仅供显式 INOPRO_TEST_MODE=fixture 的契约测试。它不解析真实工程、不编译 ST。
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -59,15 +58,6 @@ export class FixtureAdapter implements Adapter {
       tasks:(p.tasks||[]).filter((t:any)=>t.applicationId===a.applicationId).map(({applicationId,...t}:any)=>structuredClone(t)),
       programs:objects.filter((o:any)=>!o.queryReadError&&/^\s*PROGRAM\b/i.test(o.declaration)).map((o:any)=>({objectId:o.objectId,path:o.path})),
       resolutionReadFailures:[],enumerationFailures:p.treeReadError?[{path:[],stage:'enumeration',reason:p.treeReadError}]:[],coverageComplete:!p.treeReadError});
-    const structState=()=>{
-      if(!object||object.objectType!=='structure'||p.objects.filter((x:any)=>x.applicationId===a.applicationId&&canonical(x.path.slice(0,-1))===canonical(object.path.slice(0,-1))&&x.path.at(-1).toLowerCase()===object.path.at(-1).toLowerCase()).length!==1)throw new Error('Unique root structure required');
-      const state={scheme:'struct-field-source-tasks-v1',complete:true,
-        target:{objectId:object.objectId,applicationId:object.applicationId,parentId:object.parentId??object.applicationId,nativeTypeId:object.nativeTypeId,path:object.path,kindEvidence:'native-DUT-id-and-complete-STRUCT-source'},
-        sources:p.objects.map((x:any)=>({objectId:x.objectId,applicationId:x.applicationId??null,path:x.path,nativeTypeId:x.nativeTypeId,
-          hasDeclaration:true,hasImplementation:x.hasImplementation,declaration:x.declaration,implementation:x.hasImplementation?x.implementation:null,
-          embeddedObjectTypes:x.hasImplementation?[...(x.embeddedObjectTypes??[])].sort():[]})),tasks:taskInventory()};
-      structStateView(state);return structuredClone(state);
-    };
     const libraryInventory=()=>{
       const managers=(p.libraryManagers || []).filter((m:any)=>m.applicationId===a.applicationId).map(({applicationId,references,...m}:any)=>({...m,enumerationComplete:true,capturedReferences:0}));
       const references:any[]=[];let truncated=false;
@@ -426,7 +416,6 @@ export class FixtureAdapter implements Adapter {
     else if(req.command==='read') {
       if(!object) throw new DomainError('failed','OBJECT_NOT_FOUND','未找到精确对象');
       const data={...object,contentHash:codeHash(object.declaration,object.implementation),testMode:true};
-      if(a.structFieldTarget){try {data.structFieldState=structState();}catch(e:any){return {...reply('unsupported',e.message),operationId:req.operationId,error:{code:'STRUCT_FIELD_SCOPE',message:e.message}};}}
       if(a.initializerTarget){
         try {data.initializerTargetEvidence=fixtureInitializerTarget(object,p.applications,a.initializerSection,p.objects);}
         catch(e:any){return reply('unsupported',e.message);}
@@ -508,15 +497,6 @@ export class FixtureAdapter implements Adapter {
         insertionEvidence={...a.memberInsertion,beforeRawHash:digest(old.declaration),afterRawHash:digest(insertionRaw),preservedRawSurroundings:true};
       }catch(e){insertionError=e;}
 
-      let structEvidence:any;
-      if(a.action==='add-struct-field')try {
-        const state=structState();if(canonical(structGuard(state))!==canonical(a.structFieldGuard))throw new Error('Structure evidence changed');
-        const plan=planStructField(old.declaration,old.path.at(-1),a);
-        if(plan.declaration!==a.declaration||canonical(a.structFieldInsertion)!==canonical({...plan.range,text:plan.after}))throw new Error('Structure insertion mismatch');
-        insertionRaw=applyStructInsertion(old.declaration,a.declaration,a.structFieldInsertion);
-        insertionEvidence={...a.structFieldInsertion,beforeRawHash:digest(old.declaration),afterRawHash:digest(insertionRaw),preservedRawSurroundings:true};
-        structEvidence={before:state};
-      }catch(e){insertionError=e;}
       let initializerEvidence:any;
       if(a.action==='add-initializer')try {
         const native=fixtureInitializerTarget(old,p.applications,a.section,p.objects);
@@ -552,7 +532,7 @@ export class FixtureAdapter implements Adapter {
         await fs.copyFile(req.projectPath,path.join(dir,'checkpoint.project'));
         await atomicJson(path.join(dir,'before.json'),old);
         object.declaration=insertionRaw??normalize(a.declaration);
-        if(p.failImplementation && (req.fileGuard||isMemberInitializerAction(a.action)||['set-type','add-initializer','add-struct-field'].includes(a.action)||['method','property_get','property_set'].includes(object.objectType))) {
+        if(p.failImplementation && (req.fileGuard||isMemberInitializerAction(a.action)||['set-type','add-initializer'].includes(a.action)||['method','property_get','property_set'].includes(object.objectType))) {
           await atomicJson(req.projectPath,p);
           result={...reply('unknown',a.action==='set-type'?'变量类型修改部分失败，未自动回滚':'直接编辑部分失败，未自动回滚',{checkpoint:path.join(dir,'checkpoint.project')}),error:{code:'PARTIAL_WRITE',message:'Injected failure; preserve state'}};
         } else if(p.failImplementation) {
@@ -563,9 +543,8 @@ export class FixtureAdapter implements Adapter {
           if(a.action!=='add-initializer')object.implementation=normalize(a.implementation ?? ''); await atomicJson(req.projectPath,p);
           const persisted=await readJson(req.projectPath);
           const observed=persisted.objects.find((o:any)=>o.objectId===a.objectId);
-          result=reply('succeeded','测试写后读回一致',{...observed,declaration:['add-member-initializer','add-initializer','add-struct-field'].includes(a.action)?normalize(observed.declaration):observed.declaration,
-            ...(insertionEvidence?{[a.action==='add-struct-field'?'structFieldInsertionEvidence':a.action==='add-initializer'?'initializerInsertionEvidence':'memberInsertionEvidence']:{...insertionEvidence,immediateRawHash:digest(object.declaration),reopenedRawHash:digest(observed.declaration)}}:{}),
-            ...(structEvidence?{structFieldEvidence:{...structEvidence,immediate:structState(),reopened:structState()}}:{}),
+          result=reply('succeeded','测试写后读回一致',{...observed,declaration:['add-member-initializer','add-initializer'].includes(a.action)?normalize(observed.declaration):observed.declaration,
+            ...(insertionEvidence?{[a.action==='add-initializer'?'initializerInsertionEvidence':'memberInsertionEvidence']:{...insertionEvidence,immediateRawHash:digest(object.declaration),reopenedRawHash:digest(observed.declaration)}}:{}),
             ...(initializerEvidence?{initializerTargetReadback:initializerEvidence}:{}),contentHash:codeHash(observed.declaration,observed.implementation),snapshot:snapshot(),checkpoint:path.join(dir,'checkpoint.project'),persistedToWorkingCopy:true,reopened:true,
             ...(guard?{variableTypeEvidence:{objectId:guard.objectId,applicationId:guard.applicationId,path:guard.path,contentHash:guard.contentHash,beforeContentHash:guard.contentHash,afterContentHash:guard.contentHash}}:{}),
             ...(childGuard?{variableChildEvidence:{before:childGuard,after:childGuard}}:{}),

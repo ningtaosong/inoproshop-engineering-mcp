@@ -233,9 +233,9 @@ for(const event of ['spawn-error','immediate-exit','close-without-exit'])test('r
  await assert.rejects(channel.execute(req,path.join(root,'other'),async()=>{}));assert.equal(launches,1);
 });
 
-test('all 0.39 inputs remain exact after only documented optional additions; outputs unchanged',async()=>{
+test('all main 0.38 inputs remain exact after only documented optional resident additions; outputs unchanged',async()=>{
  const {z}=await import('zod'),{withoutResidentExtension}=await import('./contract-compatibility.mjs');
- const base=JSON.parse(await fs.readFile('tests/fixtures/resident-0390-contracts.json','utf8'));
+ const base=JSON.parse(await fs.readFile('tests/fixtures/resident-main-0380-contracts.json','utf8'));
  for(const row of base.tools){assert.equal(hash(withoutResidentExtension(z.toJSONSchema(schemas[row.name],{io:'input'}))),row.input,row.name+' input');assert.equal(hash(z.toJSONSchema(outputSchemas[row.name])),row.output,row.name+' output');}
 });
 
