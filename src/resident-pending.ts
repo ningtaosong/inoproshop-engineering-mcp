@@ -1,5 +1,6 @@
-// Read-only impact proof for an ended resident launch. Never a success,
-// reopen, recovery or lease-release proof. Original unknowns remain unchanged.
+// Read-only impact proof for an ended resident launch. A fully bound first
+// readonly snapshot failure may additionally support an explicit fresh open.
+// Never success recovery, memory reconnect or lease release; unknowns stay intact.
 import {promises as fs} from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -8,6 +9,7 @@ import {fileIdentity,ownedProject} from './isolation.js';
 import {sameProcess,validProcessIdentity,type ProcessProbe} from './lease-process.js';
 import {replySchema} from './contracts.js';
 import {residentHash} from './resident.js';
+import {earlyOpenCandidate,earlyOwnership,closedServiceShutdown,continuedEarlyOpen,type EarlyOpenProof} from './resident-early-open.js';
 
 const fail=(s:string):never=>{throw Error('Resident pending scope: '+s);};
 const eq=(a:unknown,b:unknown)=>canonical(a)===canonical(b);
@@ -41,16 +43,19 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
  };
  await gone(identity.pid,identity);await gone(op.ownerPid!,op.ownerIdentity);
  const current=await fileIdentity(s.workingPath);
- if(current.missing||!current.realPath||!current.fileId||current.fileId!==intent.originalFileId||pathKey(current.realPath)!==pathKey(s.workingPath)||current.sha256!==s.diskHash)fail('original saved file identity/version changed');
+ if(current.missing||!current.realPath||!current.fileId||pathKey(current.realPath)!==pathKey(s.workingPath))fail('original saved file identity/version unavailable');
+ const changed=current.fileId!==intent.originalFileId||current.sha256!==s.diskHash;
+ if(changed&&!earlyOpenCandidate(op))fail('original saved file identity/version changed');
  const all=await store.operations(),rows=all.filter(o=>o.bridge?.launchId===launch);
  if(rows.length!==exit.lastSequence||!rows.some(o=>o.operationId===op.operationId))fail('operation coverage differs');
  const queueNames=async()=> (await fs.readdir(root)).filter(n=>/^request-.*\.json$/.test(n)).sort();
  const expected=Array.from({length:rows.length},(_,i)=>`request-${i+1}.json`).sort();
  if(!eq(await queueNames(),expected))fail('queue coverage differs');
- const sequences=new Set<number>();
+ const sequences=new Set<number>(),evidenceNames=new Map<string,string[]>();let earlyProof:EarlyOpenProof|undefined;
  for(const row of rows){
-  const ipc=store.file('ipc/'+row.operationId),owned=ownedProject(row,projects);
+  const ipc=store.file('ipc/'+row.operationId),owned=ownedProject(row,earlyOpenCandidate(row)?[]:projects);
   const entries=await fs.readdir(ipc,{withFileTypes:true});
+  evidenceNames.set(ipc,entries.map(e=>e.name).sort());
   if(entries.some(e=>e.isSymbolicLink()||e.isDirectory()))fail('operation evidence aliases or nested requests unsupported');
   if(row.resident!==true||owned.projectId!==s.projectId||owned.sessionId!==s.sessionId||row.ownerPid!==op.ownerPid||!eq(row.ownerIdentity,op.ownerIdentity)||
    row.bridge?.pid!==identity.pid||pathKey(row.bridge?.directory??'')!==pathKey(ipc)||pathKey(await fs.realpath(ipc))!==pathKey(ipc)||
@@ -60,10 +65,11 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
   const ledger=await read(store.file('operations/'+row.operationId+'.json'));
   if(ledger?.schemaVersion!==1||!eq(ledger.value,row)||ledger.checksum!==digest(canonical(row)))fail('operation ledger differs');
   const [req,result,completion,check,entered,before]=await Promise.all(['request.json','result.json','completed.json','service-verification.json','request-entered.json','before.json'].map(n=>read(path.join(ipc,n))));
+  if(before!==undefined&&earlyOpenCandidate(row))ownedProject(row,projects);
   const args={...req?.args};delete args.residentLeases;
   if(!req||req.operationId!==row.operationId||req.requestId!==row.requestId||req.requestFingerprint!==row.fingerprint||req.launchId!==launch||
    req.command!==commands[row.tool]||!commands[row.tool]||!eq(args,row.args)||!Number.isSafeInteger(req.sequence)||req.sequence<1||req.sequence>rows.length||sequences.has(req.sequence)||
-   pathKey(req.directory??'')!==pathKey(ipc)||pathKey(req.projectPath??'')!==pathKey(s.workingPath)||req.fileIdentity!==current.fileId||req.diskHash!==current.sha256||
+   pathKey(req.directory??'')!==pathKey(ipc)||pathKey(req.projectPath??'')!==pathKey(s.workingPath)||req.fileIdentity!==intent.originalFileId||req.diskHash!==s.diskHash||
    !Array.isArray(req.leases)||req.leases.length!==2||!eq(req.leases,req.args.residentLeases)||req.leases.some((x:any)=>!x||!path.isAbsolute(x.path??'')||!hash(x.sha256))||
    pathKey(req.leases[0].path)!==pathKey(store.file('service.lock'))||pathKey(req.leases[1].path)!==pathKey(store.sourceLock(s.workingPath)))fail('request/file/argument binding differs');
   sequences.add(req.sequence);
@@ -73,9 +79,17 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
    !eq(e,row.response?.data?.residentEvidence)||e?.launchId!==launch||e?.sequence!==req.sequence||e?.requestHash!==rh||!eq(e?.processIdentity,native)||e?.requestCompleted!==true||e?.ideExitRequested!==false||
    !eq(entered,{launchId:launch,requestHash:rh,processIdentity:native})||
    !eq(completion,{launchId:launch,sequence:req.sequence,processIdentity:native,requestHash:rh,resultHash:residentHash(result)})||
-   check?.passed!==true||check.launchId!==launch||check.sequence!==req.sequence||check.requestHash!==rh||check.resultHash!==residentHash(result)||!eq(check.processIdentity,identity)||check.processState!=='running'||check.exitRequiredForRequest!==false||check.diskHash!==current.sha256)fail('request completion/service binding differs');
+   check?.passed!==true||check.launchId!==launch||check.sequence!==req.sequence||check.requestHash!==rh||check.resultHash!==residentHash(result)||!eq(check.processIdentity,identity)||check.processState!=='running'||check.exitRequiredForRequest!==false||check.diskHash!==s.diskHash)fail('request completion/service binding differs');
   const state=before?.state,opened=state?.openedProjects,primary=opened?.[String(state?.projectHandle)];
-  if(before?.diskHash!==current.sha256||pathKey(state?.projectPath??'')!==pathKey(s.workingPath)||!Number.isSafeInteger(state?.projectHandle)||state.projectHandle<0||!opened||Array.isArray(opened)||
+  if(before===undefined&&earlyOpenCandidate(row)&&rows.length===1){
+   if(await read(path.join(root,'stop.json'))||await read(path.join(root,'first-error.json')))fail('early launch has conflicting failure/stop evidence');
+   const allowed=['completed.json','first-error.json','ownership-0001.json','request-entered.json','request.json','result.json','service-verification.json'];
+   if(!eq(entries.map(e=>e.name).sort(),allowed))fail('early read evidence coverage incomplete or unexpected');
+   if(!eq(await read(path.join(ipc,'first-error.json')),result.data?.firstError))fail('early read first error differs');
+   const ownershipHash=earlyOwnership(req,result,await read(path.join(ipc,'ownership-0001.json')),intent,native);
+   const serviceShutdownHash=await closedServiceShutdown(store,row.ownerIdentity,exit.at,read);
+   earlyProof={operationId:row.operationId,requestId:row.requestId,launchId:launch!,projectId:s.projectId,sessionId:s.sessionId,projectPath:s.workingPath,fileId:intent.originalFileId,diskHash:s.diskHash!,requestHash:rh,resultHash:residentHash(result),ownershipHash,nativeExitHash:residentHash(exit),nativeExitAt:exit.at,serviceShutdownHash};
+  }else if(before?.diskHash!==current.sha256||pathKey(state?.projectPath??'')!==pathKey(s.workingPath)||!Number.isSafeInteger(state?.projectHandle)||state.projectHandle<0||!opened||Array.isArray(opened)||
    !primary||primary.handle!==state.projectHandle||primary.primary!==true||primary.library!==false||pathKey(primary.path??'')!==pathKey(s.workingPath)||
    Object.entries<any>(opened).some(([k,v])=>!v||!Number.isSafeInteger(v.handle)||String(v.handle)!==k||typeof v.path!=='string'||typeof v.primary!=='boolean'||typeof v.library!=='boolean'||(v!==primary&&(v.primary||!v.library))))fail('native project ownership incomplete');
  }
@@ -83,7 +97,14 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
   await gone(identity.pid,identity);await gone(op.ownerPid!,op.ownerIdentity);
   if(!eq(await queueNames(),expected)||!eq(await fileIdentity(s.workingPath),current)||
    !eq((await store.operations()).filter(o=>o.bridge?.launchId===launch),rows))fail('launch coverage/file/operations changed during assessment');
+  for(const [ipc,names] of evidenceNames)if(!eq((await fs.readdir(ipc)).sort(),names))fail('operation evidence coverage changed during assessment');
+  if(earlyProof&&await closedServiceShutdown(store,op.ownerIdentity,exit.at,read)!==earlyProof.serviceShutdownHash)fail('service shutdown changed during assessment');
  };
  await recheck();
- return {basis:'resident-ended-launch-binding-v1; current unchanged file identity; outcome remains unknown',recheck};
+ const continuedBy=earlyProof?await continuedEarlyOpen(store,earlyProof,projects,read):undefined;
+ // A verified later open already owns its own current-version guards. Do not
+ // turn an ended historical read into a global freeze after a new-session edit.
+ // Without that complete handoff, the original file must still be unchanged.
+ if(changed&&!continuedBy)fail('original saved file identity/version changed without verified successor');
+ return {basis:earlyProof?'resident-closed-first-read-v1; explicit fresh open only; old outcome remains unknown':'resident-ended-launch-binding-v1; current unchanged file identity; outcome remains unknown',recheck,earlyProof,continuedBy};
 }

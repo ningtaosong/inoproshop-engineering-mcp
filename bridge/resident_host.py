@@ -2,7 +2,7 @@
 """Public primary-thread receiver. One owned project; requests arrive independently.
 No IDE exit, project close, save, private editor or user-code evaluation.
 """
-import os,sys,json,hashlib,datetime,traceback
+import os,sys,json,hashlib,datetime,traceback,copy
 _controller=None
 _entry_root=None
 
@@ -27,11 +27,50 @@ def read(path):
     if len(raw)>16000000:raise ValueError('Request exceeds bounded size')
     return json.loads(raw.decode('utf-8'))
 
+class OwnershipRecorder(object):
+    """Request-bound public reads before the full snapshot/diagnostic observer.
+
+    Raw ownership and validation are separate. This receipt is NOT a completed
+    snapshot, reopen permission, saved state or operation-success receipt.
+    """
+    def __init__(self,core,intent,identity,publish_evidence):
+        self.core=core;self.intent=intent;self.identity=identity;self.publish=publish_evidence
+        self.request=None;self.records=[]
+    def begin(self,request):
+        if self.request is not None:raise ValueError('Ownership request scope already active')
+        self.request=copy.deepcopy(request);self.records=[]
+    def end(self):self.request=None
+    def observe(self,proof,handle,attempts):
+        req=self.request
+        # A user-save observer can read between requests. Its own event journal
+        # owns those observations; never append them to a completed MCP request.
+        if req is None:return
+        if req['launchId']!=self.intent['launchId'] or req['projectPath']!=self.intent['projectPath']:
+            raise ValueError('Ownership observation request differs from launch')
+        validation=dict(passed=False,error=None)
+        try:
+            validation['passed']=self.core['validate_owned_projects'](proof,req['projectPath'],handle) is True
+        except Exception as error:
+            validation['error']=dict(type=type(error).__name__,message=self.core['text_type'](error),traceback=traceback.format_exc())
+        # NativeProjectAdapter retains its original validation outcome and raises
+        # the first native/read validation error even if publication also fails.
+        record=dict(scheme='resident-public-ownership-v1',operationId=req['operationId'],requestId=req['requestId'],
+            launchId=req['launchId'],sequence=req['sequence'],requestHash=self.core['digest'](req),
+            processIdentity=copy.deepcopy(self.identity),projectPath=req['projectPath'],
+            scriptHash=self.intent['scriptHash'],coreHash=self.intent['coreHash'],
+            ordinal=len(self.records)+1,projectHandle=handle,attempts=copy.deepcopy(attempts),
+            raw=copy.deepcopy(proof),nativeValidation=validation)
+        name='ownership-%04d.json'%record['ordinal']
+        self.publish(name,record)
+        self.records.append(dict(name=name,sha256=self.core['digest'](record)))
+
+
 def start():
     global _controller,_entry_root
     intent=read(os.environ['INOPRO_RESIDENT_REQUEST']);root=intent['directory'];_entry_root=root
-    publish(os.path.join(root,'entry.json'),dict(pid=os.getpid(),scriptSha256=hashlib.sha256(open(__file__,'rb').read()).hexdigest()))
-    if hashlib.sha256(open(__file__,'rb').read()).hexdigest()!=intent['scriptHash']:raise ValueError('Resident entry fingerprint changed')
+    with open(__file__,'rb') as stream:script_hash=hashlib.sha256(stream.read()).hexdigest()
+    publish(os.path.join(root,'entry.json'),dict(pid=os.getpid(),scriptSha256=script_hash))
+    if script_hash!=intent['scriptHash']:raise ValueError('Resident entry fingerprint changed')
     core=load_fixed(intent['corePath'],intent['coreHash'],'inopro_resident_core')
     import clr
     clr.AddReference('System.Windows.Forms')
@@ -47,9 +86,11 @@ def start():
     class Controller(object):
         def __init__(self):
             self.frame=None;self.sequence=0;self.first=None;self.directory=None;self.request=None
-            self.adapter=core['NativeProjectAdapter'](projects,intent['projectPath'],core['same_public_identity'],lambda:Thread.CurrentThread.ManagedThreadId,system=system)
+            self.ownership=OwnershipRecorder(core,intent,identity,self.evidence)
+            self.adapter=core['NativeProjectAdapter'](projects,intent['projectPath'],core['same_public_identity'],lambda:Thread.CurrentThread.ManagedThreadId,observe_ownership=self.observe_ownership,system=system)
             self.session=core['ResidentSession'](self.adapter,lambda:core['file_hash'](intent['projectPath']),self.evidence,lambda:self.admission(self.request))
         def evidence(self,name,value):publish(os.path.join(self.directory,name),value)
+        def observe_ownership(self,proof):self.ownership.observe(proof,self.adapter.handle,self.adapter.attempts)
         def capture(self):
             mains=[f for f in Application.OpenForms if unicode(f.GetType().FullName)=='_3S.CoDeSys.Frame.MainForm']
             if len(mains)!=1:raise ValueError('Unique public primary frame unavailable')
@@ -87,10 +128,14 @@ def start():
         def service(self,req):
             self.capture();self.admission(req)
             self.evidence('request-entered.json',dict(launchId=intent['launchId'],processIdentity=identity,requestHash=core['digest'](req)))
-            result=self.session.handle(req)
-            result['requestId']=req['requestId']
-            result.setdefault('data',{})['residentEvidence']=dict(launchId=intent['launchId'],sequence=req['sequence'],processIdentity=identity,requestHash=core['digest'](req),requestCompleted=True,ideExitRequested=False)
-            return result
+            self.ownership.begin(req)
+            try:
+                result=self.session.handle(req)
+                result['requestId']=req['requestId']
+                result.setdefault('data',{})['residentEvidence']=dict(launchId=intent['launchId'],sequence=req['sequence'],processIdentity=identity,requestHash=core['digest'](req),requestCompleted=True,ideExitRequested=False)
+                result['data']['residentEvidence']['ownershipRecords']=copy.deepcopy(self.ownership.records)
+                return result
+            finally:self.ownership.end()
         def run(self):
             try:
                 while True:

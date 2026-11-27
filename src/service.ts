@@ -18,6 +18,8 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {verifyClosedResident} from './resident-reopen.js';
+import {explicitEarlyOpen} from './resident-early-open.js';
+import {residentHash} from './resident.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskCallInventoryDifference,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {residentBuildApplies} from './resident-build.js';
@@ -61,7 +63,14 @@ export class EngineeringService {
     if(state.impacts.length===0)return state;
     const s=project??state.registry.projects.find(s=>s.projectId===args.projectId);
     const paths=[args.projectPath,args.sourcePath,...(s?[s.sourcePath,s.workingPath]:[])].filter((p):p is string=>typeof p==='string');
-    const blocked=related(state.impacts,args.projectId??s?.projectId,await targetFiles(paths));
+    const blocked=related(state.impacts,args.projectId??s?.projectId,await targetFiles(paths)).filter(i=>{
+      if(!i.earlyProof)return true;
+      if(explicitEarlyOpen(tool,args,i.earlyProof)){
+        const current=i.files.find(f=>f.key===pathKey(i.earlyProof!.projectPath));
+        if(current?.sha256===i.earlyProof.diskHash&&current?.fileId===i.earlyProof.fileId)return false;
+      }
+      return !(s&&s.sessionMode==='resident'&&i.continuedBy?.projectId===s.projectId&&i.continuedBy.sessionId===s.sessionId&&args.projectId===s.projectId);
+    });
     if(blocked.length)throw new DomainError('conflict','PENDING_UNKNOWN',
       '未派发：'+blocked.map(b=>`${b.operationId} (${b.scope}): ${b.reason}`).join('; '));
     return state;
@@ -886,6 +895,17 @@ export class EngineeringService {
       }else if(session.sessionMode==='resident'||this.adapter.residentOwned?.())throw new DomainError('conflict','RESIDENT_SWITCH_UNSUPPORTED','常驻工程不能通过旧打开/激活/副本路径切换');
       await assertNotIsolated(this.store,session.projectId,[session.sourcePath,session.workingPath]);
       op.project={...session};await this.store.saveOp(op);
+      if(op.tool==='project_open'&&a.sessionMode==='resident'&&!this.adapter.residentOwned?.()){
+        const pending=await this.guardPending(op.tool,a,op.operationId,session);
+        const prior=pending.impacts.filter(i=>i.earlyProof&&explicitEarlyOpen(op.tool,a,i.earlyProof));
+        if(prior.length>1)throw new DomainError('conflict','PENDING_UNKNOWN','首读失败的新打开依据不唯一');
+        if(prior.length===1){
+          const proof=prior[0].earlyProof!,directory=this.store.file('ipc/'+op.operationId);
+          await fs.mkdir(directory,{recursive:true});
+          await fs.writeFile(path.join(directory,'resident-new-open-precheck.json'),JSON.stringify({operationId:op.operationId,requestId:op.requestId,proof},null,2),{flag:'wx'});
+          op.residentFreshOpen={priorOperationId:proof.operationId,proofHash:residentHash(proof)};await this.store.saveOp(op);
+        }
+      }
       await this.store.acquire(session.sourcePath);
       const diskHash=digest(await fs.readFile(session.workingPath));
       if(session.sessionMode!=='resident' && session.diskHash && session.diskHash!==diskHash)

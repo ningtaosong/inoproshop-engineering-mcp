@@ -15,7 +15,7 @@ $paths=[Collections.Generic.List[string]]::new();$paths.Add('D:\InProShop\CODESY
 $scope=$engine.CreateScope()
 $record=[ordered]@{at=[DateTime]::UtcNow.ToString('o');languageVersion=$engine.LanguageVersion.ToString();runtimeSha256=(Get-FileHash $dll).Hash.ToLowerInvariant();coreSha256=(Get-FileHash $corePath).Hash.ToLowerInvariant();ideLaunched=$false;enginePropertyAccessed=$false;objectManagerAccessed=$false;compiled=@();passed=$false}
 try {
- foreach($relative in @('scripts\diagnostics\resident_save_observer.py','scripts\diagnostics\resident_save_probe_entry.py')){
+ foreach($relative in @('scripts\diagnostics\resident_save_observer.py','scripts\diagnostics\resident_save_probe_entry.py','bridge\resident_host.py','bridge\resident_core.py')){
   $p=Join-Path $Repo $relative
   $null=$engine.CreateScriptSourceFromString([IO.File]::ReadAllText($p,[Text.Encoding]::UTF8),$p,[Microsoft.Scripting.SourceCodeKind]::File).Compile()
   $record.compiled+=@{path=$p;sha256=(Get-FileHash $p).Hash.ToLowerInvariant();compiled=$true}

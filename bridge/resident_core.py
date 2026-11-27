@@ -166,15 +166,19 @@ class NativeProjectAdapter(object):
                 if row is None:proof['readErrors'].append(dict(field='all[%d]'%index,message='Null/invalid project entry'))
                 else:proof['all'].append(row)
         self.last_ownership=copy.deepcopy(proof)
+        validation_error=None
+        if not native_errors:
+            try:validate_owned_projects(proof,self.path,self.handle)
+            except Exception as error:validation_error=error
         try:
             if self.observe_ownership:self.observe_ownership(proof)
         except Exception as error:
-            if native_errors:
+            if native_errors or validation_error is not None:
                 self.last_ownership['publicationError']=dict(type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc())
-                raise native_errors[0]
+                raise native_errors[0] if native_errors else validation_error
             raise
         if native_errors:raise native_errors[0]
-        validate_owned_projects(proof,self.path,self.handle)
+        if validation_error is not None:raise validation_error
 
     def snapshot(self):
         self.attempts['read']+=1
@@ -440,11 +444,14 @@ class ResidentSession(object):
         self.adapter=adapter;self.disk_hash=disk_hash;self.publish=publish;self.admission=admission;self.poison=None;self.secondary=[];self.previous_disk=None;self.edits=0
     def handle(self,request):
         if self.poison is not None:raise Conflict('Resident session frozen; no further dispatch')
-        dispatched=False;before=None
+        dispatched=False;before=None;phase='admission'
         try:
             command=request['command'];args=request['args']
             if command not in ('inspect','list','read','change','build'):raise Rejection('Tool not adapted to resident mode')
-            before=self.adapter.snapshot();disk=self.disk_hash();deps=dependencies(before)
+            phase='initial-snapshot'
+            before=self.adapter.snapshot()
+            phase='snapshot-returned'
+            disk=self.disk_hash();deps=dependencies(before)
             self.publish('before.json',dict(state=before,diskHash=disk))
             if self.previous_disk is not None and disk!=self.previous_disk:raise Conflict('Disk changed; cannot prove it is a manual save of this memory; no write permitted')
             apps=[dict(applicationId=a,path=before['nodes'][a]['path']) for a in before['applications']]
@@ -527,7 +534,10 @@ class ResidentSession(object):
             self.previous_disk=disk
             return dict(contractVersion='1.0.0',operationId=request['operationId'],status='succeeded',summary=u'当前内存编译已完成；检查buildPassed及诊断，未保存或关闭' if command=='build' else u'同一工程内存请求完成；未保存、未编译、未关闭',data=data)
         except Exception as error:
-            detail=dict(type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc(),dispatched=dispatched)
+            detail=dict(type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc(),dispatched=dispatched,phase=phase)
+            ownership=getattr(self.adapter,'last_ownership',None)
+            if isinstance(ownership,dict) and ownership.get('publicationError') is not None:
+                self.secondary.append(dict(stage='ownership-publication',error=copy.deepcopy(ownership['publicationError'])))
             recoverable=isinstance(error,Rejection) and not dispatched
             if not recoverable:self.poison=detail
             if request.get('command')=='build':
