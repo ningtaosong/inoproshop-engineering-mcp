@@ -79,3 +79,8 @@ Agent 查询内部对象身份及当前 expectedHash、expectedSnapshot、expect
 不支持 VAR_INPUT／VAR_OUTPUT、Method／Property、无变量时创建、类型别名、数组、聚合、联合声明、AT、RETAIN／PERSISTENT、特殊修饰、重复块和解析缺口。分页零命中或缺少 initializerRaw 不能证明无初值。源码初值不是运行值。验证与限制见[本轮记录](variable-initializer-add.md)。
 
 0.36.0真实工程覆盖PROGRAM VAR与根GVL；FUNCTION、FUNCTION_BLOCK普通VAR的保护有离线测试，本轮没有其新增真实工程验收。构建、入口和连接状态见[合并收尾](variable-initializer-0360-merge.md)，不代表整个S4b完成。
+
+
+## 历史0.39分支：已有普通结构体新增字段（未纳入本候选）
+
+`add-struct-field` 保留在原 `codex/struct-field-add` 与 `codex/resident-mcp-session` 历史中；真实验收在准备阶段停止。当前 `codex/resident-merge-prep` 已移除此动作，`variable_edit` 恢复main 0.38输入及原动作语义；不可调用新增字段。原[设计](struct-field-add.md)、[失败记录](struct-field-add-acceptance.md)保持原样。其恢复需另行授权及真实验收，本轮不继续。

@@ -1,5 +1,15 @@
+// Only documented optional resident request fields are projected for older fixtures.
+// The complete main 0.38 contract fingerprint is independently checked in resident-mcp.test.
+export function withoutResidentExtension(schema){
+ const p=schema?.properties;if(!p)return schema;
+ if(p.sessionMode&&p.projectPath&&p.requestId)delete p.sessionMode;
+ if(p.expectedResidentVersion&&((p.expectedHash&&p.declaration)||(p.projectId&&p.offset&&p.limit&&!p.query)))delete p.expectedResidentVersion;
+ if(p.expectedResidentVersion&&p.requestId&&p.projectId&&p.applicationId&&p.targetKind&&Object.keys(p).length===5)delete p.expectedResidentVersion;
+ return schema;
+}
 // Model-facing guidance is non-validating metadata. Exclude only the newly documented library fields in old snapshots.
 export function withoutLibraryGuidance(schema){
+ schema=withoutResidentExtension(schema);
  if(schema.properties?.fieldRead)delete schema.properties.expectedVersion?.description;
  if(schema.properties?.placeholderReferenceId)for(const name of ['expectedReferenceVersion','referenceOperationId'])delete schema.properties[name]?.description;
  return schema;

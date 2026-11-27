@@ -1,3 +1,4 @@
+import {beforeStructFieldInput} from './contract-projection.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,writeFile} from 'node:fs/promises';
@@ -173,11 +174,11 @@ for(const loss of ['type','insertion','declaration','list'])test('missing '+loss
  await assert.rejects(f.call('variable_edit',{...f.request,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
  assert.equal(f.requests.length,count);
 });
-test('37 tools: other 36 input/output schemas unchanged; variable_edit only adds enum action',async()=>{
+test('historical aggregate action contract projection; additive struct action checked separately',async()=>{
  const baseline=JSON.parse(await readFile(new URL('./fixtures/aggregate-member-legacy-contracts.json',import.meta.url)));
  assert.equal(Object.keys(schemas).length,38);
  for(const [name,entry] of Object.entries(baseline.tools)){
-  const input=z.toJSONSchema(schemas[name]);
+  const input=beforeStructFieldInput(name,z.toJSONSchema(schemas[name]));
   if(name==='variable_edit')input.properties.action.enum=input.properties.action.enum.filter(x=>!['add-member-initializer','add-initializer'].includes(x));
   assert.equal(digest(JSON.stringify(input)),entry.input,name+' input');
   assert.equal(digest(JSON.stringify(z.toJSONSchema(outputSchemas[name]))),entry.output,name+' output');

@@ -1,0 +1,101 @@
+{
+  "kind": "historical readonly projection; no process exit substitution",
+  "sources": [
+    {
+      "path": "D:\\InoPro\\.local\\dsh-phase4-repair-20261028-A1\\ipc\\b4f32904-a6bd-485f-81dd-9f8844fc8a25\\request.json",
+      "sha256": "a1f6956e1c4922e214523c61626f248a9c0a87f3f37010940f48d31a455198e2"
+    },
+    {
+      "path": "D:\\InoPro\\.local\\dsh-phase4-repair-20261028-A1\\ipc\\b4f32904-a6bd-485f-81dd-9f8844fc8a25\\result.json",
+      "sha256": "c4720a5bd5880d8e0cbc95bae9219553b411243ac538ae8e14186363199d92a8"
+    },
+    {
+      "path": "D:\\InoPro\\.local\\dsh-phase4-repair-20261028-A1\\ipc\\b4f32904-a6bd-485f-81dd-9f8844fc8a25\\service-verification.json",
+      "sha256": "d57cf8aacac1f62f01b4bb3c8e761b52a0d6d7e669ba46ebf1fe8548dda3ca58"
+    },
+    {
+      "path": "D:\\InoPro\\.local\\dsh-phase4-repair-20261028-A1\\operations\\b4f32904-a6bd-485f-81dd-9f8844fc8a25.json",
+      "sha256": "18227c6d7cdff17fed00f1ea3acfe6fc59fa1e1b1228776ff24a6b00efdf4bc9"
+    },
+    {
+      "path": "D:\\InoPro\\.local\\dsh-phase4-repair-20261028-A1\\registry.json",
+      "sha256": "1a76d5993a1e38738cb50c2e94759ec8629b6673e6c355d999b32c0f5e8115b0"
+    }
+  ],
+  "operation": {
+    "tool": "project_open",
+    "project": {
+      "projectId": "323f2654-70b1-470c-b65e-b7d5d60a1e37",
+      "sessionId": "1ed680f4-d808-4d03-8960-697d6fa1aff3",
+      "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+      "applications": [
+        {
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application"
+          ],
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        }
+      ]
+    },
+    "response": {
+      "data": {
+        "session": {
+          "projectId": "323f2654-70b1-470c-b65e-b7d5d60a1e37",
+          "sessionId": "1ed680f4-d808-4d03-8960-697d6fa1aff3",
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "applications": [
+            {
+              "path": [
+                "Device",
+                "Plc Logic",
+                "Application"
+              ],
+              "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "request": {
+    "command": "inspect",
+    "sequence": 1,
+    "args": {
+      "requestId": "round1-open-resident-20261126-01",
+      "sessionMode": "resident",
+      "projectPath": "D:\\InoPro-ResidentMCP-Acceptance-20261126\\engineering\\AM610_ResidentMCP.project"
+    }
+  },
+  "result": {
+    "data": {
+      "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+      "applications": [
+        {
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application"
+          ],
+          "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        }
+      ]
+    }
+  },
+  "session": {
+    "projectId": "323f2654-70b1-470c-b65e-b7d5d60a1e37",
+    "sessionId": "1ed680f4-d808-4d03-8960-697d6fa1aff3",
+    "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+    "applications": [
+      {
+        "path": [
+          "Device",
+          "Plc Logic",
+          "Application"
+        ],
+        "applicationId": "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+      }
+    ]
+  }
+}

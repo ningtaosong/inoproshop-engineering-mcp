@@ -38,6 +38,9 @@ export const alive = (pid: number) => { try { process.kill(pid,0); return true; 
 export interface Operation {
   schemaVersion: 1; operationId: string; requestId: string; tool: string; args: any;
   fingerprint: string; status: Reply['status']; startedAt: string; ownerPid: number;
+  ownerIdentity?:import('./lease-process.js').ProcessIdentity;
+  dispatchFiles?:Array<{path:string;key:string;realPath?:string;fileId?:string|null;[key:string]:unknown}>;
+  resident?:boolean;
   response?: Reply; bridge?: { directory: string; pid?: number; launchId?: string }; finishedAt?: string;
   registryVersion?: 1;
   project?: Session;
@@ -47,6 +50,7 @@ export interface Operation {
 export interface Session {
   // Missing storageMode is the historical copy binding. sourceHash is the
   // registration-time provenance hash; diskHash is the current editable file.
+  sessionMode?:'resident';residentVersion?:string;
   storageMode?: 'direct'; editMode?: 'direct'; directPath?: string;
   projectId: string; sessionId: string; sourcePath: string; workingPath: string;
   sourceHash: string; targetKind?: 'application'|'pool'; applicationId?: string|null; applications?: any[]; lastBuild?: any;

@@ -1,0 +1,2209 @@
+{
+  "scope": "Historical native tree/connector projection only; no source or new IDE acceptance",
+  "sources": [
+    {
+      "path": "D:\\InoPro-S8b-Positive-20261120-091939\\control-open-uncompiled-state.json",
+      "sha256": "20e71e1f32f34851763e6cd391db90f6a6b0b31b8f1f159af18f0d57ec4e77a9"
+    },
+    {
+      "path": "D:\\InoPro-S8b-Positive-20261120-091939\\control-open-uncompiled-getter.json",
+      "sha256": "67d085fc6090a08addbe2d3f217453b2ee45f33a4aee07cc549ff3d5f1ca6c20"
+    },
+    {
+      "path": "D:\\InoPro-S8b-Positive-20261120-091939\\control-compiled-unsaved-state.json",
+      "sha256": "e48c996992bc95312307df9e66c27ca3bced26d44c93c17d39211921547584ab"
+    },
+    {
+      "path": "D:\\InoPro-S8b-Positive-20261120-091939\\control-compiled-unsaved-getter.json",
+      "sha256": "977c4e45c5f2412e0684818699097dd8f735c80a60c8172efbea28a42390bc97"
+    }
+  ],
+  "before": {
+    "state": {
+      "projectPath": "archive-tree-projection.project",
+      "projectHandle": 0,
+      "thread": 1,
+      "applications": [],
+      "openedProjects": {
+        "0": {
+          "handle": 0,
+          "path": "archive-tree-projection.project",
+          "primary": true,
+          "library": false
+        }
+      },
+      "nodes": {
+        "6470a90f-b7cb-43ac-9ae5-94b2338b4573": {
+          "objectId": "6470a90f-b7cb-43ac-9ae5-94b2338b4573",
+          "parentId": null,
+          "path": [
+            "Project Settings"
+          ],
+          "nativeTypeId": "8753fe6f-4a22-4320-8103-e553c4fc8e04",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+          "objectId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "parentId": null,
+          "path": [
+            "Device"
+          ],
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "266b669b-473e-4a03-8c4b-455802429073": {
+          "objectId": "266b669b-473e-4a03-8c4b-455802429073",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "Network Configuration"
+          ],
+          "nativeTypeId": "a982b7cc-8854-4279-846b-e90bf2ef02d4",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "6b9df7c4-5031-4434-80b1-ddc9230e30f9": {
+          "objectId": "6b9df7c4-5031-4434-80b1-ddc9230e30f9",
+          "parentId": "266b669b-473e-4a03-8c4b-455802429073",
+          "path": [
+            "Device",
+            "Network Configuration",
+            "LocalBus Config"
+          ],
+          "nativeTypeId": "86bab008-5846-4915-b0dc-6a79c0cc7c53",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "f6a6ccb0-d225-4241-955b-eaf638b32c2b": {
+          "objectId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "Plc Logic"
+          ],
+          "nativeTypeId": "40b404f9-e5dc-42c6-907f-c89f4a517386",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf": {
+          "objectId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "parentId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application"
+          ],
+          "nativeTypeId": "639b491f-5557-464c-af91-1471bac9f549",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": {
+          "objectId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration"
+          ],
+          "nativeTypeId": "ae1de277-a207-4a28-9efb-456c06bd52f3",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": {
+          "objectId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+          "parentId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask"
+          ],
+          "nativeTypeId": "98a2708a-9b18-4f31-82ed-a1465b24fa2d",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "5df6d70d-831d-4337-b0b8-f3c35d99d26d": {
+          "objectId": "5df6d70d-831d-4337-b0b8-f3c35d99d26d",
+          "parentId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask",
+            "PLC_PRG"
+          ],
+          "nativeTypeId": "413e2a7d-adb1-4d2c-be29-6ae6e4fab820",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "5b3b1170-1a34-47eb-81ad-1fb25bc91256": {
+          "objectId": "5b3b1170-1a34-47eb-81ad-1fb25bc91256",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "TaskEventPreStart"
+          ],
+          "nativeTypeId": "cb8fd02a-a8c8-42aa-81da-ea916f37707b",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "5d558397-776b-478d-ab91-fa36aca5d60a": {
+          "objectId": "5d558397-776b-478d-ab91-fa36aca5d60a",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "库管理器"
+          ],
+          "nativeTypeId": "adb5cb65-8e1d-4a00-b70a-375ea27582f3",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "d60c09a6-eb5f-4bfb-a1f6-9a899653936c": {
+          "objectId": "d60c09a6-eb5f-4bfb-a1f6-9a899653936c",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "GVL_IOProbe"
+          ],
+          "nativeTypeId": "ffbfa93a-b94d-45fc-a329-229860183b1d",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": {
+          "objectId": "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "PLC_PRG"
+          ],
+          "nativeTypeId": "6f9dac99-8de1-4efc-8465-68ac443b7d08",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "e3a83141-aa59-4caf-bb34-4e823cebf5ce": {
+          "objectId": "e3a83141-aa59-4caf-bb34-4e823cebf5ce",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "DifferentialMonitor"
+          ],
+          "nativeTypeId": "1ea44c06-38dc-4674-b0a1-6d8285a04a30",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "27f7c7ba-2364-4445-8a9e-6b707f8b498a": {
+          "objectId": "27f7c7ba-2364-4445-8a9e-6b707f8b498a",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "ConfigStorage"
+          ],
+          "nativeTypeId": "8985beab-a1d2-4a9a-aac8-967a847520d2",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": {
+          "objectId": "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "MODBUS_TCP"
+          ],
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "aa3a87e0-dabe-467a-82c5-6688dc8f3376": {
+          "objectId": "aa3a87e0-dabe-467a-82c5-6688dc8f3376",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "Device Diagnosis"
+          ],
+          "nativeTypeId": "efe82feb-c219-43c6-84e7-abaa7867b5f9",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": {
+          "objectId": "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "HIGH_SPEED_IO"
+          ],
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "1f39e50c-7ccd-4361-8c72-eced6a8b6421": {
+          "objectId": "1f39e50c-7ccd-4361-8c72-eced6a8b6421",
+          "parentId": "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "path": [
+            "Device",
+            "HIGH_SPEED_IO",
+            "HSIO"
+          ],
+          "nativeTypeId": "72d5f3cf-74f0-4c4a-ad49-63c8bdb8e299",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "1c272f52-6ad1-4581-a5a8-492b86e79bff": {
+          "objectId": "1c272f52-6ad1-4581-a5a8-492b86e79bff",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "Resources List"
+          ],
+          "nativeTypeId": "c3ac3f32-605b-4001-a449-9dbff0a9b9e1",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11": {
+          "objectId": "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "HardWare Configuration"
+          ],
+          "nativeTypeId": "ed103b54-add2-4aaa-8e19-1402c5a26800",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "7eb281f0-5127-471a-adcf-3004567f8988": {
+          "objectId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "parentId": null,
+          "path": [
+            "SDElement"
+          ],
+          "nativeTypeId": "738bea1e-99bb-4f04-90bb-a7a567e74e3a",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d": {
+          "objectId": "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD7680_SD8191"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "d38cc9cb-e60c-477a-b39b-d1df421a744f": {
+          "objectId": "d38cc9cb-e60c-477a-b39b-d1df421a744f",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD1536_SD2047"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "d5667488-8888-4384-ae1d-0ee1132f49cc": {
+          "objectId": "d5667488-8888-4384-ae1d-0ee1132f49cc",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD9216_SD9727"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "6e99dfee-10c7-482f-a3ca-d5b1c247c679": {
+          "objectId": "6e99dfee-10c7-482f-a3ca-d5b1c247c679",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD3072_SD3583"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "a0329ce4-f69c-4e06-ac96-3022c3c516f6": {
+          "objectId": "a0329ce4-f69c-4e06-ac96-3022c3c516f6",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD2560_SD3071"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "6a7ce440-fb12-4e91-8750-0d092ece040b": {
+          "objectId": "6a7ce440-fb12-4e91-8750-0d092ece040b",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD2048_SD2559"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2": {
+          "objectId": "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD6144_SD6655"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "dad2379c-8339-43d5-8fad-fc936511cf0a": {
+          "objectId": "dad2379c-8339-43d5-8fad-fc936511cf0a",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD6656_SD7167"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "3ffb0926-b8f2-4569-a780-6378d149901c": {
+          "objectId": "3ffb0926-b8f2-4569-a780-6378d149901c",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD5120_SD5631"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b7135532-48ad-4d79-903d-f7d628e79706": {
+          "objectId": "b7135532-48ad-4d79-903d-f7d628e79706",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD4608_SD5119"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "e0407851-3df6-4797-ad01-660b71986740": {
+          "objectId": "e0407851-3df6-4797-ad01-660b71986740",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD9728_SD9999"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "3cdf2fe1-db22-421f-9905-fa20df0b515d": {
+          "objectId": "3cdf2fe1-db22-421f-9905-fa20df0b515d",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD8192_SD8703"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "55c9ca6d-38f8-4aec-803a-7aea99f5d50e": {
+          "objectId": "55c9ca6d-38f8-4aec-803a-7aea99f5d50e",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD512_SD1023"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "08fc481d-dd55-4f06-8554-7a1c21400ff9": {
+          "objectId": "08fc481d-dd55-4f06-8554-7a1c21400ff9",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD7168_SD7679"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "99761fc4-7d52-4d4c-b190-d029a12ff5ed": {
+          "objectId": "99761fc4-7d52-4d4c-b190-d029a12ff5ed",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD4096_SD4607"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "299aa5b3-9792-46d2-9b16-8a6e6466473a": {
+          "objectId": "299aa5b3-9792-46d2-9b16-8a6e6466473a",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD5632_SD6143"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b": {
+          "objectId": "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD0_SD511"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "cfd8c710-45ec-4371-b532-9444ea4dbca2": {
+          "objectId": "cfd8c710-45ec-4371-b532-9444ea4dbca2",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD1024_SD1535"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83": {
+          "objectId": "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD8704_SD9215"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "26eed4cd-4fdc-4fac-a651-16c4a26571ba": {
+          "objectId": "26eed4cd-4fdc-4fac-a651-16c4a26571ba",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD3584_SD4095"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "57cc0e65-1907-423b-989c-1487e2d15147": {
+          "objectId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "parentId": null,
+          "path": [
+            "SMElement"
+          ],
+          "nativeTypeId": "738bea1e-99bb-4f04-90bb-a7a567e74e3a",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b98fee4d-62db-4ce8-a240-f2e9ec3119b5": {
+          "objectId": "b98fee4d-62db-4ce8-a240-f2e9ec3119b5",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM7168_SM7679"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693": {
+          "objectId": "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM6656_SM7167"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b7fd81da-efc6-485b-99e0-550fbc36c092": {
+          "objectId": "b7fd81da-efc6-485b-99e0-550fbc36c092",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM512_SM1023"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "2267d37c-bdff-41ba-851d-59c7957b4908": {
+          "objectId": "2267d37c-bdff-41ba-851d-59c7957b4908",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM3584_SM4095"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "887d4770-c693-4669-8ecf-c0a5c6976421": {
+          "objectId": "887d4770-c693-4669-8ecf-c0a5c6976421",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM7680_SM8191"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "25563e27-cac7-4e3b-9d13-826f214d4ec2": {
+          "objectId": "25563e27-cac7-4e3b-9d13-826f214d4ec2",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM9216_SM9727"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "7bc4928b-bafb-40e3-8888-fc8c038335cb": {
+          "objectId": "7bc4928b-bafb-40e3-8888-fc8c038335cb",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM5120_SM5631"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "9012ecb5-5b8e-42b6-955d-7537670c899b": {
+          "objectId": "9012ecb5-5b8e-42b6-955d-7537670c899b",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM4608_SM5119"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "835c7cde-7ae4-4919-9418-f39973975e87": {
+          "objectId": "835c7cde-7ae4-4919-9418-f39973975e87",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM2048_SM2559"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "586acdc4-2093-42df-aec9-6234cb1766ef": {
+          "objectId": "586acdc4-2093-42df-aec9-6234cb1766ef",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM9728_SM9999"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "cb440091-3406-4785-8a33-f6722bf26ff3": {
+          "objectId": "cb440091-3406-4785-8a33-f6722bf26ff3",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM8192_SM8703"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "38d47f48-fa7e-434e-a719-4709da7a58e2": {
+          "objectId": "38d47f48-fa7e-434e-a719-4709da7a58e2",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM6144_SM6655"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "383a38c1-9989-474c-8dd3-91140579cf40": {
+          "objectId": "383a38c1-9989-474c-8dd3-91140579cf40",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM5632_SM6143"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b5da53d7-2520-4692-916b-da0ce8559a69": {
+          "objectId": "b5da53d7-2520-4692-916b-da0ce8559a69",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM0_SM511"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "125a163d-08e2-47f5-9cd0-8a5a64342622": {
+          "objectId": "125a163d-08e2-47f5-9cd0-8a5a64342622",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM3072_SM3583"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "84e551e0-9601-4259-b802-9701ea519aa3": {
+          "objectId": "84e551e0-9601-4259-b802-9701ea519aa3",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM2560_SM3071"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "596d25cc-7ee0-4d22-a882-a51405b3fff1": {
+          "objectId": "596d25cc-7ee0-4d22-a882-a51405b3fff1",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM8704_SM9215"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "c14ce46e-025a-4d76-a28e-66d1a283c199": {
+          "objectId": "c14ce46e-025a-4d76-a28e-66d1a283c199",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM1536_SM2047"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "c9a07ce0-dd7e-4c44-b13e-764a9643b32a": {
+          "objectId": "c9a07ce0-dd7e-4c44-b13e-764a9643b32a",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM1024_SM1535"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "00bbadf4-4e2c-4805-bd26-e580550f2870": {
+          "objectId": "00bbadf4-4e2c-4805-bd26-e580550f2870",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM4096_SM4607"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b46a02fd-6532-4e40-878c-ba8830715081": {
+          "objectId": "b46a02fd-6532-4e40-878c-ba8830715081",
+          "parentId": null,
+          "path": [
+            "__VisualizationStyle"
+          ],
+          "nativeTypeId": "8e687a04-7ca7-42d3-be06-fcbda676c5ef",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        }
+      }
+    },
+    "context": {
+      "scheme": "resident-build-context-v1",
+      "children": {
+        "$project": [
+          "6470a90f-b7cb-43ac-9ae5-94b2338b4573",
+          "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "7eb281f0-5127-471a-adcf-3004567f8988",
+          "57cc0e65-1907-423b-989c-1487e2d15147",
+          "b46a02fd-6532-4e40-878c-ba8830715081"
+        ],
+        "6470a90f-b7cb-43ac-9ae5-94b2338b4573": [],
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": [
+          "266b669b-473e-4a03-8c4b-455802429073",
+          "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "27f7c7ba-2364-4445-8a9e-6b707f8b498a",
+          "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e",
+          "aa3a87e0-dabe-467a-82c5-6688dc8f3376",
+          "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "1c272f52-6ad1-4581-a5a8-492b86e79bff",
+          "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11"
+        ],
+        "266b669b-473e-4a03-8c4b-455802429073": [
+          "6b9df7c4-5031-4434-80b1-ddc9230e30f9"
+        ],
+        "6b9df7c4-5031-4434-80b1-ddc9230e30f9": [],
+        "f6a6ccb0-d225-4241-955b-eaf638b32c2b": [
+          "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        ],
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf": [
+          "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "5b3b1170-1a34-47eb-81ad-1fb25bc91256",
+          "5d558397-776b-478d-ab91-fa36aca5d60a",
+          "d60c09a6-eb5f-4bfb-a1f6-9a899653936c",
+          "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+          "e3a83141-aa59-4caf-bb34-4e823cebf5ce"
+        ],
+        "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": [
+          "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867"
+        ],
+        "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": [
+          "5df6d70d-831d-4337-b0b8-f3c35d99d26d"
+        ],
+        "5df6d70d-831d-4337-b0b8-f3c35d99d26d": [],
+        "5b3b1170-1a34-47eb-81ad-1fb25bc91256": [],
+        "5d558397-776b-478d-ab91-fa36aca5d60a": [],
+        "d60c09a6-eb5f-4bfb-a1f6-9a899653936c": [],
+        "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": [],
+        "e3a83141-aa59-4caf-bb34-4e823cebf5ce": [],
+        "27f7c7ba-2364-4445-8a9e-6b707f8b498a": [],
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": [],
+        "aa3a87e0-dabe-467a-82c5-6688dc8f3376": [],
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": [
+          "1f39e50c-7ccd-4361-8c72-eced6a8b6421"
+        ],
+        "1f39e50c-7ccd-4361-8c72-eced6a8b6421": [],
+        "1c272f52-6ad1-4581-a5a8-492b86e79bff": [],
+        "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11": [],
+        "7eb281f0-5127-471a-adcf-3004567f8988": [
+          "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d",
+          "d38cc9cb-e60c-477a-b39b-d1df421a744f",
+          "d5667488-8888-4384-ae1d-0ee1132f49cc",
+          "6e99dfee-10c7-482f-a3ca-d5b1c247c679",
+          "a0329ce4-f69c-4e06-ac96-3022c3c516f6",
+          "6a7ce440-fb12-4e91-8750-0d092ece040b",
+          "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2",
+          "dad2379c-8339-43d5-8fad-fc936511cf0a",
+          "3ffb0926-b8f2-4569-a780-6378d149901c",
+          "b7135532-48ad-4d79-903d-f7d628e79706",
+          "e0407851-3df6-4797-ad01-660b71986740",
+          "3cdf2fe1-db22-421f-9905-fa20df0b515d",
+          "55c9ca6d-38f8-4aec-803a-7aea99f5d50e",
+          "08fc481d-dd55-4f06-8554-7a1c21400ff9",
+          "99761fc4-7d52-4d4c-b190-d029a12ff5ed",
+          "299aa5b3-9792-46d2-9b16-8a6e6466473a",
+          "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b",
+          "cfd8c710-45ec-4371-b532-9444ea4dbca2",
+          "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83",
+          "26eed4cd-4fdc-4fac-a651-16c4a26571ba"
+        ],
+        "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d": [],
+        "d38cc9cb-e60c-477a-b39b-d1df421a744f": [],
+        "d5667488-8888-4384-ae1d-0ee1132f49cc": [],
+        "6e99dfee-10c7-482f-a3ca-d5b1c247c679": [],
+        "a0329ce4-f69c-4e06-ac96-3022c3c516f6": [],
+        "6a7ce440-fb12-4e91-8750-0d092ece040b": [],
+        "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2": [],
+        "dad2379c-8339-43d5-8fad-fc936511cf0a": [],
+        "3ffb0926-b8f2-4569-a780-6378d149901c": [],
+        "b7135532-48ad-4d79-903d-f7d628e79706": [],
+        "e0407851-3df6-4797-ad01-660b71986740": [],
+        "3cdf2fe1-db22-421f-9905-fa20df0b515d": [],
+        "55c9ca6d-38f8-4aec-803a-7aea99f5d50e": [],
+        "08fc481d-dd55-4f06-8554-7a1c21400ff9": [],
+        "99761fc4-7d52-4d4c-b190-d029a12ff5ed": [],
+        "299aa5b3-9792-46d2-9b16-8a6e6466473a": [],
+        "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b": [],
+        "cfd8c710-45ec-4371-b532-9444ea4dbca2": [],
+        "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83": [],
+        "26eed4cd-4fdc-4fac-a651-16c4a26571ba": [],
+        "57cc0e65-1907-423b-989c-1487e2d15147": [
+          "b98fee4d-62db-4ce8-a240-f2e9ec3119b5",
+          "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693",
+          "b7fd81da-efc6-485b-99e0-550fbc36c092",
+          "2267d37c-bdff-41ba-851d-59c7957b4908",
+          "887d4770-c693-4669-8ecf-c0a5c6976421",
+          "25563e27-cac7-4e3b-9d13-826f214d4ec2",
+          "7bc4928b-bafb-40e3-8888-fc8c038335cb",
+          "9012ecb5-5b8e-42b6-955d-7537670c899b",
+          "835c7cde-7ae4-4919-9418-f39973975e87",
+          "586acdc4-2093-42df-aec9-6234cb1766ef",
+          "cb440091-3406-4785-8a33-f6722bf26ff3",
+          "38d47f48-fa7e-434e-a719-4709da7a58e2",
+          "383a38c1-9989-474c-8dd3-91140579cf40",
+          "b5da53d7-2520-4692-916b-da0ce8559a69",
+          "125a163d-08e2-47f5-9cd0-8a5a64342622",
+          "84e551e0-9601-4259-b802-9701ea519aa3",
+          "596d25cc-7ee0-4d22-a882-a51405b3fff1",
+          "c14ce46e-025a-4d76-a28e-66d1a283c199",
+          "c9a07ce0-dd7e-4c44-b13e-764a9643b32a",
+          "00bbadf4-4e2c-4805-bd26-e580550f2870"
+        ],
+        "b98fee4d-62db-4ce8-a240-f2e9ec3119b5": [],
+        "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693": [],
+        "b7fd81da-efc6-485b-99e0-550fbc36c092": [],
+        "2267d37c-bdff-41ba-851d-59c7957b4908": [],
+        "887d4770-c693-4669-8ecf-c0a5c6976421": [],
+        "25563e27-cac7-4e3b-9d13-826f214d4ec2": [],
+        "7bc4928b-bafb-40e3-8888-fc8c038335cb": [],
+        "9012ecb5-5b8e-42b6-955d-7537670c899b": [],
+        "835c7cde-7ae4-4919-9418-f39973975e87": [],
+        "586acdc4-2093-42df-aec9-6234cb1766ef": [],
+        "cb440091-3406-4785-8a33-f6722bf26ff3": [],
+        "38d47f48-fa7e-434e-a719-4709da7a58e2": [],
+        "383a38c1-9989-474c-8dd3-91140579cf40": [],
+        "b5da53d7-2520-4692-916b-da0ce8559a69": [],
+        "125a163d-08e2-47f5-9cd0-8a5a64342622": [],
+        "84e551e0-9601-4259-b802-9701ea519aa3": [],
+        "596d25cc-7ee0-4d22-a882-a51405b3fff1": [],
+        "c14ce46e-025a-4d76-a28e-66d1a283c199": [],
+        "c9a07ce0-dd7e-4c44-b13e-764a9643b32a": [],
+        "00bbadf4-4e2c-4805-bd26-e580550f2870": [],
+        "b46a02fd-6532-4e40-878c-ba8830715081": []
+      },
+      "devices": {
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+          "identity": {
+            "type": "4102",
+            "id": "10f4 0002",
+            "version": "3.5.11.11"
+          },
+          "connectors": [
+            {
+              "id": 0,
+              "role": "Parent",
+              "interface": "Common.SoftMotion.General",
+              "hostPath": -1
+            },
+            {
+              "id": 1,
+              "role": "Parent",
+              "interface": "Common.PCI",
+              "hostPath": -1
+            }
+          ]
+        },
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": {
+          "identity": {
+            "type": "40510",
+            "id": "10F4 0510",
+            "version": "00.00.00.10"
+          },
+          "connectors": [
+            {
+              "id": 1,
+              "role": "Child",
+              "interface": "Common.PCI",
+              "hostPath": -1
+            },
+            {
+              "id": 2,
+              "role": "Parent",
+              "interface": "Common.ModbusTcpSerialDevice",
+              "hostPath": 1
+            }
+          ]
+        },
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": {
+          "identity": {
+            "type": "40600",
+            "id": "10F4 0600",
+            "version": "00.00.00.20"
+          },
+          "connectors": [
+            {
+              "id": 1,
+              "role": "Child",
+              "interface": "Common.PCI",
+              "hostPath": -1
+            },
+            {
+              "id": 2,
+              "role": "Parent",
+              "interface": "Common.inovance2",
+              "hostPath": 1
+            }
+          ]
+        }
+      }
+    }
+  },
+  "after": {
+    "state": {
+      "projectPath": "archive-tree-projection.project",
+      "projectHandle": 0,
+      "thread": 1,
+      "applications": [],
+      "openedProjects": {
+        "0": {
+          "handle": 0,
+          "path": "archive-tree-projection.project",
+          "primary": true,
+          "library": false
+        }
+      },
+      "nodes": {
+        "6470a90f-b7cb-43ac-9ae5-94b2338b4573": {
+          "objectId": "6470a90f-b7cb-43ac-9ae5-94b2338b4573",
+          "parentId": null,
+          "path": [
+            "Project Settings"
+          ],
+          "nativeTypeId": "8753fe6f-4a22-4320-8103-e553c4fc8e04",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+          "objectId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "parentId": null,
+          "path": [
+            "Device"
+          ],
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "266b669b-473e-4a03-8c4b-455802429073": {
+          "objectId": "266b669b-473e-4a03-8c4b-455802429073",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "Network Configuration"
+          ],
+          "nativeTypeId": "a982b7cc-8854-4279-846b-e90bf2ef02d4",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "6b9df7c4-5031-4434-80b1-ddc9230e30f9": {
+          "objectId": "6b9df7c4-5031-4434-80b1-ddc9230e30f9",
+          "parentId": "266b669b-473e-4a03-8c4b-455802429073",
+          "path": [
+            "Device",
+            "Network Configuration",
+            "LocalBus Config"
+          ],
+          "nativeTypeId": "86bab008-5846-4915-b0dc-6a79c0cc7c53",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "f6a6ccb0-d225-4241-955b-eaf638b32c2b": {
+          "objectId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "Plc Logic"
+          ],
+          "nativeTypeId": "40b404f9-e5dc-42c6-907f-c89f4a517386",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf": {
+          "objectId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "parentId": "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application"
+          ],
+          "nativeTypeId": "639b491f-5557-464c-af91-1471bac9f549",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": {
+          "objectId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration"
+          ],
+          "nativeTypeId": "ae1de277-a207-4a28-9efb-456c06bd52f3",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": {
+          "objectId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+          "parentId": "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask"
+          ],
+          "nativeTypeId": "98a2708a-9b18-4f31-82ed-a1465b24fa2d",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "5df6d70d-831d-4337-b0b8-f3c35d99d26d": {
+          "objectId": "5df6d70d-831d-4337-b0b8-f3c35d99d26d",
+          "parentId": "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "Task Configuration",
+            "MainTask",
+            "PLC_PRG"
+          ],
+          "nativeTypeId": "413e2a7d-adb1-4d2c-be29-6ae6e4fab820",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "5b3b1170-1a34-47eb-81ad-1fb25bc91256": {
+          "objectId": "5b3b1170-1a34-47eb-81ad-1fb25bc91256",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "TaskEventPreStart"
+          ],
+          "nativeTypeId": "cb8fd02a-a8c8-42aa-81da-ea916f37707b",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "5d558397-776b-478d-ab91-fa36aca5d60a": {
+          "objectId": "5d558397-776b-478d-ab91-fa36aca5d60a",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "库管理器"
+          ],
+          "nativeTypeId": "adb5cb65-8e1d-4a00-b70a-375ea27582f3",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "d60c09a6-eb5f-4bfb-a1f6-9a899653936c": {
+          "objectId": "d60c09a6-eb5f-4bfb-a1f6-9a899653936c",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "GVL_IOProbe"
+          ],
+          "nativeTypeId": "ffbfa93a-b94d-45fc-a329-229860183b1d",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": {
+          "objectId": "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "PLC_PRG"
+          ],
+          "nativeTypeId": "6f9dac99-8de1-4efc-8465-68ac443b7d08",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "e3a83141-aa59-4caf-bb34-4e823cebf5ce": {
+          "objectId": "e3a83141-aa59-4caf-bb34-4e823cebf5ce",
+          "parentId": "e88ddc35-95de-4cd2-886e-100ccb300ecf",
+          "path": [
+            "Device",
+            "Plc Logic",
+            "Application",
+            "DifferentialMonitor"
+          ],
+          "nativeTypeId": "1ea44c06-38dc-4674-b0a1-6d8285a04a30",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "27f7c7ba-2364-4445-8a9e-6b707f8b498a": {
+          "objectId": "27f7c7ba-2364-4445-8a9e-6b707f8b498a",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "ConfigStorage"
+          ],
+          "nativeTypeId": "8985beab-a1d2-4a9a-aac8-967a847520d2",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": {
+          "objectId": "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "MODBUS_TCP"
+          ],
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "aa3a87e0-dabe-467a-82c5-6688dc8f3376": {
+          "objectId": "aa3a87e0-dabe-467a-82c5-6688dc8f3376",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "Device Diagnosis"
+          ],
+          "nativeTypeId": "efe82feb-c219-43c6-84e7-abaa7867b5f9",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": {
+          "objectId": "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "HIGH_SPEED_IO"
+          ],
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "1f39e50c-7ccd-4361-8c72-eced6a8b6421": {
+          "objectId": "1f39e50c-7ccd-4361-8c72-eced6a8b6421",
+          "parentId": "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "path": [
+            "Device",
+            "HIGH_SPEED_IO",
+            "HSIO"
+          ],
+          "nativeTypeId": "72d5f3cf-74f0-4c4a-ad49-63c8bdb8e299",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "1c272f52-6ad1-4581-a5a8-492b86e79bff": {
+          "objectId": "1c272f52-6ad1-4581-a5a8-492b86e79bff",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "Resources List"
+          ],
+          "nativeTypeId": "c3ac3f32-605b-4001-a449-9dbff0a9b9e1",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11": {
+          "objectId": "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "HardWare Configuration"
+          ],
+          "nativeTypeId": "ed103b54-add2-4aaa-8e19-1402c5a26800",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "04d1db87-e030-46c5-9073-df66a1b4f522": {
+          "objectId": "04d1db87-e030-46c5-9073-df66a1b4f522",
+          "parentId": "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "path": [
+            "Device",
+            "HwConfiguratioinDevice"
+          ],
+          "nativeTypeId": "225bfe47-7336-4dbc-9419-4105a7c831fa",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "7eb281f0-5127-471a-adcf-3004567f8988": {
+          "objectId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "parentId": null,
+          "path": [
+            "SDElement"
+          ],
+          "nativeTypeId": "738bea1e-99bb-4f04-90bb-a7a567e74e3a",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d": {
+          "objectId": "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD7680_SD8191"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "d38cc9cb-e60c-477a-b39b-d1df421a744f": {
+          "objectId": "d38cc9cb-e60c-477a-b39b-d1df421a744f",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD1536_SD2047"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "d5667488-8888-4384-ae1d-0ee1132f49cc": {
+          "objectId": "d5667488-8888-4384-ae1d-0ee1132f49cc",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD9216_SD9727"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "6e99dfee-10c7-482f-a3ca-d5b1c247c679": {
+          "objectId": "6e99dfee-10c7-482f-a3ca-d5b1c247c679",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD3072_SD3583"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "a0329ce4-f69c-4e06-ac96-3022c3c516f6": {
+          "objectId": "a0329ce4-f69c-4e06-ac96-3022c3c516f6",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD2560_SD3071"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "6a7ce440-fb12-4e91-8750-0d092ece040b": {
+          "objectId": "6a7ce440-fb12-4e91-8750-0d092ece040b",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD2048_SD2559"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2": {
+          "objectId": "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD6144_SD6655"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "dad2379c-8339-43d5-8fad-fc936511cf0a": {
+          "objectId": "dad2379c-8339-43d5-8fad-fc936511cf0a",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD6656_SD7167"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "3ffb0926-b8f2-4569-a780-6378d149901c": {
+          "objectId": "3ffb0926-b8f2-4569-a780-6378d149901c",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD5120_SD5631"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b7135532-48ad-4d79-903d-f7d628e79706": {
+          "objectId": "b7135532-48ad-4d79-903d-f7d628e79706",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD4608_SD5119"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "e0407851-3df6-4797-ad01-660b71986740": {
+          "objectId": "e0407851-3df6-4797-ad01-660b71986740",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD9728_SD9999"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "3cdf2fe1-db22-421f-9905-fa20df0b515d": {
+          "objectId": "3cdf2fe1-db22-421f-9905-fa20df0b515d",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD8192_SD8703"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "55c9ca6d-38f8-4aec-803a-7aea99f5d50e": {
+          "objectId": "55c9ca6d-38f8-4aec-803a-7aea99f5d50e",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD512_SD1023"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "08fc481d-dd55-4f06-8554-7a1c21400ff9": {
+          "objectId": "08fc481d-dd55-4f06-8554-7a1c21400ff9",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD7168_SD7679"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "99761fc4-7d52-4d4c-b190-d029a12ff5ed": {
+          "objectId": "99761fc4-7d52-4d4c-b190-d029a12ff5ed",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD4096_SD4607"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "299aa5b3-9792-46d2-9b16-8a6e6466473a": {
+          "objectId": "299aa5b3-9792-46d2-9b16-8a6e6466473a",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD5632_SD6143"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b": {
+          "objectId": "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD0_SD511"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "cfd8c710-45ec-4371-b532-9444ea4dbca2": {
+          "objectId": "cfd8c710-45ec-4371-b532-9444ea4dbca2",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD1024_SD1535"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83": {
+          "objectId": "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD8704_SD9215"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "26eed4cd-4fdc-4fac-a651-16c4a26571ba": {
+          "objectId": "26eed4cd-4fdc-4fac-a651-16c4a26571ba",
+          "parentId": "7eb281f0-5127-471a-adcf-3004567f8988",
+          "path": [
+            "SDElement",
+            "SD3584_SD4095"
+          ],
+          "nativeTypeId": "0f7a5a03-78c3-46fe-b17f-43b01f9b4240",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "57cc0e65-1907-423b-989c-1487e2d15147": {
+          "objectId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "parentId": null,
+          "path": [
+            "SMElement"
+          ],
+          "nativeTypeId": "738bea1e-99bb-4f04-90bb-a7a567e74e3a",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b98fee4d-62db-4ce8-a240-f2e9ec3119b5": {
+          "objectId": "b98fee4d-62db-4ce8-a240-f2e9ec3119b5",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM7168_SM7679"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693": {
+          "objectId": "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM6656_SM7167"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b7fd81da-efc6-485b-99e0-550fbc36c092": {
+          "objectId": "b7fd81da-efc6-485b-99e0-550fbc36c092",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM512_SM1023"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "2267d37c-bdff-41ba-851d-59c7957b4908": {
+          "objectId": "2267d37c-bdff-41ba-851d-59c7957b4908",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM3584_SM4095"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "887d4770-c693-4669-8ecf-c0a5c6976421": {
+          "objectId": "887d4770-c693-4669-8ecf-c0a5c6976421",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM7680_SM8191"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "25563e27-cac7-4e3b-9d13-826f214d4ec2": {
+          "objectId": "25563e27-cac7-4e3b-9d13-826f214d4ec2",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM9216_SM9727"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "7bc4928b-bafb-40e3-8888-fc8c038335cb": {
+          "objectId": "7bc4928b-bafb-40e3-8888-fc8c038335cb",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM5120_SM5631"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "9012ecb5-5b8e-42b6-955d-7537670c899b": {
+          "objectId": "9012ecb5-5b8e-42b6-955d-7537670c899b",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM4608_SM5119"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "835c7cde-7ae4-4919-9418-f39973975e87": {
+          "objectId": "835c7cde-7ae4-4919-9418-f39973975e87",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM2048_SM2559"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "586acdc4-2093-42df-aec9-6234cb1766ef": {
+          "objectId": "586acdc4-2093-42df-aec9-6234cb1766ef",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM9728_SM9999"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "cb440091-3406-4785-8a33-f6722bf26ff3": {
+          "objectId": "cb440091-3406-4785-8a33-f6722bf26ff3",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM8192_SM8703"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "38d47f48-fa7e-434e-a719-4709da7a58e2": {
+          "objectId": "38d47f48-fa7e-434e-a719-4709da7a58e2",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM6144_SM6655"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "383a38c1-9989-474c-8dd3-91140579cf40": {
+          "objectId": "383a38c1-9989-474c-8dd3-91140579cf40",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM5632_SM6143"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b5da53d7-2520-4692-916b-da0ce8559a69": {
+          "objectId": "b5da53d7-2520-4692-916b-da0ce8559a69",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM0_SM511"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "125a163d-08e2-47f5-9cd0-8a5a64342622": {
+          "objectId": "125a163d-08e2-47f5-9cd0-8a5a64342622",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM3072_SM3583"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "84e551e0-9601-4259-b802-9701ea519aa3": {
+          "objectId": "84e551e0-9601-4259-b802-9701ea519aa3",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM2560_SM3071"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "596d25cc-7ee0-4d22-a882-a51405b3fff1": {
+          "objectId": "596d25cc-7ee0-4d22-a882-a51405b3fff1",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM8704_SM9215"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "c14ce46e-025a-4d76-a28e-66d1a283c199": {
+          "objectId": "c14ce46e-025a-4d76-a28e-66d1a283c199",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM1536_SM2047"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "c9a07ce0-dd7e-4c44-b13e-764a9643b32a": {
+          "objectId": "c9a07ce0-dd7e-4c44-b13e-764a9643b32a",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM1024_SM1535"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "00bbadf4-4e2c-4805-bd26-e580550f2870": {
+          "objectId": "00bbadf4-4e2c-4805-bd26-e580550f2870",
+          "parentId": "57cc0e65-1907-423b-989c-1487e2d15147",
+          "path": [
+            "SMElement",
+            "SM4096_SM4607"
+          ],
+          "nativeTypeId": "1eba3940-5b06-4821-86b6-153df5968447",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        },
+        "b46a02fd-6532-4e40-878c-ba8830715081": {
+          "objectId": "b46a02fd-6532-4e40-878c-ba8830715081",
+          "parentId": null,
+          "path": [
+            "__VisualizationStyle"
+          ],
+          "nativeTypeId": "8e687a04-7ca7-42d3-be06-fcbda676c5ef",
+          "applicationId": null,
+          "declaration": null,
+          "implementation": null,
+          "embeddedObjectTypes": []
+        }
+      }
+    },
+    "context": {
+      "scheme": "resident-build-context-v1",
+      "children": {
+        "$project": [
+          "6470a90f-b7cb-43ac-9ae5-94b2338b4573",
+          "bae96937-5e0e-48a6-8b2a-2ca00576a271",
+          "7eb281f0-5127-471a-adcf-3004567f8988",
+          "57cc0e65-1907-423b-989c-1487e2d15147",
+          "b46a02fd-6532-4e40-878c-ba8830715081"
+        ],
+        "6470a90f-b7cb-43ac-9ae5-94b2338b4573": [],
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": [
+          "266b669b-473e-4a03-8c4b-455802429073",
+          "f6a6ccb0-d225-4241-955b-eaf638b32c2b",
+          "27f7c7ba-2364-4445-8a9e-6b707f8b498a",
+          "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e",
+          "aa3a87e0-dabe-467a-82c5-6688dc8f3376",
+          "bf0d0fd8-de24-465d-a555-4bb14a9a8f37",
+          "1c272f52-6ad1-4581-a5a8-492b86e79bff",
+          "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11",
+          "04d1db87-e030-46c5-9073-df66a1b4f522"
+        ],
+        "266b669b-473e-4a03-8c4b-455802429073": [
+          "6b9df7c4-5031-4434-80b1-ddc9230e30f9"
+        ],
+        "6b9df7c4-5031-4434-80b1-ddc9230e30f9": [],
+        "f6a6ccb0-d225-4241-955b-eaf638b32c2b": [
+          "e88ddc35-95de-4cd2-886e-100ccb300ecf"
+        ],
+        "e88ddc35-95de-4cd2-886e-100ccb300ecf": [
+          "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe",
+          "5b3b1170-1a34-47eb-81ad-1fb25bc91256",
+          "5d558397-776b-478d-ab91-fa36aca5d60a",
+          "d60c09a6-eb5f-4bfb-a1f6-9a899653936c",
+          "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778",
+          "e3a83141-aa59-4caf-bb34-4e823cebf5ce"
+        ],
+        "6a8b8732-dbc4-4e45-92a6-811a6a01a0fe": [
+          "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867"
+        ],
+        "78d0f4f0-33ac-4194-ab0a-f8f8fdb32867": [
+          "5df6d70d-831d-4337-b0b8-f3c35d99d26d"
+        ],
+        "5df6d70d-831d-4337-b0b8-f3c35d99d26d": [],
+        "5b3b1170-1a34-47eb-81ad-1fb25bc91256": [],
+        "5d558397-776b-478d-ab91-fa36aca5d60a": [],
+        "d60c09a6-eb5f-4bfb-a1f6-9a899653936c": [],
+        "76817b8e-cf3d-4b51-82a0-fb6e8bc7c778": [],
+        "e3a83141-aa59-4caf-bb34-4e823cebf5ce": [],
+        "27f7c7ba-2364-4445-8a9e-6b707f8b498a": [],
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": [],
+        "aa3a87e0-dabe-467a-82c5-6688dc8f3376": [],
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": [
+          "1f39e50c-7ccd-4361-8c72-eced6a8b6421"
+        ],
+        "1f39e50c-7ccd-4361-8c72-eced6a8b6421": [],
+        "1c272f52-6ad1-4581-a5a8-492b86e79bff": [],
+        "475c26bd-1aaa-46e3-8b2b-53e4f48bfa11": [],
+        "04d1db87-e030-46c5-9073-df66a1b4f522": [],
+        "7eb281f0-5127-471a-adcf-3004567f8988": [
+          "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d",
+          "d38cc9cb-e60c-477a-b39b-d1df421a744f",
+          "d5667488-8888-4384-ae1d-0ee1132f49cc",
+          "6e99dfee-10c7-482f-a3ca-d5b1c247c679",
+          "a0329ce4-f69c-4e06-ac96-3022c3c516f6",
+          "6a7ce440-fb12-4e91-8750-0d092ece040b",
+          "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2",
+          "dad2379c-8339-43d5-8fad-fc936511cf0a",
+          "3ffb0926-b8f2-4569-a780-6378d149901c",
+          "b7135532-48ad-4d79-903d-f7d628e79706",
+          "e0407851-3df6-4797-ad01-660b71986740",
+          "3cdf2fe1-db22-421f-9905-fa20df0b515d",
+          "55c9ca6d-38f8-4aec-803a-7aea99f5d50e",
+          "08fc481d-dd55-4f06-8554-7a1c21400ff9",
+          "99761fc4-7d52-4d4c-b190-d029a12ff5ed",
+          "299aa5b3-9792-46d2-9b16-8a6e6466473a",
+          "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b",
+          "cfd8c710-45ec-4371-b532-9444ea4dbca2",
+          "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83",
+          "26eed4cd-4fdc-4fac-a651-16c4a26571ba"
+        ],
+        "07ea12e2-cdbb-49a5-8383-ce8a68a0b43d": [],
+        "d38cc9cb-e60c-477a-b39b-d1df421a744f": [],
+        "d5667488-8888-4384-ae1d-0ee1132f49cc": [],
+        "6e99dfee-10c7-482f-a3ca-d5b1c247c679": [],
+        "a0329ce4-f69c-4e06-ac96-3022c3c516f6": [],
+        "6a7ce440-fb12-4e91-8750-0d092ece040b": [],
+        "aaebf4a3-8292-4ff5-a216-0e93cdb07ea2": [],
+        "dad2379c-8339-43d5-8fad-fc936511cf0a": [],
+        "3ffb0926-b8f2-4569-a780-6378d149901c": [],
+        "b7135532-48ad-4d79-903d-f7d628e79706": [],
+        "e0407851-3df6-4797-ad01-660b71986740": [],
+        "3cdf2fe1-db22-421f-9905-fa20df0b515d": [],
+        "55c9ca6d-38f8-4aec-803a-7aea99f5d50e": [],
+        "08fc481d-dd55-4f06-8554-7a1c21400ff9": [],
+        "99761fc4-7d52-4d4c-b190-d029a12ff5ed": [],
+        "299aa5b3-9792-46d2-9b16-8a6e6466473a": [],
+        "d0fc7ad3-f71d-4dea-afb9-4d2da86c7b1b": [],
+        "cfd8c710-45ec-4371-b532-9444ea4dbca2": [],
+        "7eb6ef51-8d43-49f4-b76a-c1d683bd8a83": [],
+        "26eed4cd-4fdc-4fac-a651-16c4a26571ba": [],
+        "57cc0e65-1907-423b-989c-1487e2d15147": [
+          "b98fee4d-62db-4ce8-a240-f2e9ec3119b5",
+          "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693",
+          "b7fd81da-efc6-485b-99e0-550fbc36c092",
+          "2267d37c-bdff-41ba-851d-59c7957b4908",
+          "887d4770-c693-4669-8ecf-c0a5c6976421",
+          "25563e27-cac7-4e3b-9d13-826f214d4ec2",
+          "7bc4928b-bafb-40e3-8888-fc8c038335cb",
+          "9012ecb5-5b8e-42b6-955d-7537670c899b",
+          "835c7cde-7ae4-4919-9418-f39973975e87",
+          "586acdc4-2093-42df-aec9-6234cb1766ef",
+          "cb440091-3406-4785-8a33-f6722bf26ff3",
+          "38d47f48-fa7e-434e-a719-4709da7a58e2",
+          "383a38c1-9989-474c-8dd3-91140579cf40",
+          "b5da53d7-2520-4692-916b-da0ce8559a69",
+          "125a163d-08e2-47f5-9cd0-8a5a64342622",
+          "84e551e0-9601-4259-b802-9701ea519aa3",
+          "596d25cc-7ee0-4d22-a882-a51405b3fff1",
+          "c14ce46e-025a-4d76-a28e-66d1a283c199",
+          "c9a07ce0-dd7e-4c44-b13e-764a9643b32a",
+          "00bbadf4-4e2c-4805-bd26-e580550f2870"
+        ],
+        "b98fee4d-62db-4ce8-a240-f2e9ec3119b5": [],
+        "9d33d3bb-7cb2-4faa-b5fd-de24eb10c693": [],
+        "b7fd81da-efc6-485b-99e0-550fbc36c092": [],
+        "2267d37c-bdff-41ba-851d-59c7957b4908": [],
+        "887d4770-c693-4669-8ecf-c0a5c6976421": [],
+        "25563e27-cac7-4e3b-9d13-826f214d4ec2": [],
+        "7bc4928b-bafb-40e3-8888-fc8c038335cb": [],
+        "9012ecb5-5b8e-42b6-955d-7537670c899b": [],
+        "835c7cde-7ae4-4919-9418-f39973975e87": [],
+        "586acdc4-2093-42df-aec9-6234cb1766ef": [],
+        "cb440091-3406-4785-8a33-f6722bf26ff3": [],
+        "38d47f48-fa7e-434e-a719-4709da7a58e2": [],
+        "383a38c1-9989-474c-8dd3-91140579cf40": [],
+        "b5da53d7-2520-4692-916b-da0ce8559a69": [],
+        "125a163d-08e2-47f5-9cd0-8a5a64342622": [],
+        "84e551e0-9601-4259-b802-9701ea519aa3": [],
+        "596d25cc-7ee0-4d22-a882-a51405b3fff1": [],
+        "c14ce46e-025a-4d76-a28e-66d1a283c199": [],
+        "c9a07ce0-dd7e-4c44-b13e-764a9643b32a": [],
+        "00bbadf4-4e2c-4805-bd26-e580550f2870": [],
+        "b46a02fd-6532-4e40-878c-ba8830715081": []
+      },
+      "devices": {
+        "bae96937-5e0e-48a6-8b2a-2ca00576a271": {
+          "identity": {
+            "type": "4102",
+            "id": "10f4 0002",
+            "version": "3.5.11.11"
+          },
+          "connectors": [
+            {
+              "id": 0,
+              "role": "Parent",
+              "interface": "Common.SoftMotion.General",
+              "hostPath": -1
+            },
+            {
+              "id": 1,
+              "role": "Parent",
+              "interface": "Common.PCI",
+              "hostPath": -1
+            }
+          ]
+        },
+        "ae9d2245-972a-4e6b-9bd4-c7f3fd730b0e": {
+          "identity": {
+            "type": "40510",
+            "id": "10F4 0510",
+            "version": "00.00.00.10"
+          },
+          "connectors": [
+            {
+              "id": 1,
+              "role": "Child",
+              "interface": "Common.PCI",
+              "hostPath": -1
+            },
+            {
+              "id": 2,
+              "role": "Parent",
+              "interface": "Common.ModbusTcpSerialDevice",
+              "hostPath": 1
+            }
+          ]
+        },
+        "bf0d0fd8-de24-465d-a555-4bb14a9a8f37": {
+          "identity": {
+            "type": "40600",
+            "id": "10F4 0600",
+            "version": "00.00.00.20"
+          },
+          "connectors": [
+            {
+              "id": 1,
+              "role": "Child",
+              "interface": "Common.PCI",
+              "hostPath": -1
+            },
+            {
+              "id": 2,
+              "role": "Parent",
+              "interface": "Common.inovance2",
+              "hostPath": 1
+            }
+          ]
+        },
+        "04d1db87-e030-46c5-9073-df66a1b4f522": {
+          "identity": {
+            "type": "40005",
+            "id": "10F4 0005",
+            "version": "00.00.00.10"
+          },
+          "connectors": [
+            {
+              "id": 1,
+              "role": "Child",
+              "interface": "Common.PCI",
+              "hostPath": -1
+            },
+            {
+              "id": 2,
+              "role": "Parent",
+              "interface": "Inovance:System",
+              "hostPath": 1
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "serverVersion": "0.38.0",
+  "serverVersion": "0.41.0",
   "contractVersion": "1.0.0",
   "toolCount": 38,
   "tools": [
@@ -580,6 +580,14 @@
             "minLength": 1,
             "maxLength": 160
           },
+          "sessionMode": {
+            "description": "新推荐流程显式resident：同服务同IDE、默认不保存不关闭；省略或batch保留旧批处理语义。",
+            "type": "string",
+            "enum": [
+              "resident",
+              "batch"
+            ]
+          },
           "projectPath": {
             "type": "string",
             "minLength": 1,
@@ -1004,6 +1012,10 @@
                 "type": "null"
               }
             ]
+          },
+          "expectedResidentVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           },
           "offset": {
             "default": 0,
@@ -13663,6 +13675,11 @@
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
           },
+          "expectedResidentVersion": {
+            "description": "resident模式从当前object_read取值；绑定内存依赖与磁盘版本。仅支持普通根ST POU实现区；声明须逐字保持。",
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
           "declaration": {
             "type": "string",
             "maxLength": 500000
@@ -14076,6 +14093,10 @@
                 "type": "null"
               }
             ]
+          },
+          "expectedResidentVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           }
         },
         "required": [

@@ -1,3 +1,4 @@
+import {beforeStructFieldInput} from './contract-projection.mjs';
 
 import test from 'node:test';import assert from 'node:assert/strict';import {readFile,writeFile} from 'node:fs/promises';import {randomUUID,createHash} from 'node:crypto';
 import {z} from 'zod';
@@ -163,9 +164,9 @@ for(const kind of ['method-under-method','accessor-under-fb','duplicate-get','wr
  }});const old=await sha(f.s.workingPath);const r=await f.call('variable_edit',f.request);assert.notEqual(r.status,'succeeded');assert.equal(await sha(f.s.workingPath),old);assert.equal(f.requests.filter(q=>['change','save'].includes(q.command)).length,0);
 });
 
-test('38 tool schemas unchanged; only explicit FB section refinement extended',async()=>{
+test('historical FB interface contract projection retains old rules',async()=>{
  const b=JSON.parse(await readFile(new URL('./fixtures/fb-interface-initializer-legacy-contracts.json',import.meta.url)));const h=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
- assert.equal(Object.keys(schemas).length,38);for(const [n,x] of Object.entries(b.tools)){assert.equal(h(z.toJSONSchema(schemas[n])),x.input,n);assert.equal(h(z.toJSONSchema(outputSchemas[n])),x.output,n);}
+ assert.equal(Object.keys(schemas).length,38);for(const [n,x] of Object.entries(b.tools)){assert.equal(h(beforeStructFieldInput(n,z.toJSONSchema(schemas[n]))),x.input,n);assert.equal(h(z.toJSONSchema(outputSchemas[n])),x.output,n);}
  const q={...action,requestId:randomUUID(),projectId:randomUUID(),applicationId:app,objectId:obj,expectedHash:'a'.repeat(64),expectedSnapshot:'a'.repeat(64),expectedDiskHash:'a'.repeat(64)};
  for(const section of ['VAR_INPUT','VAR_OUTPUT',undefined])assert(schemas.variable_edit.safeParse({...q,section}).success);
  for(const patch of [{type:'TIME'},{expectedOldInitializer:''},{section:'VAR_IN_OUT'},{memberName:'X'},{action:'set-type',type:'TIME',expectedOldType:'DINT',expectedOldInitializer:'1'}])assert(!schemas.variable_edit.safeParse({...q,...patch}).success);

@@ -55,7 +55,7 @@ test('project, Application and task identity and stale configuration/disk reject
 for(const stage of ['save','close','reopen','field','wrong-readback'])test('uncertain '+stage+' freezes original request, no retry/rollback',async t=>{
  const x=await ctx(t,p=>{if(stage==='field')p.failTaskField='priority';else if(stage==='wrong-readback')p.wrongTaskReadback=true;else p.failTaskLifecycle=stage;});
  const a={...x.args,intervalMs:10,priority:12},r=await x.call('task_config_update',a);assert.equal(r.status,'unknown',JSON.stringify(r));const n=x.dispatches(),bytes=await readFile(x.session.workingPath);
- assert.deepEqual(await x.call('task_config_update',a),r);assert.equal(x.dispatches(),n);await assert.rejects(x.call('task_config_update',{...a,requestId:randomUUID()}),/未决/);assert.deepEqual(await readFile(x.session.workingPath),bytes);
+ assert.deepEqual(await x.call('task_config_update',a),r);assert.equal(x.dispatches(),n);await assert.rejects(x.call('task_config_update',{...a,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');assert.deepEqual(await readFile(x.session.workingPath),bytes);
 });
 test('task-only edit invalidates identical-ST old build; new build and saved version bind task configuration',async t=>{
  const x=await ctx(t),build=()=>x.call('project_build',{...x.target,requestId:randomUUID()});const b=await build();assert.equal(b.status,'succeeded');assert.equal((await x.s.store.session()).buildApplicable,true);

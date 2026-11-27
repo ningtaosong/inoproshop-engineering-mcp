@@ -1,3 +1,4 @@
+import {beforeStructFieldInput} from './contract-projection.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,readdir,writeFile} from 'node:fs/promises';
@@ -90,7 +91,7 @@ test(`partial clear freezes without recovery ${copy?'copy':'direct'} ${fault}`,a
  assert.deepEqual(await counts(x,r),{clear:1,save:fault==='reopen'?1:0});
  if(fault!=='reopen')assert.deepEqual(await readFile(x.s.workingPath),before);
  assert.equal((await x.c.call('session_status')).data.globalFrozen,true);assert.deepEqual(await x.c.call('library_placeholder_clear',x.args),r);
- assert.equal((await x.c.call('project_build',{requestId:randomUUID(),projectId:x.s.projectId,applicationId:app})).status,'unknown');
+ assert.equal((await x.c.call('project_build',{requestId:randomUUID(),projectId:x.s.projectId,applicationId:app})).status,'conflict');
 });
 test('independent service validator rejects raw differences and allows only task/PROGRAM enumeration',async t=>{
  const x=await context(t),r=await x.c.done(await x.c.call('library_placeholder_clear',x.args));assert.equal(r.status,'succeeded',JSON.stringify(r));
@@ -125,11 +126,11 @@ test('production service rejects wrong clear envelope operationId, freezes and d
  assert.equal((await service.status()).data.globalFrozen,true);assert.equal((await call('library_placeholder_clear',a)).operationId,r.operationId);
  await assert.rejects(()=>call('library_placeholder_clear',{...a,requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');assert.equal(clears,1);
 });
-test('0.37.x keeps the added clear tool and original 37 contracts unchanged',async()=>{
+test('historical clear-tool contract projection retains old rules',async()=>{
  const prior=JSON.parse(await readFile(new URL('./fixtures/placeholder-clear-legacy-contracts.json',import.meta.url),'utf8'));
- assert.equal(Object.keys(prior.tools).length,37);assert.equal(Object.keys(schemas).length,38);assert.equal(VERSION,'0.38.0');
+ assert.equal(Object.keys(prior.tools).length,37);assert.equal(Object.keys(schemas).length,38);assert.equal(VERSION,'0.41.0');
  for(const [name,hashes] of Object.entries(prior.tools)){
-  assert.equal(digest(JSON.stringify(z.toJSONSchema(schemas[name]))),hashes.input,name+' input');
+  assert.equal(digest(JSON.stringify(beforeStructFieldInput(name,z.toJSONSchema(schemas[name])))),hashes.input,name+' input');
   assert.equal(digest(JSON.stringify(z.toJSONSchema(outputSchemas[name]))),hashes.output,name+' output');
  }
  assert(!schemas.library_placeholder_clear.safeParse({}).success);

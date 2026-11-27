@@ -97,7 +97,7 @@ test(`重开证据不完整冻结 ${copy?'copy':'direct'} ${fault}`,async t=>{
  assert.equal(r.status,'unknown',JSON.stringify(r));assert.notDeepEqual(await readFile(x.s.workingPath),before);
  assert.equal((await x.c.call('session_status')).data.globalFrozen,true);
  assert.equal((await x.c.call('operation_status',{operationId:r.operationId})).status,'unknown');
- assert.equal((await x.c.call('project_build',{requestId:randomUUID(),...x.scope})).status,'unknown');
+ assert.equal((await x.c.call('project_build',{requestId:randomUUID(),...x.scope})).status,'conflict');
 });
 test('部分设置不自动恢复，原操作保持 unknown',async t=>{
  const x=await context(t,false,{failPlaceholderResolve:true});

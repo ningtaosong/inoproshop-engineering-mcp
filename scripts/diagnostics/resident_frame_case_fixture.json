@@ -1,0 +1,489 @@
+{
+  "sourceResultSha256": "07455232866a1618b338beb17c25bf209b22e81f7786d88725d962c26e93f332",
+  "sourceIntentSha256": "458197365096d0b34866fdf08ad5154c970407c3dc42ebeb5cc2c0c8eb3ad910",
+  "expected": {
+    "path": "D:\\InProShop\\CODESYS\\PlugIns\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\Frame.plugin.dll",
+    "sha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe",
+    "mvid": "907636ac-aa7c-498c-953a-7c3b30b2e75c",
+    "type": "_3S.CoDeSys.Frame.MainForm"
+  },
+  "state": {
+    "frameIdentity": {
+      "mvid": "907636ac-aa7c-498c-953a-7c3b30b2e75c",
+      "path": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+      "type": "_3S.CoDeSys.Frame.MainForm"
+    },
+    "frameFileEvidence": {
+      "expectedSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe",
+      "actualPath": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+      "installedSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe",
+      "actualFullPath": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+      "pathOrdinalIgnoreCaseEqual": true,
+      "expectedPath": "D:\\InProShop\\CODESYS\\PlugIns\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\Frame.plugin.dll",
+      "expectedFullPath": "D:\\InProShop\\CODESYS\\PlugIns\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\Frame.plugin.dll",
+      "actualSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe"
+    }
+  },
+  "legacyStatement": "for(const key of ['path','mvid','type'])if(state.frameIdentity[key]!==intent.frameIdentity[key])throw Error('Installed frame identity differs');",
+  "ready": {
+    "binding": {
+      "operationId": "2a7e1e66-28cf-4b69-97ca-e40ab9ee271b",
+      "startId": "639311895135679939",
+      "requestId": "3a4b6ebd-557d-435b-a455-a16b01aabd90",
+      "launchId": "0cfff467-dd78-4c70-9f77-f796a9f56baa",
+      "requestFingerprint": "a3f9ea7ccb33006a3cce58856fd79b16f8e0de15113618495c1e806acca6b0bf",
+      "pid": 52996,
+      "scriptSha256": "86bd80b7cf92eb4fd721fc4f90e40cd19cf66b8f7c4cc120979674197154a9eb"
+    },
+    "state": {
+      "startupFramesPresent": false,
+      "noProject": {
+        "openProjectCount": 0,
+        "primaryIsNone": true,
+        "uiPresent": true
+      },
+      "stack": [
+        {
+          "type": "System.RuntimeMethodHandle",
+          "assembly": "mscorlib",
+          "method": "InvokeMethod"
+        },
+        {
+          "type": "System.Reflection.RuntimeConstructorInfo",
+          "assembly": "mscorlib",
+          "method": "Invoke"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.NewInstruction",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.Interpreter",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.LightLambda",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run4"
+        },
+        {
+          "type": null,
+          "assembly": "Anonymously Hosted DynamicMethods Assembly",
+          "method": "capture$67"
+        },
+        {
+          "type": "IronPython.Runtime.Method+MethodBinding",
+          "assembly": "IronPython",
+          "method": "SelfTarget"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.DynamicInstruction`3",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.Interpreter",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.LightLambda",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run1"
+        },
+        {
+          "type": "System.Dynamic.UpdateDelegates",
+          "assembly": "System.Core",
+          "method": "UpdateAndExecute1"
+        },
+        {
+          "type": "System.RuntimeMethodHandle",
+          "assembly": "mscorlib",
+          "method": "InvokeMethod"
+        },
+        {
+          "type": "System.Reflection.RuntimeMethodInfo",
+          "assembly": "mscorlib",
+          "method": "UnsafeInvokeInternal"
+        },
+        {
+          "type": "System.Delegate",
+          "assembly": "mscorlib",
+          "method": "DynamicInvokeImpl"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "InvokeMarshaledCallbackDo"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "InvokeMarshaledCallbackHelper"
+        },
+        {
+          "type": "System.Threading.ExecutionContext",
+          "assembly": "mscorlib",
+          "method": "RunInternal"
+        },
+        {
+          "type": "System.Threading.ExecutionContext",
+          "assembly": "mscorlib",
+          "method": "Run"
+        },
+        {
+          "type": "System.Threading.ExecutionContext",
+          "assembly": "mscorlib",
+          "method": "Run"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "InvokeMarshaledCallback"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "InvokeMarshaledCallbacks"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "WndProc"
+        },
+        {
+          "type": "System.Windows.Forms.NativeWindow",
+          "assembly": "System.Windows.Forms",
+          "method": "Callback"
+        },
+        {
+          "type": "System.Windows.Forms.UnsafeNativeMethods",
+          "assembly": "System.Windows.Forms",
+          "method": "DispatchMessageW"
+        },
+        {
+          "type": "System.Windows.Forms.UnsafeNativeMethods",
+          "assembly": "System.Windows.Forms",
+          "method": "DispatchMessageW"
+        },
+        {
+          "type": "System.Windows.Forms.Application+ComponentManager",
+          "assembly": "System.Windows.Forms",
+          "method": "System.Windows.Forms.UnsafeNativeMethods.IMsoComponentManager.FPushMessageLoop"
+        },
+        {
+          "type": "System.Windows.Forms.Application+ThreadContext",
+          "assembly": "System.Windows.Forms",
+          "method": "RunMessageLoopInner"
+        },
+        {
+          "type": "System.Windows.Forms.Application+ThreadContext",
+          "assembly": "System.Windows.Forms",
+          "method": "RunMessageLoop"
+        },
+        {
+          "type": "Inovance.InoPro.InoProShop.Program",
+          "assembly": "InoProShop",
+          "method": "RunUI"
+        },
+        {
+          "type": "Inovance.InoPro.InoProShop.Program",
+          "assembly": "InoProShop",
+          "method": "Run"
+        },
+        {
+          "type": "Inovance.InoPro.InoProShop.Program",
+          "assembly": "InoProShop",
+          "method": "Main"
+        }
+      ],
+      "frameFileEvidence": {
+        "expectedSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe",
+        "actualPath": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+        "installedSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe",
+        "actualFullPath": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+        "pathOrdinalIgnoreCaseEqual": true,
+        "expectedPath": "D:\\InProShop\\CODESYS\\PlugIns\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\Frame.plugin.dll",
+        "expectedFullPath": "D:\\InProShop\\CODESYS\\PlugIns\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\Frame.plugin.dll",
+        "actualSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe"
+      },
+      "thread": 1,
+      "frameIdentity": {
+        "mvid": "907636ac-aa7c-498c-953a-7c3b30b2e75c",
+        "path": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+        "type": "_3S.CoDeSys.Frame.MainForm"
+      },
+      "forms": [
+        {
+          "type": "_3S.CoDeSys.Frame.MainForm",
+          "visible": true,
+          "modal": false
+        },
+        {
+          "type": "Inovance.InoPro.DeviceConfigurationEditor.HardwareConfigOutputInfoWnd",
+          "visible": true,
+          "modal": false
+        }
+      ],
+      "mainHandle": "24975556",
+      "mainEnabled": true
+    },
+    "proof": "Public primary callback stack lacks known startup frames; not a script-tail inference"
+  },
+  "response": {
+    "state": {
+      "startupFramesPresent": false,
+      "noProject": {
+        "openProjectCount": 0,
+        "primaryIsNone": true,
+        "uiPresent": true
+      },
+      "stack": [
+        {
+          "type": "System.RuntimeMethodHandle",
+          "assembly": "mscorlib",
+          "method": "InvokeMethod"
+        },
+        {
+          "type": "System.Reflection.RuntimeConstructorInfo",
+          "assembly": "mscorlib",
+          "method": "Invoke"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.NewInstruction",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.Interpreter",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.LightLambda",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run4"
+        },
+        {
+          "type": null,
+          "assembly": "Anonymously Hosted DynamicMethods Assembly",
+          "method": "capture$67"
+        },
+        {
+          "type": "IronPython.Runtime.Method+MethodBinding",
+          "assembly": "IronPython",
+          "method": "SelfTarget"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.DynamicInstruction`3",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.Interpreter",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run"
+        },
+        {
+          "type": "Microsoft.Scripting.Interpreter.LightLambda",
+          "assembly": "Microsoft.Dynamic",
+          "method": "Run1"
+        },
+        {
+          "type": "System.Dynamic.UpdateDelegates",
+          "assembly": "System.Core",
+          "method": "UpdateAndExecute1"
+        },
+        {
+          "type": "System.RuntimeMethodHandle",
+          "assembly": "mscorlib",
+          "method": "InvokeMethod"
+        },
+        {
+          "type": "System.Reflection.RuntimeMethodInfo",
+          "assembly": "mscorlib",
+          "method": "UnsafeInvokeInternal"
+        },
+        {
+          "type": "System.Delegate",
+          "assembly": "mscorlib",
+          "method": "DynamicInvokeImpl"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "InvokeMarshaledCallbackDo"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "InvokeMarshaledCallbackHelper"
+        },
+        {
+          "type": "System.Threading.ExecutionContext",
+          "assembly": "mscorlib",
+          "method": "RunInternal"
+        },
+        {
+          "type": "System.Threading.ExecutionContext",
+          "assembly": "mscorlib",
+          "method": "Run"
+        },
+        {
+          "type": "System.Threading.ExecutionContext",
+          "assembly": "mscorlib",
+          "method": "Run"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "InvokeMarshaledCallback"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "InvokeMarshaledCallbacks"
+        },
+        {
+          "type": "System.Windows.Forms.Control",
+          "assembly": "System.Windows.Forms",
+          "method": "WndProc"
+        },
+        {
+          "type": "System.Windows.Forms.NativeWindow",
+          "assembly": "System.Windows.Forms",
+          "method": "Callback"
+        },
+        {
+          "type": "System.Windows.Forms.UnsafeNativeMethods",
+          "assembly": "System.Windows.Forms",
+          "method": "DispatchMessageW"
+        },
+        {
+          "type": "System.Windows.Forms.UnsafeNativeMethods",
+          "assembly": "System.Windows.Forms",
+          "method": "DispatchMessageW"
+        },
+        {
+          "type": "System.Windows.Forms.Application+ComponentManager",
+          "assembly": "System.Windows.Forms",
+          "method": "System.Windows.Forms.UnsafeNativeMethods.IMsoComponentManager.FPushMessageLoop"
+        },
+        {
+          "type": "System.Windows.Forms.Application+ThreadContext",
+          "assembly": "System.Windows.Forms",
+          "method": "RunMessageLoopInner"
+        },
+        {
+          "type": "System.Windows.Forms.Application+ThreadContext",
+          "assembly": "System.Windows.Forms",
+          "method": "RunMessageLoop"
+        },
+        {
+          "type": "Inovance.InoPro.InoProShop.Program",
+          "assembly": "InoProShop",
+          "method": "RunUI"
+        },
+        {
+          "type": "Inovance.InoPro.InoProShop.Program",
+          "assembly": "InoProShop",
+          "method": "Run"
+        },
+        {
+          "type": "Inovance.InoPro.InoProShop.Program",
+          "assembly": "InoProShop",
+          "method": "Main"
+        }
+      ],
+      "frameFileEvidence": {
+        "expectedSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe",
+        "actualPath": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+        "installedSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe",
+        "actualFullPath": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+        "pathOrdinalIgnoreCaseEqual": true,
+        "expectedPath": "D:\\InProShop\\CODESYS\\PlugIns\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\Frame.plugin.dll",
+        "expectedFullPath": "D:\\InProShop\\CODESYS\\PlugIns\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\Frame.plugin.dll",
+        "actualSha256": "2378cfee54890563bb494d5427ae99950ab3ea3064c8280e73c35966eabe67fe"
+      },
+      "thread": 1,
+      "frameIdentity": {
+        "mvid": "907636ac-aa7c-498c-953a-7c3b30b2e75c",
+        "path": "d:\\inproshop\\codesys\\plugins\\55da38af-e78a-46ae-915b-7686657f6fac\\3.5.11.10\\frame.plugin.dll",
+        "type": "_3S.CoDeSys.Frame.MainForm"
+      },
+      "forms": [
+        {
+          "type": "_3S.CoDeSys.Frame.MainForm",
+          "visible": true,
+          "modal": false
+        },
+        {
+          "type": "Inovance.InoPro.DeviceConfigurationEditor.HardwareConfigOutputInfoWnd",
+          "visible": true,
+          "modal": false
+        }
+      ],
+      "mainHandle": "24975556",
+      "mainEnabled": true
+    },
+    "request": {
+      "scriptSha256": "86bd80b7cf92eb4fd721fc4f90e40cd19cf66b8f7c4cc120979674197154a9eb",
+      "sequence": 1,
+      "requestId": "c3b675bf-8495-41e4-b092-383b1e402f4a",
+      "launchId": "0cfff467-dd78-4c70-9f77-f796a9f56baa",
+      "schemaVersion": 1,
+      "command": "empty-project-status",
+      "previousResultSha256": null
+    },
+    "requestSha256": "0408437b11386d8b73c3a7097ef1106da0bd4088c8dbb6f98064440653317fed",
+    "binding": {
+      "operationId": "2a7e1e66-28cf-4b69-97ca-e40ab9ee271b",
+      "startId": "639311895135679939",
+      "requestId": "3a4b6ebd-557d-435b-a455-a16b01aabd90",
+      "launchId": "0cfff467-dd78-4c70-9f77-f796a9f56baa",
+      "requestFingerprint": "a3f9ea7ccb33006a3cce58856fd79b16f8e0de15113618495c1e806acca6b0bf",
+      "pid": 52996,
+      "scriptSha256": "86bd80b7cf92eb4fd721fc4f90e40cd19cf66b8f7c4cc120979674197154a9eb"
+    },
+    "exitCalls": 0,
+    "message": "已只读确认当前无工程；未关闭IDE",
+    "closeCalls": 0,
+    "status": "read-returned",
+    "engineeringCalls": 0
+  },
+  "request": {
+    "schemaVersion": 1,
+    "command": "empty-project-status",
+    "sequence": 1,
+    "requestId": "c3b675bf-8495-41e4-b092-383b1e402f4a",
+    "launchId": "0cfff467-dd78-4c70-9f77-f796a9f56baa",
+    "scriptSha256": "86bd80b7cf92eb4fd721fc4f90e40cd19cf66b8f7c4cc120979674197154a9eb",
+    "previousResultSha256": null
+  },
+  "processStart": {
+    "utc": "2026-11-25T07:45:13.939Z",
+    "binding": {
+      "operationId": "2a7e1e66-28cf-4b69-97ca-e40ab9ee271b",
+      "requestId": "3a4b6ebd-557d-435b-a455-a16b01aabd90",
+      "launchId": "0cfff467-dd78-4c70-9f77-f796a9f56baa",
+      "requestFingerprint": "a3f9ea7ccb33006a3cce58856fd79b16f8e0de15113618495c1e806acca6b0bf",
+      "scriptSha256": "86bd80b7cf92eb4fd721fc4f90e40cd19cf66b8f7c4cc120979674197154a9eb"
+    },
+    "stage": "process-start",
+    "start": {
+      "startId": "639311895135679939",
+      "path": "D:\\InProShop\\CODESYS\\Common\\InoProShop.exe",
+      "pid": 52996,
+      "state": "running"
+    },
+    "exe": "D:\\InProShop\\CODESYS\\Common\\InoProShop.exe",
+    "argv": [
+      "--profile=\"InoProShop(V1.9.1.6)\"",
+      "--runscript=\"D:\\InoPro-ResidentTwoRead-Recheck-20261125\\fixed-scripts-run03\\resident_two_read_probe.py\""
+    ],
+    "cwd": "D:\\InProShop\\CODESYS\\Common"
+  },
+  "requestFileSha256": "0408437b11386d8b73c3a7097ef1106da0bd4088c8dbb6f98064440653317fed"
+}
