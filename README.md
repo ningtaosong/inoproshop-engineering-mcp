@@ -1,6 +1,6 @@
 # InoProShop Engineering MCP
 
-当前 **codex/resident-merge-prep：0.41.0 候选版、38 项 MCP 工具**，是基于 main 0.38.0 的独立合并准备分支，尚未合并或部署。候选仅保留常驻连续读改、明确请求的内存编译及其必要保护；未完成真实验收的 `add-struct-field` 已从产品、契约和初始化说明中移除，原分支与失败证据保留。详见[合并准备范围与验证归属](docs/resident-merge-preparation.md)。后续[默认环境代表失败诊断与测试补修](docs/resident-default-test-diagnosis.md)已完成，产品未变；其余默认失败仍未逐项复验。[合并前复核与清单](docs/resident-premerge-review.md)未发现限定范围的产品阻断；本轮仍不合并、不部署。推荐显式 `project_open(sessionMode="resident")`，必要读取定位后修改根普通 ST POU 实现区，按明确请求编译，保持工程打开且不自动保存；省略模式仍为兼容 batch，并非默认 resident。
+当前 main 已合并 **0.41.0 候选版、38 项 MCP 工具**，限定常驻连续读改、明确请求的内存编译及其必要保护。未完成真实验收的 `add-struct-field` 不在产品中，原分支与失败记录保留。日常 DSH 入口仍为0.38.0，本轮未部署常驻候选，也未保存或关闭当前真实工程；见[合并与入口保持说明](docs/resident-0410-merge.md)。推荐显式 `project_open(sessionMode="resident")`，必要读取后只改根普通ST POU实现区，按明确请求编译，不自动保存关闭；省略模式仍为兼容batch，并非全部38项工具都已迁移。用户决定保存关闭，手动保存后继续旧resident会话目前尚不支持。
 
 
 2026-11-26[常驻内存编译首轮](docs/resident-memory-build-real-20261126.md)的unknown及[2026-11-27写前类型元数据冲突](docs/resident-build-recheck-20261127.md)保留原结果。随后按明确授权正常不保存关闭旧实例，使用固定产品02e5099完成[同一保存工程的新一轮真实MCP复验](docs/resident-build-scalar-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告、独立读回通过，FALSE／声明／中文保持。原直接库保持，编译新增IecVarAccess系统依赖的实际安装件与保全证据通过；没有新增派生设备。当轮IDE72140、MCP67608、驱动71748保持打开，7秒／FALSE未保存；随后按明确授权不保存正常关闭并移交。新的[DSH内存编译任务](docs/dsh-resident-build-20261127.md)在读取未返回终态时发起额外查询，因PENDING_UNKNOWN冲突停止，三项原生读取成功、0修改／0编译。该时点IDE24836、MCP72960、SDK61000及驱动22724保持打开，内存和磁盘均为5秒／FALSE；当轮仅补修说明。随后按明确授权完成[替身线传修正、串行补证及同一连接的一次新真实任务](docs/dsh-resident-sequence-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告和独立读回通过，FALSE／声明／中文保持。当前原四个进程仍保持打开，7秒未保存，主文件哈希不变，autosave等附属变化单列；39次状态查询及5次本轮原操作reconcile保留，不含历史查询。前三次替身的首败、审计过窄及独立补证均保留，不重写旧任务。0.39及其他未验范围不变。
@@ -91,15 +91,15 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 
 ## 已完成功能（main）
 
-下表列出 main 已合并的 38 项工具及其能力。具体受验版本和未验事项见[验证范围](#能力与验证边界)。
+下表列出 main 已合并的38项工具及其能力。0.41.0仅给显式打开、列举／读取、限定实现修改及内存编译增加resident模式；其余工程能力仍为batch，不能自动切换以绕过拒绝。具体受验版本和未验事项见[验证范围](#能力与验证边界)。
 
 | 功能 | 已实现范围 | 对应工具 | 完成阶段 |
 | --- | --- | --- | --- |
 | 环境、会话及操作状态 | 查询服务版本、当前工程、未决操作和冻结状态；运行中查询原操作，不重复写入 | `environment_inspect`、`session_status`、`operation_status` | 基础能力 |
-| 直接打开与工程切换 | 指定哪个 `.project` 就读取、修改并保存哪个文件；复用登记身份、查询工程列表、显式切换活动工程 | `project_open`、`project_list`、`project_activate` | 0.16.0 |
+| 直接打开与工程切换 | 指定实际工程路径并复用登记身份。显式resident保持同一自有IDE，不保存、不切换；省略模式或batch保留原直接编辑与显式激活流程 | `project_open`、`project_list`、`project_activate` | 0.16.0；0.41.0增加限定resident |
 | 新建 AM610 工程 | 原生向导创建固定 AM610-CPU1608TP 最小预设、空 ST `PLC_PRG`、20 ms 周期任务并绑定调用；保存到指定新路径 | `project_create` | 0.17.0 |
 | 显式旧副本模式 | 仅用户明确选择旧接口时创建或复用受管理副本，保留来源文件；不是默认操作流程 | `project_open_copy` | 基础能力，兼容保留 |
-| 源码读取与限定修改 | 按真实对象身份读取声明、实现和内容版本，修改受支持 ST 对象；写后读回并保留检查点 | `object_list`、`object_read`、`code_apply_change` | 基础能力，随 S2 扩展子对象 |
+| 源码读取与限定修改 | batch保留原对象范围；resident仅根普通ST POU，无子Method／Property，声明保持、只改实现区，按当前内存版本核对并读回 | `object_list`、`object_read`、`code_apply_change` | 原基础能力；0.41.0常驻限定读改已合入 |
 | 创建 POU | FUNCTION_BLOCK、PROGRAM，以及显式返回 DINT／BOOL／INT／REAL／TIME 的 FUNCTION；PROGRAM 不自动绑定任务 | `pou_create` | 0.8.0–0.9.0 |
 | 创建 GVL 和 DUT | Application 根节点 GVL、结构体、普通枚举、一维定长 DINT 数组；枚举显式值 -32768..32767，数组显式边界 0..255、最多 256 项 | `declaration_create` | 0.4.0、0.11.0–0.12.0 |
 | 变量表与初始化成员定位 | 查询声明的类型、显式初始化值及原文位置；可提取最外层命名初始化成员，提供分页、详情和解析缺口 | `variable_inspect` | 0.13.0、0.15.0 |
@@ -120,7 +120,8 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | FB 原生方法 | PUBLIC ST Method 的创建、读取和修改，返回值限 void／DINT；绑定父 FB 身份 | `method_create`，读取和修改复用源码工具 | **S2a / 0.19.0**，见[说明](docs/methods.md) |
 | FB 原生属性 | PUBLIC DINT Property/Get/Set 创建及访问器独立读写；旧调用默认只读 Get，显式指定才创建 Get/Set，不自动转换已有属性或补建 Set | `property_create`，读取和修改复用源码工具 | **S2b / 0.20.0–0.21.0**，见[说明](docs/properties.md) |
 | 文件夹与对象整理 | Application 根节点创建文件夹；同一 Application 的根与直接文件夹间移动 ST PROGRAM／FUNCTION／FB；支持的 Method、Property 子对象随 FB 保持身份和源码 | `folder_create`、`object_move` | **S3 / 0.22.0**，见[说明](docs/object-organize.md) |
-| 真实编译与保存重开 | 返回实际编译错误、警告；保存、关闭重开、目标读回，必要时对保存版本复编 | `project_build`、`project_save` | 基础离线闭环 |
+| 按需内存编译 | resident绑定当前Application及内存版本，返回完整实际诊断，修改后旧编译失效；不保存、不关闭，不证明磁盘版本或PLC行为 | `project_build` | 0.41.0已合入，真实证据归原02e5099 |
+| batch真实编译与保存重开 | 仅明确选择batch：返回编译诊断，按授权保存、正常关闭重开、目标读回，必要时保存版复编；resident拒绝project_save | `project_build`、`project_save` | 原基础离线闭环 |
 | 按需版本比较 | 用户要求比较时采集支持源码与实际可读任务配置，引用成功采集记录比较；按应用相对路径和类型匹配，不猜重命名，不覆盖设备／I/O或运行行为；支持分页及详情 | `project_compare` | 0.7.0，默认不调用；[精确范围](docs/mcp-scope-status.md#兼容接口与证据边界) |
 
 库使用情况可组合既有只读工具收集，见[只读示例](docs/getting-started.md#只读检查库的使用情况)；这不是新增工具，也不证明可以安全移除库。
@@ -161,7 +162,7 @@ S4b 第三子阶段已合并：普通 ST PROGRAM／FUNCTION／FUNCTION_BLOCK 的
 | S9b 限定运行参数写值 | S9a 通过，再限定类型、范围、预期旧值与写后读回 | 不含强制，不默认修改源码初值 |
 | S9c Online Change | 可信在线会话、运行应用版本对应及厂商接口证据 | 不自动退化为完整下载、启停或复位 |
 
-推进顺序按 [agent.md 的当前路线](agent.md#当前路线与范围变更规则)：**本分支仅完成常驻候选的合并准备与复核，不自动合并、部署或启动下一阶段。未完成真实验收的结构体字段新增已从候选产品移除，原分支与证据保留；其余 S4b／S5 离线子项逐项限定，S6／S7 按明确需求，S8 补齐恢复条件后继续且不阻塞离线交付，S9 因缺少测试 PLC 暂缓。** 调整顺序或新增范围须经用户明确确认，不承诺日期。详见[范围状态](docs/mcp-scope-status.md)。
+推进顺序按 [agent.md 的当前路线](agent.md#当前路线与范围变更规则)：**0.41.0常驻限定能力及必要保护已正常合并，本轮未部署或启动下一阶段。未完成真实验收的结构体字段新增已从候选产品移除，原分支与证据保留；其余 S4b／S5 离线子项逐项限定，S6／S7 按明确需求，S8 补齐恢复条件后继续且不阻塞离线交付，S9 因缺少测试 PLC 暂缓。** 调整顺序或新增范围须经用户明确确认，不承诺日期。详见[范围状态](docs/mcp-scope-status.md)。
 
 DSH 欢迎页／认证、CLI 接入、转储诊断和采证属于辅助维护；租约、去重、隔离与退出保护属于必要工程保护，不作为新增业务功能计入完成率，也不删除其实现。通用图形语言编辑、普通下载／运行控制、强制、仿真、自动回滚及多客户端并发工程执行没有当前交付承诺。
 
