@@ -4,7 +4,9 @@ import os from 'node:os';
 import {DomainError} from './contracts.js';
 import {type Store,type Session,readJson,digest,pathKey} from './storage.js';
 import {probeProcess,sameProcess,validProcessIdentity,type ProcessProbe} from './lease-process.js';
-import {residentHash,verifyResidentCompletion} from './resident.js';
+import {residentHash,verifyResidentCompletion,verifyResidentResult} from './resident.js';
+import {SAVE_POLICY} from './resident-save.js';
+import {residentDisk} from './resident-saved.js';
 const equal=(a:unknown,b:unknown)=>residentHash(a)===residentHash(b);
 const uuid=(s:any)=>typeof s==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(s);
 
@@ -42,16 +44,20 @@ export async function verifyClosedResident(store:Store,s:Session,newOperationId:
    const observed=await probe(owner.pid);
    if(observed.state==='unconfirmed'||observed.state==='running'&&(!validProcessIdentity(observed.identity,owner.pid)||sameProcess(observed.identity,owner)))throw refuse('Prior IDE/service remains alive or cannot be ruled out');
   }
-  const stat=await fs.stat(s.workingPath,{bigint:true}),fileIdentity=`${stat.dev}:${stat.ino}`,diskHash=digest(await fs.readFile(s.workingPath));
-  if(fileIdentity!==intent.originalFileId||diskHash!==s.diskHash)throw refuse('Saved file identity/version changed');
+  const image=await residentDisk(s.workingPath),{fileIdentity,diskHash}=image;
+  if(diskHash!==s.diskHash)throw refuse('Saved file version changed');
   const related=operations.filter(o=>o.operationId!==newOperationId&&o.resident&&o.project?.projectId===s.projectId&&o.project?.sessionId===s.sessionId);
   if(!related.length||related.some(o=>o.bridge?.launchId!==launchId||!['succeeded','conflict'].includes(o.status)))throw refuse('Current prior session has unresolved or different launch evidence');
-  const sequences:number[]=[];
-  for(const op of related){
+  const sequences:number[]=[],chain:any[]=[];
+  const ordered=await Promise.all(related.map(async op=>({op,request:await readJson(store.file('ipc/'+op.operationId+'/request.json'))})));
+  ordered.sort((a,b)=>(a.request?.sequence??-1)-(b.request?.sequence??-1));
+  let currentFile=intent.originalFileId,currentHash=ordered[0]?.request?.diskHash;
+  if(typeof currentFile!=='string'||typeof currentHash!=='string'||!/^[a-f0-9]{64}$/.test(currentHash))throw refuse('Initial saved version missing');
+  for(const {op} of ordered){
    const ipc=store.file('ipc/'+op.operationId);
    if(pathKey(op.bridge?.directory??'')!==pathKey(ipc))throw refuse('IPC path differs');
    const [request,result,check]=await Promise.all(['request.json','result.json','service-verification.json'].map(n=>readJson(path.join(ipc,n))));
-   if(!request||request.operationId!==op.operationId||request.requestId!==op.requestId||request.requestFingerprint!==op.fingerprint||request.launchId!==launchId||request.fileIdentity!==fileIdentity||request.diskHash!==diskHash||pathKey(request.projectPath)!==pathKey(s.workingPath)||
+   if(!request||request.operationId!==op.operationId||request.requestId!==op.requestId||request.requestFingerprint!==op.fingerprint||request.launchId!==launchId||request.fileIdentity!==currentFile||request.diskHash!==currentHash||pathKey(request.projectPath)!==pathKey(s.workingPath)||
     !closedApplicationBinding(op,request,result,s)||!result||result.status!==op.status||!equal(result.data?.residentEvidence,op.response?.data?.residentEvidence)||
     check?.passed!==true||check.launchId!==launchId||check.sequence!==request.sequence||!equal(check.processIdentity,identity)||check.requestHash!==residentHash(request)||check.resultHash!==residentHash(result))throw refuse('Prior request/result/verification binding differs');
    // The immutable original service-verification above binds these exact bytes.
@@ -59,11 +65,21 @@ export async function verifyClosedResident(store:Store,s:Session,newOperationId:
    await verifyResidentCompletion(request,result,ipc,identity);
    if(op.status==='conflict'&&(result.data?.recoverableRejection!==true||result.data?.firstError?.dispatched!==false||result.data?.secondaryErrors?.length!==0))throw refuse('Prior conflict is not proven zero-dispatch');
    if(Date.parse(op.finishedAt??'')>Date.parse(exit.at)||!Number.isFinite(Date.parse(op.finishedAt??'')))throw refuse('Exit precedes completion');
+   if(result.status==='succeeded'&&result.data?.saved===true){
+    if(request.savePolicy!==SAVE_POLICY)throw refuse('Unrecognized save producer');
+    await verifyResidentResult(request,result,ipc,identity);
+    const [accepted,committed]=await Promise.all(['saved-channel-accepted','saved-registration-committed'].map(n=>readJson(path.join(ipc,n+'.json'))));
+    if(accepted?.scheme!==SAVE_POLICY||accepted.requestHash!==residentHash(request)||accepted.receiptHash!==residentHash(result.data.saveReceipt)||!equal(accepted.beforeDisk,request.initialDisk)||accepted.afterDisk?.diskHash!==result.data.diskHash||typeof accepted.afterDisk?.fileIdentity!=='string'||
+     !equal(committed,{operationId:op.operationId,requestId:op.requestId,projectId:s.projectId,sessionId:s.sessionId,sourceHash:s.sourceHash,diskHash:result.data.diskHash,residentVersion:result.data.residentVersion,receiptHash:residentHash(result.data.saveReceipt),buildApplicable:false})||check.diskHash!==result.data.diskHash)throw refuse('Own-save version transition receipt incomplete');
+    chain.push({operationId:op.operationId,requestHash:residentHash(request),acceptedHash:residentHash(accepted),beforeDisk:accepted.beforeDisk,afterDisk:accepted.afterDisk});
+    currentFile=accepted.afterDisk.fileIdentity;currentHash=accepted.afterDisk.diskHash;
+   }
    sequences.push(request.sequence);
   }
   sequences.sort((a,b)=>a-b);
   if(sequences.length!==exit.lastSequence||sequences.some((n,i)=>n!==i+1))throw refuse('Prior session request coverage incomplete or duplicated');
-  return {priorSessionId:s.sessionId,priorLaunchId:launchId,anchorOperationId:anchor.operationId,operationIds:related.map(o=>o.operationId),processIdentity:identity,exit,fileIdentity,diskHash,
-   semantics:'explicit fresh open of unchanged saved bytes; not memory reconnect or prior result recovery'};
+  if(currentFile!==fileIdentity||currentHash!==diskHash)throw refuse('Saved version chain does not reach current file');
+  return {saveVersionChain:chain,priorSessionId:s.sessionId,priorLaunchId:launchId,anchorOperationId:anchor.operationId,operationIds:related.map(o=>o.operationId),processIdentity:identity,exit,fileIdentity,diskHash,
+   semantics:'explicit fresh open of verified saved version chain; not memory reconnect or prior result recovery'};
  }catch(error){if(error instanceof DomainError)throw error;throw refuse('Prior resident reopen proof unavailable: '+(error as Error).message);}
 }

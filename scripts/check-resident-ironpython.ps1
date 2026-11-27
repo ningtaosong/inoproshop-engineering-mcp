@@ -8,7 +8,7 @@ $engine=[IronPython.Hosting.Python]::CreateEngine()
 $record=[ordered]@{languageVersion=$engine.LanguageVersion.ToString();runtimeSha256=(Get-FileHash $dll).Hash.ToLowerInvariant();compiled=@();passed=$false;ideLaunched=$false}
 try {
  $paths=[Collections.Generic.List[string]]::new();$paths.Add('D:\InProShop\CODESYS\ScriptLib\3.5.10.40');$paths.Add((Join-Path $Repo 'bridge'));$paths.Add((Join-Path $Repo 'tests'));$engine.SetSearchPaths($paths)
- foreach($n in @('bridge\resident_core.py','bridge\resident_host.py','tests\test_resident_core.py','tests\test_resident_build.py','tests\test_resident_build_library.py','tests\test_resident_scalar_context.py','tests\test_resident_saved_baseline.py')){
+ foreach($n in @('bridge\resident_core.py','bridge\resident_host.py','tests\test_resident_core.py','tests\test_resident_build.py','tests\test_resident_build_library.py','tests\test_resident_scalar_context.py','tests\test_resident_autosave.py')){
   $p=Join-Path $Repo $n;$code=$engine.CreateScriptSourceFromString([IO.File]::ReadAllText($p,[Text.Encoding]::UTF8),$p,[Microsoft.Scripting.SourceCodeKind]::File).Compile()
   $record.compiled+=@{path=$p;sha256=(Get-FileHash $p).Hash.ToLowerInvariant()}
  }
@@ -28,7 +28,7 @@ try {
  $record.libraryTests=$scope.GetVariable('result_json')|ConvertFrom-Json;$record.passed=$record.passed -and $record.libraryTests.passed
  $null=$engine.Execute("import test_resident_scalar_context as scalar_tests`nscalar_tests.c=c`nstream=StringIO.StringIO()`nsuite=unittest.defaultTestLoader.loadTestsFromTestCase(scalar_tests.ScalarContextCases)`nresult=unittest.TextTestRunner(stream=stream,verbosity=2).run(suite)`nresult_json=json.dumps(dict(count=result.testsRun,passed=result.wasSuccessful(),log=stream.getvalue()),ensure_ascii=True)",$scope)
  $record.scalarTests=$scope.GetVariable('result_json')|ConvertFrom-Json;$record.passed=$record.passed -and $record.scalarTests.passed
- $null=$engine.Execute("import test_resident_saved_baseline as saved_tests`nsaved_tests.c=c`nsaved_tests.f.c=c`nstream=StringIO.StringIO()`nsuite=unittest.defaultTestLoader.loadTestsFromTestCase(saved_tests.SavedCases)`nresult=unittest.TextTestRunner(stream=stream,verbosity=2).run(suite)`nresult_json=json.dumps(dict(count=result.testsRun,passed=result.wasSuccessful(),log=stream.getvalue()),ensure_ascii=True)",$scope)
+ $null=$engine.Execute("import test_resident_autosave as saved_tests`nsaved_tests.c=c`nsaved_tests.f.c=c`nstream=StringIO.StringIO()`nsuite=unittest.defaultTestLoader.loadTestsFromTestCase(saved_tests.SaveCases)`nresult=unittest.TextTestRunner(stream=stream,verbosity=2).run(suite)`nresult_json=json.dumps(dict(count=result.testsRun,passed=result.wasSuccessful(),log=stream.getvalue()),ensure_ascii=True)",$scope)
  $record.savedTests=$scope.GetVariable('result_json')|ConvertFrom-Json;$record.passed=$record.passed -and $record.savedTests.passed
 }catch{$record.error=$_.Exception.ToString()}finally{$engine.Runtime.Shutdown()}
 [IO.File]::WriteAllText($Output,($record|ConvertTo-Json -Depth 12),[Text.UTF8Encoding]::new($false));[pscustomobject]@{languageVersion=$record.languageVersion;passed=$record.passed;error=$record.error}|ConvertTo-Json -Depth 3

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Public primary-thread receiver. One owned project; requests arrive independently.
-No IDE exit, project close, save, private editor or user-code evaluation.
+No IDE exit, project close, private editor or user-code evaluation.
+Confirmed modifications use public save once; reads never save.
 """
 import os,sys,json,hashlib,datetime,traceback,copy
 _controller=None
@@ -88,7 +89,7 @@ def start():
             self.frame=None;self.sequence=0;self.first=None;self.directory=None;self.request=None
             self.ownership=OwnershipRecorder(core,intent,identity,self.evidence)
             self.adapter=core['NativeProjectAdapter'](projects,intent['projectPath'],core['same_public_identity'],lambda:Thread.CurrentThread.ManagedThreadId,observe_ownership=self.observe_ownership,system=system)
-            self.session=core['ResidentSession'](self.adapter,lambda:core['file_hash'](intent['projectPath']),self.evidence,lambda:self.admission(self.request))
+            self.session=core['ResidentSession'](self.adapter,lambda:core['file_hash'](intent['projectPath']),self.evidence,lambda:self.admission(self.request),self.authorize_save)
         def evidence(self,name,value):publish(os.path.join(self.directory,name),value)
         def observe_ownership(self,proof):self.ownership.observe(proof,self.adapter.handle,self.adapter.attempts)
         def capture(self):
@@ -125,6 +126,12 @@ def start():
             for row in req['leases']:
                 if core['file_hash'](row['path'])!=row['sha256']:raise ValueError('Lease changed')
             if core['file_hash'](intent['corePath'])!=intent['coreHash']:raise ValueError('Core changed')
+        def authorize_save(self,ready):
+            file=os.path.join(self.directory,'save-authorization.json')
+            while True:
+                self.admission(self.request)
+                if os.path.exists(file):return read(file)
+                Thread.Sleep(50)
         def service(self,req):
             self.capture();self.admission(req)
             self.evidence('request-entered.json',dict(launchId=intent['launchId'],processIdentity=identity,requestHash=core['digest'](req)))

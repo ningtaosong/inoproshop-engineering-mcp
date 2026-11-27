@@ -35,20 +35,21 @@ class BuildCases(unittest.TestCase):
             self.records[name]=copy.deepcopy(v)
         def gate():
             if self.gatefault:raise c.Conflict(self.gatefault)
-        self.s=c.ResidentSession(self.n,lambda:self.disk,publish,gate)
+        self.n.on_save=lambda:setattr(self,'disk',c.digest(self.n.state))
+        self.s=c.ResidentSession(self.n,lambda:self.disk,publish,gate,lambda ready:dict(scheme=ready['scheme'],requestHash=ready['requestHash'],readyHash=c.digest(ready),beforeDisk=ready['beforeDisk']))
     def call(self,command,**args):
-        self.counter+=1;return self.s.handle(dict(command=command,args=dict(applicationId=APP,**args),operationId=str(self.counter),requestId=str(self.counter),directory='offline'))
+        self.counter+=1;return self.s.handle(dict(command=command,args=dict(applicationId=APP,**args),operationId=str(self.counter),requestId=str(self.counter),directory='offline',savePolicy='resident-confirmed-change-save-v1',initialDisk=dict(diskHash=self.disk,fileIdentity='test')))
     def read(self):return self.call('read',objectId=OBJ)
     def build(self,version=None):return self.call('build',expectedResidentVersion=version or self.read()['data']['residentVersion'])
     def change(self,text):
         r=self.read()['data'];return self.call('change',objectId=OBJ,declaration=r['declaration'],implementation=text,expectedHash=r['contentHash'],expectedResidentVersion=r['residentVersion'])
-    def test_edit_build_read_edit_uses_unsaved_memory(self):
+    def test_edit_save_build_read_edit_uses_current_memory(self):
         self.change('x := 7; // 未保存');before=self.read()['data'];r=self.build(before['residentVersion'])
         self.assertEqual(r['status'],'succeeded',r);self.assertEqual(r['data']['buildInputResidentVersion'],before['residentVersion'])
         self.assertEqual(self.n.compiled[0]['nodes'][OBJ]['implementation'],'x := 7; // 未保存')
         self.assertEqual(r['data']['builtSourceVersion'],c.build_source_version(self.n.compiled[0],APP))
         self.assertEqual(self.read()['data']['implementation'],'x := 7; // 未保存')
-        self.assertEqual(self.change('x := 8;')['status'],'succeeded');self.assertEqual(self.n.builds,1);self.assertEqual(self.n.saves,0);self.assertFalse(self.n.closed)
+        self.assertEqual(self.change('x := 8;')['status'],'succeeded');self.assertEqual(self.n.builds,1);self.assertEqual(self.n.saves,2);self.assertFalse(self.n.closed)
         for k in ('saveCalls','closeCalls','exitCalls'):self.assertEqual(r['data'][k],0)
     def test_compiler_error_is_completed_and_can_be_corrected(self):
         self.n.fault='error';r=self.build();self.assertEqual(r['status'],'succeeded');self.assertFalse(r['data']['buildPassed']);self.assertEqual(r['data']['errorCount'],1)

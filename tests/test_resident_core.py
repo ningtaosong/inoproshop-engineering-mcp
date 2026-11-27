@@ -9,15 +9,20 @@ def state():
  def row(oid,name,parent,typ,d=None,i=None):return dict(objectId=oid,path=['Application',name] if parent else ['Application'],parentId=parent,nativeTypeId=typ,applicationId=APP,declaration=d,implementation=i,embeddedObjectTypes=[c.ST] if i is not None else [])
  return dict(projectPath='test.project',projectHandle=0,thread=1,applications=[APP],openedProjects={'0':dict(handle=0,path='test.project',library=False,primary=True)},nodes={APP:row(APP,'Application',None,APP),OBJ:row(OBJ,'Logic',APP,c.POU,'PROGRAM Logic\r\nVAR\r\nx: DINT;\r\nEND_VAR','x := 1; // 中文'),OTHER:row(OTHER,'Keep',APP,c.POU,'PROGRAM Keep\nVAR\nEND_VAR','// keep')})
 class Native(object):
- def __init__(self):self.state=state();self.writes=0;self.reads=0;self.hook=None;self.fail_write=False;self.saves=0;self.closed=False
+ def __init__(self):self.state=state();self.writes=0;self.reads=0;self.hook=None;self.fail_write=False;self.saves=0;self.closed=False;self.dirty=False;self.on_save=None
  def snapshot(self):
   self.reads+=1
   if self.closed:raise c.Conflict('User closed original handle')
   if self.hook:self.hook(self)
   return copy.deepcopy(self.state)
  def replace_implementation(self,oid,value):
-  self.writes+=1;self.state['nodes'][oid]['implementation']=value
+  self.writes+=1;self.state['nodes'][oid]['implementation']=value;self.dirty=True
   if self.fail_write:raise ValueError('first native write fault')
+ def saved_snapshot(self):return dict(state=self.snapshot(),dirtyBefore=self.dirty,dirtyAfter=self.dirty)
+ def save_current(self):
+  self.saves+=1
+  if self.on_save:self.on_save()
+  self.dirty=False
 class Cases(unittest.TestCase):
  def test_archived_native_declaration_and_st_read(self):
   with io.open(ARCHIVED_FIXTURE,encoding='utf-8') as stream:archived=json.load(stream)
@@ -25,16 +30,16 @@ class Cases(unittest.TestCase):
   # Ownership container is the offline adapter substitute; all dependency rows are archived native values.
   self.native.state['openedProjects']={'0':dict(handle=0,path=original['projectPath'],primary=True,library=False)}
   oid='76817b8e-cf3d-4b51-82a0-fb6e8bc7c778';aid=original['applications'][0]
-  result=self.session.handle(dict(command='read',args=dict(applicationId=aid,objectId=oid),operationId='archive',requestId='archive',directory='request'))
+  result=self.session.handle(dict(command='read',args=dict(applicationId=aid,objectId=oid),operationId='archive',requestId='archive',directory='request',savePolicy='resident-confirmed-change-save-v1',initialDisk=dict(diskHash=self.disk,fileIdentity='test')))
   self.assertEqual(result['status'],'succeeded',result)
   self.assertEqual(result['data']['embeddedObjectTypes'],original['nodes'][oid]['embeddedObjectTypes'])
   self.assertEqual(result['data']['implementation'],original['nodes'][oid]['implementation'])
   self.assertEqual(self.native.writes,0)
-  listing=self.session.handle(dict(command='list',args=dict(applicationId=aid,offset=0,limit=200),operationId='list',requestId='list',directory='request'))
+  listing=self.session.handle(dict(command='list',args=dict(applicationId=aid,offset=0,limit=200),operationId='list',requestId='list',directory='request',savePolicy='resident-confirmed-change-save-v1',initialDisk=dict(diskHash=self.disk,fileIdentity='test')))
   self.assertEqual(listing['status'],'succeeded');self.assertIn(oid,[row['objectId'] for row in listing['data']['objects']])
   r=result['data'];text=r['implementation'].replace('T#5s','T#7s');self.assertNotEqual(text,r['implementation'])
-  change=self.session.handle(dict(command='change',args=dict(applicationId=aid,objectId=oid,expectedHash=r['contentHash'],expectedResidentVersion=r['residentVersion'],declaration=r['declaration'],implementation=text),operationId='change',requestId='change',directory='request'))
-  self.assertEqual(change['status'],'succeeded',change);self.assertEqual(self.native.writes,1);self.assertEqual(self.native.saves,0)
+  change=self.session.handle(dict(command='change',args=dict(applicationId=aid,objectId=oid,expectedHash=r['contentHash'],expectedResidentVersion=r['residentVersion'],declaration=r['declaration'],implementation=text),operationId='change',requestId='change',directory='request',savePolicy='resident-confirmed-change-save-v1',initialDisk=dict(diskHash=self.disk,fileIdentity='test')))
+  self.assertEqual(change['status'],'succeeded',change);self.assertEqual(self.native.writes,1);self.assertEqual(self.native.saves,1)
   expected=copy.deepcopy(original);expected['nodes'][oid]['implementation']=text
   self.assertEqual(c.dependencies(self.native.state),expected)
  def test_only_known_unique_st_parts_supported(self):
@@ -56,9 +61,10 @@ class Cases(unittest.TestCase):
    self.records[name]=copy.deepcopy(value)
   def admit():
    if self.admission_error:raise c.Conflict(self.admission_error)
-  self.session=c.ResidentSession(self.native,lambda:self.disk,publish,admit)
+  self.native.on_save=lambda:setattr(self,'disk',c.digest(self.native.state))
+  self.session=c.ResidentSession(self.native,lambda:self.disk,publish,admit,lambda ready:dict(scheme='resident-confirmed-change-save-v1',requestHash=ready['requestHash'],readyHash=c.digest(ready),beforeDisk=ready['beforeDisk']))
  def call(self,command,args=None):
-  self.counter+=1;self.records={};return self.session.handle(dict(command=command,args=dict(applicationId=APP,**(args or {})),operationId=str(self.counter),requestId=str(self.counter),directory='request'))
+  self.counter+=1;self.records={};return self.session.handle(dict(command=command,args=dict(applicationId=APP,**(args or {})),operationId=str(self.counter),requestId=str(self.counter),directory='request',savePolicy='resident-confirmed-change-save-v1',initialDisk=dict(diskHash=self.disk,fileIdentity='test')))
  def read(self):return self.call('read',dict(objectId=OBJ))
  def change(self,read=None,**more):
   r=(read or self.read())['data'];a=dict(objectId=OBJ,expectedHash=r['contentHash'],expectedResidentVersion=r['residentVersion'],declaration=r['declaration'],implementation='x := 8; // 保持中文');a.update(more);return self.call('change',a)
@@ -66,9 +72,9 @@ class Cases(unittest.TestCase):
   self.assertEqual(self.call('inspect')['status'],'succeeded')
   for value in range(5):
    r=self.read();v='x := %s; // 中文'%value;self.assertEqual(self.change(r,implementation=v)['status'],'succeeded');self.assertEqual(self.read()['data']['implementation'],v)
-  self.assertEqual(self.native.writes,5);self.assertEqual(self.native.saves,0);self.assertFalse(self.native.closed)
+  self.assertEqual(self.native.writes,5);self.assertEqual(self.native.saves,5);self.assertFalse(self.native.closed)
  def test_only_authorized_implementation(self):
-  before=copy.deepcopy(self.native.state);result=self.change();before['nodes'][OBJ]['implementation']=result['data']['implementation'];self.assertEqual(self.native.state,before);self.assertFalse(result['data']['saved']);self.assertFalse(result['data']['reopened'])
+  before=copy.deepcopy(self.native.state);result=self.change();before['nodes'][OBJ]['implementation']=result['data']['implementation'];self.assertEqual(self.native.state,before);self.assertTrue(result['data']['saved']);self.assertFalse(result['data']['reopened'])
  def test_user_edit_rejects_old_then_new_read(self):
   r=self.read();self.native.state['nodes'][OBJ]['implementation']='x := 4;';rejected=self.change(r);self.assertEqual(rejected['status'],'conflict');self.assertTrue(rejected['data']['recoverableRejection']);self.assertEqual(self.native.writes,0);self.assertEqual(self.change()['status'],'succeeded')
  def test_manual_save_conservatively_stops(self):

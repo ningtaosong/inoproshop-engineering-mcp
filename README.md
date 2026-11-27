@@ -1,7 +1,6 @@
 # InoProShop Engineering MCP
 
-本分支新增 **0.42.0 候选版、39 项工具**的 `project_accept_saved_version`，对应路线第6项：用户明确告知已保存当前工程并继续时，在同一健康自有会话内核对当前版本；一次上下文明确的声明即可，不要求固定口令、用户填写哈希或二次确认。只用公开只读字段，两次核对归属及 dirty=false 后建立带独立回执的新基线；不保存、关闭、重开或证明原生保存来源。旧 unknown 不能恢复，跨服务重开尚未兼容。当前仅完成实现与离线验证，未真实验收、合并或部署；见[接纳已保存版本的合同与验证边界](docs/resident-saved-version-acceptance.md)。日常 DSH 仍为0.38.0，Codex、当前真实实例和历史现场不变。
-
+本分支调整为 **0.42.0 候选版、38 项工具**：自有 resident 会话每次实际实现区修改，严格读回后自动保存原路径，确认成功才返回，保持同一工程打开；只读和无修改不保存，编译按明确请求执行。保存提交当前工程全部未保存内容。前轮未交付的手动接纳入口已撤出，原提交及记录保留。当前仅在实现及离线验证，未真实验收、合并或部署；见[逐次修改后保存与续改](docs/resident-autosave.md)。日常DSH仍为0.38.0，Codex、当前停止实例与历史现场不变。
 
 原 main 时点已合并 **0.41.0 候选版、38 项 MCP 工具**，限定常驻连续读改、明确请求的内存编译及其必要保护。未完成真实验收的 `add-struct-field` 不在产品中，原分支与失败记录保留。日常 DSH 入口仍为0.38.0，原合并轮未部署常驻候选，也未保存或关闭当时真实工程；见[合并与入口保持说明](docs/resident-0410-merge.md)。推荐显式 `project_open(sessionMode="resident")`，必要读取后只改根普通ST POU实现区，按明确请求编译，不自动保存关闭；省略模式仍为兼容batch，并非全部38项工具都已迁移。用户决定保存关闭，该0.41时点尚不支持手动保存后继续旧resident会话。已完成[保存来源阻断定位与只读观察准备](docs/resident-user-save-continuation.md)，公开保存事件早于最终文件提交；尚待真实事件链核对，产品保护未放宽。随后获准移交并启动唯一观察，因Core命名空间导入失败停止；[同版IronPython离线补修通过](docs/resident-save-observer-import-recheck.md)，该时点的新unknown及实例保留；随后获准不保存正常关闭IDE及服务，旧unknown不改判。此前分支完成[0.41.1早期归属取证与限定新打开补修](docs/resident-early-read-reopen.md)：38项工具及Schema不变，仅离线验证，未合并或部署。上轮旧现场缺少原生归属快照而拒绝；随后[固定旧控制流的限定兼容补修](docs/resident-legacy-first-read-admission.md)通过离线及真实目录只读准入评估，原unknown和缺失原生值保持。随后另获授权的新观察已取得原生归属，但在宿主访问Core时停止；见[实际失败、公开接口边界与待确认的最小续改方案](docs/resident-save-host-policy.md)。该次新unknown及实例保留，当时保存后续改仍未交付。
 
@@ -13,7 +12,7 @@
 
 [DSH连续客户端准备](docs/dsh-resident-continuous-preparation.md)已确认安装版官方SDK常驻入口，并完成同一进程、同一会话、同一正式测试MCP连接的两轮无工程模型预检。随后完成[DSH第一轮工程实测](docs/dsh-resident-round1-20261126.md)：一次模型任务、一次5秒→7秒修改及独立读回，FALSE／声明／中文保持。随后另获明确指令的[DSH第二轮](docs/dsh-resident-round2-20261126.md)在同一会话、连接及IDE将FALSE改为TRUE，保留7秒及原文并独立读回。当轮SDK14220、服务68004、IDE67788保持打开，未保存／编译／关闭，未发送第三轮；随后依本轮维护授权正常关闭IDE并完成旧服务移交，原两轮结论保持。原初始化Schema取证首败、发现连接及两轮分别24／18次状态查询单列，未改日常入口。
 
-原[第一轮](docs/resident-round1-utf8-recheck.md)和[同实例第二轮](docs/resident-round2-utf8-recheck.md)属于固定诊断器；当时两条中文注释未保存，接收器已停止。诊断实例随后按授权不保存正常关闭；未由新产品接管。诊断成功不能替代正式MCP/DSH连续会话验收；[早期乱码失败](docs/resident-round1-20261126.md)、[加载补修](docs/resident-loader-utf8-fix.md)和[生命周期设计](docs/resident-project-lifecycle-plan.md)保留原时点。0.40原受验产品不编译；2026-11-26的0.41原编译完成但保全未通过，2026-11-27首次复验为编译派发前停止，随后上述新一轮内存编译及保全通过；当前仍保持新实例、不保存、不关闭、不支持跨客户端恢复；用户手动源码修改须重读，无法解释的磁盘变化或原句柄关闭则停止，不覆盖。
+原[第一轮](docs/resident-round1-utf8-recheck.md)和[同实例第二轮](docs/resident-round2-utf8-recheck.md)属于固定诊断器；当时两条中文注释未保存，接收器已停止。诊断实例随后按授权不保存正常关闭；未由新产品接管。诊断成功不能替代正式MCP/DSH连续会话验收；[早期乱码失败](docs/resident-round1-20261126.md)、[加载补修](docs/resident-loader-utf8-fix.md)和[生命周期设计](docs/resident-project-lifecycle-plan.md)保留原时点。0.40原受验产品不编译；2026-11-26的0.41原编译完成但保全未通过，2026-11-27首次复验为编译派发前停止，随后上述新一轮内存编译及保全通过；该历史时点保持新实例、不保存、不关闭、不支持跨客户端恢复；用户手动源码修改须重读，无法解释的磁盘变化或原句柄关闭则停止，不覆盖。
 
 本分支另含[退出观察与命令行收尾维护](docs/exit-observation-maintenance.md)及[工程影响范围补修与独立复验](docs/struct-field-recheck-20261125.md)：正常只读打开、任务读取及服务EOF退出通过；随后新夹具创建缺少IDE退出回执而保持unknown，正式字段新增与CLI未执行。原准备unknown及封存工程保持；[取消关闭链路的诊断](docs/native-close-cancel-diagnosis.md)按原证据保留，自动 FileExit 就绪诊断现已暂停，不改判原操作。
 

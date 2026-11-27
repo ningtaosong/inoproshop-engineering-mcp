@@ -9,7 +9,7 @@ test('split candidate restores exact main variable_edit contract, including requ
  assert.deepEqual(z.toJSONSchema(schemas.variable_edit,{io:'input'}),main.inputSchema);
  assert.deepEqual(z.toJSONSchema(outputSchemas.variable_edit),main.outputSchema);
  const s=z.toJSONSchema(schemas.variable_edit,{io:'input'});
- assert.equal(VERSION,'0.42.0');assert.equal(Object.keys(schemas).length,39);
+ assert.equal(VERSION,'0.42.0');assert.equal(Object.keys(schemas).length,38);
  assert.ok(s.required.includes('initializer'));assert.ok(!s.properties.action.enum.includes('add-struct-field'));
 });
 test('excluded field-add action is rejected even with otherwise valid legacy edit arguments',()=>{

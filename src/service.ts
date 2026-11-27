@@ -21,6 +21,7 @@ import {verifyClosedResident} from './resident-reopen.js';
 import {explicitEarlyOpen} from './resident-early-open.js';
 import {residentHash} from './resident.js';
 import {savedRegistryBinding} from './resident-saved.js';
+import {verifyRegistrationPreserved} from './resident-save.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskCallInventoryDifference,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {residentBuildApplies} from './resident-build.js';
@@ -244,7 +245,7 @@ export class EngineeringService {
     await this.guardPending(tool,args);
     const globalQuery=tool==='library_catalog'||tool==='device_catalog';
     const switching=['project_create','project_open','project_open_copy','project_activate'].includes(tool);
-    if((switching||tool==='project_accept_saved_version') && ops.some(o=>o.status==='running'&&this.runningOperations.has(o.operationId)&&!isolatedIds.has(o.operationId)))throw new DomainError('conflict','PENDING_OPERATION','存在本服务运行中或排队操作，不能切换或接纳保存版本；请先查询本轮原操作');
+    if(switching && ops.some(o=>o.status==='running'&&this.runningOperations.has(o.operationId)&&!isolatedIds.has(o.operationId)))throw new DomainError('conflict','PENDING_OPERATION','存在本服务运行中或排队操作，不能切换；请先查询本轮原操作');
     let registry;
     try {registry=await this.store.ensureRegistry();}
     catch(e:any) {this.persistencePoison=e.message;throw new DomainError('unknown','REGISTRY_UNAVAILABLE','登记无法确认，保持冻结：'+e.message);}
@@ -368,13 +369,13 @@ export class EngineeringService {
       const r=await this.store.registry();const s=r.projects.find(p=>p.projectId===op.project!.projectId);
       if(!s)throw new DomainError('unknown','PROJECT_RECORD_MISSING','无法提交原工程结果');
       if(s.lastStateOperationId!==op.operationId) {
-        if(op.tool==='project_accept_saved_version') {
+        if(op.resident&&op.tool==='code_apply_change'){
           await this.store.acquire(s.sourcePath);
           await assertNotIsolated(this.store,s.projectId,[s.sourcePath,s.workingPath]);
           await this.guardPending(op.tool,op.args,op.operationId,s);
           const original=await readJson(path.join(op.bridge!.directory,'saved-registration-before.json'));
-          const current=await savedRegistryBinding(this.store,s);
-          if(!original||residentHash(current)!==residentHash(original))throw new Error('Saved baseline changed before registry commit');
+          const channel=await readJson(path.join(op.bridge!.directory,'saved-channel-accepted.json'));
+          verifyRegistrationPreserved(original,await savedRegistryBinding(this.store,s),result.data?.saved===true?channel?.afterDisk:original?.image);
         }
         if(op.tool==='project_build')s.lastBuild={operationId:op.operationId,...result.data};
         if(result.data?.snapshot)s.snapshot=result.data.snapshot as string;
@@ -383,7 +384,7 @@ export class EngineeringService {
         if(result.data?.taskConfigurationVersion)s.taskConfigurationVersion=result.data.taskConfigurationVersion as string;
         s.buildApplicable=op.resident?residentBuildApplies(s,result.data):buildApplies(s,s);
         s.lastStateOperationId=op.operationId;await this.store.saveSession(s);
-        if(op.tool==='project_accept_saved_version')await fs.writeFile(path.join(op.bridge!.directory,'saved-registration-committed.json'),JSON.stringify({operationId:op.operationId,requestId:op.requestId,projectId:s.projectId,sessionId:s.sessionId,sourceHash:s.sourceHash,diskHash:s.diskHash,residentVersion:s.residentVersion,acceptanceHash:residentHash(result.data?.savedBaselineAcceptance),buildApplicable:s.buildApplicable}),{flag:'wx'});
+        if(op.resident&&op.tool==='code_apply_change'&&result.data?.saved===true)await fs.writeFile(path.join(op.bridge!.directory,'saved-registration-committed.json'),JSON.stringify({operationId:op.operationId,requestId:op.requestId,projectId:s.projectId,sessionId:s.sessionId,sourceHash:s.sourceHash,diskHash:s.diskHash,residentVersion:s.residentVersion,receiptHash:residentHash(result.data?.saveReceipt),buildApplicable:s.buildApplicable}),{flag:'wx'});
       }
     }
     op.status=result.status; op.finishedAt=new Date().toISOString();
@@ -425,16 +426,16 @@ export class EngineeringService {
     await this.guardPending(op.tool,op.args,op.operationId,s);
     op.resident=true;op.bridge={directory:this.store.file('ipc/'+op.operationId)};
     op.dispatchFiles=await targetFiles([s.workingPath]);await this.store.saveOp(op);
-    const accepting=command==='accept_saved',binding=accepting?await savedRegistryBinding(this.store,s):undefined;
+    const binding=command==='change'?await savedRegistryBinding(this.store,s):undefined;
     if(binding){await fs.mkdir(op.bridge.directory,{recursive:true});await fs.writeFile(path.join(op.bridge.directory,'saved-registration-before.json'),JSON.stringify(binding,null,2),{flag:'wx'});}
     const residentLeases=await Promise.all([this.store.file('service.lock'),this.store.sourceLock(s.sourcePath)].map(async p=>({path:p,sha256:digest(await fs.readFile(p))})));
     const raw=await this.adapter.executeResident({operationId:op.operationId,requestId:op.requestId,requestFingerprint:op.fingerprint,command,projectPath:s.workingPath,args:{...args,residentLeases}},op.bridge.directory,async(pid,launchId)=>{op.bridge!.pid=pid;op.bridge!.launchId=launchId;await this.store.saveOp(op);});
     if(binding&&raw.status==='succeeded'){
       await this.store.acquire(s.sourcePath);await assertNotIsolated(this.store,s.projectId,[s.sourcePath,s.workingPath]);
       await this.guardPending(op.tool,op.args,op.operationId,s);
-      const after=await savedRegistryBinding(this.store,s);
+      const after=await savedRegistryBinding(this.store,s),channel=await readJson(path.join(op.bridge.directory,'saved-channel-accepted.json'));
       await fs.writeFile(path.join(op.bridge.directory,'saved-registration-after.json'),JSON.stringify(after,null,2),{flag:'wx'});
-      if(residentHash(after)!==residentHash(binding))throw new Error('Registry, alias, lease or file changed during saved acceptance');
+      verifyRegistrationPreserved(binding,after,raw.data?.saved===true?channel?.afterDisk:binding.image);
     }
     return replySchema.parse(raw);
   }
@@ -856,7 +857,7 @@ export class EngineeringService {
   private async execute(op:Operation):Promise<Reply> {
     const a=op.args;
     const residentActive=this.adapter.residentOwned?.()||(await this.store.session())?.sessionMode==='resident';
-    if(residentActive&&!['project_open','object_list','object_read','code_apply_change','project_build','project_accept_saved_version'].includes(op.tool))throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','当前常驻工程只支持定位、读取、限定实现区修改、内存编译及明确接纳已保存版本；不保存、切换或回落旧路径');
+    if(residentActive&&!['project_open','object_list','object_read','code_apply_change','project_build'].includes(op.tool))throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','当前常驻工程只支持定位、读取、限定实现区修改后保存及内存编译；不切换或回落旧路径');
     if(op.tool==='library_catalog'||op.tool==='device_catalog'){
       await maintenanceGuard();
       op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
@@ -942,13 +943,12 @@ export class EngineeringService {
     // 身份已在受理和执行前双重核对；记录执行当时的编译证据，供晚到结果独立核对。
     op.project={...s};await this.store.saveOp(op);
     if(s.sessionMode==='resident'){
-      const command=({object_list:'list',object_read:'read',code_apply_change:'change',project_build:'build',project_accept_saved_version:'accept_saved'} as Record<string,string>)[op.tool];
+      const command=({object_list:'list',object_read:'read',code_apply_change:'change',project_build:'build'} as Record<string,string>)[op.tool];
       if(!command)throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','此工具尚未迁移到常驻模式');
       if(command==='build'&&(!a.expectedResidentVersion||a.expectedResidentVersion!==s.residentVersion))throw new DomainError('conflict','RESIDENT_BUILD_VERSION_REQUIRED','编译需当前读取的residentVersion，版本变化先重新读取');
-      if(command==='accept_saved'&&(a.userConfirmedSaved!==true||!s.residentVersion||a.expectedResidentVersion!==s.residentVersion))throw new DomainError('conflict','RESIDENT_SAVED_VERSION_REQUIRED','接纳需用户本次明确保存声明和该健康会话最近成功的residentVersion；不能先读变更磁盘或恢复旧unknown');
       return this.bridge(op,command,s,a);
     }
-    if(op.tool==='project_accept_saved_version'||a.expectedResidentVersion!==undefined)throw new DomainError('conflict','RESIDENT_MODE_REQUIRED','resident版本接纳不能用于旧批处理');
+    if(a.expectedResidentVersion!==undefined)throw new DomainError('conflict','RESIDENT_MODE_REQUIRED','resident版本不能用于旧批处理');
     if(op.tool==='variable_edit')return this.variableEdit(op,s);
     if(op.tool==='library_placeholder_clear'){
       if(a.expectedDiskHash!==s.diskHash||digest(await fs.readFile(s.workingPath))!==a.expectedDiskHash)

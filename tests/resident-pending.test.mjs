@@ -1,3 +1,5 @@
+import {residentDisk} from '../dist/resident-saved.js';
+import {SAVE_POLICY,saveReady,saveAuthorization} from '../dist/resident-save.js';
 // Synthetic resident record shapes; never opens or edits a real project/ledger.
 import{test}from'node:test';import assert from'node:assert/strict';import fs from'node:fs/promises';import path from'node:path';import os from'node:os';import{randomUUID}from'node:crypto';
 import{setup,app}from'./helpers.mjs';import{Store,atomicJson,canonical,digest,readJson}from'../dist/storage.js';import{fileIdentity}from'../dist/isolation.js';import{assessPending,related,targetFiles}from'../dist/pending-impact.js';import{residentHash}from'../dist/resident.js';import{EngineeringService}from'../dist/service.js';import{FixtureAdapter}from'../dist/fixture-adapter.js';
@@ -132,7 +134,8 @@ for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed contro
  let owned=false,seq=0,writes=0;const launch=randomUUID(),native=identity(2147000032),requests=[];
  const adapter={residentOwned:()=>owned,execute:()=>{throw Error('No batch');},executeResident:async(input,dir,onLaunch)=>{
   owned=true;await onLaunch(native.pid,launch);const f=await fileIdentity(input.projectPath);
-  const req={...input,launchId:launch,sequence:++seq,directory:dir,diskHash:f.sha256,fileIdentity:f.fileId,leases:input.args.residentLeases};requests.push(req);
+  const initialDisk=await residentDisk(input.projectPath);
+  const req={...input,launchId:launch,sequence:++seq,directory:dir,diskHash:f.sha256,fileIdentity:f.fileId,leases:input.args.residentLeases,...(input.command==='change'?{savePolicy:SAVE_POLICY,initialDisk}:{})};requests.push(req);
   const put=(n,v)=>atomicJson(path.join(dir,n),v),old=structuredClone(state),dep=residentDependencies(old),version=residentHash({dependencies:dep,diskHash:f.sha256});
   await put('request.json',req);await put('before.json',{state:old,diskHash:f.sha256});
   const data={applications:[{applicationId:APP,path:['Application']}],applicationId:APP,projectPath:f.path,projectHandle:0,snapshot:residentHash(dep),residentVersion:version,diskHash:f.sha256,sessionMode:'resident',saved:false,closed:false,reopened:false,saveCalls:0,closeCalls:0,exitCalls:0,compileCalls:0};
@@ -140,14 +143,22 @@ for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed contro
    await put('checkpoint.json',{request:req,state:old,diskHash:f.sha256,residentVersion:version});await put('predispatch.json',{state:old,diskHash:f.sha256});await put('dispatch.json',{operationId:req.operationId,requestId:req.requestId,action:'replace-implementation'});
    state.nodes[OBJ].implementation=req.args.implementation;writes++;const actual=residentDependencies(state);
    await put('after.json',{state,diskHash:f.sha256});await put('verification.json',{equal:true,expected:actual,actual});
-   Object.assign(data,{snapshot:residentHash(actual),residentVersion:residentHash({dependencies:actual,diskHash:f.sha256}),memoryModified:true,persistedToProject:false});
+   const ready=saveReady(req,state),auth=saveAuthorization(req,ready,initialDisk);
+   await put('save-ready.json',ready);await put('save-authorization.json',auth);
+   const call={requestHash:residentHash(req),authorizationHash:residentHash(auth),projectHandle:0,projectPath:state.projectPath,method:'ScriptProject.save',attempt:1};
+   await put('save-call.json',call);await fs.writeFile(input.projectPath,JSON.stringify(state));
+   const returned={requestHash:residentHash(req),callHash:residentHash(call),returned:true};await put('save-returned.json',returned);
+   const afterDisk=await residentDisk(input.projectPath),savedRead={state,dirtyBefore:false,dirtyAfter:false,diskHash:afterDisk.diskHash};await put('save-read-first.json',savedRead);await put('save-read-second.json',savedRead);
+   const receipt={scheme:SAVE_POLICY,requestHash:residentHash(req),callHash:residentHash(call),returnedHash:residentHash(returned),firstReadHash:residentHash(savedRead),secondReadHash:residentHash(savedRead),beforeDiskHash:req.diskHash,afterDiskHash:afterDisk.diskHash,projectHandle:0,projectPath:state.projectPath,snapshot:residentHash(actual),scope:'all current unsaved project contents',reopened:false};
+   await put('save-receipt.json',receipt);await put('saved-channel-accepted.json',{scheme:SAVE_POLICY,requestHash:residentHash(req),receiptHash:residentHash(receipt),beforeDisk:initialDisk,afterDisk});
+   Object.assign(data,{snapshot:residentHash(actual),residentVersion:residentHash({dependencies:actual,diskHash:afterDisk.diskHash}),diskHash:afterDisk.diskHash,memoryModified:true,persistedToProject:true,persistedToWorkingCopy:false,saved:true,saveCalls:1,saveReceipt:receipt});
   }
   if(req.command==='read'||req.command==='change')Object.assign(data,residentObject(state,OBJ,APP));
   data.residentEvidence={launchId:launch,sequence:seq,processIdentity:{pid:native.pid,startId:native.startId},requestHash:residentHash(req),requestCompleted:true,ideExitRequested:false};
   const result={contractVersion:'1.0.0',operationId:req.operationId,requestId:req.requestId,status:'succeeded',summary:'offline producer',data};
   await put('result.json',result);await put('completed.json',{launchId:launch,sequence:seq,processIdentity:data.residentEvidence.processIdentity,requestHash:residentHash(req),resultHash:residentHash(result)});
   await verifyResidentResult(req,result,dir,native);
-  await put('service-verification.json',{passed:true,launchId:launch,sequence:seq,requestHash:residentHash(req),resultHash:residentHash(result),processIdentity:native,processState:'running',exitRequiredForRequest:false,diskHash:f.sha256});return result;
+  await put('service-verification.json',{passed:true,launchId:launch,sequence:seq,requestHash:residentHash(req),resultHash:residentHash(result),processIdentity:native,processState:'running',exitRequiredForRequest:false,diskHash:data.diskHash});return result;
  }};
  const service=new EngineeringService({dataDir:c.env.dataDir,testMode:true,responseWaitMs:20},adapter,{probe:c.probe});t.after(()=>service.store.release());
  const call=(tool,args)=>callAndWait(service,tool,args);
