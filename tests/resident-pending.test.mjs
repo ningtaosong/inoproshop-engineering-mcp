@@ -202,8 +202,8 @@ for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed contro
   const next=new EngineeringService({dataDir:c.env.dataDir,testMode:true,responseWaitMs:20},adapter,{probe:c.probe});t.after(()=>next.store.release());
   const closedBefore=await tree(c.env.dataDir),closedStatus=await next.status(),closedList=await next.projects();
   assert.equal(closedStatus.data.writeFrozen,false,'trusted saved closed session permits only an explicit fresh open');
-  assert.equal(closedStatus.data.availability,'explicit-open-required');
-  assert.equal(closedStatus.data.residentObservation.memoryAvailable,false);
+  assert.equal(closedStatus.data.availability,'available');
+  assert.equal(closedStatus.data.session.residentObservation.memoryAvailable,false);
   assert.equal(closedList.data.projects.find(s=>s.projectId===target.projectId).availability,'explicit-open-required');
   assert.deepEqual(await tree(c.env.dataDir),closedBefore);
   const reopened=await callAndWait(next,'project_open',{requestId:randomUUID(),projectPath:c.env.source,sessionMode:'resident',applicationId:APP});assert.equal(reopened.status,'succeeded',JSON.stringify(reopened));

@@ -6,6 +6,7 @@ import {buildConservation,buildSourceVersion,checkedDiagnostics} from '../dist/r
 import {verifyClosedResident,closedApplicationBinding} from '../dist/resident-reopen.js';
 import {EngineeringService} from '../dist/service.js';import {digest,readJson} from '../dist/storage.js';import {exclusiveJson} from '../dist/exit-journal.js';import {schemas,outputSchemas,VERSION} from '../dist/contracts.js';
 import {waitForOperation} from './operation-wait.mjs';
+import {statusWire} from './status-wire-helper.mjs';
 const APP='10000000-0000-4000-8000-000000000001',OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
 function state(file){const row=(id,parent,name,type,d,i)=>({objectId:id,applicationId:APP,parentId:parent,path:parent?['Application',name]:['Application'],nativeTypeId:type,declaration:d,implementation:i,embeddedObjectTypes:i===null?[]:[ST]});return {projectPath:file,projectHandle:0,thread:9,applications:[APP],openedProjects:{'0':{handle:0,path:file,library:false,primary:true}},nodes:{[APP]:row(APP,null,'Application',APP,null,null),[OBJ]:row(OBJ,APP,'Logic',POU,'PROGRAM Logic\nVAR\nx: DINT;\nEND_VAR','x := 1; // 中文')}};}
 test('archived native declaration and ST pair is a supported root PROGRAM',async()=>{
@@ -255,18 +256,20 @@ for(const defect of ['none','missing-exit','abnormal-exit','missing-request','ch
   next.store.registry=async()=>{const r=await originalRead();r.revision+=++reads;return r;};
  }
  const tree=async dir=>{const out=[];for(const e of await fs.readdir(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory())out.push(...await tree(p));else out.push([p,hash(await fs.readFile(p))]);}return out.sort();};
- const before=await tree(f.root),status=await next.status();
+ const before=await tree(f.root),status=await statusWire(next);
  let listed;
  try{listed=await next.projects();}catch(e){assert.ok(['registry-concurrent','duplicate-path'].includes(defect));assert.equal(e.code,defect==='duplicate-path'?'CORRUPT_REGISTRY':'STATUS_EVIDENCE_CHANGED');}
  if(defect==='none'){
-  assert.equal(status.data.availability,'explicit-open-required');assert.equal(status.data.writeFrozen,false);
-  assert.equal(status.data.residentObservation.memoryAvailable,false);assert.equal(status.data.residentObservation.explicitOpenRequired,true);
-  assert.equal(status.data.residentObservation.priorSessionId,original.sessionId);
+  const wireList=await statusWire(next,'project_list');assert.deepEqual(wireList,listed);
+  assert.equal(status.data.availability,'available');assert.equal(status.data.writeFrozen,false);
+  assert.equal(status.data.session.residentObservation.memoryAvailable,false);assert.equal(status.data.session.residentObservation.explicitOpenRequired,true);
+  assert.equal(status.data.session.residentObservation.priorSessionId,original.sessionId);
   assert.equal(listed.data.projects[0].availability,'explicit-open-required');
-  assert.deepEqual(status.data.session,original,'raw registration is retained, not rewritten as an active IDE');
+  const {residentObservation,...registration}=status.data.session;
+  assert.deepEqual(registration,original,'raw registration is retained, not rewritten as an active IDE');
  }else if(defect==='registry-concurrent'){
   assert.equal(status.status,'conflict');assert.equal(status.error.code,'STATUS_EVIDENCE_CHANGED');
-  assert.equal(status.data.observationValid,false);assert.equal(Object.hasOwn(status.data,'globalFrozen'),false);
+  assert.equal(status.data,undefined,'stale snapshot exposes no usable session or availability');
  }else{
   assert.equal(status.data.writeFrozen,true,defect);assert.notEqual(status.data.availability,'explicit-open-required');
   if(listed)assert.ok(listed.data.projects.every(p=>p.writeFrozen===true));
@@ -274,11 +277,20 @@ for(const defect of ['none','missing-exit','abnormal-exit','missing-request','ch
  assert.equal(calls,0);assert.deepEqual(await tree(f.root),before);
 });
 
+test('resident owned-channel status travels through the public MCP output contract without claiming memory verification',async t=>{
+ const f=await fixture(t),raw=await f.service.store.registry(),writes=f.n.writes,saves=f.n.saves;
+ const status=await statusWire(f.service),listed=await statusWire(f.service,'project_list');
+ assert.equal(status.status,'succeeded');assert.equal(status.data.availability,'available');assert.equal(status.data.writeFrozen,false);
+ assert.equal(status.data.session.residentObservation.state,'owned-channel');assert.equal(status.data.session.residentObservation.memoryHealthVerified,false);
+ assert.equal(listed.data.projects[0].residentObservation.memoryHealthVerified,false);
+ assert.deepEqual(await f.service.store.registry(),raw);assert.equal(f.n.writes,writes);assert.equal(f.n.saves,saves);
+});
+
 test('fresh-open query is not cached authorization when current disk subsequently changes',async t=>{
  const f=await fixture(t);f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();await f.service.store.release();
  let launches=0;const no=async()=>{launches++;throw Error('must not launch');};
  const next=new EngineeringService(f.config,{residentOwned:()=>false,execute:no,executeResident:no,reconcile:no},{probe:async()=>({state:'exited'})});t.after(()=>next.store.release());
- assert.equal((await next.status()).data.availability,'explicit-open-required');
+ assert.equal((await statusWire(next)).data.session.residentObservation.explicitOpenRequired,true);
  await fs.appendFile(f.file,'changed after query');
  const r=await waitForOperation(next.call.bind(next),await next.call('project_open',{requestId:'fresh-open-after-disk-change',projectPath:f.file,applicationId:APP,sessionMode:'resident'}));
  assert.equal(r.status,'conflict');assert.equal(r.error.code,'RESIDENT_RECONNECT_UNSUPPORTED');assert.equal(launches,0);

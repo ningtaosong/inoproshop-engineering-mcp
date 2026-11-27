@@ -1,6 +1,6 @@
 # InoProShop Engineering MCP
 
-2026-11-28：[DSH首轮停止、登记查询一致性补修及无工程结束记录](docs/resident-query-status-consistency.md)。原第一轮只完成3项全局查询；服务错误混淆旧unknown与已证实新会话承接，模型据实际冻结状态停止。查询补修完成离线及真实目录只读核对，未重发模型。SDK正常结束，但正式MCP退出1，后续验收暂停；原[移交准备](docs/resident-autosave-client-handoff.md)及失败保留原时点。
+2026-11-28：[状态查询输出契约补修与DSH第一轮实际结果](docs/resident-status-wire-contract.md)。802adc4第一轮完成一次注释修改、自动保存及独立读回，但3次session_status协议错误，流程未完全通过，第二轮未发送。最小输出补修通过392项相关离线检查；当前实例保持，修后真实客户端待验。原[查询一致性和无工程结束记录](docs/resident-query-status-consistency.md)按原时点保留。
 
 本分支调整为 **0.42.0 候选版、38 项工具**：自有 resident 会话每次实际实现区修改，严格读回后自动保存原路径，确认成功才返回，保持同一工程打开；只读和无修改不保存，编译按明确请求执行。保存提交当前工程全部未保存内容。前轮未交付的手动接纳入口已撤出，原提交及记录保留。当前实现、离线验证及[同一会话两轮真实MCP自动保存复验](docs/resident-autosave-real-20261127.md)通过，未合并或部署；见[逐次修改后保存与续改](docs/resident-autosave.md)。两轮仅在根ST实现区分别增加中文注释，各保存一次并由同实例独立请求读回，未编译或独立重开。旧停止实例已按明确授权不保存正常关闭，原unknown保持；新IDE及工程保持打开。日常DSH仍为0.38.0，Codex与历史证据不变。
 

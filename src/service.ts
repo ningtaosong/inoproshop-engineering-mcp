@@ -112,7 +112,7 @@ export class EngineeringService {
     try {
       return await this.observedStatus(await this.pending());
     } catch(e:any) {
-      if(e.code==='STATUS_EVIDENCE_CHANGED')return {...reply('conflict','状态读取期间记录已变化；本次快照作废，请重新查询，不据此派发工程请求',{availability:'observation-stale',observationValid:false}),error:{code:e.code,message:e.message}};
+      if(e.code==='STATUS_EVIDENCE_CHANGED')return {...reply('conflict','状态读取期间记录已变化；本次快照作废，请重新查询，不据此派发工程请求'),error:{code:e.code,message:e.message}};
       return {...reply('unknown','持久化记录或维护状态无法确认，工程派发已全局冻结',{session:null,pending:[],writeFrozen:true,globalFrozen:true,availability:'global-frozen'}),error:{code:e.code || 'CORRUPT_RECORD',message:e.message}};
     }
   }
@@ -155,11 +155,15 @@ export class EngineeringService {
       const observation=current?(observations?.get(current.projectId)??await this.observedProject(state,current)):undefined;
       const activeBlocked=observation?.writeFrozen??false;
       await this.observationUnchanged(state);
-      return reply('succeeded',globalFrozen?'未决记录的影响范围或进程退出无法确认，暂停工程派发':activeBlocked?'当前工程的未决操作或打开证据不足；暂停该工程派发，原操作保持unknown':observation?.availability==='explicit-open-required'?'登记会话已正常结束；当前没有可用内存连接，需明确 project_open 原保存文件并重新核对；旧 unknown 保持':'会话状态',{session:current || null,
+      // Keep the published availability enum. Resident details extend the
+      // already-open session object, not the closed top-level output shape.
+      // A scoped unresolved state is expressed by writeFrozen and summary;
+      // it is neither globally frozen nor available for engineering work.
+      const availability=globalFrozen?'global-frozen':isolatedProjects.has(registry.activeProjectId)?'active-project-isolated':!activeBlocked?'available':undefined;
+      return reply('succeeded',globalFrozen?'未决记录的影响范围或进程退出无法确认，暂停工程派发':activeBlocked?'当前工程的未决操作或打开证据不足；暂停该工程派发，原操作保持unknown':observation?.availability==='explicit-open-required'?'登记会话已正常结束；当前没有可用内存连接，需明确 project_open 原保存文件并重新核对；旧 unknown 保持':'会话状态',{session:current?{...current,...(observation?.residentObservation?{residentObservation:observation.residentObservation}:{})}:null,
         pending:pending.map(o=>({operationId:o.operationId,requestId:o.requestId,tool:o.tool,status:o.status==='running'&&(!alive(o.ownerPid)||!!this.persistencePoison)?'unknown':o.status})),
         writeFrozen:globalFrozen||activeBlocked||isolatedProjects.has(registry.activeProjectId),globalFrozen,
-        availability:globalFrozen?'global-frozen':isolatedProjects.has(registry.activeProjectId)?'active-project-isolated':observation?.availability??'available',
-        ...(observation?.residentObservation?{residentObservation:observation.residentObservation}:{}),
+        ...(availability?{availability}:{}),
         isolatedProjects:isolation.own.map(e=>({projectId:e.plan.projectId,operationIds:e.plan.operationIds,planId:e.plan.planId,committedAt:e.committedAt,sourcePath:e.plan.bindings[0].sourcePath,workingPath:e.plan.bindings[0].workingPath}))});
   }
   async projects():Promise<Reply> {
