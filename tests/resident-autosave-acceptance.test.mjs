@@ -19,7 +19,7 @@ test('unknown remains stopped with original result; no continuation command',asy
  const original={status:'unknown',operationId:randomUUID(),requestId:randomUUID(),error:{message:'first native failure'}},logs=[];
  const c=new ResidentAutosaveAcceptanceRounds({call:async()=>original,record:async(e,d)=>logs.push({e,d})});
  const command={id:original.requestId,ticket:c.ticket,kind:'open',authorization:'test authorization',projectPath:file,programName:'PLC_PRG'};
- const result=await c.submit(command);assert.equal(c.state,'frozen');assert.equal(result.originalResult,original);assert.deepEqual(c.control().allowed,[]);assert.equal((await c.submit(command)),result);
+ const result=await c.submit(command);assert.equal(c.state,'frozen');assert.equal(result.originalResult,original);assert.deepEqual(c.control().allowed,['finish']);assert.equal((await c.submit(command)),result);
 });
 test('already completed ticket cannot authorize another operation',async()=>{
  const c=new ResidentAutosaveAcceptanceRounds({call:async()=>{throw Error('not used');},record:async()=>{}});

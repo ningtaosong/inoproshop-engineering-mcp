@@ -28,7 +28,14 @@ export function validateReply(result,name,previous){
  return {identity,sequence:e.sequence,diskHash:d.diskHash,projectHandle:d.projectHandle,projectPath:d.projectPath};
 }
 export class ResidentAutosaveAcceptanceRounds extends ResidentAcceptanceRounds {
- control(){const c=super.control();c.allowed=this.state==='waiting'?(this.target?['edit']:['open']):[];return c;}
+ control(){
+  const c=super.control();
+  // Keep the base controller's explicit EOF/late-observation controls. These
+  // never close or save the IDE; normal IDE handover must be proved separately.
+  // Only narrow business actions, not the path needed to finish the client.
+  c.allowed=c.allowed.filter(kind=>['finish','observe-exit',this.target?'edit':'open'].includes(kind));
+  return c;
+ }
  async request(name,args){
   if(!['project_open','object_list','object_read','code_apply_change'].includes(name))throw Error('Tool outside this acceptance');
   let r=await this.call(name,args);const op=r?.operationId,requestId=r?.requestId,deadline=Date.now()+this.timeoutMs;
