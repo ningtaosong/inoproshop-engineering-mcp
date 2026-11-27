@@ -12,6 +12,7 @@ import {FixtureAdapter} from '../dist/fixture-adapter.js';
 import {atomicJson,readJson,digest} from '../dist/storage.js';
 import {setup,app,obj} from './helpers.mjs';
 import {normalCloseDouble,processObservations,requestBinding} from './process-double.mjs';
+import {callAndWait} from './operation-wait.mjs';
 
 const gate=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 const turn=()=>new Promise(r=>setImmediate(r));
@@ -155,15 +156,19 @@ for(const failWrite of [false,true])test('runtime error before exit cannot race 
  if(failWrite){assert.equal(reports.length,1);assert.match(reports[0].recordError.message,/SECOND/);}
 });
 for(const [code,signal] of [[0,null],[7,null],[null,'SIGABRT']])test('production service timeout EOF retains operation and lease bytes '+code+'/'+signal,async t=>{
- const env=await setup(),service=new EngineeringService({dataDir:env.dataDir,testMode:true,responseWaitMs:5000},new FixtureAdapter());
- t.after(()=>service.store.release());
- const opened=await service.call('project_open',{requestId:'open',projectPath:env.source,applicationId:app});
+ const env=await setup(),baselineAdapter=new FixtureAdapter(),preparation=[];
+ const execute=baselineAdapter.execute.bind(baselineAdapter);baselineAdapter.execute=async(...a)=>{preparation.push(a[0]);return execute(...a);};
+ const service=new EngineeringService({dataDir:env.dataDir,testMode:true,responseWaitMs:5000},baselineAdapter);
+ t.after(async()=>{await service.drain();await service.store.release();});
+ const opened=await callAndWait(service,'project_open',{requestId:'open',projectPath:env.source,applicationId:app});
+ assert.equal(opened.status,'succeeded',JSON.stringify(opened));assert.equal(service.adapter,baselineAdapter);
+ assert.equal(preparation.length,1);assert.equal(preparation[0].command,'inspect');assert.equal(preparation[0].operationId,opened.operationId);
  let directory;const child=new EventEmitter();child.pid=12345;child.kill=()=>assert.fail('never kill');
  const adapter=new IdeAdapter({executable:process.execPath,profile:'offline',noUI:false,timeoutMs:100},(exe,args,options)=>{
    directory=path.dirname(options.env.INOPRO_BRIDGE_REQUEST);return child;
  },processObservations);service.adapter=adapter;
  const args={requestId:'read-timeout',projectId:opened.data.session.projectId,applicationId:app,objectId:obj};
- const result=await service.call('object_read',args);assert.equal(result.status,'unknown');assert.equal(result.error.code,'IDE_TIMEOUT');
+ const result=await callAndWait(service,'object_read',args);assert.equal(result.status,'unknown');assert.equal(result.error.code,'IDE_TIMEOUT');
  const ledger=service.store.file('operations/'+result.operationId+'.json'),lease=service.store.file('service.lock');
  const before=await fs.readFile(ledger),leaseBefore=await fs.readFile(lease),sourceBefore=await fs.readFile(env.source);
  assert.equal((await service.call('object_read',args)).operationId,result.operationId);
@@ -171,6 +176,7 @@ for(const [code,signal] of [[0,null],[7,null],[null,'SIGABRT']])test('production
    status:()=>service.status(),release:()=>service.store.release(),close:async()=>closed=true});
  const done=x.lifecycle.request('stdin-end');await turn();assert.equal(closed,false);
  const request=await readJson(path.join(directory,'request.json'));
+ assert.equal(request.command,'read');assert.equal(request.operationId,result.operationId);assert.equal(request.requestId,args.requestId);
  await atomicJson(path.join(directory,'dispatched.json'),{operationId:request.operationId,pid:child.pid});
  await atomicJson(path.join(directory,'result.json'),{contractVersion:'1.0.0',operationId:request.operationId,status:'succeeded',summary:'late fixture data'});
  await normalCloseDouble(directory);child.emit('exit',code,signal);await done;
@@ -180,7 +186,9 @@ for(const [code,signal] of [[0,null],[7,null],[null,'SIGABRT']])test('production
 });
 test('runtime fault with diagnostic loss remains frozen and idempotent after service restart',async t=>{
  const env=await setup(),fixture=new FixtureAdapter(),service=new EngineeringService({dataDir:env.dataDir,testMode:true,responseWaitMs:5000},fixture);
- const opened=await service.call('project_open',{requestId:'open',projectPath:env.source,applicationId:app});
+ t.after(async()=>{await service.drain();await service.store.release();});
+ const opened=await callAndWait(service,'project_open',{requestId:'open',projectPath:env.source,applicationId:app});
+ assert.equal(opened.status,'succeeded',JSON.stringify(opened));assert.equal(service.adapter,fixture);
  let spawns=0;service.adapter=new IdeAdapter({executable:process.execPath,profile:'offline',noUI:false,timeoutMs:3000},(exe,args,options)=>{
   spawns++;const c=new EventEmitter();c.pid=12345;
   setTimeout(async()=>{const directory=path.dirname(options.env.INOPRO_BRIDGE_REQUEST),request=await readJson(options.env.INOPRO_BRIDGE_REQUEST);
@@ -190,7 +198,7 @@ test('runtime fault with diagnostic loss remains frozen and idempotent after ser
   },30);return c;
  },{...processObservations,writeDiagnostic:async()=>{throw Error('diagnostic disk unavailable');},reportDiagnostic:()=>{}});
  const args={requestId:'runtime-fault',projectId:opened.data.session.projectId,applicationId:app,objectId:obj};
- const result=await service.call('object_read',args);assert.equal(result.error.code,'EXIT_OBSERVER_FAILED');
+ const result=await callAndWait(service,'object_read',args);assert.equal(result.error.code,'EXIT_OBSERVER_FAILED');
  const ledger=service.store.file('operations/'+result.operationId+'.json'),before=await fs.readFile(ledger);
  assert.equal((await service.call('object_read',args)).operationId,result.operationId);assert.equal(spawns,1);
  await assert.rejects(()=>service.call('project_build',{...args,requestId:'no-write'}),e=>e.code==='PENDING_UNKNOWN');

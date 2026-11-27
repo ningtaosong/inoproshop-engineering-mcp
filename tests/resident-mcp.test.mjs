@@ -4,6 +4,7 @@ import {ServiceLifecycle,releaseObservedLease} from '../dist/service-lifecycle.j
 import {buildConservation,buildSourceVersion,checkedDiagnostics} from '../dist/resident-build.js';
 import {verifyClosedResident,closedApplicationBinding} from '../dist/resident-reopen.js';
 import {EngineeringService} from '../dist/service.js';import {digest,readJson} from '../dist/storage.js';import {exclusiveJson} from '../dist/exit-journal.js';import {schemas,outputSchemas,VERSION} from '../dist/contracts.js';
+import {waitForOperation} from './operation-wait.mjs';
 const APP='10000000-0000-4000-8000-000000000001',OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
 function state(file){const row=(id,parent,name,type,d,i)=>({objectId:id,applicationId:APP,parentId:parent,path:parent?['Application',name]:['Application'],nativeTypeId:type,declaration:d,implementation:i,embeddedObjectTypes:i===null?[]:[ST]});return {projectPath:file,projectHandle:0,thread:9,applications:[APP],openedProjects:{'0':{handle:0,path:file,library:false,primary:true}},nodes:{[APP]:row(APP,null,'Application',APP,null,null),[OBJ]:row(OBJ,APP,'Logic',POU,'PROGRAM Logic\nVAR\nx: DINT;\nEND_VAR','x := 1; // 中文')}};}
 test('archived native declaration and ST pair is a supported root PROGRAM',async()=>{
@@ -19,13 +20,16 @@ async function fixture(t,{omitApplication=false}={}){
   n.launches++;const child=new EventEmitter();child.pid=identity.pid;n.child=child;
   void(async()=>{
    const intent=await readJson(options.env.INOPRO_RESIDENT_REQUEST);n.intent=intent;
+   // Consume the dispatched project path just as the host opens that exact request.
+   // Keep the caller's original short TEMP path in `file` for same-file assertions.
+   n.state.projectPath=intent.projectPath;n.state.openedProjects['0'].path=intent.projectPath;
    await exclusiveJson(path.join(intent.directory,'ready.json'),{launchId:intent.launchId,processIdentity:{pid:identity.pid,startId:identity.startId},state:{startup:false}});
    let seq=1,busy=false;const loop=setInterval(async()=>{if(busy)return;busy=true;try{
     const req=await readJson(path.join(intent.directory,`request-${seq}.json`));if(!req)return;n.requests.push(req);seq++;
     if(n.fault==='timeout')return;
     const before=structuredClone(n.state),d=deps(before),version=hash({dependencies:d,diskHash:req.diskHash}),put=(name,v)=>exclusiveJson(path.join(req.directory,name),v);
     await put('before.json',{state:before,diskHash:req.diskHash});
-    const data={applications:[{applicationId:APP,path:['Application']}],applicationId:APP,projectPath:file,projectHandle:0,snapshot:hash(d),residentVersion:version,diskHash:req.diskHash,sessionMode:'resident',saved:false,reopened:false,closed:false,saveCalls:0,compileCalls:0,closeCalls:0,exitCalls:0,memoryModified:false,memoryEditsInSession:n.writes};
+    const data={applications:[{applicationId:APP,path:['Application']}],applicationId:APP,projectPath:intent.projectPath,projectHandle:0,snapshot:hash(d),residentVersion:version,diskHash:req.diskHash,sessionMode:'resident',saved:false,reopened:false,closed:false,saveCalls:0,compileCalls:0,closeCalls:0,exitCalls:0,memoryModified:false,memoryEditsInSession:n.writes};
     let status='succeeded';
     if(req.command==='change'){
      if(req.args.expectedResidentVersion!==version){status='conflict';Object.assign(data,{firstError:{dispatched:false},secondaryErrors:[],recoverableRejection:true});}
@@ -73,8 +77,8 @@ async function fixture(t,{omitApplication=false}={}){
  const adapter={residentOwned:()=>channel.owned(),executeResident:(...a)=>channel.execute(...a),execute:()=>{throw Error('Forbidden batch fallback');},reconcile:()=>{throw Error('Forbidden exit reconcile');}};
  const service=new EngineeringService(config,adapter);
  t.after(async()=>{n.loops.forEach(clearInterval);if(n.child&&n.running){n.running=false;n.child.emit('exit',0,null);}await channel.observe();await service.store.release();});
- const done=async r=>{while(r.status==='running'){await new Promise(res=>setTimeout(res,10));r=await service.call('operation_status',{operationId:r.operationId});}return r;};
- const call=async(name,args)=>{try{return await done(await service.call(name,args));}catch(e){return {status:e.status,error:{code:e.code,message:e.message}};}};
+ const done=r=>waitForOperation(service.call.bind(service),r);
+ const call=async(name,args)=>{try{return await done(await service.call(name,args));}catch(e){if(typeof e.status!=='string'||typeof e.code!=='string')throw e;return {status:e.status,error:{code:e.code,message:e.message}};}};
  const opened=await call('project_open',{requestId:'open',projectPath:file,...(omitApplication?{}:{applicationId:APP}),sessionMode:'resident'});assert.equal(opened.status,'succeeded',JSON.stringify(opened));const target={projectId:opened.data.session.projectId,applicationId:APP,targetKind:'application'};
  const read=()=>call('object_read',{...target,objectId:OBJ});
  const change=(r,requestId,implementation='x := 8; // 改动')=>call('code_apply_change',{...target,objectId:OBJ,requestId,expectedHash:r.data.contentHash,expectedResidentVersion:r.data.residentVersion,declaration:r.data.declaration,implementation});
@@ -83,6 +87,22 @@ async function fixture(t,{omitApplication=false}={}){
 test('resident service: five independent edits, same owned process/handle, no saves and request dedup',async t=>{
  const f=await fixture(t),original=await fs.readFile(f.file);for(let i=0;i<5;i++){const r=await f.read(),text=`x := ${i+2}; // 中文`;const changed=await f.change(r,'change-'+i,text);assert.equal(changed.status,'succeeded',JSON.stringify(changed));assert.equal(changed.data.saved,false);assert.equal(changed.data.reopened,false);assert.equal((await f.change(r,'change-'+i,text)).operationId,changed.operationId);assert.equal((await f.read()).data.implementation,text);}
  assert.equal(f.n.launches,1);assert.equal(f.n.writes,5);assert.deepEqual(await fs.readFile(f.file),original);assert.equal(f.n.requests.length,16);assert.equal(f.n.error,undefined);
+});
+test('resident dispatched path: raw TEMP spelling follows owned intent through two edits',async t=>{
+ const f=await fixture(t),original=await fs.readFile(f.file),canonical=await fs.realpath(f.file);
+ assert.equal(f.n.intent.projectPath,canonical);assert.equal(f.n.state.projectPath,canonical);assert.equal(f.n.state.openedProjects['0'].path,canonical);
+ let r=await f.read();for(const [id,text] of [['path-edit-1','x := 7; // 中文'],['path-edit-2','x := 8; // 中文']]){
+  const changed=await f.change(r,id,text);assert.equal(changed.status,'succeeded',JSON.stringify(changed));r=await f.read();assert.equal(r.data.implementation,text);
+ }
+ assert.equal(f.n.writes,2);assert.equal(f.n.launches,1);assert.equal(f.n.error,undefined);assert.equal(f.n.requests.length,6);
+ assert.ok(f.n.requests.every(x=>x.projectPath===canonical));assert.deepEqual(await fs.readFile(f.file),original);
+});
+test('resident dispatched path: genuinely different file snapshot still freezes without writing',async t=>{
+ const f=await fixture(t),other=path.join(f.root,'different.project');await fs.copyFile(f.file,other);
+ assert.notEqual((await fs.stat(f.file)).ino,(await fs.stat(other)).ino);
+ f.n.state.projectPath=other;f.n.state.openedProjects['0'].path=other;
+ const r=await f.read();assert.equal(r.status,'unknown');assert.equal(r.error.code,'RESIDENT_EVIDENCE_ERROR');assert.match(r.error.message,/another project/);
+ const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.writes,0);
 });
 test('resident service: stale memory is zero-write rejection; later new read and explicit change supported',async t=>{const f=await fixture(t),r=await f.read();f.n.state.nodes[OBJ].implementation='x := 3;';assert.equal((await f.change(r,'stale')).status,'conflict');assert.equal(f.n.writes,0);assert.equal((await f.change(await f.read(),'new')).status,'succeeded');});
 test('resident service: unadapted save/create/copy/variables never use batch path',async t=>{const f=await fixture(t);for(const name of ['project_save','project_create','project_open_copy','variable_edit','task_inspect','library_catalog']){const r=await f.call(name,{...f.target,requestId:name});assert.equal(r.status,'unsupported',JSON.stringify(r));assert.equal(r.error.code,'RESIDENT_TOOL_NOT_ADAPTED');}assert.equal(f.n.requests.length,1);});

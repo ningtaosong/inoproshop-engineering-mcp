@@ -6,13 +6,17 @@ import {setup,app,obj,connect} from './helpers.mjs';
 import {Store,canonical,digest,atomicJson} from '../dist/storage.js';
 import {EngineeringService} from '../dist/service.js';import {FixtureAdapter} from '../dist/fixture-adapter.js';
 import {evaluateIsolation,generatePlan,commitIsolation,isolationState,assertNotIsolated,maintenanceGate,isolationDirectory} from '../dist/isolation.js';
+import {callAndWait} from './operation-wait.mjs';
 const dead=2147483647;const target=s=>({projectId:s.projectId,applicationId:app,targetKind:'application'});
 async function inventory(root){const rows=[];async function walk(dir){for(const n of await fs.readdir(dir)){const p=path.join(dir,n);if((await fs.stat(p)).isDirectory())await walk(p);else rows.push([p,digest(await fs.readFile(p))]);}}await walk(root);return rows.sort();}
 async function context(t) {
  const env=await setup(),fixture=new FixtureAdapter();let dispatches=[];const services=[];
  const adapter={reconcile:d=>fixture.reconcile(d),execute:(r,...args)=>{dispatches.push(r);return fixture.execute(r,...args);}};
  const create=()=>{const s=new EngineeringService({dataDir:env.dataDir,testMode:true,responseWaitMs:1000},adapter);services.push(s);return s;};
- let service=create();const opened=await service.call('project_open_copy',{requestId:'original-open',sourcePath:env.source,applicationId:app}),s=opened.data.session;
+ let service=create();
+ t.after(async()=>{for(const sv of services){await sv.drain();await sv.store.release();}});
+ const opened=await callAndWait(service,'project_open_copy',{requestId:'original-open',sourcePath:env.source,applicationId:app});
+ assert.equal(opened.status,'succeeded',JSON.stringify(opened));const s=opened.data.session;
  await service.store.release();const store=service.store;
  const operationId=randomUUID(),args={requestId:'original-unknown',...target(s),expectedSnapshot:s.snapshot},directory=store.file('ipc/'+operationId);
  const op={schemaVersion:1,registryVersion:1,operationId,requestId:args.requestId,tool:'project_save',args,fingerprint:digest(canonical({tool:'project_save',args})),status:'unknown',ownerPid:dead,startedAt:new Date().toISOString(),project:s,bridge:{directory,pid:dead}};
@@ -23,7 +27,6 @@ async function context(t) {
  await atomicJson(store.file('service.lock'),lock);await atomicJson(store.sourceLock(s.sourcePath),lock);
  const anchors=[];
  t.after(async()=>{
-   for(const sv of services)await sv.store.release();
    for(const f of await fs.readdir(isolationDirectory).catch(()=>[])){
      const p=path.join(isolationDirectory,f);const r=JSON.parse(await fs.readFile(p,'utf8'));
      if(r.value?.dataDir===env.dataDir)await fs.unlink(p); // ONLY this test's generated anchors, never real evidence.

@@ -2,6 +2,8 @@
 
 本次在 `codex/resident-merge-prep` 整理独立候选，起点为原常驻分支 `7f0a2794215a1f47fa4978d65b28fa7de354b425`，main为 `55bb58fc97b266215ad536b6b0f9d4f66c80670f`（0.38.0）。不合并main、不部署、不启动新工程或模型任务。原 `codex/resident-mcp-session`、`codex/struct-field-add` 及其提交和失败记录保留。
 
+后续已按明确授权完成[默认环境代表问题诊断和测试补修](resident-default-test-diagnosis.md)：产品未变，三类代表问题已有首返与终态证据，相关回归184/184通过。本文下述默认失败、中断及当时未补修的表述保留原时点，其他默认失败未逐项重验。
+
 ## 推荐使用与兼容边界
 
 显式 `project_open(sessionMode="resident")` 打开指定工程 → 必要的 `object_list`／`object_read` 定位 → 按当前版本修改根普通ST POU实现区 → 明确要求时 `project_build` 编译内存 → 独立读回并保持打开、不自动保存。每条用户任务结束后等待下一条明确指令；running只查询本轮原操作，终态确认后才发送下一工程请求。
