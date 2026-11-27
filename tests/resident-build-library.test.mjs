@@ -59,6 +59,19 @@ async function serviceFixture(t){
  return {f,rows,data,write,verify:()=>verifyResidentBuild(request,data,directory,f.before,version)};
 }
 test('service independent verifier accepts bound native delta and actual after state',async t=>{const f=await serviceFixture(t);await f.write();assert.deepEqual(await f.verify(),f.f.after.state);assert.notEqual(hash(deps(f.f.before.state)),hash(deps(f.f.after.state)));});
+for(const [name,change] of Object.entries({
+ 'native-type-null-to-string':v=>({...v,nativeType:'System.String'}),
+ 'native-type-other':v=>({...v,nativeType:'System.Int64'}),
+ 'native-type-missing':v=>{const r={...v};delete r.nativeType;return r;},
+ 'value-different':v=>({...v,value:'21'}),
+ 'unknown-field':v=>({...v,extra:false})
+}))test('service still strictly rejects scalar metadata/value difference '+name,async t=>{
+ const f=await serviceFixture(t),task=Object.keys(f.f.before.state.nodes).find(k=>f.f.before.state.nodes[k].taskFields);
+ const original=structuredClone(f.f.before.state.nodes[task].taskFields.interval);
+ assert.equal(original.nativeType,null);
+ f.f.after.state.nodes[task].taskFields.interval=change(original);
+ assert.throws(()=>check(f.f));await f.write();await assert.rejects(f.verify());
+});
 for(const [name,mutate]of Object.entries(mutations))test('service distrusts producer success for '+name,async t=>{const f=await serviceFixture(t);mutate(f.f);await f.write();await assert.rejects(f.verify());});
 for(const fault of ['support-missing','support-changed','lying-unchanged','wrong-app','disk','diagnostics','stale-input','publication-gap'])test('service proof binding rejects '+fault,async t=>{
  const f=await serviceFixture(t);

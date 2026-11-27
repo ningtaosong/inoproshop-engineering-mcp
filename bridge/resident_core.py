@@ -11,6 +11,12 @@ import hashlib
 import traceback
 import math
 import datetime
+import sys
+# IronPython exposes CLR members per module context. Establish that context
+# before the first snapshot, rather than first enabling it during build support
+# observation; otherwise unchanged scalar values acquire GetType mid-session.
+if sys.platform == 'cli':
+    import clr
 try:
     text_type=unicode
     string_types=(basestring,)
@@ -75,13 +81,13 @@ def source_text(value):
 
 def scalar(value):
     """Preserve primitive kind and CLR type; never coalesce null with text None."""
+    if value is None:return dict(kind='null',value=None)
     kind=type(value).__name__;native=None
     if hasattr(value,'GetType'):
         t=value.GetType();native=text_type(t.FullName)
         if t.IsEnum:return dict(kind='enum',pythonType=kind,nativeType=native,value=text_type(value))
         if native=='System.Guid':return dict(kind='guid',pythonType=kind,nativeType=native,value=text_type(value))
         if native=='System.TimeSpan':return dict(kind='timespan-ticks',pythonType=kind,nativeType=native,value=text_type(value.Ticks))
-    if value is None:return dict(kind='null',value=None)
     if isinstance(value,bool):return dict(kind='bool',pythonType=kind,nativeType=native,value=bool(value))
     if isinstance(value,int_types):return dict(kind='integer',pythonType=kind,nativeType=native,value=text_type(value))
     if isinstance(value,float):
