@@ -173,6 +173,12 @@ for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed contro
  const call=(tool,args)=>callAndWait(service,tool,args);
  const opened=await call('project_open',{requestId:randomUUID(),projectPath:c.env.source,sessionMode:'resident',applicationId:APP});assert.equal(opened.status,'succeeded',JSON.stringify(opened));
  const target={projectId:opened.data.session.projectId,applicationId:APP,objectId:OBJ};
+ const queryBefore=await tree(c.env.dataDir),status=await service.status(),listed=await service.projects();
+ await service.guardPending('object_read',target);
+ assert.equal(status.data.writeFrozen,false,'status must match the admitted current resident session');
+ assert.equal(listed.data.projects.find(s=>s.projectId===target.projectId).availability,'available');
+ assert.ok(status.data.pending.some(o=>o.operationId===c.op.operationId&&o.status==='unknown'));
+ assert.deepEqual(await tree(c.env.dataDir),queryBefore,'queries are observation only');
  const read=await call('object_read',target);assert.equal(read.status,'succeeded',JSON.stringify(read));
  const changed=await call('code_apply_change',{...target,requestId:randomUUID(),expectedHash:read.data.contentHash,expectedResidentVersion:read.data.residentVersion,declaration:read.data.declaration,implementation:'x := 7; // explicit new-session edit'});assert.equal(changed.status,'succeeded',JSON.stringify(changed));
  const reread=await call('object_read',target);assert.equal(reread.status,'succeeded',JSON.stringify(reread));assert.equal(reread.data.implementation,changed.data.implementation);
@@ -194,6 +200,12 @@ for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed contro
   await atomicJson(path.join(rdir,'process-exit.json'),{launchId:launch,pid:native.pid,processIdentity:native,code:0,signal:null,lastSequence:seq,at:new Date().toISOString()});
   await service.store.release();owned=false;seq=0;launch=randomUUID();native=identity(2147000042);
   const next=new EngineeringService({dataDir:c.env.dataDir,testMode:true,responseWaitMs:20},adapter,{probe:c.probe});t.after(()=>next.store.release());
+  const closedBefore=await tree(c.env.dataDir),closedStatus=await next.status(),closedList=await next.projects();
+  assert.equal(closedStatus.data.writeFrozen,false,'trusted saved closed session permits only an explicit fresh open');
+  assert.equal(closedStatus.data.availability,'explicit-open-required');
+  assert.equal(closedStatus.data.residentObservation.memoryAvailable,false);
+  assert.equal(closedList.data.projects.find(s=>s.projectId===target.projectId).availability,'explicit-open-required');
+  assert.deepEqual(await tree(c.env.dataDir),closedBefore);
   const reopened=await callAndWait(next,'project_open',{requestId:randomUUID(),projectPath:c.env.source,sessionMode:'resident',applicationId:APP});assert.equal(reopened.status,'succeeded',JSON.stringify(reopened));
   assert.notEqual(reopened.data.session.sessionId,originalSession.sessionId);
   const later=await callAndWait(next,'object_read',{...target,projectId:reopened.data.session.projectId});assert.equal(later.status,'succeeded',JSON.stringify(later));

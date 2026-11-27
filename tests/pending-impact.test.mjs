@@ -14,6 +14,20 @@ import {assessPending,targetFiles,related} from '../dist/pending-impact.js';
 import {probeProcess} from '../dist/lease-process.js';
 
 const gonePid=2147000001;
+test('completion during status observation invalidates only that query, not the operation or global admission',async t=>{
+ const env=await setup(),service=new EngineeringService({dataDir:env.dataDir,testMode:true,responseWaitMs:10000},new FixtureAdapter());t.after(()=>service.store.release());
+ const opened=await service.call('project_open',{projectPath:env.source,applicationId:app,requestId:'normal-open'});assert.equal(opened.status,'succeeded');
+ const operationId=randomUUID(),requestId=randomUUID(),args={projectId:opened.data.session.projectId,applicationId:app};
+ const op={schemaVersion:1,operationId,requestId,tool:'object_list',args,fingerprint:digest(canonical({tool:'object_list',args})),status:'running',ownerPid:process.pid,startedAt:new Date().toISOString(),project:opened.data.session};
+ await service.store.saveOp(op);service.ownedOperations.add(operationId);service.runningOperations.add(operationId);
+ const observe=service.observedProject.bind(service);let once=true;
+ service.observedProject=async(...args)=>{const result=await observe(...args);if(once){once=false;op.status='succeeded';op.finishedAt=new Date().toISOString();op.response={contractVersion:'1.0.0',status:'succeeded',operationId,requestId,summary:'offline operation completed'};await service.store.saveOp(op);service.runningOperations.delete(operationId);}return result;};
+ const stale=await service.status();assert.equal(stale.status,'conflict');assert.equal(stale.error.code,'STATUS_EVIDENCE_CHANGED');
+ assert.equal(stale.data.observationValid,false);assert.equal(Object.hasOwn(stale.data,'globalFrozen'),false);
+ const bytes=await fs.readFile(service.store.file('operations/'+operationId+'.json'));
+ const fresh=await service.status();assert.equal(fresh.status,'succeeded');assert.equal(fresh.data.globalFrozen,false);assert.equal(fresh.data.writeFrozen,false);
+ assert.equal((await service.store.operation(operationId)).status,'succeeded');assert.deepEqual(await fs.readFile(service.store.file('operations/'+operationId+'.json')),bytes);
+});
 async function context(t){
  const env=await setup(),other=path.join(env.dir,'independent-B.json');await fs.copyFile(env.source,other);
  const adapter=new FixtureAdapter(),config={dataDir:env.dataDir,testMode:true,responseWaitMs:10000};

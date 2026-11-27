@@ -228,6 +228,61 @@ test('closed resident proof accepts original legal initial open with inferred un
  const p=await verifyClosedResident(f.service.store,s,'new-explicit',async()=>({state:'exited'}));
  assert.equal(p.priorSessionId,s.sessionId);assert.equal(p.operationIds.length,1);assert.equal(f.n.launches,1);assert.equal(f.n.writes,0);assert.equal(Object.hasOwn(original.args,'applicationId'),false);
 });
+
+// Production query + production closed-session proof; the IDE is a synthetic
+// producer in fixture(), never a real process or a copy of a historical ledger.
+for(const defect of ['none','missing-exit','abnormal-exit','missing-request','changed-result','changed-disk','different-session','missing-anchor','duplicate-path','old-service-active','probe-unconfirmed','registry-concurrent'])test('resident query fresh-open evidence: '+defect,async t=>{
+ const f=await fixture(t);f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();await f.service.store.release();
+ const original=await f.service.store.session(),anchor=await f.service.store.operation(original.lastStateOperationId),dir=f.n.requests[0].directory;
+ const edit=async(p,fn)=>{const v=JSON.parse(await fs.readFile(p,'utf8'));fn(v);await fs.writeFile(p,JSON.stringify(v));};
+ if(defect==='missing-exit')await fs.unlink(path.join(f.n.intent.directory,'process-exit.json'));
+ if(defect==='abnormal-exit')await edit(path.join(f.n.intent.directory,'process-exit.json'),v=>v.code=17);
+ if(defect==='missing-request')await fs.unlink(path.join(dir,'request.json'));
+ if(defect==='changed-result')await edit(path.join(dir,'result.json'),v=>v.summary='unbound changed result');
+ if(defect==='changed-disk')await fs.appendFile(f.file,'external bytes');
+ if(['different-session','missing-anchor','duplicate-path'].includes(defect)){
+  const r=await f.service.store.registry();
+  if(defect==='different-session')r.projects[0].sessionId=randomUUID();
+  if(defect==='missing-anchor')delete r.projects[0].lastStateOperationId;
+  if(defect==='duplicate-path')r.projects.push({...r.projects[0],projectId:randomUUID(),sessionId:randomUUID()});
+  await f.service.store.put('registry.json',r);
+ }
+ let calls=0;const denied=async()=>{calls++;throw Error('No native request in query');};
+ const next=new EngineeringService(f.config,{residentOwned:()=>false,execute:denied,executeResident:denied,reconcile:denied},{probe:async pid=>
+  defect==='old-service-active'&&pid===anchor.ownerPid?{state:'running',identity:anchor.ownerIdentity}:defect==='probe-unconfirmed'?{state:'unconfirmed'}:{state:'exited'}});
+ if(defect==='registry-concurrent'){
+  let reads=0;const originalRead=next.store.registry.bind(next.store);
+  next.store.registry=async()=>{const r=await originalRead();r.revision+=++reads;return r;};
+ }
+ const tree=async dir=>{const out=[];for(const e of await fs.readdir(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory())out.push(...await tree(p));else out.push([p,hash(await fs.readFile(p))]);}return out.sort();};
+ const before=await tree(f.root),status=await next.status();
+ let listed;
+ try{listed=await next.projects();}catch(e){assert.ok(['registry-concurrent','duplicate-path'].includes(defect));assert.equal(e.code,defect==='duplicate-path'?'CORRUPT_REGISTRY':'STATUS_EVIDENCE_CHANGED');}
+ if(defect==='none'){
+  assert.equal(status.data.availability,'explicit-open-required');assert.equal(status.data.writeFrozen,false);
+  assert.equal(status.data.residentObservation.memoryAvailable,false);assert.equal(status.data.residentObservation.explicitOpenRequired,true);
+  assert.equal(status.data.residentObservation.priorSessionId,original.sessionId);
+  assert.equal(listed.data.projects[0].availability,'explicit-open-required');
+  assert.deepEqual(status.data.session,original,'raw registration is retained, not rewritten as an active IDE');
+ }else if(defect==='registry-concurrent'){
+  assert.equal(status.status,'conflict');assert.equal(status.error.code,'STATUS_EVIDENCE_CHANGED');
+  assert.equal(status.data.observationValid,false);assert.equal(Object.hasOwn(status.data,'globalFrozen'),false);
+ }else{
+  assert.equal(status.data.writeFrozen,true,defect);assert.notEqual(status.data.availability,'explicit-open-required');
+  if(listed)assert.ok(listed.data.projects.every(p=>p.writeFrozen===true));
+ }
+ assert.equal(calls,0);assert.deepEqual(await tree(f.root),before);
+});
+
+test('fresh-open query is not cached authorization when current disk subsequently changes',async t=>{
+ const f=await fixture(t);f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();await f.service.store.release();
+ let launches=0;const no=async()=>{launches++;throw Error('must not launch');};
+ const next=new EngineeringService(f.config,{residentOwned:()=>false,execute:no,executeResident:no,reconcile:no},{probe:async()=>({state:'exited'})});t.after(()=>next.store.release());
+ assert.equal((await next.status()).data.availability,'explicit-open-required');
+ await fs.appendFile(f.file,'changed after query');
+ const r=await waitForOperation(next.call.bind(next),await next.call('project_open',{requestId:'fresh-open-after-disk-change',projectPath:f.file,applicationId:APP,sessionMode:'resident'}));
+ assert.equal(r.status,'conflict');assert.equal(r.error.code,'RESIDENT_RECONNECT_UNSUPPORTED');assert.equal(launches,0);
+});
 test('archived legal inferred Application projection retains original absence and matches published selection',async()=>{
  const f=JSON.parse(await fs.readFile(new URL('./fixtures/resident-inferred-open-20261126.json',import.meta.url),'utf8'));
  const before=JSON.stringify(f);assert.equal(Object.hasOwn(f.request.args,'applicationId'),false);assert.equal(closedApplicationBinding(f.operation,f.request,f.result,f.session),true);assert.equal(JSON.stringify(f),before);

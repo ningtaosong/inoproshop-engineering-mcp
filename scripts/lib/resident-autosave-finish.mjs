@@ -23,6 +23,10 @@ export function advanceSavedVersion({request,result,check,accepted,committed,ses
 }
 
 export async function readBeforeAutosaveShutdown({fixed,dataDir,expectedLaunchId,authorization,projectCloseDecision}){
+ if(typeof projectCloseDecision==='string'&&projectCloseDecision.startsWith('no-engineering-plan:')){
+  const {readBeforeNoEngineeringShutdown}=await import('./resident-no-engineering-finish.mjs');
+  return readBeforeNoEngineeringShutdown({fixed,dataDir,expectedLaunchId,authorization,planPath:projectCloseDecision.slice('no-engineering-plan:'.length)});
+ }
  const imp=n=>import(pathToFileURL(path.join(fixed,'dist',n+'.js')).href);
  const {Store,readJson,pathKey}=await imp('storage');
  const {residentHash,verifyResidentResult}=await imp('resident');
