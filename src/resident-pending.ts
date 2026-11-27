@@ -9,7 +9,7 @@ import {fileIdentity,ownedProject} from './isolation.js';
 import {sameProcess,validProcessIdentity,type ProcessProbe} from './lease-process.js';
 import {replySchema} from './contracts.js';
 import {residentHash} from './resident.js';
-import {earlyOpenCandidate,earlyOwnership,closedServiceShutdown,continuedEarlyOpen,type EarlyOpenProof} from './resident-early-open.js';
+import {earlyOpenCandidate,earlyOwnership,closedServiceShutdown,continuedEarlyOpen,type EarlyOpenProof,type ContinuedOpen} from './resident-early-open.js';
 import {legacyEarlyCandidate,legacyEarlyOwnership} from './resident-legacy-early.js';
 
 const fail=(s:string):never=>{throw Error('Resident pending scope: '+s);};
@@ -18,7 +18,9 @@ const uuid=(v:any)=>typeof v==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-
 const hash=(v:any)=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const commands:Record<string,string>={project_open:'inspect',object_list:'list',object_read:'read',code_apply_change:'change',project_build:'build'};
 
-export async function residentPendingScope(store:Store,op:Operation,s:Session,projects:Session[],read:(p:string)=>Promise<any>,probe:ProcessProbe){
+export async function residentPendingScope(store:Store,op:Operation,s:Session,projects:Session[],read:(p:string)=>Promise<any>,probe:ProcessProbe,context:{ancestors?:string[];proofOnly?:boolean}={}):Promise<{basis:string;recheck:()=>Promise<void>;earlyProof?:EarlyOpenProof;continuedBy?:ContinuedOpen}>{
+ const ancestors=context.ancestors??[];
+ if(ancestors.length>=16||ancestors.includes(op.operationId))fail('predecessor chain cycle or depth exceeds bound');
  const launch=op.bridge?.launchId;
  if(op.resident!==true||!uuid(launch)||s.sessionMode!=='resident'||s.storageMode!=='direct'||s.editMode!=='direct'||
   !s.directPath||![s.sourcePath,s.directPath].every(p=>pathKey(p)===pathKey(s.workingPath)))fail('resident/project binding incomplete');
@@ -52,7 +54,7 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
  const queueNames=async()=> (await fs.readdir(root)).filter(n=>/^request-.*\.json$/.test(n)).sort();
  const expected=Array.from({length:rows.length},(_,i)=>`request-${i+1}.json`).sort();
  if(!eq(await queueNames(),expected))fail('queue coverage differs');
- const sequences=new Set<number>(),evidenceNames=new Map<string,string[]>();let earlyProof:EarlyOpenProof|undefined,legacyRecheck:(()=>Promise<void>)|undefined;
+ const sequences=new Set<number>(),evidenceNames=new Map<string,string[]>();let earlyProof:EarlyOpenProof|undefined,legacyRecheck:(()=>Promise<void>)|undefined;const predecessorRechecks:(()=>Promise<void>)[]=[];
  for(const row of rows){
   const ipc=store.file('ipc/'+row.operationId),owned=ownedProject(row,earlyOpenCandidate(row)?[]:projects);
   const entries=await fs.readdir(ipc,{withFileTypes:true});
@@ -85,14 +87,24 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
   if(before===undefined&&earlyOpenCandidate(row)&&rows.length===1){
    if(await read(path.join(root,'stop.json'))||await read(path.join(root,'first-error.json')))fail('early launch has conflicting failure/stop evidence');
    const legacy=legacyEarlyCandidate(intent);
-   const allowed=['completed.json','first-error.json',...(legacy?[]:['ownership-0001.json']),'request-entered.json','request.json','result.json','service-verification.json'];
+   const linked=entries.some(e=>e.name==='resident-new-open-precheck.json');let predecessorIds:string[]|undefined;
+   if(linked||row.residentFreshOpen){
+    const pre=await read(path.join(ipc,'resident-new-open-precheck.json')),prior=all.find(o=>o.operationId===row.residentFreshOpen?.priorOperationId);
+    if(!linked||!prior?.project||!earlyOpenCandidate(prior)||prior.operationId===row.operationId||!eq(pre,{operationId:row.operationId,requestId:row.requestId,proof:pre?.proof})||row.residentFreshOpen?.proofHash!==residentHash(pre.proof)||pre.proof?.operationId!==prior.operationId)fail('predecessor precheck/operation binding incomplete');
+    const priorScope=await residentPendingScope(store,prior!,prior!.project!,[],read,probe,{ancestors:[...ancestors,row.operationId],proofOnly:true});
+    if(!priorScope.earlyProof||!eq(pre.proof,priorScope.earlyProof)||priorScope.earlyProof!.diskHash!==req.diskHash||priorScope.earlyProof!.fileId!==req.fileIdentity||pathKey(priorScope.earlyProof!.projectPath)!==pathKey(req.projectPath)||priorScope.earlyProof!.launchId===launch||!Number.isFinite(Date.parse(row.startedAt))||Date.parse(row.startedAt)<Date.parse(priorScope.earlyProof!.nativeExitAt))fail('predecessor proof/version/time differs');
+    await closedServiceShutdown(store,prior!.ownerIdentity,priorScope.earlyProof!.nativeExitAt,read,row.startedAt);
+    if(eq(prior!.ownerIdentity,row.ownerIdentity)||prior!.bridge?.pid===identity.pid&&eq((await read(store.file('resident/'+prior!.bridge!.launchId+'/process-start.json')))?.processIdentity,identity))fail('predecessor reused original process instance');
+    predecessorRechecks.push(priorScope.recheck);predecessorIds=[...(priorScope.earlyProof!.predecessorOperationIds??[]),prior!.operationId];
+   }
+   const allowed=['completed.json','first-error.json',...(legacy?[]:['ownership-0001.json']),'request-entered.json','request.json','result.json','service-verification.json',...(linked?['resident-new-open-precheck.json']:[])].sort();
    if(!eq(entries.map(e=>e.name).sort(),allowed))fail('early read evidence coverage incomplete or unexpected');
    if(!eq(await read(path.join(ipc,'first-error.json')),result.data?.firstError))fail('early read first error differs');
    const inferred=legacy?await legacyEarlyOwnership(store,req,result,intent,start,read):undefined;
    legacyRecheck=inferred?.recheck;
    const ownershipHash=inferred?.ownershipHash??earlyOwnership(req,result,await read(path.join(ipc,'ownership-0001.json')),intent,native);
    const serviceShutdownHash=await closedServiceShutdown(store,row.ownerIdentity,exit.at,read);
-   earlyProof={operationId:row.operationId,requestId:row.requestId,launchId:launch!,projectId:s.projectId,sessionId:s.sessionId,projectPath:s.workingPath,fileId:intent.originalFileId,diskHash:s.diskHash!,requestHash:rh,resultHash:residentHash(result),ownershipHash,nativeExitHash:residentHash(exit),nativeExitAt:exit.at,serviceShutdownHash,...(inferred?{ownershipBasis:'legacy-fixed-control-flow' as const,ownershipInference:inferred.evidence}:{})};
+   earlyProof={operationId:row.operationId,requestId:row.requestId,launchId:launch!,projectId:s.projectId,sessionId:s.sessionId,projectPath:s.workingPath,fileId:intent.originalFileId,diskHash:s.diskHash!,requestHash:rh,resultHash:residentHash(result),ownershipHash,nativeExitHash:residentHash(exit),nativeExitAt:exit.at,serviceShutdownHash,...(predecessorIds?{predecessorOperationIds:predecessorIds}:{}),...(inferred?{ownershipBasis:'legacy-fixed-control-flow' as const,ownershipInference:inferred.evidence}:{})};
   }else if(before?.diskHash!==current.sha256||pathKey(state?.projectPath??'')!==pathKey(s.workingPath)||!Number.isSafeInteger(state?.projectHandle)||state.projectHandle<0||!opened||Array.isArray(opened)||
    !primary||primary.handle!==state.projectHandle||primary.primary!==true||primary.library!==false||pathKey(primary.path??'')!==pathKey(s.workingPath)||
    Object.entries<any>(opened).some(([k,v])=>!v||!Number.isSafeInteger(v.handle)||String(v.handle)!==k||typeof v.path!=='string'||typeof v.primary!=='boolean'||typeof v.library!=='boolean'||(v!==primary&&(v.primary||!v.library))))fail('native project ownership incomplete');
@@ -103,13 +115,18 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
    !eq((await store.operations()).filter(o=>o.bridge?.launchId===launch),rows))fail('launch coverage/file/operations changed during assessment');
   for(const [ipc,names] of evidenceNames)if(!eq((await fs.readdir(ipc)).sort(),names))fail('operation evidence coverage changed during assessment');
   if(legacyRecheck)await legacyRecheck();
+  for(const check of predecessorRechecks)await check();
   if(earlyProof&&await closedServiceShutdown(store,op.ownerIdentity,exit.at,read)!==earlyProof.serviceShutdownHash)fail('service shutdown changed during assessment');
  };
  await recheck();
- const continuedBy=earlyProof?await continuedEarlyOpen(store,earlyProof,projects,read):undefined;
+ const continuedBy=earlyProof&&!context.proofOnly?await continuedEarlyOpen(store,earlyProof,projects,read,async prior=>{
+  if(!prior.project)fail('successor project binding missing');
+  const result=await residentPendingScope(store,prior,prior.project!,[],read,probe,{proofOnly:true});
+  predecessorRechecks.push(result.recheck);return result.earlyProof;
+ },probe):undefined;
  // A verified later open already owns its own current-version guards. Do not
  // turn an ended historical read into a global freeze after a new-session edit.
  // Without that complete handoff, the original file must still be unchanged.
- if(changed&&!continuedBy)fail('original saved file identity/version changed without verified successor');
+ if(changed&&!continuedBy&&!context.proofOnly)fail('original saved file identity/version changed without verified successor');
  return {basis:earlyProof?.ownershipBasis==='legacy-fixed-control-flow'?'resident-closed-legacy-first-read-v1; legacy-fixed-control-flow inference, no raw native values; explicit fresh open only; old outcome remains unknown':earlyProof?'resident-closed-first-read-v1; explicit fresh open only; old outcome remains unknown':'resident-ended-launch-binding-v1; current unchanged file identity; outcome remains unknown',recheck,earlyProof,continuedBy};
 }

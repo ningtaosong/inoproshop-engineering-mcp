@@ -63,7 +63,8 @@ export class EngineeringService {
     // With no unresolved ownership to match, leave path validation to the
     // existing command path. Queue and native dispatch repeat this assessment.
     if(state.impacts.length===0)return state;
-    const s=project??state.registry.projects.find(s=>s.projectId===args.projectId);
+    const pathMatches=tool==='project_open'&&args.sessionMode==='resident'&&typeof args.projectPath==='string'?state.registry.projects.filter(s=>s.sessionMode==='resident'&&pathKey(s.workingPath)===pathKey(args.projectPath)):[];
+    const s=(pathMatches.length===1?pathMatches[0]:undefined)??project??state.registry.projects.find(s=>s.projectId===args.projectId);
     const paths=[args.projectPath,args.sourcePath,...(s?[s.sourcePath,s.workingPath]:[])].filter((p):p is string=>typeof p==='string');
     const blocked=related(state.impacts,args.projectId??s?.projectId,await targetFiles(paths)).filter(i=>{
       if(!i.earlyProof)return true;
@@ -71,7 +72,7 @@ export class EngineeringService {
         const current=i.files.find(f=>f.key===pathKey(i.earlyProof!.projectPath));
         if(current?.sha256===i.earlyProof.diskHash&&current?.fileId===i.earlyProof.fileId)return false;
       }
-      return !(s&&s.sessionMode==='resident'&&i.continuedBy?.projectId===s.projectId&&i.continuedBy.sessionId===s.sessionId&&args.projectId===s.projectId);
+      return !(s&&s.sessionMode==='resident'&&i.continuedBy?.projectId===s.projectId&&i.continuedBy.sessionId===s.sessionId&&(args.projectId===s.projectId||tool==='project_open'&&args.sessionMode==='resident'&&pathKey(args.projectPath??'')===pathKey(s.workingPath)));
     });
     if(blocked.length)throw new DomainError('conflict','PENDING_UNKNOWN',
       '未派发：'+blocked.map(b=>`${b.operationId} (${b.scope}): ${b.reason}`).join('; '));
@@ -917,7 +918,8 @@ export class EngineeringService {
       op.project={...session};await this.store.saveOp(op);
       if(op.tool==='project_open'&&a.sessionMode==='resident'&&!this.adapter.residentOwned?.()){
         const pending=await this.guardPending(op.tool,a,op.operationId,session);
-        const prior=pending.impacts.filter(i=>i.earlyProof&&explicitEarlyOpen(op.tool,a,i.earlyProof));
+        const candidates=pending.impacts.filter(i=>i.earlyProof&&!i.continuedBy&&explicitEarlyOpen(op.tool,a,i.earlyProof));
+        const prior=candidates.filter(i=>!candidates.some(other=>other.earlyProof?.predecessorOperationIds?.includes(i.earlyProof!.operationId)));
         if(prior.length>1)throw new DomainError('conflict','PENDING_UNKNOWN','首读失败的新打开依据不唯一');
         if(prior.length===1){
           const proof=prior[0].earlyProof!,directory=this.store.file('ipc/'+op.operationId);

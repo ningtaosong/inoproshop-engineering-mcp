@@ -4,11 +4,12 @@ import {promises as fs} from 'node:fs';
 import path from 'node:path';
 import {canonical,digest,pathKey,type Operation,type Session,type Store} from './storage.js';
 import {residentHash,verifyResidentResult} from './resident.js';
-import {validProcessIdentity} from './lease-process.js';
+import {validProcessIdentity,probeProcess,type ProcessProbe} from './lease-process.js';
+import {verifyHistoricalClosedResident,sameClosedResidentProof} from './resident-reopen.js';
 import {replySchema} from './contracts.js';
 const eq=(a:unknown,b:unknown)=>residentHash(a)===residentHash(b);
 const fail=(s:string):never=>{throw Error('Resident early open: '+s);};
-export interface EarlyOpenProof {operationId:string;requestId:string;launchId:string;projectId:string;sessionId:string;projectPath:string;fileId:string;diskHash:string;requestHash:string;resultHash:string;ownershipHash:string;nativeExitHash:string;nativeExitAt:string;serviceShutdownHash:string;ownershipBasis?:'native-public-record'|'legacy-fixed-control-flow';ownershipInference?:Record<string,unknown>;}
+export interface EarlyOpenProof {operationId:string;requestId:string;launchId:string;projectId:string;sessionId:string;projectPath:string;fileId:string;diskHash:string;requestHash:string;resultHash:string;ownershipHash:string;nativeExitHash:string;nativeExitAt:string;serviceShutdownHash:string;ownershipBasis?:'native-public-record'|'legacy-fixed-control-flow';ownershipInference?:Record<string,unknown>;predecessorOperationIds?:string[];}
 export interface ContinuedOpen {operationId:string;projectId:string;sessionId:string;}
 export const earlyOpenCandidate=(op:Operation)=>op.resident===true&&op.tool==='project_open'&&op.status==='unknown'&&op.args.sessionMode==='resident'&&!op.project?.lastStateOperationId;
 
@@ -36,7 +37,7 @@ export function earlyOwnership(req:any,result:any,row:any,intent:any,native:any)
 
 // Existing EOF shutdown journal plus confirmed absence of that exact process.
 // This is not an invented OS exit code. A shutdown error/signal is never accepted.
-export async function closedServiceShutdown(store:Store,identity:any,ideExitAt:string,read:(p:string)=>Promise<any>){
+export async function closedServiceShutdown(store:Store,identity:any,ideExitAt:string,read:(p:string)=>Promise<any>,beforeStart?:string){
  const root=store.file('service-lifecycle'),matches:any[]=[];
  for(const name of await fs.readdir(root)){
   const dir=path.join(root,name),s=await fs.lstat(dir);
@@ -56,7 +57,7 @@ export async function closedServiceShutdown(store:Store,identity:any,ideExitAt:s
   if(!eq(events,['shutdown-requested','observations-settled','lease-retained','shutdown-completed'])||
    !['stdin-end','stdin-close','transport-close'].includes(rows[0].data?.reason)||Object.hasOwn(rows[0].data,'error')||
    rows[3].data?.errorCount!==0||rows[3].data.operationSuccessNotImplied!==true||Date.parse(rows[1].observedAt)<Date.parse(ideExitAt)||
-   rows.some((r,i)=>i>0&&Date.parse(r.observedAt)<Date.parse(rows[i-1].observedAt)))fail('normal service shutdown incomplete');
+   rows.some((r,i)=>i>0&&Date.parse(r.observedAt)<Date.parse(rows[i-1].observedAt))||beforeStart!==undefined&&(!Number.isFinite(Date.parse(beforeStart))||Date.parse(rows[3].observedAt)>Date.parse(beforeStart)))fail('normal service shutdown incomplete');
   matches.push(rows);
  }
  if(matches.length!==1)fail('unique normal service shutdown unavailable');
@@ -69,16 +70,23 @@ export function explicitEarlyOpen(tool:string,args:any,proof:EarlyOpenProof){
 
 // A new operation owns this linkage, never the old unknown or its registration.
 // Verify the successful first native read before permitting subsequent requests.
-export async function continuedEarlyOpen(store:Store,proof:EarlyOpenProof,projects:Session[],read:(p:string)=>Promise<any>):Promise<ContinuedOpen|undefined>{
+export async function continuedEarlyOpen(store:Store,proof:EarlyOpenProof,projects:Session[],read:(p:string)=>Promise<any>,resolveEarly?:(o:Operation)=>Promise<EarlyOpenProof|undefined>,probe:ProcessProbe=probeProcess,visited:string[]=[]):Promise<ContinuedOpen|undefined>{
+ if(visited.length>=16||visited.includes(proof.operationId))fail('successor chain cycle or depth exceeds bound');
  const same=projects.filter(s=>s.projectId===proof.projectId||s.sessionId===proof.sessionId||[s.sourcePath,s.workingPath].some(p=>pathKey(p)===pathKey(proof.projectPath)));
  if(!same.length)return;
  if(same.length!==1)fail('registration ambiguous');
  const s=same[0];
  if(s.sessionMode!=='resident'||s.storageMode!=='direct'||s.editMode!=='direct'||s.sessionId===proof.sessionId||
   [s.workingPath,s.sourcePath,s.directPath??''].some(p=>pathKey(p)!==pathKey(proof.projectPath)))fail('registration has no fresh owned session');
- const rows=(await store.operations()).filter(o=>o.residentFreshOpen?.priorOperationId===proof.operationId&&o.project?.projectId===s.projectId&&o.project?.sessionId===s.sessionId&&o.status==='succeeded'&&o.tool==='project_open'&&o.resident);
+ const operations=await store.operations();
+ const rows=operations.filter(o=>o.residentFreshOpen?.priorOperationId===proof.operationId&&o.tool==='project_open'&&o.resident);
+ if(rows.length===1&&earlyOpenCandidate(rows[0])&&resolveEarly){
+  const next=await resolveEarly(rows[0]);if(!next||!next.predecessorOperationIds?.includes(proof.operationId))fail('failed successor chain proof missing');
+  return continuedEarlyOpen(store,next!,projects,read,resolveEarly,probe,[...visited,proof.operationId]);
+ }
  if(rows.length!==1)fail('unique successful successor open unavailable');
- const op=rows[0],dir=store.file('ipc/'+op.operationId);
+ const op=rows[0];if(op.status!=='succeeded'||!op.project)fail('successor is not a successful current session');
+ const firstSession=op.project!,dir=store.file('ipc/'+op.operationId);
  const [pre,req,result,check,ledger]=await Promise.all(['resident-new-open-precheck.json','request.json','result.json','service-verification.json',store.file('operations/'+op.operationId+'.json')].map(n=>read(path.isAbsolute(n)?n:path.join(dir,n))));
  await read(path.join(dir,'completed.json'));
  await read(path.join(dir,'before.json'));
@@ -92,7 +100,43 @@ export async function continuedEarlyOpen(store:Store,proof:EarlyOpenProof,projec
   !Number.isFinite(Date.parse(op.startedAt))||Date.parse(op.startedAt)<Date.parse(proof.nativeExitAt)||
   result?.status!=='succeeded'||!eq(result.data?.residentEvidence,op.response?.data?.residentEvidence)||
   check?.passed!==true||!validProcessIdentity(check.processIdentity,op.bridge?.pid??-1)||check.launchId!==req.launchId||check.sequence!==1||check.requestHash!==residentHash(req)||check.resultHash!==residentHash(result)||check.diskHash!==proof.diskHash||check.processState!=='running'||check.exitRequiredForRequest!==false||
-  returned?.projectId!==s.projectId||returned?.sessionId!==s.sessionId||returned?.diskHash!==proof.diskHash||op.project?.diskHash!==proof.diskHash)fail('successor request/completion differs');
+  returned?.projectId!==firstSession.projectId||returned?.sessionId!==firstSession.sessionId||returned?.diskHash!==proof.diskHash||op.project?.diskHash!==proof.diskHash)fail('successor request/completion differs');
  await verifyResidentResult(req,result,dir,check.processIdentity);
- return {operationId:op.operationId,projectId:s.projectId,sessionId:s.sessionId};
+ return followNormalReopens(store,op,returned,s,operations,read,probe);
+}
+
+
+// Follow only previously proven normal-close/fresh-open records. This never
+// adopts memory or changes a historical operation, and is bounded independently
+// of the failed-first-read chain above.
+async function followNormalReopens(store:Store,first:Operation,initial:Session,current:Session,operations:Operation[],read:(p:string)=>Promise<any>,probe:ProcessProbe):Promise<ContinuedOpen>{
+ let prior=first,session=initial;const seen=new Set<string>();
+ for(let depth=0;depth<16;depth++){
+  if(seen.has(session.sessionId))fail('normal reopen chain cycle');seen.add(session.sessionId);
+  if(session.projectId===current.projectId&&session.sessionId===current.sessionId)return {operationId:prior.operationId,projectId:current.projectId,sessionId:current.sessionId};
+  const matches:any[]=[];
+  for(const candidate of operations.filter(o=>o.resident&&o.tool==='project_open'&&o.status==='succeeded'&&o.project?.projectId===session.projectId&&o.project?.sessionId!==session.sessionId)){
+   const pre=await read(store.file('ipc/'+candidate.operationId+'/resident-reopen-precheck.json'));
+   if(pre?.priorSessionId===session.sessionId)matches.push({candidate,pre});
+  }
+  if(matches.length!==1)fail('unique normal reopen successor missing');
+  const {candidate,pre}=matches[0],dir=store.file('ipc/'+candidate.operationId);
+  const [req,result,check,ledger]=await Promise.all(['request.json','result.json','service-verification.json',store.file('operations/'+candidate.operationId+'.json')].map(n=>read(path.isAbsolute(n)?n:path.join(dir,n))));
+  const anchor=operations.find(o=>o.operationId===pre.anchorOperationId),next=result?.data?.session??candidate.response?.data?.session;
+  if(!anchor?.project||anchor.project.sessionId!==session.sessionId||pre.operationId!==candidate.operationId||pre.requestId!==candidate.requestId||pre.newSessionId!==candidate.project?.sessionId||pre.priorLaunchId!==prior.bridge?.launchId||
+   req?.sequence!==1||req.command!=='inspect'||req.launchId!==candidate.bridge?.launchId||req.launchId===pre.priorLaunchId||req.operationId!==candidate.operationId||req.requestId!==candidate.requestId||req.requestFingerprint!==candidate.fingerprint||candidate.fingerprint!==digest(canonical({tool:candidate.tool,args:candidate.args}))||
+   !eq({...req.args,residentLeases:undefined},{...candidate.args,residentLeases:undefined})||!explicitEarlyOpen(candidate.tool,candidate.args,{projectPath:session.workingPath,requestId:prior.requestId} as EarlyOpenProof)||
+   req.diskHash!==pre.diskHash||req.fileIdentity!==pre.fileIdentity||pathKey(req.projectPath??'')!==pathKey(session.workingPath)||
+   ledger?.schemaVersion!==1||ledger.checksum!==digest(canonical(candidate))||!eq(ledger.value,candidate)||!replySchema.safeParse(candidate.response).success||candidate.response?.status!=='succeeded'||candidate.response.operationId!==candidate.operationId||candidate.response.requestId!==candidate.requestId||result?.status!=='succeeded'||!eq(result.data?.residentEvidence,candidate.response?.data?.residentEvidence)||
+   check?.passed!==true||!validProcessIdentity(check.processIdentity,candidate.bridge?.pid??-1)||check.launchId!==req.launchId||check.sequence!==1||check.requestHash!==residentHash(req)||check.resultHash!==residentHash(result)||check.diskHash!==req.diskHash||
+   next?.projectId!==session.projectId||next?.sessionId!==pre.newSessionId||next?.diskHash!==req.diskHash||next?.applicationId!==result.data.applicationId||next?.lastStateOperationId!==candidate.operationId||next?.sessionMode!=='resident'||next?.storageMode!=='direct'||[next?.sourcePath,next?.workingPath,next?.directPath].some(p=>typeof p!=='string'||pathKey(p)!==pathKey(session.workingPath))||!Number.isFinite(Date.parse(candidate.startedAt))||Date.parse(candidate.startedAt)<Date.parse(pre.exit?.at??''))fail('normal reopen linkage differs');
+  const old={...anchor!.project,lastStateOperationId:anchor!.operationId,diskHash:pre.diskHash,residentVersion:anchor!.response?.data?.residentVersion} as Session;
+  const proven=await verifyHistoricalClosedResident(store,old,candidate.operationId,{fileIdentity:req.fileIdentity,diskHash:req.diskHash},probe,read);
+  const {operationId,requestId,newSessionId,...recorded}=pre;
+  if(!sameClosedResidentProof(recorded,proven))fail('normal reopen precheck no longer matches original proof');
+  await read(path.join(dir,'completed.json'));await read(path.join(dir,'before.json'));
+  await verifyResidentResult(req,result,dir,check.processIdentity);
+  prior=candidate;session=next;
+ }
+ return fail('normal reopen chain exceeds bound');
 }

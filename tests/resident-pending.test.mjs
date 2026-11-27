@@ -1,3 +1,6 @@
+import {spawnSync} from 'node:child_process';
+import {earlyOwnership} from '../dist/resident-early-open.js';
+import {residentPendingScope} from '../dist/resident-pending.js';
 import {residentDisk} from '../dist/resident-saved.js';
 import {SAVE_POLICY,saveReady,saveAuthorization} from '../dist/resident-save.js';
 // Synthetic resident record shapes; never opens or edits a real project/ledger.
@@ -8,16 +11,16 @@ import{residentDependencies,residentObject,verifyResidentResult}from'../dist/res
 import{callAndWait}from'./operation-wait.mjs';
 import{legacyEarlyOwnership}from'../dist/resident-legacy-early.js';
 const nativePid=2147000030,ownerPid=2147000031,identity=pid=>({version:1,platform:process.platform,host:os.hostname().toLowerCase(),pid,startId:String(pid)});
-async function fixture(t,{early=false}={}){
- const env=await setup(),store=new Store(env.dataDir),f=await fileIdentity(env.source),other=path.join(env.dir,'independent.json');await fs.copyFile(env.source,other);
+async function fixture(t,{early=false,existingEnv,offset=0}={}){
+ const env=existingEnv??await setup(),store=new Store(env.dataDir),f=await fileIdentity(env.source),other=path.join(env.dir,'independent.json');await fs.copyFile(env.source,other);
  const s={projectId:randomUUID(),sessionId:randomUUID(),sourcePath:env.source,workingPath:env.source,directPath:env.source,storageMode:'direct',editMode:'direct',sessionMode:'resident',sourceHash:f.sha256,diskHash:f.sha256,applicationId:app,applications:[{applicationId:app,path:['Device','Application']}]};
- await store.put('registry.json',{version:2,revision:1,activeProjectId:early?null:s.projectId,projects:early?[]:[s]});
- const launchId=randomUUID(),root=store.file('resident/'+launchId),put=async(n,v)=>atomicJson(path.join(root,n),v),native=identity(nativePid),owner=identity(ownerPid),small={pid:native.pid,startId:native.startId},rows=[];
+ if(!existingEnv)await store.put('registry.json',{version:2,revision:1,activeProjectId:early?null:s.projectId,projects:early?[]:[s]});
+ const launchId=randomUUID(),root=store.file('resident/'+launchId),put=async(n,v)=>atomicJson(path.join(root,n),v),native=identity(nativePid+offset*10),owner=identity(ownerPid+offset*10),small={pid:native.pid,startId:native.startId},rows=[];
  const leases=[{path:store.file('service.lock'),sha256:'a'.repeat(64)},{path:store.sourceLock(env.source),sha256:'b'.repeat(64)}];
  for(let sequence=1;sequence<=(early?1:2);sequence++){
   const operationId=randomUUID(),requestId=randomUUID(),tool=sequence===1?'project_open':'project_build',command=sequence===1?'inspect':'build',status=early?'unknown':sequence===1?'succeeded':'unknown';
   const args=sequence===1?{requestId,sessionMode:'resident',projectPath:env.source,applicationId:app}:{requestId,projectId:s.projectId,applicationId:app,expectedResidentVersion:'c'.repeat(64)};
-  const ipc=store.file('ipc/'+operationId),op={schemaVersion:1,operationId,requestId,tool,args,fingerprint:digest(canonical({tool,args})),status,resident:true,project:s,ownerPid,ownerIdentity:owner,startedAt:'2026-11-26T14:00:00Z',finishedAt:'2026-11-26T14:01:00Z',bridge:{directory:ipc,pid:nativePid,launchId},dispatchFiles:[f]};
+  const ipc=store.file('ipc/'+operationId),op={schemaVersion:1,operationId,requestId,tool,args,fingerprint:digest(canonical({tool,args})),status,resident:true,project:s,ownerPid:owner.pid,ownerIdentity:owner,startedAt:new Date(Date.UTC(2026,10,offset?27:26,offset?4:14)).toISOString(),finishedAt:new Date(Date.UTC(2026,10,offset?27:26,offset?4:14,1)).toISOString(),bridge:{directory:ipc,pid:native.pid,launchId},dispatchFiles:[f]};
   if(early)op.activation={revision:1,previousActiveProjectId:null};
   const req={operationId,requestId,requestFingerprint:op.fingerprint,command,projectPath:env.source,args:{...args,residentLeases:leases},directory:ipc,launchId,sequence,diskHash:f.sha256,fileIdentity:f.fileId,deadlineUtc:'2026-11-26T14:03:00Z',leases};
   const e={launchId,sequence,requestHash:residentHash(req),processIdentity:small,requestCompleted:true,ideExitRequested:false};
@@ -31,10 +34,10 @@ async function fixture(t,{early=false}={}){
  }
  await put('intent.json',{directory:root,projectPath:env.source,originalFileId:f.fileId,launchId,corePath:path.join(env.dir,'resident_core.py'),coreHash:'d'.repeat(64),scriptHash:'e'.repeat(64)});
  await put('process-start.json',{launchId,processIdentity:native,entry:path.join(env.dir,'resident_host.py'),coreHash:'d'.repeat(64),scriptHash:'e'.repeat(64)});
- await put('entry.json',{pid:nativePid,scriptSha256:'e'.repeat(64)});await put('modules-loaded.json',{launchId,processIdentity:small,coreHash:'d'.repeat(64)});
+ await put('entry.json',{pid:native.pid,scriptSha256:'e'.repeat(64)});await put('modules-loaded.json',{launchId,processIdentity:small,coreHash:'d'.repeat(64)});
  await put('ready.json',{launchId,processIdentity:small,state:{startup:false}});await put('receiver-stopped.json',{completed:rows.length,ideExitRequested:false,projectClosed:false,firstError:null});
- await put('process-exit.json',{launchId,pid:nativePid,processIdentity:native,code:0,signal:null,lastSequence:rows.length,at:'2026-11-27T01:00:00Z'});
- const c={env,store,s,other,root,rows,put,native,owner,launchId,probe:async()=>({state:'exited'})};c.op=rows.at(-1).op;c.ipc=rows.at(-1).ipc;
+ await put('process-exit.json',{launchId,pid:native.pid,processIdentity:native,code:0,signal:null,lastSequence:rows.length,at:new Date(Date.UTC(2026,10,27,1+offset*4)).toISOString()});
+ const c={env,store,s,other,root,rows,put,native,owner,launchId,offset,probe:async()=>({state:'exited'})};c.op=rows.at(-1).op;c.ipc=rows.at(-1).ipc;
  c.mutate=async(file,fn)=>{const v=await readJson(file);fn(v);await atomicJson(file,v);};
  c.assess=()=>assessPending(store,{probe:c.probe});return c;
 }
@@ -57,8 +60,8 @@ test('future early ownership receipt alone does not implement an unknown reopeni
  assert.deepEqual(await tree(c.env.dataDir),before);
 });
 
-async function readyEarly(t){
- const c=await fixture(t,{early:true}),r=c.rows[0],small={pid:c.native.pid,startId:c.native.startId},p={handle:0,path:c.env.source,primary:true,library:false};
+async function readyEarly(t,options={}){
+ const c=await fixture(t,{early:true,...options}),r=c.rows[0],small={pid:c.native.pid,startId:c.native.startId},p={handle:0,path:c.env.source,primary:true,library:false};
  const ownership={scheme:'resident-public-ownership-v1',ordinal:1,operationId:c.op.operationId,requestId:c.op.requestId,launchId:c.launchId,sequence:1,requestHash:residentHash(r.req),processIdentity:small,projectPath:c.env.source,scriptHash:'e'.repeat(64),coreHash:'d'.repeat(64),projectHandle:0,attempts:{open:1,read:1,replace:0,build:0},raw:{returned:p,primary:p,all:[p],readErrors:[]},nativeValidation:{passed:true,error:null}};
  r.result.data.firstError.phase='initial-snapshot';
  r.result.data.residentEvidence.ownershipRecords=[{name:'ownership-0001.json',sha256:residentHash(ownership)}];
@@ -71,17 +74,17 @@ async function readyEarly(t){
  await c.refresh();const runId=randomUUID();c.shutdown=c.store.file('service-lifecycle/'+runId);
  const events=[['shutdown-requested',{reason:'stdin-end'}],['observations-settled',{}],['lease-retained',{reason:'unknown retained'}],['shutdown-completed',{errorCount:0,operationSuccessNotImplied:true}]];
  for(let i=0;i<events.length;i++){
-  const [event,data]=events[i],value={binding:{runId,pid:c.owner.pid,processIdentity:c.owner},ordinal:i+1,observedAt:'2026-11-27T02:00:0'+i+'Z',event,data};
+  const [event,data]=events[i],value={binding:{runId,pid:c.owner.pid,processIdentity:c.owner},ordinal:i+1,observedAt:new Date(Date.UTC(2026,10,27,2+c.offset*4,0,i)).toISOString(),event,data};
   await atomicJson(path.join(c.shutdown,String(i+1).padStart(6,'0')+'-'+event+'.json'),{schemaVersion:1,value,checksum:digest(canonical(value))});
  }
  return c;
 }
 
-test('predecessor/precheck eighth file remains a documented preparation blocker, not implicitly trusted',async t=>{
+test('unbound predecessor precheck is rejected rather than implicitly trusted',async t=>{
  const c=await readyEarly(t);
  await atomicJson(path.join(c.ipc,'resident-new-open-precheck.json'),{note:'offline stand-in only; a real predecessor chain must be independently verified'});
  const before=await tree(c.env.dataDir),a=await c.assess();
- assert.equal(a.globalFrozen,true);assert.match(a.impacts[0].reason,/early read evidence coverage incomplete or unexpected/);
+ assert.equal(a.globalFrozen,true);assert.match(a.impacts[0].reason,/predecessor precheck\/operation binding incomplete/);
  assert.deepEqual(await tree(c.env.dataDir),before);assert.equal((await c.store.operation(c.op.operationId)).status,'unknown');
 });
 
@@ -123,15 +126,21 @@ for(const field of ['planPath','manifestPath'])for(const change of ['value','whi
  assert.deepEqual(await tree(c.ipc),before);assert.deepEqual(await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json')),old);
 });
 
-for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed control flow',readyLegacy]])test('complete early readonly failure '+kind+': new explicit open, following read and changed memory retain old unknown bytes',async t=>{
+async function readyLinked(t){
+ const previous=await readyEarly(t),a=await previous.assess(),proof=a.impacts[0].earlyProof;
+ const c=await readyEarly(t,{existingEnv:previous.env,offset:1});
+ await atomicJson(path.join(c.ipc,'resident-new-open-precheck.json'),{operationId:c.op.operationId,requestId:c.op.requestId,proof});
+ c.op.residentFreshOpen={priorOperationId:previous.op.operationId,proofHash:residentHash(proof)};await c.store.saveOp(c.op);c.previous=previous;return c;
+}
+for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed control flow',readyLegacy],['two ended failures with verified precheck',readyLinked]])test('complete early readonly failure '+kind+': new explicit open, following read and changed memory retain old unknown bytes',async t=>{
  const c=await factory(t),before=await tree(c.ipc),oldLedger=await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json'));
- const a=await c.assess();assert.equal(a.globalFrozen,false,JSON.stringify(a.impacts));assert.ok(a.impacts[0].earlyProof);
+ const a=await c.assess();assert.equal(a.globalFrozen,false,JSON.stringify(a.impacts));assert.ok(a.impacts.find(i=>i.operationId===c.op.operationId).earlyProof);
  if(kind.startsWith('legacy')){assert.equal(a.impacts[0].earlyProof.ownershipBasis,'legacy-fixed-control-flow');assert.equal(a.impacts[0].earlyProof.ownershipInference.nativeRawOwnershipAvailable,false);}
  else {assert.equal(Object.hasOwn(a.impacts[0].earlyProof,'ownershipBasis'),false);assert.equal(Object.hasOwn(a.impacts[0].earlyProof,'ownershipInference'),false);}
  const APP=app,OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
  const node=(id,parent,name,typ,d,i)=>({objectId:id,applicationId:APP,parentId:parent,path:parent?['Application',name]:['Application'],nativeTypeId:typ,declaration:d,implementation:i,embeddedObjectTypes:i===null?[]:[ST]});
  const state={projectPath:c.env.source,projectHandle:0,thread:1,applications:[APP],openedProjects:{'0':{handle:0,path:c.env.source,primary:true,library:false}},nodes:{[APP]:node(APP,null,'Application',APP,null,null),[OBJ]:node(OBJ,APP,'Logic',POU,'PROGRAM Logic\nVAR\nx:DINT;\nEND_VAR','x := 1;')}};
- let owned=false,seq=0,writes=0;const launch=randomUUID(),native=identity(2147000032),requests=[];
+ let owned=false,seq=0,writes=0,launch=randomUUID(),native=identity(2147000032);const requests=[];
  const adapter={residentOwned:()=>owned,execute:()=>{throw Error('No batch');},executeResident:async(input,dir,onLaunch)=>{
   owned=true;await onLaunch(native.pid,launch);const f=await fileIdentity(input.projectPath);
   const initialDisk=await residentDisk(input.projectPath);
@@ -178,12 +187,47 @@ for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed contro
   await assert.rejects(()=>service.guardPending('object_read',target),e=>e.code==='PENDING_UNKNOWN');
   await fs.writeFile(successorBefore,savedBefore);
  }
+ if(kind.startsWith('two ended')){
+  const originalSession=await service.store.session(),firstReq=requests[0],rdir=c.store.file('resident/'+launch);
+  await atomicJson(path.join(rdir,'intent.json'),{launchId:launch,projectPath:c.env.source,originalFileId:firstReq.fileIdentity});
+  await atomicJson(path.join(rdir,'process-start.json'),{launchId:launch,processIdentity:native});
+  await atomicJson(path.join(rdir,'process-exit.json'),{launchId:launch,pid:native.pid,processIdentity:native,code:0,signal:null,lastSequence:seq,at:new Date().toISOString()});
+  await service.store.release();owned=false;seq=0;launch=randomUUID();native=identity(2147000042);
+  const next=new EngineeringService({dataDir:c.env.dataDir,testMode:true,responseWaitMs:20},adapter,{probe:c.probe});t.after(()=>next.store.release());
+  const reopened=await callAndWait(next,'project_open',{requestId:randomUUID(),projectPath:c.env.source,sessionMode:'resident',applicationId:APP});assert.equal(reopened.status,'succeeded',JSON.stringify(reopened));
+  assert.notEqual(reopened.data.session.sessionId,originalSession.sessionId);
+  const later=await callAndWait(next,'object_read',{...target,projectId:reopened.data.session.projectId});assert.equal(later.status,'succeeded',JSON.stringify(later));
+  const scope=await c.assess();assert.equal(scope.globalFrozen,false,JSON.stringify(scope.impacts));assert.ok(scope.impacts.every(i=>i.continuedBy?.sessionId===reopened.data.session.sessionId));
+  // Directory enumeration is not business execution order. Change only the
+  // read method's returned array, never any raw operation or precheck bytes.
+  const readOperations=c.store.operations.bind(c.store),untouched=await tree(c.env.dataDir);
+  c.store.operations=async()=>(await readOperations()).reverse();
+  const reversed=await c.assess();
+  assert.equal(reversed.globalFrozen,false,JSON.stringify(reversed.impacts));
+  assert.deepEqual(await tree(c.env.dataDir),untouched);c.store.operations=readOperations;
+  const precheck=c.store.file('ipc/'+reopened.operationId+'/resident-reopen-precheck.json'),originalPre=await fs.readFile(precheck);
+  const originalIds=JSON.parse(originalPre).operationIds;
+  for(const ids of [originalIds.slice(1),[...originalIds,originalIds[0]],[...originalIds,originalIds[0].toUpperCase()],[],null,['wrong']]){
+   const bad=JSON.parse(originalPre);bad.operationIds=ids;await atomicJson(precheck,bad);
+   assert.equal((await c.assess()).globalFrozen,true,'operation ID coverage');await fs.writeFile(precheck,originalPre);
+  }
+  const reversedPre=JSON.parse(originalPre);reversedPre.operationIds.reverse();await atomicJson(precheck,reversedPre);
+  assert.equal((await c.assess()).globalFrozen,false,'historical raw operation set order');await fs.writeFile(precheck,originalPre);
+  for(const field of ['priorSessionId','priorLaunchId','fileIdentity','diskHash','newSessionId']){
+   const bad=JSON.parse(originalPre);bad[field]='wrong';await atomicJson(precheck,bad);
+   assert.equal((await c.assess()).globalFrozen,true,field);await fs.writeFile(precheck,originalPre);
+  }
+  assert.deepEqual(await tree(c.ipc),before);assert.deepEqual(await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json')),oldLedger);
+  return;
+ }
  // Subsequent disk changes are guarded by the CURRENT resident session. The
  // ended historical unknown must not become a global freeze again.
  await fs.appendFile(c.env.source,'user changed disk after handoff');
  const changedDisk=await c.assess();assert.equal(changedDisk.globalFrozen,false,JSON.stringify(changedDisk.impacts));assert.ok(changedDisk.impacts[0].continuedBy);
  await service.guardPending('object_read',target);
- await assert.rejects(()=>service.guardPending('project_open',{requestId:randomUUID(),projectPath:c.env.source,sessionMode:'resident'}),e=>e.code==='PENDING_UNKNOWN');
+ const awaitSession=await service.store.session();
+ await service.guardPending('project_open',{requestId:randomUUID(),projectPath:c.env.source,sessionMode:'resident'});
+ await assert.rejects(()=>verifyClosedResident(service.store,awaitSession,randomUUID(),c.probe),e=>e.code==='RESIDENT_RECONNECT_UNSUPPORTED');
  await service.guardPending('project_open',{requestId:randomUUID(),projectPath:c.other,sessionMode:'resident'});
  assert.equal(requests.length,4,'assessment never sends an engineering request');
  assert.deepEqual(await tree(c.ipc),before);assert.deepEqual(await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json')),oldLedger);
@@ -346,4 +390,42 @@ test('same request returns original unknown without re-dispatch or changed finis
  t.after(()=>service.store.release());assert.deepEqual(await service.call(c.op.tool,c.op.args),c.op.response);assert.equal(dispatch,0);
  // A normal service call acquires its own lease. It does not rewrite history.
  await service.store.release();assert.deepEqual(await tree(c.env.dataDir),before);
+});
+
+for(const fault of ['missing-precheck','wrong-proof-hash','wrong-operation','wrong-file','wrong-source-proof','missing-predecessor-exit','nonzero-predecessor-exit','predecessor-still-alive','service-ended-too-late','start-before-exit','same-service','cycle','extra-evidence'])test('predecessor chain conservatively rejects '+fault,async t=>{
+ const c=await readyLinked(t),p=path.join(c.ipc,'resident-new-open-precheck.json');
+ if(fault==='missing-precheck')await fs.unlink(p);
+ if(fault==='wrong-proof-hash'){c.op.residentFreshOpen.proofHash='a'.repeat(64);await c.store.saveOp(c.op);}
+ if(fault==='wrong-operation')await c.mutate(p,v=>v.operationId=randomUUID());
+ if(fault==='wrong-file'||fault==='wrong-source-proof'){
+  await c.mutate(p,v=>{if(fault==='wrong-file')v.proof.fileId='wrong';else v.proof.ownershipHash='f'.repeat(64);});
+  c.op.residentFreshOpen.proofHash=residentHash((await readJson(p)).proof);await c.store.saveOp(c.op);
+ }
+ if(fault==='missing-predecessor-exit')await fs.unlink(path.join(c.previous.root,'process-exit.json'));
+ if(fault==='nonzero-predecessor-exit')await c.mutate(path.join(c.previous.root,'process-exit.json'),v=>v.code=17);
+ if(fault==='predecessor-still-alive')c.probe=async pid=>pid===c.previous.native.pid?{state:'running',identity:c.previous.native}:{state:'exited'};
+ if(fault==='service-ended-too-late'){
+  const file=path.join(c.previous.shutdown,'000004-shutdown-completed.json'),v=await readJson(file);v.value.observedAt='2026-11-27T07:00:00Z';v.checksum=digest(canonical(v.value));await atomicJson(file,v);
+ }
+ if(fault==='start-before-exit'){c.op.startedAt='2026-11-26T12:00:00Z';await c.store.saveOp(c.op);}
+ if(fault==='same-service'){c.op.ownerPid=c.previous.owner.pid;c.op.ownerIdentity=c.previous.owner;await c.store.saveOp(c.op);}
+ if(fault==='cycle'){c.op.residentFreshOpen.priorOperationId=c.op.operationId;await c.store.saveOp(c.op);}
+ if(fault==='extra-evidence')await atomicJson(path.join(c.ipc,'unexpected.json'),{});
+ const before=await tree(c.env.dataDir),a=await c.assess();assert.equal(a.globalFrozen,true,JSON.stringify(a.impacts));assert.deepEqual(await tree(c.env.dataDir),before);
+ assert.equal((await c.store.operation(c.op.operationId)).status,'unknown');
+});
+
+test('production native first-read error retains zero-save lifecycle for early ownership validator',async t=>{
+ const c=await readyEarly(t),req=c.rows[0].req,intent=await readJson(path.join(c.root,'intent.json')),identity={pid:c.native.pid,startId:c.native.startId};
+ const run=spawnSync('python',['tests/resident_early_failure_fixture.py'],{input:JSON.stringify({request:req,intent,identity}),encoding:'utf8'});
+ assert.equal(run.status,0,run.stderr);const value=JSON.parse(run.stdout);
+ assert.equal(value.result.status,'unknown');assert.equal(value.result.data.saved,false);assert.equal(value.result.data.saveCalls,0);assert.equal(value.result.data.saveOutcome,'not-attempted');
+ assert.equal(value.attempts.replace,0);assert.equal(value.attempts.build,0);
+ const proof=earlyOwnership(req,value.result,value.records['ownership-0001.json'],intent,identity);assert.equal(proof,residentHash(value.records['ownership-0001.json']));
+});
+test('predecessor recursion bound refuses before touching historical data',async t=>{
+ const c=await readyEarly(t),before=await tree(c.env.dataDir);
+ await assert.rejects(residentPendingScope(c.store,c.op,c.s,[],readJson,c.probe,{ancestors:Array(16).fill(randomUUID())}),/depth exceeds bound/);
+ await assert.rejects(residentPendingScope(c.store,c.op,c.s,[],readJson,c.probe,{ancestors:[c.op.operationId]}),/cycle/);
+ assert.deepEqual(await tree(c.env.dataDir),before);
 });
