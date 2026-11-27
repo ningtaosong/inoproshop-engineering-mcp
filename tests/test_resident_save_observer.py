@@ -6,6 +6,8 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
+import types
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 spec = importlib.util.spec_from_file_location('save_observer', os.path.join(ROOT, 'scripts', 'diagnostics', 'resident_save_observer.py'))
@@ -18,6 +20,62 @@ from test_resident_core import Native, APP, OBJ, c
 class Value(object):
     def __init__(self, **values):
         self.__dict__.update(values)
+
+
+class CoreImportTests(unittest.TestCase):
+    def setUp(self):
+        self.assembly = Value(Location='verified/Core.dll', GetName=lambda: Value(Name='Core'))
+        self.assemblies = [self.assembly]
+        self.instances = object()
+        self.references = []
+        self.clr = types.ModuleType('clr')
+        self.clr.AddReference = self.references.append
+        self.clr.GetClrType = lambda value: Value(Assembly=self.assembly)
+        system = types.ModuleType('System')
+        system.AppDomain = Value(CurrentDomain=Value(GetAssemblies=lambda: self.assemblies))
+        core = types.ModuleType('_3S.CoDeSys.Core')
+        core.SystemInstances = self.instances
+        self.modules = mock.patch.dict(sys.modules, {'clr':self.clr, 'System':system,
+            '_3S':types.ModuleType('_3S'), '_3S.CoDeSys':types.ModuleType('_3S.CoDeSys'), '_3S.CoDeSys.Core':core})
+        self.modules.start()
+        self.hash = mock.patch.object(o, 'file_hash', return_value=o.CORE_SHA256)
+        self.hash.start()
+        self.addCleanup(self.modules.stop)
+        self.addCleanup(self.hash.stop)
+
+    def test_registers_exact_verified_loaded_assembly(self):
+        self.assertIs(o.load_public_system_instances(), self.instances)
+        self.assertEqual(self.references, [self.assembly])
+
+    def test_missing_or_duplicate_core_stops_before_registration(self):
+        for assemblies in [[], [self.assembly, self.assembly]]:
+            self.assemblies = assemblies
+            with self.assertRaisesRegex(ValueError, 'Unverified'):
+                o.load_public_system_instances()
+            self.assertEqual(self.references, [])
+
+    def test_changed_core_stops_before_registration(self):
+        with mock.patch.object(o, 'file_hash', return_value='0' * 64):
+            with self.assertRaisesRegex(ValueError, 'Unverified'):
+                o.load_public_system_instances()
+        self.assertEqual(self.references, [])
+
+    def test_reference_failure_keeps_first_exception(self):
+        first = RuntimeError('registration failed')
+        self.clr.AddReference = mock.Mock(side_effect=first)
+        with self.assertRaises(RuntimeError) as caught:
+            o.load_public_system_instances()
+        self.assertIs(caught.exception, first)
+
+    def test_import_failure_is_not_ignored(self):
+        del sys.modules['_3S.CoDeSys.Core'].SystemInstances
+        with self.assertRaises(ImportError):
+            o.load_public_system_instances()
+
+    def test_public_type_from_different_assembly_is_rejected(self):
+        self.clr.GetClrType = lambda value: Value(Assembly=object())
+        with self.assertRaisesRegex(ValueError, 'another assembly'):
+            o.load_public_system_instances()
 
 
 class ObservationTests(unittest.TestCase):

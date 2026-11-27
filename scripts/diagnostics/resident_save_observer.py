@@ -131,19 +131,30 @@ class Observer(object):
         return self.record(kind, details)
 
 
+def load_public_system_instances():
+    """Expose only the already loaded, fingerprinted Core to IronPython."""
+    import clr
+    from System import AppDomain
+    matches = [a for a in AppDomain.CurrentDomain.GetAssemblies() if text_type(a.GetName().Name) == 'Core']
+    if len(matches) != 1 or file_hash(text_type(matches[0].Location)) != CORE_SHA256:
+        raise ValueError('Unverified loaded Core assembly; no observer installed')
+    # Being loaded in the CLR AppDomain does not register an assembly in this
+    # IronPython runtime's namespace importer. Do not search/load another file.
+    clr.AddReference(matches[0])
+    from _3S.CoDeSys.Core import SystemInstances
+    if clr.GetClrType(SystemInstances).Assembly != matches[0]:
+        raise ValueError('Imported public Core type belongs to another assembly')
+    return SystemInstances
+
+
 def install(script_project, binding, publish, fallback, after_command=None):
     """Public CLR candidate route, statically checked; real access not yet tested.
 
     Caller must supply the owned launch/process identity and fresh output writer.
     No reflective private access, command invocation, disk write or hash adoption.
     """
-    import clr
-    from System import AppDomain
     from System.Threading import Thread
-    matches = [a for a in AppDomain.CurrentDomain.GetAssemblies() if text_type(a.GetName().Name) == 'Core']
-    if len(matches) != 1 or file_hash(text_type(matches[0].Location)) != CORE_SHA256:
-        raise ValueError('Unverified loaded Core assembly; no observer installed')
-    from _3S.CoDeSys.Core import SystemInstances
+    SystemInstances = load_public_system_instances()
     engine = SystemInstances.Engine
     manager = SystemInstances.ObjectMgr
     commands = engine.CommandManager
