@@ -6,6 +6,7 @@ import {canonical,digest,pathKey,readJson,type Store,type Operation,type Session
 import {fileIdentity,isolationState,maintenanceGuard,ownedProject} from './isolation.js';
 import {probeProcess,sameProcess,validProcessIdentity,type ProcessProbe} from './lease-process.js';
 import {replySchema} from './contracts.js';
+import {residentPendingScope} from './resident-pending.js';
 
 interface File {path:string;key:string;realPath?:string;fileId?:string|null;missing?:boolean;[key:string]:unknown;}
 export interface PendingImpact {operationId:string;requestId:string;scope:'global'|'project';reason:string;projectId?:string;files:File[];basis?:string;}
@@ -117,8 +118,14 @@ async function scoped(store:Store,op:Operation,projects:Session[],context:Pendin
  const reqFiles=await requests(root);
  if(!reqFiles.length||!reqFiles.some(p=>pathKey(path.dirname(p))===pathKey(directory!)))fail('original launch request missing');
  if(creating&&(reqFiles.length!==1||pathKey(directory!)!==pathKey(root)))fail('creation requires one unambiguous original launch');
+ let residentBasis:string|undefined;
+ let residentRecheck:(()=>Promise<void>)|undefined;
+ if(op.resident===true){
+  if(creating||reqFiles.length!==1||pathKey(directory!)!==pathKey(root))fail('resident requires one bound operation request');
+  const proof=await residentPendingScope(store,op,s!,projects,read,probe);residentBasis=proof.basis;residentRecheck=proof.recheck;
+ }
  const launches=new Set<string>();
- for(const p of reqFiles){
+ for(const p of op.resident===true?[]:reqFiles){
   const req=await read(p),dir=path.dirname(p),envelope=await read(path.join(dir,'process-start.json')),start=envelope?.value;
   if(!req||req.operationId!==op.operationId||req.requestId!==op.requestId||req.requestFingerprint!==op.fingerprint||
     req.exitEvidenceVersion!==1||typeof req.launchId!=='string'||! /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(req.launchId)||launches.has(req.launchId)||
@@ -145,10 +152,11 @@ async function scoped(store:Store,op:Operation,projects:Session[],context:Pendin
  }
  // Read set stability, not a cached permission. Rechecked at admission, queue and
  // every native launch. A late result is observed, never committed here.
+ if(residentRecheck)await residentRecheck();
  for(const [p,hash] of reads){const bytes=await fs.readFile(p).catch((e:any)=>{if(e.code==='ENOENT')return null;throw e;});if((bytes===null?null:digest(bytes))!==hash)fail('IPC changed during assessment');}
  if(canonical((await requests(root)).sort())!==canonical(reqFiles.sort()))fail('native launch set changed during assessment');
  if(creating&&canonical(await creationFiles(op,directory!,read))!==canonical(files))fail('creation footprint changed during assessment');
- return {operationId:op.operationId,requestId:op.requestId,scope:'project',reason:'original processes ended; outcome remains unknown',projectId:creating?c!.projectId:s!.projectId,files,...(creating?{basis:'creation-publication-chain-v1; current file identities; historical IDs only when recorded'}:{})};
+ return {operationId:op.operationId,requestId:op.requestId,scope:'project',reason:'original processes ended; outcome remains unknown',projectId:creating?c!.projectId:s!.projectId,files,...(creating?{basis:'creation-publication-chain-v1; current file identities; historical IDs only when recorded'}:residentBasis?{basis:residentBasis}:{})};
 }
 export async function assessPending(store:Store,context:PendingContext={}) {
  await maintenanceGuard();
