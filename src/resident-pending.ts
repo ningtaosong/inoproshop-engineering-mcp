@@ -10,6 +10,7 @@ import {sameProcess,validProcessIdentity,type ProcessProbe} from './lease-proces
 import {replySchema} from './contracts.js';
 import {residentHash} from './resident.js';
 import {earlyOpenCandidate,earlyOwnership,closedServiceShutdown,continuedEarlyOpen,type EarlyOpenProof} from './resident-early-open.js';
+import {legacyEarlyCandidate,legacyEarlyOwnership} from './resident-legacy-early.js';
 
 const fail=(s:string):never=>{throw Error('Resident pending scope: '+s);};
 const eq=(a:unknown,b:unknown)=>canonical(a)===canonical(b);
@@ -51,7 +52,7 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
  const queueNames=async()=> (await fs.readdir(root)).filter(n=>/^request-.*\.json$/.test(n)).sort();
  const expected=Array.from({length:rows.length},(_,i)=>`request-${i+1}.json`).sort();
  if(!eq(await queueNames(),expected))fail('queue coverage differs');
- const sequences=new Set<number>(),evidenceNames=new Map<string,string[]>();let earlyProof:EarlyOpenProof|undefined;
+ const sequences=new Set<number>(),evidenceNames=new Map<string,string[]>();let earlyProof:EarlyOpenProof|undefined,legacyRecheck:(()=>Promise<void>)|undefined;
  for(const row of rows){
   const ipc=store.file('ipc/'+row.operationId),owned=ownedProject(row,earlyOpenCandidate(row)?[]:projects);
   const entries=await fs.readdir(ipc,{withFileTypes:true});
@@ -83,12 +84,15 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
   const state=before?.state,opened=state?.openedProjects,primary=opened?.[String(state?.projectHandle)];
   if(before===undefined&&earlyOpenCandidate(row)&&rows.length===1){
    if(await read(path.join(root,'stop.json'))||await read(path.join(root,'first-error.json')))fail('early launch has conflicting failure/stop evidence');
-   const allowed=['completed.json','first-error.json','ownership-0001.json','request-entered.json','request.json','result.json','service-verification.json'];
+   const legacy=legacyEarlyCandidate(intent);
+   const allowed=['completed.json','first-error.json',...(legacy?[]:['ownership-0001.json']),'request-entered.json','request.json','result.json','service-verification.json'];
    if(!eq(entries.map(e=>e.name).sort(),allowed))fail('early read evidence coverage incomplete or unexpected');
    if(!eq(await read(path.join(ipc,'first-error.json')),result.data?.firstError))fail('early read first error differs');
-   const ownershipHash=earlyOwnership(req,result,await read(path.join(ipc,'ownership-0001.json')),intent,native);
+   const inferred=legacy?await legacyEarlyOwnership(store,req,result,intent,start,read):undefined;
+   legacyRecheck=inferred?.recheck;
+   const ownershipHash=inferred?.ownershipHash??earlyOwnership(req,result,await read(path.join(ipc,'ownership-0001.json')),intent,native);
    const serviceShutdownHash=await closedServiceShutdown(store,row.ownerIdentity,exit.at,read);
-   earlyProof={operationId:row.operationId,requestId:row.requestId,launchId:launch!,projectId:s.projectId,sessionId:s.sessionId,projectPath:s.workingPath,fileId:intent.originalFileId,diskHash:s.diskHash!,requestHash:rh,resultHash:residentHash(result),ownershipHash,nativeExitHash:residentHash(exit),nativeExitAt:exit.at,serviceShutdownHash};
+   earlyProof={operationId:row.operationId,requestId:row.requestId,launchId:launch!,projectId:s.projectId,sessionId:s.sessionId,projectPath:s.workingPath,fileId:intent.originalFileId,diskHash:s.diskHash!,requestHash:rh,resultHash:residentHash(result),ownershipHash,nativeExitHash:residentHash(exit),nativeExitAt:exit.at,serviceShutdownHash,...(inferred?{ownershipBasis:'legacy-fixed-control-flow' as const,ownershipInference:inferred.evidence}:{})};
   }else if(before?.diskHash!==current.sha256||pathKey(state?.projectPath??'')!==pathKey(s.workingPath)||!Number.isSafeInteger(state?.projectHandle)||state.projectHandle<0||!opened||Array.isArray(opened)||
    !primary||primary.handle!==state.projectHandle||primary.primary!==true||primary.library!==false||pathKey(primary.path??'')!==pathKey(s.workingPath)||
    Object.entries<any>(opened).some(([k,v])=>!v||!Number.isSafeInteger(v.handle)||String(v.handle)!==k||typeof v.path!=='string'||typeof v.primary!=='boolean'||typeof v.library!=='boolean'||(v!==primary&&(v.primary||!v.library))))fail('native project ownership incomplete');
@@ -98,6 +102,7 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
   if(!eq(await queueNames(),expected)||!eq(await fileIdentity(s.workingPath),current)||
    !eq((await store.operations()).filter(o=>o.bridge?.launchId===launch),rows))fail('launch coverage/file/operations changed during assessment');
   for(const [ipc,names] of evidenceNames)if(!eq((await fs.readdir(ipc)).sort(),names))fail('operation evidence coverage changed during assessment');
+  if(legacyRecheck)await legacyRecheck();
   if(earlyProof&&await closedServiceShutdown(store,op.ownerIdentity,exit.at,read)!==earlyProof.serviceShutdownHash)fail('service shutdown changed during assessment');
  };
  await recheck();
@@ -106,5 +111,5 @@ export async function residentPendingScope(store:Store,op:Operation,s:Session,pr
  // turn an ended historical read into a global freeze after a new-session edit.
  // Without that complete handoff, the original file must still be unchanged.
  if(changed&&!continuedBy)fail('original saved file identity/version changed without verified successor');
- return {basis:earlyProof?'resident-closed-first-read-v1; explicit fresh open only; old outcome remains unknown':'resident-ended-launch-binding-v1; current unchanged file identity; outcome remains unknown',recheck,earlyProof,continuedBy};
+ return {basis:earlyProof?.ownershipBasis==='legacy-fixed-control-flow'?'resident-closed-legacy-first-read-v1; legacy-fixed-control-flow inference, no raw native values; explicit fresh open only; old outcome remains unknown':earlyProof?'resident-closed-first-read-v1; explicit fresh open only; old outcome remains unknown':'resident-ended-launch-binding-v1; current unchanged file identity; outcome remains unknown',recheck,earlyProof,continuedBy};
 }

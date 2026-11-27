@@ -1,5 +1,7 @@
 # 首次只读失败的归属取证及限定新打开
 
+后续：[固定旧控制流的限定兼容补修](resident-legacy-first-read-admission.md)已完成只读准入评估；以下“旧现场仍拒绝”保留本页原提交时点，未回填原生数值或改判原 unknown。
+
 2026-11-27，`codex/resident-user-save-continuation`，基于 `29f530df4d4e685681c96f20061ff47df7ec593a`。main 仍为 `a536de33457ccec662bce7ab53e78d281f51ea80`。本分支补修为 **0.41.1 候选版、38 项工具**；输入、输出 Schema 和初始化工作指令不变，未合并、部署或启动 IDE。本轮所有工程打开、修改、编译、保存及模型请求均为 0。
 
 ## 三项结论

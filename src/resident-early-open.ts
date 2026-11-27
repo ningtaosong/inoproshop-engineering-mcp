@@ -8,7 +8,7 @@ import {validProcessIdentity} from './lease-process.js';
 import {replySchema} from './contracts.js';
 const eq=(a:unknown,b:unknown)=>residentHash(a)===residentHash(b);
 const fail=(s:string):never=>{throw Error('Resident early open: '+s);};
-export interface EarlyOpenProof {operationId:string;requestId:string;launchId:string;projectId:string;sessionId:string;projectPath:string;fileId:string;diskHash:string;requestHash:string;resultHash:string;ownershipHash:string;nativeExitHash:string;nativeExitAt:string;serviceShutdownHash:string;}
+export interface EarlyOpenProof {operationId:string;requestId:string;launchId:string;projectId:string;sessionId:string;projectPath:string;fileId:string;diskHash:string;requestHash:string;resultHash:string;ownershipHash:string;nativeExitHash:string;nativeExitAt:string;serviceShutdownHash:string;ownershipBasis?:'native-public-record'|'legacy-fixed-control-flow';ownershipInference?:Record<string,unknown>;}
 export interface ContinuedOpen {operationId:string;projectId:string;sessionId:string;}
 export const earlyOpenCandidate=(op:Operation)=>op.resident===true&&op.tool==='project_open'&&op.status==='unknown'&&op.args.sessionMode==='resident'&&!op.project?.lastStateOperationId;
 

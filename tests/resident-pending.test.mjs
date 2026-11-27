@@ -4,6 +4,7 @@ import{setup,app}from'./helpers.mjs';import{Store,atomicJson,canonical,digest,re
 import{verifyClosedResident}from'../dist/resident-reopen.js';
 import{residentDependencies,residentObject,verifyResidentResult}from'../dist/resident.js';
 import{callAndWait}from'./operation-wait.mjs';
+import{legacyEarlyOwnership}from'../dist/resident-legacy-early.js';
 const nativePid=2147000030,ownerPid=2147000031,identity=pid=>({version:1,platform:process.platform,host:os.hostname().toLowerCase(),pid,startId:String(pid)});
 async function fixture(t,{early=false}={}){
  const env=await setup(),store=new Store(env.dataDir),f=await fileIdentity(env.source),other=path.join(env.dir,'independent.json');await fs.copyFile(env.source,other);
@@ -74,9 +75,49 @@ async function readyEarly(t){
  return c;
 }
 
-test('complete early readonly failure: new explicit open, following read and changed memory retain old unknown bytes',async t=>{
- const c=await readyEarly(t),before=await tree(c.ipc),oldLedger=await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json'));
+// Actual archived failure/source bytes, copied only as data into an offline case.
+// Never execute the diagnostic entry or add ownership/before to its old IPC.
+async function readyLegacy(t){
+ const c=await readyEarly(t),assets=new URL('./fixtures/resident-legacy-first-read/',import.meta.url);
+ c.fixed=path.join(c.env.dir,'diagnostic-fixed');c.planPath=path.join(c.env.dir,'prepared-plan.json');c.manifestPath=path.join(c.env.dir,'diagnostic-fixed-manifest.json');
+ const manifest=JSON.parse(await fs.readFile(new URL('fixed-manifest.json',assets),'utf8'));manifest.fixed=c.fixed;
+ const roles={entry:'bridge/resident_host.py',core:'bridge/resident_core.py',host:'bridge/resident_host_original.py',observer:'bridge/resident_save_observer.py',client:'scripts/diagnostics/resident_save_observation_client.mjs'};
+ const plan={approvedForLaunch:true,newResidentIntentRequired:true,reuseOldIntent:false,registry:c.store.root,env:{INOPRO_DATA_DIR:c.store.root,INOPRO_SAVE_OBSERVER_PLAN:c.planPath},
+  targetProject:c.env.source,expectedProjectSha256:c.s.diskHash,fixedManifest:c.manifestPath,workingDirectory:c.fixed,serverPath:path.join(c.fixed,'dist/server.js'),
+  clientDirectory:path.join(c.env.dir,'future-client'),observationDirectory:path.join(c.env.dir,'future-authorized-observation')};
+ for(const [role,rel] of Object.entries(roles)){
+  const bytes=await fs.readFile(new URL(rel,assets)),p=path.join(c.fixed,rel);await fs.mkdir(path.dirname(p),{recursive:true});await fs.writeFile(p,bytes);
+  plan[role+'Path']=p;plan[role+'Hash']=digest(bytes);
+ }
+ await atomicJson(c.planPath,plan);await atomicJson(c.manifestPath,manifest);c.plan=plan;
+ await c.mutate(path.join(c.root,'intent.json'),v=>Object.assign(v,{scriptHash:plan.entryHash,coreHash:plan.coreHash,corePath:plan.corePath}));
+ await c.mutate(path.join(c.root,'process-start.json'),v=>Object.assign(v,{scriptHash:plan.entryHash,coreHash:plan.coreHash,entry:plan.entryPath}));
+ await c.mutate(path.join(c.root,'entry.json'),v=>v.scriptSha256=plan.entryHash);await c.mutate(path.join(c.root,'modules-loaded.json'),v=>v.coreHash=plan.coreHash);
+ const first=JSON.parse(await fs.readFile(new URL('original-first-error.json',assets),'utf8'));
+ first.traceback=first.traceback.split(String.raw`D:\InoPro-Resident-UserSave-20261127\diagnostic-fixed`).join(c.fixed);
+ // Archive traceback records native Windows paths; portable cases use platform paths.
+ if(path.sep!=='\\')first.traceback=first.traceback.replaceAll('\\','/');
+ c.rows[0].result.data.firstError=first;c.rows[0].result.error={code:'RESIDENT_PRECONDITION',message:first.message};
+ delete c.rows[0].result.data.residentEvidence.ownershipRecords;await fs.unlink(path.join(c.ipc,'ownership-0001.json'));await c.refresh();
+ return c;
+}
+
+for(const field of ['planPath','manifestPath'])for(const change of ['value','whitespace'])test('legacy helper recheck detects '+field+' '+change+' without an outer read cache',async t=>{
+ const c=await readyLegacy(t),r=c.rows[0],intent=await readJson(path.join(c.root,'intent.json')),start=await readJson(path.join(c.root,'process-start.json'));
+ const proof=await legacyEarlyOwnership(c.store,r.req,r.result,intent,start,readJson);
+ await proof.recheck();
+ const before=await tree(c.ipc),old=await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json'));
+ if(change==='whitespace')await fs.appendFile(c[field],' ');
+ else await c.mutate(c[field],v=>{if(field==='planPath')v.purpose='changed after assessment';else v.sourceProductCommit='f'.repeat(40);});
+ await assert.rejects(proof.recheck,/metadata bytes changed/);
+ assert.deepEqual(await tree(c.ipc),before);assert.deepEqual(await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json')),old);
+});
+
+for(const [kind,factory] of [['native receipt',readyEarly],['legacy fixed control flow',readyLegacy]])test('complete early readonly failure '+kind+': new explicit open, following read and changed memory retain old unknown bytes',async t=>{
+ const c=await factory(t),before=await tree(c.ipc),oldLedger=await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json'));
  const a=await c.assess();assert.equal(a.globalFrozen,false,JSON.stringify(a.impacts));assert.ok(a.impacts[0].earlyProof);
+ if(kind.startsWith('legacy')){assert.equal(a.impacts[0].earlyProof.ownershipBasis,'legacy-fixed-control-flow');assert.equal(a.impacts[0].earlyProof.ownershipInference.nativeRawOwnershipAvailable,false);}
+ else {assert.equal(Object.hasOwn(a.impacts[0].earlyProof,'ownershipBasis'),false);assert.equal(Object.hasOwn(a.impacts[0].earlyProof,'ownershipInference'),false);}
  const APP=app,OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
  const node=(id,parent,name,typ,d,i)=>({objectId:id,applicationId:APP,parentId:parent,path:parent?['Application',name]:['Application'],nativeTypeId:typ,declaration:d,implementation:i,embeddedObjectTypes:i===null?[]:[ST]});
  const state={projectPath:c.env.source,projectHandle:0,thread:1,applications:[APP],openedProjects:{'0':{handle:0,path:c.env.source,primary:true,library:false}},nodes:{[APP]:node(APP,null,'Application',APP,null,null),[OBJ]:node(OBJ,APP,'Logic',POU,'PROGRAM Logic\nVAR\nx:DINT;\nEND_VAR','x := 1;')}};
@@ -158,6 +199,69 @@ for(const [name,edit] of Object.entries({
  const adapter=new FixtureAdapter();let dispatch=0;adapter.executeResident=async()=>{dispatch++;throw Error('forbidden');};const service=new EngineeringService({dataDir:c.env.dataDir,testMode:true},adapter,{probe:c.probe});
  await assert.rejects(()=>service.guardPending('project_open',{projectPath:c.env.source,sessionMode:'resident'}),e=>e.code==='PENDING_UNKNOWN');assert.equal(dispatch,0);assert.deepEqual(await tree(c.env.dataDir),before);
 });
+const legacyEdits={
+ 'entry byte changed':c=>fs.appendFile(c.plan.entryPath,'\n# changed'),
+ 'core byte changed':c=>fs.appendFile(c.plan.corePath,'\n# changed'),
+ 'host byte changed':c=>fs.appendFile(c.plan.hostPath,'\n# changed'),
+ 'observer byte changed':c=>fs.appendFile(c.plan.observerPath,'\n# changed'),
+ 'client byte changed':c=>fs.appendFile(c.plan.clientPath,'\n// changed'),
+ 'source absent':c=>fs.unlink(c.plan.hostPath),
+ 'plan absent':c=>fs.unlink(c.planPath),
+ 'manifest absent':c=>fs.unlink(c.manifestPath),
+ 'plan host selection differs':c=>c.mutate(c.planPath,v=>v.hostPath=c.plan.corePath),
+ 'plan registry differs':c=>c.mutate(c.planPath,v=>v.registry=c.env.dir),
+ 'plan target differs':c=>c.mutate(c.planPath,v=>v.targetProject=c.other),
+ 'plan version differs':c=>c.mutate(c.planPath,v=>v.expectedProjectSha256='f'.repeat(64)),
+ 'plan unapproved':c=>c.mutate(c.planPath,v=>v.approvedForLaunch=false),
+ 'manifest row missing':c=>c.mutate(c.manifestPath,v=>v.files.pop()),
+ 'manifest duplicate':c=>c.mutate(c.manifestPath,v=>v.files.push(v.files[0])),
+ 'manifest field changed':c=>c.mutate(c.manifestPath,v=>v.sourceProductCommit='0'.repeat(40)),
+ 'traceback frame missing':c=>{c.rows[0].result.data.firstError.traceback=c.rows[0].result.data.firstError.traceback.replace(/  File.*line 447.*\n.*\n/,'');},
+ 'traceback statement differs':c=>{c.rows[0].result.data.firstError.traceback=c.rows[0].result.data.firstError.traceback.replace('self._owned();nodes={};objects={};apps=[]','self._owned()');},
+ 'traceback line differs':c=>{c.rows[0].result.data.firstError.traceback=c.rows[0].result.data.firstError.traceback.replace('line 146','line 147');},
+ 'traceback path differs':c=>{c.rows[0].result.data.firstError.traceback=c.rows[0].result.data.firstError.traceback.replace(c.plan.observerPath,c.plan.corePath);},
+ 'same message wrong exception':c=>{c.rows[0].result.data.firstError.type='ValueError';},
+ 'dispatched true':c=>{c.rows[0].result.data.firstError.dispatched=true;},
+ 'secondary error':c=>{c.rows[0].result.data.secondaryErrors=[{message:'publication failed'}];},
+ 'saved true':c=>{c.rows[0].result.data.saved=true;},
+ 'unexpected result field':c=>{c.rows[0].result.data.saveCalls=1;},
+ 'unexpected resident evidence field':c=>{c.rows[0].result.data.residentEvidence.nativeRaw=[];},
+ 'different public error':c=>{c.rows[0].result.error.message='another exception';},
+ 'extra write evidence':c=>atomicJson(path.join(c.ipc,'dispatch.json'),{action:'replace'}),
+ 'extra build evidence':c=>atomicJson(path.join(c.ipc,'build-progress.json'),{started:true}),
+ 'fake new ownership evidence':c=>atomicJson(path.join(c.ipc,'ownership-0001.json'),{}),
+ 'second request':c=>c.put('request-2.json',{command:'inspect'}),
+ 'incomplete receiver':c=>c.put('receiver-stopped.json',{completed:0,firstError:null,ideExitRequested:false,projectClosed:false}),
+ 'native nonzero exit':c=>c.mutate(path.join(c.root,'process-exit.json'),v=>v.code=1),
+ 'native exit missing':c=>fs.unlink(path.join(c.root,'process-exit.json')),
+ 'service incomplete exit':c=>fs.unlink(path.join(c.shutdown,'000004-shutdown-completed.json')),
+ 'old process still running':c=>{c.probe=async pid=>pid===c.native.pid?{state:'running',identity:c.native}:{state:'exited'};},
+ 'current file changed':c=>fs.appendFile(c.env.source,'different'),
+ 'source changes during recheck':c=>{let times=0;c.probe=async pid=>{if(pid===c.native.pid&&++times===2)await fs.appendFile(c.plan.hostPath,'changed while reading');return{state:'exited'};};},
+ 'plan changes during recheck':c=>{let times=0;c.probe=async pid=>{if(pid===c.native.pid&&++times===2)await c.mutate(c.planPath,v=>v.changedAfterRead=true);return{state:'exited'};};},
+};
+for(const [name,mutate] of Object.entries(legacyEdits))test('legacy fixed control flow refuses '+name+' with no historical rewrite or dispatch',async t=>{
+ const c=await readyLegacy(t);await mutate(c);await c.refresh();
+ const oldIpc=await tree(c.ipc),oldLedger=await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json'));
+ const a=await c.assess();assert.equal(a.globalFrozen,true,JSON.stringify(a.impacts));
+ const adapter=new FixtureAdapter();let sends=0;adapter.executeResident=async()=>{sends++;throw Error('forbidden');};
+ const service=new EngineeringService({dataDir:c.env.dataDir,testMode:true},adapter,{probe:c.probe});
+ await assert.rejects(()=>service.guardPending('project_open',{projectPath:c.env.source,sessionMode:'resident',requestId:randomUUID()}),e=>e.code==='PENDING_UNKNOWN');
+ assert.equal(sends,0);assert.deepEqual(await tree(c.ipc),oldIpc);assert.deepEqual(await fs.readFile(c.store.file('operations/'+c.op.operationId+'.json')),oldLedger);
+});
+
+test('legacy fixed control flow never authorizes batch, alias, old request or old-session operation',async t=>{
+ const c=await readyLegacy(t),service=new EngineeringService({dataDir:c.env.dataDir,testMode:true},new FixtureAdapter(),{probe:c.probe});
+ const alias=path.join(c.env.dir,'alias.json');await fs.link(c.env.source,alias);
+ for(const [tool,args] of [['project_open',{projectPath:c.env.source}],['project_open',{projectPath:alias,sessionMode:'resident',requestId:randomUUID()}],
+  ['project_open',{projectPath:c.env.source,sessionMode:'resident',requestId:c.op.requestId}],['object_read',{projectId:c.s.projectId,objectId:app,applicationId:app}]]){
+  await assert.rejects(()=>service.guardPending(tool,args),e=>e.code==='PENDING_UNKNOWN');
+ }
+ const before=await tree(c.env.dataDir);t.after(()=>service.store.release());
+ assert.deepEqual(await service.call(c.op.tool,c.op.args),c.op.response);
+ await service.store.release();assert.deepEqual(await tree(c.env.dataDir),before);
+});
+
 test('ended resident unknown: readonly scoped assessment, original project and hardlink blocked, unrelated target allowed',async t=>{
  const c=await fixture(t),before=await tree(c.env.dataDir),a=await c.assess();assert.equal(a.globalFrozen,false,JSON.stringify(a.impacts));assert.equal(a.impacts[0].scope,'project');
  assert.equal(related(a.impacts,undefined,await targetFiles([c.other])).length,0);assert.equal(related(a.impacts,undefined,await targetFiles([c.env.source])).length,1);

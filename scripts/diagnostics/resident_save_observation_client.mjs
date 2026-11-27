@@ -16,7 +16,19 @@ export function checkPlan(p){
  for(const k of ['targetProject','serverPath','workingDirectory','registry','observationDirectory','clientDirectory'])if(!path.isAbsolute(p[k]??''))throw Error('Missing absolute '+k);
  if(p.env.INOPRO_DATA_DIR!==p.registry||!p.newResidentIntentRequired||p.reuseOldIntent!==false)throw Error('Original registry/new intent required');
  if(!/^[a-f0-9]{64}$/.test(p.expectedProjectSha256??''))throw Error('Target fingerprint missing');
+ if(typeof p.expectedServerVersion!=='string'||!/^\d+\.\d+\.\d+$/.test(p.expectedServerVersion))throw Error('Fixed expected server version missing');
  if(!Array.isArray(p.expectedToolNames)||p.expectedToolNames.length!==38||new Set(p.expectedToolNames).size!==38)throw Error('Expected complete tool names missing');
+}
+
+export function checkFixedVersion(p,manifest,packageBytes){
+ checkPlan(p);
+ const rows=manifest.files.filter(f=>f.path.replaceAll('\\','/')==='package.json');
+ if(path.resolve(manifest.fixed)!==path.resolve(p.workingDirectory)||path.resolve(p.serverPath)!==path.join(path.resolve(manifest.fixed),'dist/server.js')||rows.length!==1||rows[0].sha256!==sha(packageBytes)||JSON.parse(packageBytes.toString('utf8')).version!==p.expectedServerVersion)throw Error('Fixed package version/manifest differs');
+}
+
+export function checkConnection(p,version,names){
+ checkPlan(p);
+ if(version?.version!==p.expectedServerVersion||JSON.stringify([...names].sort())!==JSON.stringify([...p.expectedToolNames].sort()))throw Error('Diagnostic base version/tools differ');
 }
 
 export async function observe(planPath){
@@ -25,6 +37,7 @@ export async function observe(planPath){
  if(sha(await fs.readFile(p.targetProject))!==p.expectedProjectSha256)throw Error('Prepared target changed');
  const manifest=await read(p.fixedManifest);
  for(const f of manifest.files)if(sha(await fs.readFile(path.join(manifest.fixed,f.path)))!==f.sha256)throw Error('Fixed diagnostic changed: '+f.path);
+ checkFixedVersion(p,manifest,await fs.readFile(path.join(manifest.fixed,'package.json')));
  await fs.mkdir(p.clientDirectory);await fs.mkdir(p.observationDirectory);
  await fs.mkdir(path.join(p.clientDirectory,'commands'));
  let seq=0,first,stopped=false;
@@ -53,7 +66,7 @@ export async function observe(planPath){
   const names=[],pages=[];let cursor;
   do{const page=await client.listTools(cursor?{cursor}:{});pages.push(page);names.push(...page.tools.map(t=>t.name));cursor=page.nextCursor;}while(cursor);
   await record('connection',{version:client.getServerVersion(),instructions:client.getInstructions(),pages});
-  if(client.getServerVersion()?.version!=='0.41.0'||JSON.stringify(names.sort())!==JSON.stringify([...p.expectedToolNames].sort()))throw Error('Diagnostic base version/tools differ');
+  checkConnection(p,client.getServerVersion(),names);
   const opened=await call('project_open',{requestId:randomUUID(),projectPath:p.targetProject,sessionMode:'resident'});
   target={projectId:opened.data.session.projectId,applicationId:opened.data.applicationId,targetKind:'application'};
   let offset=0,version,objects=[],total;

@@ -1,3 +1,5 @@
 * text=auto eol=lf
 *.project binary
 *.zip binary
+# Archived diagnostic bytes are hash evidence, not source to normalize on checkout.
+tests/fixtures/resident-legacy-first-read/** -text
