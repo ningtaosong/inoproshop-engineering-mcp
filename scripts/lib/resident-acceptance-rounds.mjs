@@ -1,4 +1,5 @@
-// Acceptance driver only. No native API, lease repair, save, compile or IDE close.
+// Acceptance driver only. Explicit build uses the product MCP; no native API,
+// lease repair, automatic continuation, save or IDE close.
 import {randomUUID} from 'node:crypto';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const hash=/^[0-9a-f]{64}$/;
@@ -11,7 +12,7 @@ export class ResidentAcceptanceRounds {
   Object.assign(this,{call,record,finish,observeExit,pollMs,timeoutMs});this.state='waiting';this.ticket=randomUUID();this.seen=new Map();this.sequence=0;
  }
  control(){return {state:this.state,ticket:this.ticket,project:this.target??null,firstError:this.firstError??null,
-  allowed:this.state==='waiting'?['open','edit','finish']:this.state==='frozen'?['finish']:this.state==='finish-pending'?['observe-exit']:[]};}
+  allowed:this.state==='waiting'?['open','edit','build','finish']:this.state==='frozen'?['finish']:this.state==='finish-pending'?['observe-exit']:[]};}
  async log(event,data){await this.record(event,data);}
  async stop(error){this.firstError??=details(error);this.state='frozen';
   try{await this.log('frozen',{firstError:this.firstError,error:details(error)});}catch(secondary){this.recordError??=details(secondary);}
@@ -36,6 +37,7 @@ export class ResidentAcceptanceRounds {
     const exit=await this.observeExit();this.state=exit?'finished':'finish-pending';
     result={status:exit?'finished-with-prior-error':'finish-pending',exit,firstCleanupError:this.cleanupError,ideCloseRequested:false};
    }else if(command.kind==='open'){result=await this.open(command);this.state='waiting';}
+   else if(command.kind==='build'){result=await this.build(command);this.state='waiting';}
    else {result=await this.edit(command);this.state='waiting';}
   } catch(error) {
    const recoverable=!this.writeAttempted&&(error instanceof BeforeWriteConflict||error instanceof RoundEnd&&error.recoverable);
@@ -69,7 +71,7 @@ export class ResidentAcceptanceRounds {
    const recoverable=result.status==='conflict'&&d.recoverableRejection===true&&d.firstError?.dispatched===false&&Array.isArray(d.secondaryErrors)&&d.secondaryErrors.length===0;
    throw new RoundEnd(result,recoverable);
   }
-  if(!hash.test(d.residentVersion??'')||!hash.test(d.diskHash??'')||[d.saveCalls,d.compileCalls,d.closeCalls,d.exitCalls].some(n=>n!==0))throw Error('Version or zero-side-effect evidence missing');
+  if(!hash.test(d.residentVersion??'')||!hash.test(d.diskHash??'')||[d.saveCalls,d.closeCalls,d.exitCalls].some(n=>n!==0)||d.compileCalls!==(name==='project_build'?1:0))throw Error('Version or explicit-side-effect evidence missing');
   return result;
  }
  async open(command){
@@ -121,6 +123,25 @@ export class ResidentAcceptanceRounds {
   const after=await this.request('object_read',args);
   for(const row of [changed.data,after.data])if(row.objectId!==d.objectId||row.applicationId!==d.applicationId||row.declaration!==d.declaration||row.implementation!==command.afterImplementation||row.diskHash!==this.diskHash)throw Error('Postwrite target/source/disk differs');
   if(after.data.residentVersion!==changed.data.residentVersion||after.data.contentHash!==changed.data.contentHash)throw Error('Postwrite readback version differs');
+  this.lastRead=after.data;
   return {status:'succeeded',before,changed,after,saveCalls:0,compileCalls:0,closeCalls:0};
+ }
+ async build(command){
+  if(!this.target||!uuid.test(command.objectId??'')||typeof command.expectedImplementation!=='string'||!this.lastRead)throw new BeforeWriteConflict('Explicit build target and prior accepted readback required');
+  const args={...this.target,objectId:command.objectId},before=await this.request('object_read',args),d=before.data;
+  const keys=['objectId','applicationId','path','nativeTypeId','embeddedObjectTypes','language','objectType','hasImplementation','declaration','implementation','contentHash','diskHash'];
+  const check=(row,expected)=>{
+   for(const key of keys)if(!Object.hasOwn(row,key)||!Object.hasOwn(expected,key)||JSON.stringify(row[key])!==JSON.stringify(expected[key]))throw Error('Build readback differs or missing: '+key);
+   if(row.objectId!==command.objectId||row.applicationId!==this.target.applicationId||row.implementation!==command.expectedImplementation||row.diskHash!==this.diskHash)throw Error('Build target/source/disk differs');
+  };
+  check(d,this.lastRead);
+  await this.log('build-plan',{commandId:command.id,objectId:d.objectId,expectedResidentVersion:d.residentVersion,diskHash:d.diskHash,contentHash:d.contentHash});
+  this.writeAttempted=true; // compilation may change native in-memory metadata
+  const built=await this.request('project_build',{...this.target,requestId:command.id,expectedResidentVersion:d.residentVersion}),b=built.data;
+  if(b.applicationId!==this.target.applicationId||b.buildInputResidentVersion!==d.residentVersion||b.buildEvidenceScope!=='resident-memory'||b.completed!==true||b.diagnosticsComplete!==true||b.buildPassed!==true||b.errorCount!==0||!Number.isSafeInteger(b.warningCount)||b.warningCount<0||!Array.isArray(b.diagnostics)||b.buildConservation?.passed!==true||b.buildConservation?.sourceUnchanged!==true||b.buildConservation?.taskCallsUnchanged!==true||b.diskHash!==this.diskHash||b.persistedToProject!==false||b.persistedToWorkingCopy!==false)throw Error('Build diagnostics/conservation/memory evidence incomplete or failed');
+  const after=await this.request('object_read',args);check(after.data,d);
+  if(after.data.residentVersion!==b.residentVersion)throw Error('Independent postbuild memory version differs');
+  this.lastRead=after.data;
+  return {status:'succeeded',before,built,after,saveCalls:0,compileCalls:1,closeCalls:0};
  }
 }

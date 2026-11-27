@@ -14,7 +14,7 @@ const SOURCE=current.dependencies.nodes[OBJ].implementation;
 const LIB=Object.keys(current.dependencies.nodes).find(id=>current.dependencies.nodes[id].directLibraries);
 function fake(){
  let sequence=0,state=structuredClone(current),source=SOURCE;
- const n={calls:[],writes:0,finish:0,fault:null,late:null,sequence:0};
+ const n={calls:[],writes:0,builds:0,finish:0,fault:null,late:null,sequence:0};
  const version=()=>residentHash({dependencies:state.dependencies,diskHash:state.diskHash});
  const make=(args,d={},status='succeeded')=>({status,operationId:randomUUID(),requestId:args.requestId??randomUUID(),data:{
   saved:false,closed:false,reopened:false,saveCalls:0,compileCalls:0,closeCalls:0,exitCalls:0,diskHash:state.diskHash,residentVersion:version(),
@@ -48,6 +48,9 @@ function fake(){
    if(n.fault==='postread-mismatch')state.diskHash='b'.repeat(64);
    if(n.fault==='library-after-write')state.dependencies.nodes[LIB].directLibraries.push({...state.dependencies.nodes[LIB].directLibraries[0],id:'after-write'});
    if(n.fault==='throw')throw Error('FIRST after native modification');
+  }else if(name==='project_build'){
+   assert.equal(args.expectedResidentVersion,version());n.builds++;
+   r=make(args,{applicationId:APP,compileCalls:1,buildInputResidentVersion:args.expectedResidentVersion,buildEvidenceScope:'resident-memory',completed:true,diagnosticsComplete:true,buildPassed:true,errorCount:0,warningCount:0,diagnostics:[],buildConservation:{passed:true,sourceUnchanged:true,taskCallsUnchanged:true},persistedToProject:false,persistedToWorkingCopy:false});
   }else throw Error('Forbidden tool '+name);
   if(n.fault==='running'&&name==='object_read'){n.fault=null;n.late=r;return {status:'running',operationId:r.operationId};}
   return r;
@@ -169,4 +172,41 @@ test('predispatch MCP conflict without resident receipt retains its original err
  const n=fake(),command=n.command('open',{projectPath:current.dependencies.projectPath,applicationId:APP}),original={contractVersion:'1.0.0',status:'conflict',operationId:randomUUID(),requestId:command.id,error:{code:'RESIDENT_RECONNECT_UNSUPPORTED',message:'Prior resident reopen proof unavailable: Excluded object coverage differs'}};
  n.controller.call=async()=>original;const result=await n.controller.submit(command);assert.equal(result.status,'frozen');assert.deepEqual(result.originalResult,original);assert.equal(result.error.message,original.error.message);assert.equal(result.writeAttempted,false);
  await assert.rejects(n.controller.submit(n.edit()),/not permitted/);assert.equal((await n.controller.submit(n.command('finish'))).status,'finished');assert.equal(n.writes,0);
+});
+
+test('explicit build uses latest read version once and independent source read; finish remains available',async()=>{
+ const n=fake();await n.open();await n.controller.submit(n.edit());
+ n.fault='library-after-list'; // build does not list or reuse an old open version
+ const cmd=n.command('build',{objectId:OBJ,expectedImplementation:SOURCE.replace('T#5s','T#7s')});
+ const start=n.calls.length,r=await n.controller.submit(cmd);assert.equal(r.status,'succeeded',JSON.stringify(r));
+ assert.deepEqual(n.calls.slice(start).map(x=>x.name),['object_read','project_build','object_read']);
+ assert.equal(n.calls.find(x=>x.name==='project_build').args.expectedResidentVersion,r.before.data.residentVersion);
+ assert.equal(n.builds,1);assert.equal(r.compileCalls,1);assert.equal(r.saveCalls,0);assert.equal(n.controller.state,'waiting');
+ assert.equal(await n.controller.submit(cmd),r);assert.equal(n.builds,1);
+ assert.equal((await n.controller.submit(n.command('finish'))).status,'finished');assert.equal(n.finish,1);
+});
+for(const fault of ['wrong-source','missing-field','disk-change','publication'])test('explicit build precheck '+fault+' dispatches zero compile/save',async()=>{
+ const n=fake();await n.open();await n.controller.submit(n.edit());const call=n.call;
+ n.controller.call=async(name,args)=>{const r=await call(name,args);if(name==='object_read'){if(fault==='wrong-source')r.data.implementation='other';if(fault==='missing-field')delete r.data.embeddedObjectTypes;if(fault==='disk-change')r.data.diskHash='f'.repeat(64);}return r;};
+ if(fault==='publication')n.controller.record=async event=>{if(event==='build-plan')throw Error('FIRST build plan publication');};
+ const r=await n.controller.submit(n.command('build',{objectId:OBJ,expectedImplementation:SOURCE.replace('T#5s','T#7s')}));
+ assert.equal(r.status,'frozen');assert.equal(n.builds,0);assert.equal(n.calls.some(x=>/save/.test(x.name)),false);
+});
+for(const [key,value] of [['compileCalls',0],['diagnosticsComplete',false],['buildPassed',false],['buildConservation',{}],['buildEvidenceScope','disk'],['persistedToProject',true],['applicationId',OBJ],['buildInputResidentVersion','f'.repeat(64)]])test('build incomplete/failed '+key+' freezes without readback/replay; normal finish remains',async()=>{
+ const n=fake();await n.open();await n.controller.submit(n.edit());const call=n.call;
+ n.controller.call=async(name,args)=>{const r=await call(name,args);if(name==='project_build')r.data[key]=value;return r;};
+ const start=n.calls.length,cmd=n.command('build',{objectId:OBJ,expectedImplementation:SOURCE.replace('T#5s','T#7s')}),r=await n.controller.submit(cmd);
+ assert.equal(r.status,'frozen');assert.equal(n.builds,1);assert.deepEqual(n.calls.slice(start).map(x=>x.name),['object_read','project_build']);
+ assert.equal(await n.controller.submit(cmd),r);assert.equal(n.builds,1);assert.equal((await n.controller.submit(n.command('finish'))).status,'finished');
+});
+test('build unknown retains original result and cannot replay; postbuild source drift also freezes',async()=>{
+ for(const fault of ['unknown','post-source','post-version']){
+  const n=fake();await n.open();await n.controller.submit(n.edit());const call=n.call;let built=false,original;
+  n.controller.call=async(name,args)=>{const r=await call(name,args);if(name==='project_build'){built=true;if(fault==='unknown'){r.status='unknown';r.data.firstError={message:'FIRST compiler exception',dispatched:true};original=r;}}else if(name==='object_read'&&built){if(fault==='post-source')r.data.implementation='other';if(fault==='post-version')r.data.residentVersion='f'.repeat(64);}return r;};
+  const r=await n.controller.submit(n.command('build',{objectId:OBJ,expectedImplementation:SOURCE.replace('T#5s','T#7s')}));assert.equal(r.status,'frozen');assert.equal(n.builds,1);
+  if(original)assert.deepEqual(r.originalResult,original);await assert.rejects(n.controller.submit(n.command('build')),/not permitted/);
+ }
+});
+test('non-build request must retain zero compile calls',async()=>{
+ const n=fake(),call=n.call;n.controller.call=async(name,args)=>{const r=await call(name,args);r.data.compileCalls=1;return r;};assert.equal((await n.open()).status,'frozen');assert.equal(n.builds,0);
 });
