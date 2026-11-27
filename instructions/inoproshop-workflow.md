@@ -4,13 +4,13 @@
 
 ## 连续操作优先规则
 
-默认显式project_open(sessionMode="resident")直接打开指定文件，同服务自有IDE保留内容，默认不保存；每条用户任务完成后等待下条指令。object_list/read定位Application根无子对象的普通ST POU；code_apply_change只改实现区，声明保持。修改参数expectedHash=当前contentHash、expectedResidentVersion=当前residentVersion；续页同版本，excluded为未覆盖。内部ID由你处理。
+默认显式project_open(sessionMode="resident")直接打开指定文件，同服务自有IDE保留内容，默认不保存；每条用户任务完成后等待下条指令。object_list/read定位Application根无子对象的普通ST POU；code_apply_change只改实现区，声明保持。修改参数expectedHash=当前contentHash、expectedResidentVersion=当前residentVersion；续页同版本，excluded为未覆盖。内部ID由你处理。running时仅轮询本轮原操作；取得succeeded后才发下一工程请求。
 
 project_build带当前expectedResidentVersion编译指定Application的内存。completed/diagnosticsComplete确认后才解释buildPassed；编译报错可按授权修正，异常/缺证则停止。buildInputResidentVersion和builtSourceVersion绑定内存，不证明磁盘文件已编译；后续修改使旧编译失效。不会保存、关闭、重开或退出，编译派生结构单列。
 
-其余工程工具未迁移，不降级batch或接管外部IDE。手动源码变化须重读；磁盘变化不明、关闭原句柄、unknown、超时或缺证则停止，不重放回滚。零派发版本拒绝可按后续新指令重读。断开不授权关闭。下文自动保存重开仅适用于明确选择的batch；省略模式保留旧契约，不能为绕过拒绝切换。
+resident不调用variable_inspect/variable_usages；仅object_list/read定位。其余工程工具未迁移，不降级batch或接管外部IDE。手动源码变化须重读；磁盘变化不明、关闭原句柄、unknown、超时或缺证则停止，不重放回滚。零派发版本拒绝可按后续新指令重读。断开不授权关闭。下文自动保存重开仅适用于明确选择的batch；省略模式保留旧契约，不能为绕过拒绝切换。
 
-问这条声明在哪里使用时，用 variable_inspect 定位精确条目，再把 objectId、section、name、contentHash 和 namePosition 的两个 UTF-16 偏移传给 variable_usages，用户无需提供内部 ID。处理全部实际 nextOffset，分别报告 usages（限定 ST 静态推导）、unknown（未绑定）和 coverage。不要把同名词元、声明本身或数组成员算入目标。零结果只限已读且受支持范围。全程只读，不编译、保存或判断重命名删除安全。
+仅batch：问这条声明在哪里使用时，用 variable_inspect 定位精确条目，再把 objectId、section、name、contentHash 和 namePosition 的两个 UTF-16 偏移传给 variable_usages，用户无需提供内部 ID。处理全部实际 nextOffset，分别报告 usages（限定 ST 静态推导）、unknown（未绑定）和 coverage。不要把同名词元、声明本身或数组成员算入目标。零结果只限已读且受支持范围。全程只读，不编译、保存或判断重命名删除安全。
 
 ## 解释语义（唯一规则）
 
@@ -113,7 +113,7 @@ variable_inspect对精确Application的现有支持源码做声明解析，不�
 
 按返回位置核对object_read的LF规范声明，UTF-16偏移从0开始/末端不含、行列从1开始。只对工具明确关联的注释说明归属，其余作为独立原文及位置。按实际nextOffset、expectedVersion和原查询/上限取页；previews表示未返回全文，带同一版本sourceRead:{objectId,offset,limit}分段取原声明，外层offset=0，不重启IDE。分别检查对象枚举、原文读取、声明解析、未覆盖对象、读取失败、解析缺口和输出截断；部分成功不等于完整变量表，缺口下无命中不证明不存在。不支持声明/不确定边界不猜后续变量。纯只读任务不追加基线/修改/编译/保存；原停止规则及简短答复、实际工程链接与独立完整地址要求保持。
 
-用户按变量或成员名要求修改源码初始化值时，先完成环境、会话和登记核对，按需用variable_inspect或检索定位，再用object_read取得目标对象完整原文和当前contentHash；不要求先通读全工程。name只是父名称子串筛选，必须进一步核对完整变量名、所属对象身份/路径、声明区和类别；同名、多结果或归属不明不能猜目标。使用变量表定位聚合成员时须显式includeInitializerMembers=true，核对完整父变量名、成员名、显式值、当前版本及成员/名称/值范围。变量表仅作定位依据，须核对条目版本及UTF-16位置对应原文；预览、旧版本位置或不完整结果不能直接用于写入。结构体类型字段、GVL实例聚合初始化和FB输入初值分开；父聚合条目本身不提供成员位置，提取出的语法位置也须对实际完整声明确认，不冒称类型成员解析或安全写入保证。只替换明确授权且实际存在的初始化片段，不补造初始化；保留其他声明、注释、空白和实现，不全局替换相同数字，不顺带改类型定义或块输入初值。定位不唯一、原值不符、原文与位置/版本不一致或目标有相关解析缺口，写入前停止说明。
+仅batch：用户按变量或成员名要求修改源码初始化值时，先完成环境、会话和登记核对，按需用variable_inspect或检索定位，再用object_read取得目标对象完整原文和当前contentHash；不要求先通读全工程。name只是父名称子串筛选，必须进一步核对完整变量名、所属对象身份/路径、声明区和类别；同名、多结果或归属不明不能猜目标。使用变量表定位聚合成员时须显式includeInitializerMembers=true，核对完整父变量名、成员名、显式值、当前版本及成员/名称/值范围。变量表仅作定位依据，须核对条目版本及UTF-16位置对应原文；预览、旧版本位置或不完整结果不能直接用于写入。结构体类型字段、GVL实例聚合初始化和FB输入初值分开；父聚合条目本身不提供成员位置，提取出的语法位置也须对实际完整声明确认，不冒称类型成员解析或安全写入保证。只替换明确授权且实际存在的初始化片段，不补造初始化；保留其他声明、注释、空白和实现，不全局替换相同数字，不顺带改类型定义或块输入初值。定位不唯一、原值不符、原文与位置/版本不一致或目标有相关解析缺口，写入前停止说明。
 
 定位确认后进入下节日常修改闭环。最终按实际修改对象读回核对；若再次查询变量或成员，必须使用新内容版本，不沿用修改前分页版本或位置。原文已能确认修改结果时，不为固定顺序重复查询变量表。
 
