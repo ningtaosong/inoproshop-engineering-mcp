@@ -1,14 +1,16 @@
 # InoProShop 离线工程工作流程
 
-你通过本地InoProShop MCP 0.41.0候选版的38项工具操作工程。先environment_inspect、session_status、project_list；纯源码问答不启动工程工具。检查能力、testMode、未决状态和身份，fixture-test-only不是真实IDE。设备、映射、库和引用查询遵守范围、分页和覆盖要求，描述版本不是现场固件。
+InoProShop MCP 0.42.0候选版，39项工具。先environment_inspect、session_status、project_list核对能力、身份、testMode及未决状态；纯源码问答不用工程工具。fixture-test-only不是真实IDE；查询遵守范围/分页/覆盖，描述版本非现场固件。
 
 ## 连续操作优先规则
 
-默认显式project_open(sessionMode="resident")直接打开指定文件，同服务自有IDE保留内容，默认不保存；每条用户任务完成后等待下条指令。object_list/read定位Application根无子对象的普通ST POU；code_apply_change只改实现区，声明保持。修改参数expectedHash=当前contentHash、expectedResidentVersion=当前residentVersion；续页同版本，excluded为未覆盖。内部ID由你处理。running时仅轮询本轮原操作；取得succeeded后才发下一工程请求。
+默认project_open(sessionMode="resident")打开指定文件，自有IDE保持内容，不自动保存；完成后等待用户下一指令。object_list/read定位Application根无子对象的普通ST POU；code_apply_change只改实现，保留声明。expectedHash=当前contentHash、expectedResidentVersion=当前residentVersion；同版本续页，excluded为未覆盖。内部ID由你处理。running只查本轮原操作，succeeded后才发下一工程请求。
 
-project_build带当前expectedResidentVersion编译指定Application的内存。completed/diagnosticsComplete确认后才解释buildPassed；编译报错可按授权修正，异常/缺证则停止。buildInputResidentVersion和builtSourceVersion绑定内存，不证明磁盘文件已编译；后续修改使旧编译失效。不会保存、关闭、重开或退出，编译派生结构单列。
+project_build带当前expectedResidentVersion编译指定Application内存。completed/diagnosticsComplete确认后解释buildPassed；报错可按授权修正，异常/缺证停止。buildInputResidentVersion/builtSourceVersion只绑定内存；修改使旧编译失效。不保存/关闭/重开/退出，派生结构单列。
 
-resident不调用variable_inspect/variable_usages；仅object_list/read定位。其余工程工具未迁移，不降级batch或接管外部IDE。手动源码变化须重读；磁盘变化不明、关闭原句柄、unknown、超时或缺证则停止，不重放回滚。零派发版本拒绝可按后续新指令重读。断开不授权关闭。下文自动保存重开仅适用于明确选择的batch；省略模式保留旧契约，不能为绕过拒绝切换。
+用户明确告知已保存当前工程并继续（如“已保存，请继续……”）时，先project_accept_saved_version，再object_read。传userConfirmedSaved=true；expectedResidentVersion取最近成功结果/session_status，不索要用户ID、哈希或二次确认，不推定保存声明。仅健康空闲自有会话：两次核对同句柄、dirty=false、磁盘及归属后接纳新基线；不证明原生保存来源。旧版本/编译失效，不保存关闭，不恢复unknown；跨服务重开尚不支持。
+
+resident仅用已迁移工具，不接管外部IDE或降级batch。手动源码变化重读；无明确保存声明的磁盘变化、句柄关闭、unknown/超时/缺证停止，不重放回滚。零派发版本拒绝可依新指令重读；断开不授权关闭。下文保存重开仅限batch；省略模式兼容旧契约，不用于绕过拒绝。
 
 仅batch：问这条声明在哪里使用时，用 variable_inspect 定位精确条目，再把 objectId、section、name、contentHash 和 namePosition 的两个 UTF-16 偏移传给 variable_usages，用户无需提供内部 ID。处理全部实际 nextOffset，分别报告 usages（限定 ST 静态推导）、unknown（未绑定）和 coverage。不要把同名词元、声明本身或数组成员算入目标。零结果只限已读且受支持范围。全程只读，不编译、保存或判断重命名删除安全。
 

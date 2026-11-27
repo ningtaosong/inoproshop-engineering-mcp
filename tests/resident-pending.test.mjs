@@ -75,6 +75,14 @@ async function readyEarly(t){
  return c;
 }
 
+test('predecessor/precheck eighth file remains a documented preparation blocker, not implicitly trusted',async t=>{
+ const c=await readyEarly(t);
+ await atomicJson(path.join(c.ipc,'resident-new-open-precheck.json'),{note:'offline stand-in only; a real predecessor chain must be independently verified'});
+ const before=await tree(c.env.dataDir),a=await c.assess();
+ assert.equal(a.globalFrozen,true);assert.match(a.impacts[0].reason,/early read evidence coverage incomplete or unexpected/);
+ assert.deepEqual(await tree(c.env.dataDir),before);assert.equal((await c.store.operation(c.op.operationId)).status,'unknown');
+});
+
 // Actual archived failure/source bytes, copied only as data into an offline case.
 // Never execute the diagnostic entry or add ownership/before to its old IPC.
 async function readyLegacy(t){

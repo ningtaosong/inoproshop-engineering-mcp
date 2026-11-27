@@ -1,5 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import {promises as fs} from 'node:fs';import path from 'node:path';import os from 'node:os';import {randomUUID} from 'node:crypto';
-import {ResidentChannel,residentDependencies as deps,residentHash as hash,residentObject,verifyResidentResult} from '../dist/resident.js';
+import {ResidentChannel,residentDependencies as deps,residentHash as hash,residentObject,residentVersion,verifyResidentResult} from '../dist/resident.js';
+import {savedBaselineId} from '../dist/resident-saved.js';
 import {ServiceLifecycle,releaseObservedLease} from '../dist/service-lifecycle.js';
 import {buildConservation,buildSourceVersion,checkedDiagnostics} from '../dist/resident-build.js';
 import {verifyClosedResident,closedApplicationBinding} from '../dist/resident-reopen.js';
@@ -27,7 +28,7 @@ async function fixture(t,{omitApplication=false}={}){
    let seq=1,busy=false;const loop=setInterval(async()=>{if(busy)return;busy=true;try{
     const req=await readJson(path.join(intent.directory,`request-${seq}.json`));if(!req)return;n.requests.push(req);seq++;
     if(n.fault==='timeout')return;
-    const before=structuredClone(n.state),d=deps(before),version=hash({dependencies:d,diskHash:req.diskHash}),put=(name,v)=>exclusiveJson(path.join(req.directory,name),v);
+    const before=structuredClone(n.state),d=deps(before),version=residentVersion(d,req.diskHash,req.acceptedBaseline),put=(name,v)=>exclusiveJson(path.join(req.directory,name),v);
     await put('before.json',{state:before,diskHash:req.diskHash});
     const data={applications:[{applicationId:APP,path:['Application']}],applicationId:APP,projectPath:intent.projectPath,projectHandle:0,snapshot:hash(d),residentVersion:version,diskHash:req.diskHash,sessionMode:'resident',saved:false,reopened:false,closed:false,saveCalls:0,compileCalls:0,closeCalls:0,exitCalls:0,memoryModified:false,memoryEditsInSession:n.writes};
     let status='succeeded';
@@ -37,7 +38,7 @@ async function fixture(t,{omitApplication=false}={}){
       await put('checkpoint.json',{request:req,state:before,diskHash:req.diskHash,residentVersion:version});await put('predispatch.json',{state:before,diskHash:req.diskHash});await put('dispatch.json',{operationId:req.operationId,requestId:req.requestId,action:'replace-implementation'});
       n.state.nodes[OBJ].implementation=req.args.implementation;n.writes++;if(n.fault==='after-embedded')n.state.nodes[OBJ].embeddedObjectTypes=[ST];const after=structuredClone(n.state),actual=deps(after);
       await put('after.json',{state:after,diskHash:req.diskHash});await put('verification.json',{equal:true,expected:actual,actual});
-      Object.assign(data,{snapshot:hash(actual),residentVersion:hash({dependencies:actual,diskHash:req.diskHash}),memoryModified:true,memoryEditsInSession:n.writes,persistedToProject:false});
+      Object.assign(data,{snapshot:hash(actual),residentVersion:residentVersion(actual,req.diskHash,req.acceptedBaseline),memoryModified:true,memoryEditsInSession:n.writes,persistedToProject:false});
      }
     }
     if(req.command==='build'){
@@ -56,11 +57,30 @@ async function fixture(t,{omitApplication=false}={}){
      const after=structuredClone(n.state),post=context(after);await put('build-after-state.json',{state:after,diskHash:req.diskHash});await put('after.json',{state:after,diskHash:req.diskHash,buildContext:post});
      // A dishonest producer is intentionally tested; the Node verifier must independently reject.
      const proof={passed:true,addedDeviceIds:[],sourceUnchanged:true,directLibrariesUnchanged:true,taskCallsUnchanged:true};await put('verification.json',proof);
-     Object.assign(data,{completed:true,diagnosticsComplete:true,diagnostics:rows,targetKind:'application',errorCount:rows.length,warningCount:0,buildPassed:!rows.length,compileCalls:1,buildEvidenceScope:'resident-memory',buildInputResidentVersion:version,builtSourceVersion:buildSourceVersion(before,APP),compilerResultHash:hash(compiler),buildConservation:proof,persistedToProject:false,persistedToWorkingCopy:false,snapshot:hash(deps(after)),residentVersion:hash({dependencies:deps(after),diskHash:req.diskHash})});
+     Object.assign(data,{completed:true,diagnosticsComplete:true,diagnostics:rows,targetKind:'application',errorCount:rows.length,warningCount:0,buildPassed:!rows.length,compileCalls:1,buildEvidenceScope:'resident-memory',buildInputResidentVersion:version,builtSourceVersion:buildSourceVersion(before,APP),compilerResultHash:hash(compiler),buildConservation:proof,persistedToProject:false,persistedToWorkingCopy:false,snapshot:hash(deps(after)),residentVersion:residentVersion(deps(after),req.diskHash,req.acceptedBaseline)});
      if(n.fault==='wrong-build-version')data.buildInputResidentVersion='f'.repeat(64);
      if(n.fault==='wrong-source-version')data.builtSourceVersion='f'.repeat(64);
      if(n.fault==='false-pass')data.buildPassed=false;
      if(n.fault==='extra-build')data.compileCalls=2;
+    }
+    if(req.command==='accept_saved'){
+     const first={state:before,dirtyBefore:false,dirtyAfter:false},second=structuredClone(first);
+     if(n.fault==='saved-dirty')second.dirtyAfter=true;
+     if(n.fault==='saved-missing-dirty')delete first.dirtyBefore;
+     if(n.fault==='saved-dirty-type')first.dirtyBefore=0;
+     if(n.fault==='saved-background')second.state.openedProjects['7']={handle:7,path:'background.library',primary:false,library:true};
+     if(n.fault==='saved-foreign')second.state.openedProjects['7']={handle:7,path:'foreign.project',primary:false,library:false};
+     if(n.fault==='saved-source')second.state.nodes[OBJ].implementation='unauthorized';
+     if(n.fault==='saved-path')second.state.projectPath='foreign.project';
+     if(n.fault==='saved-handle')second.state.projectHandle=9;
+     if(n.fault==='saved-field')second.state.nodes[OBJ].unknown='changed';
+     const id=savedBaselineId(req),candidate={scheme:'resident-user-confirmed-baseline-v1',requestHash:hash(req),prior:req.savedBaseline,snapshot:hash(d),projectPath:before.projectPath,projectHandle:before.projectHandle};
+     const receipt={...candidate,baselineId:id,residentVersion:residentVersion(d,req.diskHash,id),basis:'user-confirmed',nativeSaveProven:false,fullDiskMemoryEquivalenceProven:false};
+     await put('saved-read-first.json',first);await put('saved-read-second.json',second);await put('saved-candidate.json',candidate);
+     if(n.fault!=='saved-no-receipt')await put('saved-acceptance.json',receipt);
+     Object.assign(data,{baselineAccepted:true,savedBaselineAcceptance:structuredClone(receipt),residentVersion:receipt.residentVersion,persistedToProject:false,persistedToWorkingCopy:false});
+     if(n.fault==='saved-result')data.savedBaselineAcceptance.nativeSaveProven=true;
+     if(n.onAccepted)await n.onAccepted(req,data);
     }
     if(['read','change'].includes(req.command)&&status==='succeeded')Object.assign(data,residentObject(n.state,OBJ,APP));
     if(req.command==='list'){const {declaration,implementation,...o}=residentObject(n.state,OBJ,APP);Object.assign(data,{objects:[o],total:1,complete:true,nextOffset:null,excluded:[{objectId:APP,path:['Application'],reason:'not a root POU'}]});}
@@ -76,7 +96,7 @@ async function fixture(t,{omitApplication=false}={}){
  const channel=new ResidentChannel(config,path.resolve('.'),{spawn:spawnHook,probe:async()=>n.running?{state:'running',identity}:{state:'exited'},occupancy:async()=>{}});
  const adapter={residentOwned:()=>channel.owned(),executeResident:(...a)=>channel.execute(...a),execute:()=>{throw Error('Forbidden batch fallback');},reconcile:()=>{throw Error('Forbidden exit reconcile');}};
  const service=new EngineeringService(config,adapter);
- t.after(async()=>{n.loops.forEach(clearInterval);if(n.child&&n.running){n.running=false;n.child.emit('exit',0,null);}await channel.observe();await service.store.release();});
+ t.after(async()=>{n.loops.forEach(clearInterval);if(n.child&&n.running){n.running=false;n.child.emit('exit',0,null);}await channel.observe();if(n.retainChangedLease)await assert.rejects(service.store.release(),e=>e.code==='LOCK_CHANGED');else await service.store.release();});
  const done=r=>waitForOperation(service.call.bind(service),r);
  const call=async(name,args)=>{try{return await done(await service.call(name,args));}catch(e){if(typeof e.status!=='string'||typeof e.code!=='string')throw e;return {status:e.status,error:{code:e.code,message:e.message}};}};
  const opened=await call('project_open',{requestId:'open',projectPath:file,...(omitApplication?{}:{applicationId:APP}),sessionMode:'resident'});assert.equal(opened.status,'succeeded',JSON.stringify(opened));const target={projectId:opened.data.session.projectId,applicationId:APP,targetKind:'application'};
@@ -84,6 +104,107 @@ async function fixture(t,{omitApplication=false}={}){
  const change=(r,requestId,implementation='x := 8; // 改动')=>call('code_apply_change',{...target,objectId:OBJ,requestId,expectedHash:r.data.contentHash,expectedResidentVersion:r.data.residentVersion,declaration:r.data.declaration,implementation});
  return {root,file,n,config,channel,service,call,target,read,change,opened};
 }
+async function acceptSaved(f,requestId='accept-saved',version){
+ const s=await f.service.store.session();
+ return f.call('project_accept_saved_version',{requestId,projectId:s.projectId,applicationId:APP,userConfirmedSaved:true,expectedResidentVersion:version??s.residentVersion});
+}
+async function savedFiles(f){
+ const s=await f.service.store.session(),op=await f.service.store.operation(f.opened.operationId);
+ const files=[path.join(f.n.intent.directory,'intent.json'),f.service.store.file('service.lock'),f.service.store.sourceLock(s.sourcePath),f.service.store.file('operations/'+op.operationId+'.json'),path.join(op.bridge.directory,'request.json')];
+ return Object.fromEntries(await Promise.all(files.map(async p=>[p,digest(await fs.readFile(p))])));
+}
+for(const replaced of [false,true])test('saved baseline: same handle, changed bytes'+(replaced?' and replaced file identity':''),async t=>{
+ const f=await fixture(t),old=await f.service.store.session(),prior=await savedFiles(f),read=await f.read();
+ f.n.state.nodes[OBJ].implementation='x := 7; // 用户已保存';
+ if(replaced)await fs.rename(f.file,f.file+'.original');await fs.writeFile(f.file,'new user saved bytes');
+ const disk=digest(await fs.readFile(f.file)),r=await acceptSaved(f);assert.equal(r.status,'succeeded',JSON.stringify(r));
+ assert.equal(r.data.baselineAccepted,true);assert.equal(r.data.saved,false);assert.equal(r.data.memoryModified,false);assert.equal(r.data.savedBaselineAcceptance.nativeSaveProven,false);
+ const current=await f.service.store.session();assert.equal(current.sourceHash,old.sourceHash);assert.equal(current.diskHash,disk);assert.notEqual(current.residentVersion,old.residentVersion);
+ assert.deepEqual(await savedFiles(f),prior,'old intent/request/op and path lease bytes retained');
+ const op=await f.service.store.operation(r.operationId);assert.ok(await readJson(path.join(op.bridge.directory,'saved-registration-committed.json')));
+ assert.equal((await acceptSaved(f,'accept-saved',old.residentVersion)).operationId,r.operationId,'same exact request deduplicates');
+ assert.equal((await f.change(read,'old-page')).status,'conflict');assert.equal(f.n.writes,0);
+ const fresh=await f.read();assert.equal(fresh.data.implementation,'x := 7; // 用户已保存');assert.equal((await f.change(fresh,'explicit-next')).status,'succeeded');
+ assert.equal(f.n.writes,1);assert.equal(f.n.builds,0);assert.equal(f.n.launches,1);assert.equal(digest(await fs.readFile(f.file)),disk);
+});
+test('saved baseline: same bytes still create a new generation and invalidate old memory build',async t=>{
+ const f=await fixture(t),r=await f.read(),b=await f.call('project_build',{...f.target,requestId:'before-save-build',expectedResidentVersion:r.data.residentVersion});
+ assert.equal(b.status,'succeeded');const old=await f.service.store.session();assert.equal(old.buildApplicable,true);
+ const accepted=await acceptSaved(f);assert.equal(accepted.status,'succeeded',JSON.stringify(accepted));
+ const s=await f.service.store.session();assert.equal(s.diskHash,old.diskHash);assert.notEqual(s.residentVersion,old.residentVersion);assert.equal(s.buildApplicable,false);
+ assert.equal(s.lastBuild.operationId,old.lastBuild.operationId,'historical build remains but is inapplicable');
+ assert.equal((await f.change(r,'stale-after-accept')).status,'conflict');
+ assert.equal((await f.read()).data.residentVersion,s.residentVersion);assert.equal(f.n.writes,0);assert.equal(f.n.builds,1);
+});
+test('saved baseline: background library ownership may vary; original reads are retained',async t=>{
+ const f=await fixture(t);f.n.fault='saved-background';const r=await acceptSaved(f);assert.equal(r.status,'succeeded',JSON.stringify(r));
+ const op=await f.service.store.operation(r.operationId);const a=await readJson(path.join(op.bridge.directory,'saved-read-first.json')),b=await readJson(path.join(op.bridge.directory,'saved-read-second.json'));
+ assert.notDeepEqual(a,b);assert.equal(f.n.launches,1);assert.equal(f.n.writes,0);
+});
+for(const fault of ['saved-dirty','saved-missing-dirty','saved-dirty-type','saved-foreign','saved-source','saved-path','saved-handle','saved-field','saved-no-receipt','saved-result','saved','missing-completion','exit'])test('saved baseline independent verifier freezes '+fault,async t=>{
+ const f=await fixture(t),old=await f.service.store.session(),prior=await savedFiles(f);f.n.fault=fault;
+ const r=await acceptSaved(f);assert.equal(r.status,'unknown',JSON.stringify(r));const count=f.n.requests.length;
+ assert.equal((await f.service.store.session()).residentVersion,old.residentVersion);assert.deepEqual(await savedFiles(f),prior);
+ assert.equal((await acceptSaved(f,'accept-saved',old.residentVersion)).operationId,r.operationId);
+ const opBefore=await fs.readFile(f.service.store.file('operations/'+r.operationId+'.json'));
+ await f.call('operation_status',{operationId:r.operationId,reconcile:true});assert.deepEqual(await fs.readFile(f.service.store.file('operations/'+r.operationId+'.json')),opBefore);
+ await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.writes,0);assert.equal(f.n.builds,0);
+});
+for(const bad of ['missing-confirmation','wrong-version','wrong-application','wrong-project'])test('saved baseline rejects before native request '+bad,async t=>{
+ const f=await fixture(t),s=await f.service.store.session(),a={requestId:'bad',projectId:s.projectId,applicationId:APP,userConfirmedSaved:true,expectedResidentVersion:s.residentVersion};
+ if(bad==='missing-confirmation')delete a.userConfirmedSaved;if(bad==='wrong-version')a.expectedResidentVersion='a'.repeat(64);if(bad==='wrong-application')a.applicationId=OBJ;if(bad==='wrong-project')a.projectId=OBJ;
+ const n=f.n.requests.length;
+ if(bad==='missing-confirmation'){assert.equal(schemas.project_accept_saved_version.safeParse(a).success,false);return;}
+ assert.notEqual((await f.call('project_accept_saved_version',a)).status,'succeeded');assert.equal(f.n.requests.length,n);assert.equal(f.n.writes,0);
+});
+test('saved baseline refuses a hard-linked alias before native dispatch',async t=>{
+ const f=await fixture(t);await fs.link(f.file,f.file+'.alias');const count=f.n.requests.length,r=await acceptSaved(f);assert.equal(r.status,'unknown',JSON.stringify(r));assert.equal(f.n.requests.length,count);assert.equal(f.n.writes,0);
+});
+test('saved baseline refuses registry change between native read and commit',async t=>{
+ const f=await fixture(t),old=await f.service.store.session();f.n.onAccepted=async()=>{const s=await f.service.store.session();s.extraEvidence='concurrent registry change';await f.service.store.saveSession(s);};
+ const r=await acceptSaved(f);assert.equal(r.status,'unknown',JSON.stringify(r));assert.equal((await f.service.store.session()).residentVersion,old.residentVersion);const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);
+});
+test('saved baseline refuses a changed path lock without overwriting it',async t=>{
+ const f=await fixture(t);f.n.retainChangedLease=true;const s=await f.service.store.session(),lock=f.service.store.sourceLock(s.sourcePath);let changed;
+ f.n.onAccepted=async()=>{changed=(await fs.readFile(lock,'utf8'))+' ';await fs.writeFile(lock,changed);};
+ const r=await acceptSaved(f);assert.equal(r.status,'unknown',JSON.stringify(r));assert.equal(await fs.readFile(lock,'utf8'),changed);assert.equal(f.n.writes,0);
+});
+test('saved baseline registry receipt publication failure poisons service and does not retry',async t=>{
+ const f=await fixture(t);f.n.onAccepted=async req=>{await fs.mkdir(path.join(req.directory,'saved-registration-committed.json'));};
+ const r=await acceptSaved(f);assert.equal(r.status,'unknown',JSON.stringify(r));assert.equal(r.error.code,'PERSISTENCE_ERROR');const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.writes,0);
+});
+for(const change of ['bytes','identity','same-bytes-timestamp'])test('saved baseline file races freeze without adopting '+change,async t=>{
+ const f=await fixture(t),s=await f.service.store.session();f.n.onAccepted=async()=>{
+  if(change==='identity'){await fs.rename(f.file,f.file+'.old');await fs.writeFile(f.file,'fixed project');}
+  else if(change==='bytes')await fs.writeFile(f.file,'concurrent file change');
+  else await fs.utimes(f.file,new Date(0),new Date(10000));
+ };
+ const r=await acceptSaved(f);assert.equal(r.status,'unknown',JSON.stringify(r));assert.equal((await f.service.store.session()).residentVersion,s.residentVersion);
+ const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.writes,0);assert.equal(f.n.builds,0);
+});
+test('saved baseline receipt is bound to result and request, no claim of a saved-file build',async t=>{
+ const f=await fixture(t),r=await acceptSaved(f);assert.equal(r.status,'succeeded');
+ const op=await f.service.store.operation(r.operationId),q=await readJson(path.join(op.bridge.directory,'request.json'));
+ assert.equal(r.data.savedBaselineAcceptance.requestHash,hash(q));assert.equal(r.data.savedBaselineAcceptance.fullDiskMemoryEquivalenceProven,false);
+ assert.equal(r.data.compileCalls,0);assert.equal(r.data.saveCalls,0);assert.equal(r.data.closeCalls,0);assert.equal(r.data.exitCalls,0);assert.equal((await f.service.store.session()).buildApplicable,false);
+});
+test('saved baseline does not bypass unknown after service restart',async t=>{
+ const f=await fixture(t);f.n.fault='saved-no-receipt';const r=await acceptSaved(f);assert.equal(r.status,'unknown');
+ const next=new EngineeringService(f.config,{residentOwned:()=>false,executeResident:async()=>{throw Error('must not dispatch');},execute:async()=>{throw Error('must not dispatch');},reconcile:async()=>{throw Error('must not reconcile');}});
+ const op=await next.store.operation(r.operationId);assert.equal(op.status,'unknown');
+ const observed=await next.call('operation_status',{operationId:op.operationId,reconcile:true});assert.equal(observed.status,'unknown');assert.deepEqual(await next.store.operation(r.operationId),op);
+ assert.equal(f.n.requests.length,2);assert.equal(f.n.writes,0);
+});
+test('saved baseline cannot accept while another request is in flight',async t=>{
+ const f=await fixture(t);f.n.fault='timeout';const pending=f.read();while(f.n.requests.length<2)await new Promise(r=>setTimeout(r,5));
+ const r=await acceptSaved(f);assert.notEqual(r.status,'succeeded');assert.equal(f.n.requests.length,2);await pending;assert.equal(f.n.writes,0);
+});
+for(const changedFileIdentity of [false,true])test('explicit post-acceptance fresh open remains unsupported across session: '+changedFileIdentity,async t=>{
+ const f=await fixture(t);if(changedFileIdentity)await fs.rename(f.file,f.file+'.old');await fs.writeFile(f.file,'user saved');
+ assert.equal((await acceptSaved(f)).status,'succeeded');f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();
+ await assert.rejects(verifyClosedResident(f.service.store,await f.service.store.session(),'future-open',async()=>({state:'exited'})),e=>e.code==='RESIDENT_RECONNECT_UNSUPPORTED');
+ assert.equal(f.n.launches,1);assert.equal(f.n.writes,0);
+});
 test('resident service: five independent edits, same owned process/handle, no saves and request dedup',async t=>{
  const f=await fixture(t),original=await fs.readFile(f.file);for(let i=0;i<5;i++){const r=await f.read(),text=`x := ${i+2}; // 中文`;const changed=await f.change(r,'change-'+i,text);assert.equal(changed.status,'succeeded',JSON.stringify(changed));assert.equal(changed.data.saved,false);assert.equal(changed.data.reopened,false);assert.equal((await f.change(r,'change-'+i,text)).operationId,changed.operationId);assert.equal((await f.read()).data.implementation,text);}
  assert.equal(f.n.launches,1);assert.equal(f.n.writes,5);assert.deepEqual(await fs.readFile(f.file),original);assert.equal(f.n.requests.length,16);assert.equal(f.n.error,undefined);
@@ -238,7 +359,7 @@ for(const fault of ['none','live-ide','live-service','unconfirmed','missing-exit
 test('resident write completion missing remains unknown, duplicate and reconcile do not rewrite',async t=>{const f=await fixture(t),r=await f.read();f.n.fault='missing-completion';const changed=await f.change(r,'uncertain');assert.equal(changed.status,'unknown');assert.equal(f.n.writes,1);assert.equal((await f.change(r,'uncertain')).operationId,changed.operationId);await f.call('operation_status',{operationId:changed.operationId,reconcile:true});assert.equal(f.n.writes,1);});
 test('resident request timeout creates stop evidence, no automatic retry',async t=>{const f=await fixture(t);f.n.fault='timeout';assert.equal((await f.read()).error.code,'RESIDENT_TIMEOUT');assert.ok(await readJson(path.join(f.n.intent.directory,'stop.json')));assert.equal(f.n.writes,0);});
 test('resident lifecycle observer waits for real exit and does not request it',async t=>{const f=await fixture(t);let done=false;const pending=f.channel.observe().then(()=>done=true);await new Promise(r=>setTimeout(r,30));assert.equal(done,false);assert.equal(f.n.running,true);f.n.running=false;f.n.child.emit('exit',0,null);await pending;assert.equal(done,true);});
-test('resident input contract: explicit mode, version only additive; no new tools',()=>{assert.equal(VERSION,'0.41.1');assert.equal(Object.keys(schemas).length,38);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x'}).sessionMode,undefined);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x',sessionMode:'resident'}).sessionMode,'resident');assert.equal(Object.keys(outputSchemas).length,38);});
+test('resident input contract: old mode/version behavior and additive saved-baseline tool',()=>{assert.equal(VERSION,'0.42.0');assert.equal(Object.keys(schemas).length,39);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x'}).sessionMode,undefined);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x',sessionMode:'resident'}).sessionMode,'resident');assert.equal(Object.keys(outputSchemas).length,39);});
 for(const change of ['wrong-app','not-root','mixed-st','child','wrong-header','wrong-type'])test('independent native whitelist rejects '+change,()=>{const s=state('x');if(change==='wrong-app')s.nodes[OBJ].applicationId=OBJ;if(change==='not-root')s.nodes[OBJ].parentId=null;if(change==='mixed-st')s.nodes[OBJ].embeddedObjectTypes.push(APP);if(change==='child')s.nodes.extra={parentId:OBJ};if(change==='wrong-header')s.nodes[OBJ].declaration='PROGRAM Another';if(change==='wrong-type')s.nodes[OBJ].nativeTypeId=APP;assert.throws(()=>residentObject(s,OBJ,APP));});
 for(const event of ['spawn-error','immediate-exit','close-without-exit'])test('resident early process event is observed: '+event,async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'Resident early ')),file=path.join(root,'case.project');await fs.writeFile(file,'fixture');

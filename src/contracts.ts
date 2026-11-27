@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {singleIdentifier} from './st-lex.js';
 
 export const CONTRACT = '1.0.0';
-export const VERSION = '0.41.1';
+export const VERSION = '0.42.0';
 // Creation whitelist only. Read metadata below deliberately retains string return types.
 export const FUNCTION_RETURN_TYPES = ['DINT','BOOL','INT','REAL','TIME'] as const;
 export const stateSchema = z.enum(['running','succeeded','failed','conflict','unsupported','unknown']);
@@ -36,6 +36,8 @@ export const schemas = {
   project_open: z.object({ ...request, sessionMode:z.enum(['resident','batch']).optional().describe('新推荐流程显式resident：同服务同IDE、默认不保存不关闭；省略或batch保留旧批处理语义。'), projectPath: z.string().min(1).max(2048), applicationId: uuid.optional() }).strict(),
   project_open_copy: z.object({ ...request, sourcePath: z.string().min(1).max(2048), applicationId: uuid.optional() }).strict(),
   project_activate: z.object({ ...request, projectId:uuid, applicationId:uuid.optional() }).strict(),
+  project_accept_saved_version: z.object({ ...request, projectId:uuid, applicationId:uuid,
+    expectedResidentVersion:hash, userConfirmedSaved:z.literal(true) }).strict(),
   object_list: z.object({ ...target, expectedResidentVersion:hash.optional(), offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(200).default(50) }).strict(),
   object_read: z.object({ ...target, objectId: uuid }).strict(),
   project_search:z.object({...target,query:z.string().min(1).max(256),caseSensitive:z.boolean().default(false),matchMode:z.enum(['literal','identifier']).default('literal'),
@@ -319,6 +321,7 @@ const payloads:Record<keyof typeof schemas,z.ZodType>={
   project_open_copy:z.object({applications:z.array(z.object({applicationId:uuid,path:z.array(z.string())}).passthrough()).optional(),poolBuildAvailable:z.boolean().optional(),session:z.object({projectId:uuid,sessionId:uuid,sourcePath:z.string(),workingPath:z.string(),sourceHash:hash,applicationId:uuid.nullable().optional()}).passthrough().optional(),...snapshotFields}).passthrough(),
   project_list:z.object({projects:z.array(z.object({projectId:uuid,sourcePath:z.string(),workingPath:z.string(),active:z.boolean()}).passthrough()),activeProjectId:uuid.nullable(),writeFrozen:z.boolean()}).passthrough(),
   project_activate:z.object({session:z.object({projectId:uuid,workingPath:z.string()}).passthrough().optional(),...snapshotFields}).passthrough(),
+  project_accept_saved_version:z.object({...snapshotFields,baselineAccepted:z.boolean().optional(),residentVersion:hash.optional(),savedBaselineAcceptance:z.record(z.string(),z.unknown()).optional(),saved:z.literal(false).optional(),reopened:z.literal(false).optional(),closed:z.literal(false).optional()}).passthrough(),
   object_list:z.object({objects:z.array(z.object(objectFields)).optional(),total:z.number().int().optional(),complete:z.boolean().optional(),nextOffset:z.number().int().nullable().optional()}).passthrough(),
   object_read:z.object(objectFields).passthrough(),
   project_search:searchDataSchema.partial().passthrough(),
