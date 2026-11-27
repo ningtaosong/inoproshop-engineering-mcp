@@ -73,7 +73,13 @@ def start():
             def handle(self, request):
                 if request['command'] not in ('inspect', 'list', 'read'):
                     raise ValueError('Save provenance diagnostic only permits reads')
-                return base_session.handle(self, request)
+                result = base_session.handle(self, request)
+                active = self.adapter.save_observer
+                if active is not None and request['command'] == 'read':
+                    active.record('explicit-read', lambda: dict(operationId=request['operationId'], result=result))
+                    if active.first_error is not None:
+                        raise ValueError('Read observation failed; retain original observer error')
+                return result
 
         core['NativeProjectAdapter'] = ObservedAdapter
         core['ResidentSession'] = ReadOnlySession

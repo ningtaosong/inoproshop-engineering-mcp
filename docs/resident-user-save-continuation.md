@@ -33,6 +33,7 @@ REA 的 Core/Engine/ProjectCommands 元数据表示上限、传输上限，以�
 
 - [只读观察器](../scripts/diagnostics/resident_save_observer.py)：保留 CommandExecuting、ProjectSaving、ProjectSaved、CommandExecuted 的原始顺序、句柄、原路径、线程、流元数据、当时磁盘哈希、取消及异常状态。保留 null、空串、缺字段和异常的区别。不读取命令参数，不消费/移动流，不刷新或释放 OEM 流。
 - [独立诊断入口](../scripts/diagnostics/resident_save_probe_entry.py)：固定原接收器、核心及观察器指纹；仅允许 inspect/list/read，拒绝修改和编译。新计划默认未获启动授权。它不注册 MCP 工具、不进入产品构建、不在日常启动路径中。
+- [显式只读控制端](../scripts/diagnostics/resident_save_observation_client.mjs)：经具体移交授权后才可启动；核对固定文件、目标哈希及38项工具。只打开/列出/读取独立夹具，等待一次明确的保存前读取及正常收尾控制；不调用写工具、编译、save或历史reconcile。不使用模型。
 - [离线用例](../tests/test_resident_save_observer.py)：观察及加载规则替身，并调用生产 ResidentSession 复现保存后磁盘变化仍冲突、旧版本请求零修改零保存。不是原生保存成功证据。
 
 观察器每条记录均为 `writeAuthorized=false`。记录失败保留首次异常及次级错误，不抛入 OEM 保存事件以干扰用户保存；下一诊断请求拒绝继续。即使观察顺序看似完整，也不能由这个脚本自行解除产品保护。
@@ -45,7 +46,9 @@ REA 的 Core/Engine/ProjectCommands 元数据表示上限、传输上限，以�
 4. 仅在来源链确实足够后实施最小产品接入：保存回执绑定 launchId、PID/创建身份、工程句柄、原路径、保存序列及磁盘版本；新请求重新读取内存，旧请求版本仍拒绝；保存中、另存为、外部替换及缺证继续停止。
 5. 产品接入后再独立验证“新读→改→用户保存→新读→下一次明确修改”，与来源探测分开。此时才可报告同一会话续改通过。
 
-离线固定观察构建已准备在 `D:\InoPro-Resident-UserSave-20261127\diagnostic-fixed`，`prepared-plan.json` 记录宿主/核心/观察器/入口指纹，`approvedForLaunch=false`、目标工程尚未指定。不是产品固定入口，不覆盖当前运行构建；未启动、未初始化。未来完成明确移交后，创建新的独立夹具及全新 resident intent，临时服务环境设置 `INOPRO_SAVE_OBSERVER_PLAN` 指向经复核的计划，并沿用原登记目录；现有原生启动器仍执行 profile/runscript 及租约/排他校验。不得将旧 intent 指向新入口，不用原工程验证。
+离线固定观察构建已准备在 `D:\InoPro-Resident-UserSave-20261127\diagnostic-fixed`，`prepared-plan.json` 记录宿主/核心/观察器/入口指纹，`approvedForLaunch=false`。唯一新目标已按普通文件准备为 `D:\InoPro-Resident-UserSave-20261127\engineering\AM610_UserSave.project`：来自 `D:\InoPro\deliveries\InoPro-review-20261109-132658.zip` 的唯一成员 `projects/AM610_Minimal_MCP.project`，归档哈希 `c67abad48bef4bc410d72020d89f1452772f04a007f4622e490c90e815d597f0`，成员/目标哈希 `89b804a220e213c53ec09f4f38e87b6dd9b68f704c9d063c04535fdbea4a3173`，206,707字节。未在IDE打开，未取得工程租约，不是当前未保存或封存工程的副本。
+
+不是产品固定入口，不覆盖当前运行构建；未启动、未初始化。未来完成明确移交后，新建全新 resident intent，临时服务环境设置 `INOPRO_SAVE_OBSERVER_PLAN` 指向经复核的计划，并沿用原登记目录；现有原生启动器仍执行 `--profile="InoProShop(V1.9.1.6)"`、`--runscript="...\diagnostic-fixed\bridge\resident_host.py"` 及租约/排他校验。不得将旧 intent 指向新入口。控制端启动命令为 `node D:\InoPro-Resident-UserSave-20261127\diagnostic-fixed\scripts\diagnostics\resident_save_observation_client.mjs D:\InoPro-Resident-UserSave-20261127\prepared-plan.json`；当前未授权计划会在启动服务之前拒绝。控制文件仅允许 `before-save-read.json`、`finish.json`、`observe-exit.json`，各自须有本轮授权引用；finish 还要求独立确认IDE正常关闭。文件层准备不等于原生接口或保存验收通过。
 
 正常收尾也须另有明确关闭决定：确认测试注释已经用户保存且无在办请求后，由用户正常关闭该测试 IDE；记录真实退出码和创建身份，再使用现有 `finish`/EOF 有界观察结束 SDK/服务，租约只能由现有正常释放机制处理。该诊断入口没有自动保存/关闭/退出。若关闭取消、还有未保存内容、退出缺证或释放门不满足，则保留实例/租约及日志，不补造回执、不强制关闭；需要再次读取时也不能绕开原产品的磁盘版本保护。
 
@@ -53,7 +56,7 @@ REA 的 Core/Engine/ProjectCommands 元数据表示上限、传输上限，以�
 
 ## 验证归属与保全
 
-本轮新增观察/生产拒绝回归 15/15，原 resident Python 回归 37/37，独立临时目录中的相关 Node 替身回归 11/11，分别记录，不相加。Node 默认环境回归在首个服务用例长时间未完成后正常中断，保留日志及测试进程退出；没有认定其根因，也没有修改超时或性能阈值。独立目录仅用于离线替身，不用于真实工程派发。
+本轮新增观察/生产拒绝回归 15/15、控制端启动前规则5/5，原 resident Python 回归 37/37，独立临时目录中的相关 Node 替身回归 11/11，分别记录，不相加。Node 默认环境回归在首个服务用例长时间未完成后正常中断，保留日志及测试进程退出；没有认定其根因，也没有修改超时或性能阈值。独立目录仅用于离线替身，不用于真实工程派发。
 
 本机 IronPython 2.7.7.0 仅对两份新诊断脚本做解析编译，未执行入口正文。构建、类型检查通过。初始化正文没有修改；工作区 CRLF 含标题口径为65,234字节，固定LF口径为64,921字节，均低于65,536；不混用换行计数，也不提高上限。产品未改，未重跑无关全量回归。
 
