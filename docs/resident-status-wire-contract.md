@@ -2,6 +2,8 @@
 
 2026-11-28。分支 `codex/resident-user-save-continuation`，仍为 **0.42.0 候选版、38 项工具**。本补修未合并、部署或改变日常 DSH 0.38.0／Codex 配置。前一轮[查询一致性及无工程结束记录](resident-query-status-consistency.md)保留原时点与失败。
 
+后续更新：经针对当前实例的正常移交授权，704009a已完成[同一DSH会话两轮自动保存复验](dsh-resident-autosave-704009a.md)。以下“待验”“保持打开”描述属于原802adc4交付时点；原失败、退出缺口和首轮结果不改写。新两轮未重放原成功注释。
+
 ## 已确认的缺口
 
 `802adc429463ac8af722bf324751c699b6d4f09d` 的服务内部状态补修经过直接调用测试，但未经过 MCP 输出契约。`session_status` 的公开 `data.availability` 只允许 `global-frozen`、`active-project-isolated`、`available`，新增的 `explicit-open-required`／`unresolved` 不在其中。顶层 data 不允许任意新字段，而 session 对象允许扩展；因此直接把 residentObservation 放入顶层也不完整。查询期间变化的 conflict 返回还缺少 session、pending、writeFrozen 等必需字段。
