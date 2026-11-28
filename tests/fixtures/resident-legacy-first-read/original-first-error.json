@@ -1,0 +1,6 @@
+{
+  "dispatched": false, 
+  "type": "ImportError", 
+  "traceback": "Traceback (most recent call last):\n  File \"D:\\InoPro-Resident-UserSave-20261127\\diagnostic-fixed\\bridge\\resident_core.py\", line 447, in handle\n    before=self.adapter.snapshot();disk=self.disk_hash();deps=dependencies(before)\n  File \"D:\\InoPro-Resident-UserSave-20261127\\diagnostic-fixed\\bridge\\resident_core.py\", line 181, in snapshot\n    self._owned();nodes={};objects={};apps=[]\n  File \"D:\\InoPro-Resident-UserSave-20261127\\diagnostic-fixed\\bridge\\resident_host.py\", line 67, in _owned\n    self.save_observer = observer['install'](self.project, binding, publish, fallback,\n  File \"D:\\InoPro-Resident-UserSave-20261127\\diagnostic-fixed\\bridge\\resident_save_observer.py\", line 146, in install\n    from _3S.CoDeSys.Core import SystemInstances\nImportError: No module named _3S.CoDeSys.Core\n", 
+  "message": "No module named _3S.CoDeSys.Core"
+}

@@ -9,9 +9,12 @@ import {exclusiveJson,errorDetails} from './exit-journal.js';
 import {probeProcess,sameProcess,type ProcessIdentity,type ProcessProbe} from './lease-process.js';
 import type {BridgeRequest,Config} from './adapter.js';
 import {verifyResidentBuild} from './resident-build.js';
+import {residentDisk} from './resident-saved.js';
+import {SAVE_POLICY,saveReady,saveAuthorization,verifyWrittenState,verifyAutomaticSave} from './resident-save.js';
 
 const stable=(v:any):string=>Array.isArray(v)?'['+v.map(stable).join(',')+']':v&&typeof v==='object'?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}':JSON.stringify(v);
 export const residentHash=(v:unknown)=>digest(stable(v));
+export const residentVersion=(dependencies:unknown,diskHash:string)=>residentHash({dependencies,diskHash});
 async function publishQueue(file:string,value:unknown){const tmp=file+'.publishing';await exclusiveJson(tmp,value);if(await fs.access(file).then(()=>true,()=>false))throw Error('Resident request already published');await fs.rename(tmp,file);}
 const equal=(a:unknown,b:unknown)=>stable(a)===stable(b);
 const uuid=(v:any)=>typeof v==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(v)&&v!=='00000000-0000-0000-0000-000000000000';
@@ -45,7 +48,8 @@ export async function verifyResidentCompletion(request:any,result:Reply,director
  const data=result.data as any,e=data?.residentEvidence,completed=await readJson(path.join(directory,'completed.json'));
  if(result.operationId!==request.operationId||result.requestId!==request.requestId||e?.requestHash!==residentHash(request)||e?.launchId!==request.launchId||e?.sequence!==request.sequence||!equal(e?.processIdentity,{pid:identity.pid,startId:identity.startId})||e?.requestCompleted!==true||e?.ideExitRequested!==false||!equal(completed,{launchId:request.launchId,sequence:request.sequence,processIdentity:e.processIdentity,requestHash:e.requestHash,resultHash:residentHash(result)}))throw Error('Resident completion/request/instance binding differs');
  if(result.status!=='succeeded'){if(data?.recoverableRejection===true&&(result.status!=='conflict'||data.firstError?.dispatched!==false||data.secondaryErrors?.length!==0||await readJson(path.join(directory,'dispatch.json'))))throw Error('Unproven zero-dispatch rejection');return;}
- if(data.saved!==false||data.closed!==false||data.reopened!==false||['saveCalls','closeCalls','exitCalls'].some(k=>data[k]!==0)||data.compileCalls!==(request.command==='build'?1:0)||data.sessionMode!=='resident')throw Error('Resident lifecycle evidence differs');
+ const ownSave=request.command==='change'&&request.savePolicy===SAVE_POLICY&&data.memoryModified===true;
+ if(data.saved!==ownSave||data.saveCalls!==(ownSave?1:0)||data.closed!==false||data.reopened!==false||['closeCalls','exitCalls'].some(k=>data[k]!==0)||data.compileCalls!==(request.command==='build'?1:0)||data.sessionMode!=='resident')throw Error('Resident lifecycle evidence differs');
 }
 export async function verifyResidentResult(request:any,result:Reply,directory:string,identity:ProcessIdentity) {
  await verifyResidentCompletion(request,result,directory,identity);
@@ -53,17 +57,19 @@ export async function verifyResidentResult(request:any,result:Reply,directory:st
  const data=result.data as any;
  const before=await readJson(path.join(directory,'before.json'));if(pathKey(before?.state?.projectPath??'')!==pathKey(request.projectPath))throw Error('Snapshot belongs to another project');const deps=residentDependencies(before?.state),version=residentHash({dependencies:deps,diskHash:before.diskHash});
  if(before.diskHash!==request.diskHash)throw Error('Disk changed between dispatch and native read');
- let final=before.state,finalDeps=deps;
+ let final=before.state,finalDeps=deps,finalDisk=before.diskHash;
  if(request.command==='build'){final=await verifyResidentBuild(request,data,directory,before,version);finalDeps=residentDependencies(final);}
  if(request.command==='change'){
   const a=request.args,target=deps.nodes[a.objectId];
   if(!target||a.expectedResidentVersion!==version||codeHash(target.declaration,target.implementation)!==a.expectedHash||a.declaration!==target.declaration||typeof a.implementation!=='string')throw Error('Change preconditions differ');
-  const checkpoint=await readJson(path.join(directory,'checkpoint.json')),pre=await readJson(path.join(directory,'predispatch.json')),after=await readJson(path.join(directory,'after.json')),check=await readJson(path.join(directory,'verification.json')),dispatch=await readJson(path.join(directory,'dispatch.json'));
-  if(!equal(checkpoint,{request,state:before.state,diskHash:before.diskHash,residentVersion:version})||!equal(residentDependencies(pre?.state),deps)||pre.diskHash!==before.diskHash||!equal(dispatch,{operationId:request.operationId,requestId:request.requestId,action:'replace-implementation'}))throw Error('Checkpoint/predispatch evidence differs');
-  const expected=structuredClone(deps);expected.nodes[a.objectId].implementation=a.implementation;final=after?.state;finalDeps=residentDependencies(final);
-  if(after.diskHash!==before.diskHash||!equal(expected,finalDeps)||!equal(check,{equal:true,expected,actual:finalDeps})||data.memoryModified!==true||data.persistedToProject!==false)throw Error('Written state preservation differs');
+  if(a.implementation===target.implementation){
+   const [checkpoint,pre,noop,dispatch,saveCall]=await Promise.all(['checkpoint','predispatch','no-op','dispatch','save-call'].map(n=>readJson(path.join(directory,n+'.json'))));
+   if(!equal(checkpoint,{request,state:before.state,diskHash:before.diskHash,residentVersion:version})||!equal(residentDependencies(pre?.state),deps)||pre.diskHash!==before.diskHash||!equal(noop,{requestHash:residentHash(request),stateHash:residentHash(deps),unchanged:true})||dispatch||saveCall||data.noOp!==true||data.memoryModified!==false||data.persistedToProject!==false)throw Error('No-op evidence differs');
+  }else{
+   const saved=await verifyAutomaticSave(request,data,directory);final=saved.state;finalDeps=residentDependencies(final);finalDisk=saved.diskHash;
+  }
  }
- if(data.snapshot!==residentHash(finalDeps)||data.residentVersion!==residentHash({dependencies:finalDeps,diskHash:before.diskHash})||data.diskHash!==before.diskHash||data.projectHandle!==final.projectHandle)throw Error('Result state/version differs');
+ if(data.snapshot!==residentHash(finalDeps)||data.residentVersion!==residentVersion(finalDeps,finalDisk)||data.diskHash!==finalDisk||data.projectHandle!==final.projectHandle)throw Error('Result state/version differs');
  const applications=before.state.applications.map((id:string)=>({applicationId:id,path:before.state.nodes[id].path}));
  const aid=request.args.applicationId??(applications.length===1?applications[0].applicationId:undefined);
  if(!aid||data.applicationId!==aid||!equal(data.applications,applications))throw Error('Application identity differs');
@@ -96,7 +102,7 @@ export class ResidentChannel {
   // server shutdown, never batch fallback, relaunch or cross-service takeover.
  }
  private async live(){if(this.failure)throw this.failure;if(this.exited||!this.child?.pid||!this.identity)throw new DomainError('unknown','RESIDENT_INSTANCE_LOST','原IDE实例无法确认；不重开或重放');const p=await(this.hooks.probe??probeProcess)(this.child.pid);if(p.state!=='running'||!sameProcess(p.identity,this.identity))throw new DomainError('unknown','RESIDENT_INSTANCE_CHANGED','原IDE创建身份或运行状态不符');}
- private async wait(file:string,deadline:number){for(;;){await this.live();const fail=await readJson(path.join(this.root!,'first-error.json'));if(fail)throw new DomainError('unknown','RESIDENT_NATIVE_ERROR',JSON.stringify(fail));const value=await readJson(file);if(value)return value;if(await readJson(path.join(this.root!,'receiver-stopped.json')))throw new DomainError('unknown','RESIDENT_RECEIVER_STOPPED','原接收器已停止，保留现场');if(Date.now()>=deadline)throw new DomainError('unknown','RESIDENT_TIMEOUT','本次请求超时，停止派发；不关闭或重放');await new Promise(r=>setTimeout(r,50));}}
+ private async wait(file:string,deadline:number,tick?:()=>Promise<void>){for(;;){await this.live();const fail=await readJson(path.join(this.root!,'first-error.json'));if(fail)throw new DomainError('unknown','RESIDENT_NATIVE_ERROR',JSON.stringify(fail));const value=await readJson(file);if(value)return value;if(tick)await tick();if(await readJson(path.join(this.root!,'receiver-stopped.json')))throw new DomainError('unknown','RESIDENT_RECEIVER_STOPPED','原接收器已停止，保留现场');if(Date.now()>=deadline)throw new DomainError('unknown','RESIDENT_TIMEOUT','本次请求超时，停止派发；不关闭或重放');await new Promise(r=>setTimeout(r,50));}}
  private async launch(project:string){
   if(this.config.noUI)throw new DomainError('unsupported','RESIDENT_REQUIRES_UI','此原生主线程入口需要UI宿主；不自动降级');
   if(this.hooks.occupancy)await this.hooks.occupancy();else {
@@ -140,21 +146,41 @@ export class ResidentChannel {
    if(!this.child){if(request.command!=='inspect')throw new DomainError('conflict','RESIDENT_NOT_OPEN','需要本服务明确打开resident工程');await this.launch(request.projectPath);}
    if(pathKey(request.projectPath)!==pathKey(this.project!))throw new DomainError('conflict','RESIDENT_PROJECT_SWITCH','当前工程仍保留，首版不切换工程');
    await this.live();await onStart(this.identity!.pid,this.launchId!);await fs.mkdir(directory,{recursive:true});
-   const stat=await fs.stat(request.projectPath,{bigint:true}),diskHash=digest(await fs.readFile(request.projectPath));
-   if(`${stat.dev}:${stat.ino}`!==this.originalFileId)throw new DomainError('conflict','RESIDENT_FILE_REPLACED','原工程文件身份跨请求变化，停止此会话');
-   const envelope={...request,directory,launchId:this.launchId,sequence:++this.sequence,diskHash,fileIdentity:`${stat.dev}:${stat.ino}`,deadlineUtc:new Date(Date.now()+this.config.timeoutMs).toISOString(),leases:request.args.residentLeases};
+   const initialDisk=await residentDisk(request.projectPath),{fileIdentity,diskHash}=initialDisk;
+   if(fileIdentity!==this.originalFileId)throw new DomainError('conflict','RESIDENT_FILE_REPLACED','原工程文件身份跨请求变化，停止此会话');
+   const envelope={...request,directory,launchId:this.launchId,sequence:++this.sequence,diskHash,fileIdentity,
+    ...(request.command==='change'?{savePolicy:SAVE_POLICY,initialDisk}:{}),deadlineUtc:new Date(Date.now()+this.config.timeoutMs).toISOString(),leases:request.args.residentLeases};
    await exclusiveJson(path.join(directory,'request.json'),envelope);await publishQueue(path.join(this.root!,'request-'+this.sequence+'.json'),envelope);
-   const result=replySchema.parse(await this.wait(path.join(directory,'result.json'),Date.now()+this.config.timeoutMs));
+   let authorized=false;
+   const authorize=async()=>{
+    if(request.command!=='change'||authorized)return;
+    const ready=await readJson(path.join(directory,'save-ready.json'));if(!ready)return;
+    const written=await verifyWrittenState(envelope,directory);
+    if(!equal(ready,saveReady(envelope,written)))throw Error('Save-ready binding differs');
+    for(const lease of envelope.leases??[])if(digest(await fs.readFile(lease.path))!==lease.sha256)throw Error('Lease changed before save');
+    const image=await residentDisk(request.projectPath);
+    if(!equal(image,initialDisk))throw Error('Original disk identity/version changed before save');
+    await this.live();
+    await exclusiveJson(path.join(directory,'save-authorization.json'),saveAuthorization(envelope,ready,image));authorized=true;
+   };
+   const result=replySchema.parse(await this.wait(path.join(directory,'result.json'),Date.now()+this.config.timeoutMs,authorize));
    await this.wait(path.join(directory,'completed.json'),Date.now()+this.config.timeoutMs);
-   try{await verifyResidentResult(envelope,result,directory,this.identity!);}
-   catch(first){
-    if(request.command==='build')try{await exclusiveJson(path.join(directory,'service-verification-failed.json'),{requestHash:residentHash(envelope),resultHash:residentHash(result),firstError:errorDetails(first)});}
-    catch(secondary){try{await exclusiveJson(path.join(this.root!,'build-verification-publication-error.json'),{sequence:this.sequence,firstError:errorDetails(first),publicationError:errorDetails(secondary)});}catch{};}
+   try{
+    await verifyResidentResult(envelope,result,directory,this.identity!);
+    if(result.status==='succeeded'&&result.data?.saved===true&&!authorized)throw Error('Save occurred without this service authorization');
+   }catch(first){
+    try{await exclusiveJson(path.join(directory,'service-verification-failed.json'),{requestHash:residentHash(envelope),resultHash:residentHash(result),firstError:errorDetails(first)});}
+    catch(secondary){try{await exclusiveJson(path.join(this.root!,'verification-publication-error.json'),{sequence:this.sequence,firstError:errorDetails(first),publicationError:errorDetails(secondary)});}catch{};}
     throw first;
    }
    await this.live();
-   const now=await fs.stat(request.projectPath,{bigint:true});if(`${now.dev}:${now.ino}`!==envelope.fileIdentity||digest(await fs.readFile(request.projectPath))!==diskHash)throw Error('File changed during resident request');
-   await exclusiveJson(path.join(directory,'service-verification.json'),{passed:true,launchId:this.launchId,sequence:this.sequence,requestHash:residentHash(envelope),resultHash:residentHash(result),processIdentity:this.identity,processState:'running',exitRequiredForRequest:false,diskHash});
+   const finalDisk=await residentDisk(request.projectPath),saved=result.status==='succeeded'&&result.data?.saved===true;
+   if(saved){
+    if(finalDisk.diskHash!==result.data?.diskHash||finalDisk.diskHash===initialDisk.diskHash)throw Error('Saved final file version differs');
+    await exclusiveJson(path.join(directory,'saved-channel-accepted.json'),{scheme:SAVE_POLICY,requestHash:residentHash(envelope),receiptHash:residentHash(result.data?.saveReceipt),beforeDisk:initialDisk,afterDisk:finalDisk});
+   }else if(result.status==='succeeded'&&!equal(finalDisk,initialDisk))throw Error('File changed during read/no-op request');
+   await exclusiveJson(path.join(directory,'service-verification.json'),{passed:true,launchId:this.launchId,sequence:this.sequence,requestHash:residentHash(envelope),resultHash:residentHash(result),processIdentity:this.identity,processState:'running',exitRequiredForRequest:false,diskHash:finalDisk.diskHash});
+   if(saved)this.originalFileId=finalDisk.fileIdentity;
    if(result.status!=='succeeded'&&result.data?.recoverableRejection!==true)this.failure=new DomainError('unknown','RESIDENT_STOPPED','原请求未成功；此会话停止后续派发');return result;
   }catch(e:any){if(this.child){this.failure??=e;try{await exclusiveJson(path.join(this.root!,'stop.json'),{error:errorDetails(e),sequence:this.sequence,save:false,close:false});}catch{};}throw e instanceof DomainError?e:new DomainError('unknown','RESIDENT_EVIDENCE_ERROR',e.message);}
   finally{this.busy=false;}

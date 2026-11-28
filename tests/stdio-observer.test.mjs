@@ -77,7 +77,7 @@ test('production offline stdio idle EOF completes journal and closes naturally; 
    env:{...process.env,INOPRO_DATA_DIR:env.dataDir,INOPRO_TEST_MODE:'fixture'}},{directory});
  let stderr='';transport.stderr.on('data',d=>stderr+=d.toString());
  const client=new Client({name:'offline-exit-test',version:'1'});t.after(()=>client.close());await client.connect(transport);
- assert.equal(client.getServerVersion().version,'0.41.0');assert.equal((await client.listTools()).tools.length,38);
+ assert.equal(client.getServerVersion().version,'0.41.1');assert.equal((await client.listTools()).tools.length,38);
  await client.close();assert.equal(transport.exitSeen.code,0,stderr);
  const runs=await fs.readdir(path.join(env.dataDir,'service-lifecycle'));assert.equal(runs.length,1);
  const journal=await rows(path.join(env.dataDir,'service-lifecycle',runs[0]));assert.equal(journal[0].event,'shutdown-requested');

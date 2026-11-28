@@ -12,8 +12,31 @@ import {canonical,digest,atomicJson} from '../dist/storage.js';
 import {publishProcessEvidence} from '../dist/process-exit.js';
 import {assessPending,targetFiles,related} from '../dist/pending-impact.js';
 import {probeProcess} from '../dist/lease-process.js';
+import {statusWire} from './status-wire-helper.mjs';
 
 const gonePid=2147000001;
+test('empty registration status and project list satisfy the real MCP output contracts without native activity',async t=>{
+ const env=await setup();let dispatches=0;
+ const denied=async()=>{dispatches++;throw Error('native request is forbidden');};
+ const service=new EngineeringService({dataDir:env.dataDir,testMode:true,responseWaitMs:10000},{execute:denied,reconcile:denied});t.after(()=>service.store.release());
+ const status=await statusWire(service),list=await statusWire(service,'project_list');
+ assert.equal(status.data.session,null);assert.equal(status.data.availability,'available');assert.equal(status.data.writeFrozen,false);
+ assert.deepEqual(list.data.projects,[]);assert.equal(dispatches,0);
+});
+test('completion during status observation invalidates only that query, not the operation or global admission',async t=>{
+ const env=await setup(),service=new EngineeringService({dataDir:env.dataDir,testMode:true,responseWaitMs:10000},new FixtureAdapter());t.after(()=>service.store.release());
+ const opened=await service.call('project_open',{projectPath:env.source,applicationId:app,requestId:'normal-open'});assert.equal(opened.status,'succeeded');
+ const operationId=randomUUID(),requestId=randomUUID(),args={projectId:opened.data.session.projectId,applicationId:app};
+ const op={schemaVersion:1,operationId,requestId,tool:'object_list',args,fingerprint:digest(canonical({tool:'object_list',args})),status:'running',ownerPid:process.pid,startedAt:new Date().toISOString(),project:opened.data.session};
+ await service.store.saveOp(op);service.ownedOperations.add(operationId);service.runningOperations.add(operationId);
+ const observe=service.observedProject.bind(service);let once=true;
+ service.observedProject=async(...args)=>{const result=await observe(...args);if(once){once=false;op.status='succeeded';op.finishedAt=new Date().toISOString();op.response={contractVersion:'1.0.0',status:'succeeded',operationId,requestId,summary:'offline operation completed'};await service.store.saveOp(op);service.runningOperations.delete(operationId);}return result;};
+ const stale=await statusWire(service);assert.equal(stale.status,'conflict');assert.equal(stale.error.code,'STATUS_EVIDENCE_CHANGED');
+ assert.equal(stale.data,undefined,'stale observation is not an actionable snapshot');
+ const bytes=await fs.readFile(service.store.file('operations/'+operationId+'.json'));
+ const fresh=await statusWire(service);assert.equal(fresh.status,'succeeded');assert.equal(fresh.data.globalFrozen,false);assert.equal(fresh.data.writeFrozen,false);
+ assert.equal((await service.store.operation(operationId)).status,'succeeded');assert.deepEqual(await fs.readFile(service.store.file('operations/'+operationId+'.json')),bytes);
+});
 async function context(t){
  const env=await setup(),other=path.join(env.dir,'independent-B.json');await fs.copyFile(env.source,other);
  const adapter=new FixtureAdapter(),config={dataDir:env.dataDir,testMode:true,responseWaitMs:10000};
@@ -83,7 +106,7 @@ const corruptions={
 };
 for(const [name,corrupt] of Object.entries(corruptions))test('global conservative stop: '+name,async t=>{
  const c=await context(t);await corrupt(c);let dispatches=0;c.adapter.execute=async()=>{dispatches++;};
- const s=await c.service.status();assert.equal(s.data.globalFrozen,true,name);
+ const s=await statusWire(c.service);assert.equal(s.data.globalFrozen,true,name);
  await assert.rejects(()=>c.service.call('project_open',{projectPath:c.other,applicationId:app,requestId:'blocked-B'}),e=>e.code==='PENDING_UNKNOWN');assert.equal(dispatches,0);
 });
 test('same request deduplicates to original unknown; does not assess/replay or alter finish time',async t=>{

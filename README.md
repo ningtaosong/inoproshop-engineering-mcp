@@ -1,16 +1,22 @@
 # InoProShop Engineering MCP
 
-当前 main 已合并 **0.41.0 候选版、38 项 MCP 工具**，限定常驻连续读改、明确请求的内存编译及其必要保护。未完成真实验收的 `add-struct-field` 不在产品中，原分支与失败记录保留。日常 DSH 入口仍为0.38.0，本轮未部署常驻候选，也未保存或关闭当前真实工程；见[合并与入口保持说明](docs/resident-0410-merge.md)。推荐显式 `project_open(sessionMode="resident")`，必要读取后只改根普通ST POU实现区，按明确请求编译，不自动保存关闭；省略模式仍为兼容batch，并非全部38项工具都已迁移。用户决定保存关闭，手动保存后继续旧resident会话目前尚不支持。
+2026-11-28：**0.42.0候选版／38项工具已纳入main**，限定Application根普通ST POU实现区实际修改后严格读回、自动保存原路径并保持工程打开；只读／无修改不保存，编译按明确请求，保存提交当前工程全部未保存内容。固定构建及日常配置按[本次合并与离线入口收尾](docs/resident-0420-merge.md)核对；当前验收会话保持打开，新日常连接待正常移交，不能用配置写入代替握手。未迁移写工具仍拒绝，不提供任意对象或声明编辑，也不新增GUI／工作台路线。
+
+2026-11-28：[补修版同一DSH会话两轮自动保存复验](docs/dsh-resident-autosave-704009a.md)已通过：704009a、0.42.0候选／38工具，同一IDE与工程句柄连续两次指定注释修改，每轮自动保存一次并独立读回，协议错误0。该验收交付时点工程与客户端保持打开、未合并或部署，日常仍0.38.0；状态查询偏多、原答复勘误及旧MCP退出1单列。此前[802adc4的三次协议错误及输出契约补修](docs/resident-status-wire-contract.md)、[查询一致性和无工程结束记录](docs/resident-query-status-consistency.md)保留原时点，不用本次成功覆盖。
+
+原候选实现阶段调整为 **0.42.0 候选版、38 项工具**：自有 resident 会话每次实际实现区修改，严格读回后自动保存原路径，确认成功才返回，保持同一工程打开；只读和无修改不保存，编译按明确请求执行。保存提交当前工程全部未保存内容。前轮未交付的手动接纳入口已撤出，原提交及记录保留。当前实现、离线验证及[同一会话两轮真实MCP自动保存复验](docs/resident-autosave-real-20261127.md)通过，未合并或部署；见[逐次修改后保存与续改](docs/resident-autosave.md)。两轮仅在根ST实现区分别增加中文注释，各保存一次并由同实例独立请求读回，未编译或独立重开。旧停止实例已按明确授权不保存正常关闭，原unknown保持；新IDE及工程保持打开。日常DSH仍为0.38.0，Codex与历史证据不变。
+
+原 main 时点已合并 **0.41.0 候选版、38 项 MCP 工具**，限定常驻连续读改、明确请求的内存编译及其必要保护。未完成真实验收的 `add-struct-field` 不在产品中，原分支与失败记录保留。日常 DSH 入口仍为0.38.0，原合并轮未部署常驻候选，也未保存或关闭当时真实工程；见[合并与入口保持说明](docs/resident-0410-merge.md)。该0.41时点推荐显式 `project_open(sessionMode="resident")`，必要读取后只改根普通ST POU实现区，按明确请求编译，不自动保存关闭；省略模式仍为兼容batch，并非全部38项工具都已迁移。用户决定保存关闭，该0.41时点尚不支持手动保存后继续旧resident会话。已完成[保存来源阻断定位与只读观察准备](docs/resident-user-save-continuation.md)，公开保存事件早于最终文件提交；尚待真实事件链核对，产品保护未放宽。随后获准移交并启动唯一观察，因Core命名空间导入失败停止；[同版IronPython离线补修通过](docs/resident-save-observer-import-recheck.md)，该时点的新unknown及实例保留；随后获准不保存正常关闭IDE及服务，旧unknown不改判。此前分支完成[0.41.1早期归属取证与限定新打开补修](docs/resident-early-read-reopen.md)：38项工具及Schema不变，仅离线验证，未合并或部署。上轮旧现场缺少原生归属快照而拒绝；随后[固定旧控制流的限定兼容补修](docs/resident-legacy-first-read-admission.md)通过离线及真实目录只读准入评估，原unknown和缺失原生值保持。随后另获授权的新观察已取得原生归属，但在宿主访问Core时停止；见[实际失败、公开接口边界与待确认的最小续改方案](docs/resident-save-host-policy.md)。该次新unknown及实例保留，当时保存后续改仍未交付。
 
 
-2026-11-26[常驻内存编译首轮](docs/resident-memory-build-real-20261126.md)的unknown及[2026-11-27写前类型元数据冲突](docs/resident-build-recheck-20261127.md)保留原结果。随后按明确授权正常不保存关闭旧实例，使用固定产品02e5099完成[同一保存工程的新一轮真实MCP复验](docs/resident-build-scalar-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告、独立读回通过，FALSE／声明／中文保持。原直接库保持，编译新增IecVarAccess系统依赖的实际安装件与保全证据通过；没有新增派生设备。当轮IDE72140、MCP67608、驱动71748保持打开，7秒／FALSE未保存；随后按明确授权不保存正常关闭并移交。新的[DSH内存编译任务](docs/dsh-resident-build-20261127.md)在读取未返回终态时发起额外查询，因PENDING_UNKNOWN冲突停止，三项原生读取成功、0修改／0编译。该时点IDE24836、MCP72960、SDK61000及驱动22724保持打开，内存和磁盘均为5秒／FALSE；当轮仅补修说明。随后按明确授权完成[替身线传修正、串行补证及同一连接的一次新真实任务](docs/dsh-resident-sequence-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告和独立读回通过，FALSE／声明／中文保持。当前原四个进程仍保持打开，7秒未保存，主文件哈希不变，autosave等附属变化单列；39次状态查询及5次本轮原操作reconcile保留，不含历史查询。前三次替身的首败、审计过窄及独立补证均保留，不重写旧任务。0.39及其他未验范围不变。
+2026-11-26[常驻内存编译首轮](docs/resident-memory-build-real-20261126.md)的unknown及[2026-11-27写前类型元数据冲突](docs/resident-build-recheck-20261127.md)保留原结果。随后按明确授权正常不保存关闭旧实例，使用固定产品02e5099完成[同一保存工程的新一轮真实MCP复验](docs/resident-build-scalar-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告、独立读回通过，FALSE／声明／中文保持。原直接库保持，编译新增IecVarAccess系统依赖的实际安装件与保全证据通过；没有新增派生设备。当轮IDE72140、MCP67608、驱动71748保持打开，7秒／FALSE未保存；随后按明确授权不保存正常关闭并移交。新的[DSH内存编译任务](docs/dsh-resident-build-20261127.md)在读取未返回终态时发起额外查询，因PENDING_UNKNOWN冲突停止，三项原生读取成功、0修改／0编译。该时点IDE24836、MCP72960、SDK61000及驱动22724保持打开，内存和磁盘均为5秒／FALSE；当轮仅补修说明。随后按明确授权完成[替身线传修正、串行补证及同一连接的一次新真实任务](docs/dsh-resident-sequence-recheck-20261127.md)：5秒→7秒、一次内存编译0错误／0警告和独立读回通过，FALSE／声明／中文保持。该时点原四个进程保持打开，7秒未保存，主文件哈希不变，autosave等附属变化单列；随后获准不保存关闭并完成移交，新观察的导入失败及当前现场见[补修记录](docs/resident-save-observer-import-recheck.md)。39次状态查询及5次本轮原操作reconcile保留，不含历史查询。前三次替身的首败、审计过窄及独立补证均保留，不重写旧任务。0.39及其他未验范围不变。
 从[简明使用指南](docs/getting-started.md)开始；查能力看下方[已交付功能](#已完成功能main)，查剩余主线看[未完成事项](#未完成功能与计划阶段)和[38 项工具范围核对](docs/mcp-scope-status.md)。直接编辑指定文件，工程比较仅按用户要求执行，显式旧副本接口兼容保留。
 
 **同一工程连续操作已接入候选产品，真实 MCP 两轮分别授权的修改及独立读回通过；DSH 两轮分别提交的工程任务也已通过；两轮原实例随后已按授权关闭，当前0.41内存编译复验及保留实例见上段。** [第一轮](docs/resident-mcp-round1-passed-20261126.md)将 `ProbeDelay` 从5秒改为7秒；[第二轮](docs/resident-mcp-round2-passed-20261126.md)复用同一 IDE／服务，只将 `ProbeEnable := FALSE` 改为 `TRUE`，保留7秒和两条中文注释。两轮当时保持打开、未保存或编译；随后经明确授权不保存正常关闭，移交到下述DSH新实例。此前[首查版本冲突](docs/resident-mcp-first-round-20261126.md)、[根 ST PROGRAM 识别缺口及补修](docs/resident-st-parts-fix.md)、[旧会话完成证明兼容补修](docs/resident-closed-proof-compatibility.md)保留原结果，不用本次成功覆盖。新推荐流程显式使用 `project_open(sessionMode="resident")`，随后每条独立指令读取当前内存并按版本修改。原0.40首批迁移 `object_list`、`object_read` 和普通根ST POU实现区的 `code_apply_change`；本轮另加入下述内存编译，其他工程工具仍拒绝。省略模式或显式batch仍保留旧行为，不代表旧38项工具全部支持保持打开。详见[接口、迁移清单及停止条件](docs/resident-mcp-session.md)。
 
 [DSH连续客户端准备](docs/dsh-resident-continuous-preparation.md)已确认安装版官方SDK常驻入口，并完成同一进程、同一会话、同一正式测试MCP连接的两轮无工程模型预检。随后完成[DSH第一轮工程实测](docs/dsh-resident-round1-20261126.md)：一次模型任务、一次5秒→7秒修改及独立读回，FALSE／声明／中文保持。随后另获明确指令的[DSH第二轮](docs/dsh-resident-round2-20261126.md)在同一会话、连接及IDE将FALSE改为TRUE，保留7秒及原文并独立读回。当轮SDK14220、服务68004、IDE67788保持打开，未保存／编译／关闭，未发送第三轮；随后依本轮维护授权正常关闭IDE并完成旧服务移交，原两轮结论保持。原初始化Schema取证首败、发现连接及两轮分别24／18次状态查询单列，未改日常入口。
 
-原[第一轮](docs/resident-round1-utf8-recheck.md)和[同实例第二轮](docs/resident-round2-utf8-recheck.md)属于固定诊断器；当时两条中文注释未保存，接收器已停止。诊断实例随后按授权不保存正常关闭；未由新产品接管。诊断成功不能替代正式MCP/DSH连续会话验收；[早期乱码失败](docs/resident-round1-20261126.md)、[加载补修](docs/resident-loader-utf8-fix.md)和[生命周期设计](docs/resident-project-lifecycle-plan.md)保留原时点。0.40原受验产品不编译；2026-11-26的0.41原编译完成但保全未通过，2026-11-27首次复验为编译派发前停止，随后上述新一轮内存编译及保全通过；当前仍保持新实例、不保存、不关闭、不支持跨客户端恢复；用户手动源码修改须重读，无法解释的磁盘变化或原句柄关闭则停止，不覆盖。
+原[第一轮](docs/resident-round1-utf8-recheck.md)和[同实例第二轮](docs/resident-round2-utf8-recheck.md)属于固定诊断器；当时两条中文注释未保存，接收器已停止。诊断实例随后按授权不保存正常关闭；未由新产品接管。诊断成功不能替代正式MCP/DSH连续会话验收；[早期乱码失败](docs/resident-round1-20261126.md)、[加载补修](docs/resident-loader-utf8-fix.md)和[生命周期设计](docs/resident-project-lifecycle-plan.md)保留原时点。0.40原受验产品不编译；2026-11-26的0.41原编译完成但保全未通过，2026-11-27首次复验为编译派发前停止，随后上述新一轮内存编译及保全通过；该历史时点保持新实例、不保存、不关闭、不支持跨客户端恢复；用户手动源码修改须重读，无法解释的磁盘变化或原句柄关闭则停止，不覆盖。
 
 本分支另含[退出观察与命令行收尾维护](docs/exit-observation-maintenance.md)及[工程影响范围补修与独立复验](docs/struct-field-recheck-20261125.md)：正常只读打开、任务读取及服务EOF退出通过；随后新夹具创建缺少IDE退出回执而保持unknown，正式字段新增与CLI未执行。原准备unknown及封存工程保持；[取消关闭链路的诊断](docs/native-close-cancel-diagnosis.md)按原证据保留，自动 FileExit 就绪诊断现已暂停，不改判原操作。
 
@@ -18,7 +24,7 @@
 
 当前执行路线及范围变更规则统一见 [agent.md 前部](agent.md#当前路线与范围变更规则)。文档合并已完成，当前实施常驻MCP首批迁移，同时保留尚未验收的 S4b 普通结构体 DUT 新增字段：仅根普通结构体，新增无初值 BOOL／DINT／TIME 字段，保留既有字段顺序与原文；复杂声明拒绝。验收与剩余边界见[专用说明](docs/struct-field-add.md)。不表示 S4b 全部完成。
 
-日常 DSH 配置已指向 0.38.0 固定构建，已有独立连接的版本和 38 项工具证据；**Desktop 最终日常连接及完整指令进入模型上下文未验证**。Codex 沿用其独立配置，不随 main 自动升级。详见[入口与证据口径](docs/fb-interface-initializer-0380-merge.md)。
+原0.38.0部署时，日常 DSH 配置指向该固定构建，已有独立连接的版本和 38 项工具证据；**Desktop 最终日常连接及完整指令进入模型上下文未验证**。Codex 沿用其独立配置，不随 main 自动升级。详见[入口与证据口径](docs/fb-interface-initializer-0380-merge.md)。
 
 <details>
 <summary>各阶段交付与历史验收记录（按原时点保留，旧入口与“本分支”不是当前部署状态）</summary>
@@ -170,7 +176,7 @@ DSH 欢迎页／认证、CLI 接入、转储诊断和采证属于辅助维护；
 
 1. 阅读[安装与日常使用](docs/getting-started.md)，确认环境和直接编辑指定工程的使用方式。
 2. 选择一个客户端：[DSH 接入](docs/getting-started.md#接入-dsh)或 [Codex 固定版本接入](docs/codex-integration.md)。已有部署沿用原登记数据目录；一次只允许一个客户端占用工程服务。
-3. 在客户端指定 `.project` 文件或提供完整路径，说明需求与保留项。候选使用[常驻连续流程](docs/resident-merge-preparation.md#推荐使用与兼容边界)，不自动保存关闭；明确选择 batch 时才按[修改与持久化闭环](docs/getting-started.md#日常修改闭环)执行。未迁移工具不能在resident中自动降级；指南中的[只读解释](docs/getting-started.md#首次试用)示例保留其batch范围。
+3. 在客户端指定 `.project` 文件或提供完整路径，说明需求与保留项。本分支候选使用[修改后自动保存流程](docs/resident-autosave.md)，实际修改读回后保存原路径并保持打开（尚未真实验收或部署）；明确选择 batch 时才按[修改与持久化闭环](docs/getting-started.md#日常修改闭环)执行。未迁移工具不能在resident中自动降级；指南中的[只读解释](docs/getting-started.md#首次试用)示例保留其batch范围。
 4. 遇到运行中、冲突、unknown 或冻结，按[停止与保全](docs/getting-started.md#停止与保全)处理。切换客户端先走[正常服务移交](docs/startup-handoff.md#正常移交步骤与停止条件)，保留用户输入，确认原服务退出。
 
 ### 已验综合流程
@@ -191,7 +197,7 @@ DSH 欢迎页／认证、CLI 接入、转储诊断和采证属于辅助维护；
 
 客户端使用前先核对实际服务版本及工具清单。DSH 的固定构建须正常部署后才生效；Codex 当前固定入口仍为 0.16.0／21 项工具，需要单独升级、正常移交和验收，不能直接使用本页新增的全部能力。
 
-推荐连续交互使用显式 `project_open(projectPath, sessionMode="resident")`：指定文件和需求 → 必要读取定位 → 同句柄修改与读回 → 用户要求时内存编译 → 保持打开且不自动保存。当前仅支持[已迁移工具和根普通ST POU实现区](docs/resident-mcp-session.md)；`variable_edit` 等未迁移工具在resident中拒绝，不自动切换模式。省略模式或显式batch仍保留原保存重开行为。手动编辑／保存后的继续请求兼容、跨客户端接续及其余工具迁移尚待独立验收。不默认通读全工程或做前后比较；只有明确要求才用 `project_compare`。版本、检查点、去重和unknown停止保护保持；检查点不是交付副本。
+推荐连续交互使用显式 `project_open(projectPath, sessionMode="resident")`：指定文件和需求 → 必要读取定位 → 同句柄修改与读回 → 自动保存原路径并核对 → 按明确请求内存编译 → 保持打开。本分支候选仅支持[已迁移工具和根普通ST POU实现区](docs/resident-autosave.md)；`variable_edit` 等未迁移工具在resident中拒绝，不自动切换模式。省略模式或显式batch仍保留原保存重开行为。只读／无修改不保存；保存包含当前工程全部未保存内容。无本服务回执的外部保存仍停止；跨客户端内存接续及其他工具迁移未交付。日常入口仍为0.38.0，本分支尚未部署。不默认通读全工程或做前后比较；只有明确要求才用 `project_compare`。版本、检查点、去重和unknown停止保护保持；检查点不是交付副本。
 
 0.16.0 的验证结果与下列旧版本证据分别记录，固定客户端不会因仓库版本变化自动升级。
 
@@ -244,4 +250,4 @@ CmpLog 警告及相关越界/除零诊断日志限制仍在；0.16.0 MCP/DSH 两
 
 S4a 及 S4b 前两个限定子阶段已合并不代表 S4 整体完成；S4b 其余范围、S5–S8 以及 S9a／S9b／S9c 的状态见上方[阶段计划](#未完成功能与计划阶段)。本页状态更新不触发工程操作、客户端部署或在线设备连接。
 
-连续工程诊断的后续记录：[旧新建操作范围判定与五请求适配](docs/resident-creation-scope-validation.md)。产品迁移、默认不保存生命周期及实际验收按文中证据分别说明。
+连续工程诊断的后续记录：[旧新建操作范围判定与五请求适配](docs/resident-creation-scope-validation.md)。当时的产品迁移、默认不保存生命周期及实际验收按文中证据分别说明；当前候选见上方自动保存入口。

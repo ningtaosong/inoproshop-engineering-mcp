@@ -1,10 +1,12 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import {promises as fs} from 'node:fs';import path from 'node:path';import os from 'node:os';import {randomUUID} from 'node:crypto';
 import {ResidentChannel,residentDependencies as deps,residentHash as hash,residentObject,verifyResidentResult} from '../dist/resident.js';
+import {SAVE_POLICY,saveReady} from '../dist/resident-save.js';
 import {ServiceLifecycle,releaseObservedLease} from '../dist/service-lifecycle.js';
 import {buildConservation,buildSourceVersion,checkedDiagnostics} from '../dist/resident-build.js';
 import {verifyClosedResident,closedApplicationBinding} from '../dist/resident-reopen.js';
 import {EngineeringService} from '../dist/service.js';import {digest,readJson} from '../dist/storage.js';import {exclusiveJson} from '../dist/exit-journal.js';import {schemas,outputSchemas,VERSION} from '../dist/contracts.js';
 import {waitForOperation} from './operation-wait.mjs';
+import {statusWire} from './status-wire-helper.mjs';
 const APP='10000000-0000-4000-8000-000000000001',OBJ='20000000-0000-4000-8000-000000000001',ST='3b83b776-fb25-43b8-99f2-3c507c9143fc',POU='6f9dac99-8de1-4efc-8465-68ac443b7d08';
 function state(file){const row=(id,parent,name,type,d,i)=>({objectId:id,applicationId:APP,parentId:parent,path:parent?['Application',name]:['Application'],nativeTypeId:type,declaration:d,implementation:i,embeddedObjectTypes:i===null?[]:[ST]});return {projectPath:file,projectHandle:0,thread:9,applications:[APP],openedProjects:{'0':{handle:0,path:file,library:false,primary:true}},nodes:{[APP]:row(APP,null,'Application',APP,null,null),[OBJ]:row(OBJ,APP,'Logic',POU,'PROGRAM Logic\nVAR\nx: DINT;\nEND_VAR','x := 1; // 中文')}};}
 test('archived native declaration and ST pair is a supported root PROGRAM',async()=>{
@@ -14,7 +16,7 @@ test('archived native declaration and ST pair is a supported root PROGRAM',async
 async function fixture(t,{omitApplication=false}={}){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'InoPro resident ')),file=path.join(root,'case.project');await fs.writeFile(file,'fixed project');
  const identity={version:1,platform:process.platform,host:os.hostname().toLowerCase(),pid:12345,startId:'987654321'};
- const n={state:state(file),writes:0,builds:0,requests:[],launches:0,fault:null,child:null,loops:[],running:true};
+ const n={state:state(file),writes:0,saves:0,builds:0,requests:[],launches:0,fault:null,child:null,loops:[],running:true};
  const config={dataDir:path.join(root,'data'),executable:process.execPath,profile:'InoProShop(V1.9.1.6)',noUI:false,timeoutMs:1000,responseWaitMs:5000,testMode:true};
  const spawnHook=(_e,_a,options)=>{
   n.launches++;const child=new EventEmitter();child.pid=identity.pid;n.child=child;
@@ -34,10 +36,41 @@ async function fixture(t,{omitApplication=false}={}){
     if(req.command==='change'){
      if(req.args.expectedResidentVersion!==version){status='conflict';Object.assign(data,{firstError:{dispatched:false},secondaryErrors:[],recoverableRejection:true});}
      else {
-      await put('checkpoint.json',{request:req,state:before,diskHash:req.diskHash,residentVersion:version});await put('predispatch.json',{state:before,diskHash:req.diskHash});await put('dispatch.json',{operationId:req.operationId,requestId:req.requestId,action:'replace-implementation'});
-      n.state.nodes[OBJ].implementation=req.args.implementation;n.writes++;if(n.fault==='after-embedded')n.state.nodes[OBJ].embeddedObjectTypes=[ST];const after=structuredClone(n.state),actual=deps(after);
-      await put('after.json',{state:after,diskHash:req.diskHash});await put('verification.json',{equal:true,expected:actual,actual});
-      Object.assign(data,{snapshot:hash(actual),residentVersion:hash({dependencies:actual,diskHash:req.diskHash}),memoryModified:true,memoryEditsInSession:n.writes,persistedToProject:false});
+      await put('checkpoint.json',{request:req,state:before,diskHash:req.diskHash,residentVersion:version});await put('predispatch.json',{state:before,diskHash:req.diskHash});
+      if(req.args.implementation===before.nodes[OBJ].implementation){
+       await put('no-op.json',{requestHash:hash(req),stateHash:hash(d),unchanged:true});Object.assign(data,{noOp:true,persistedToProject:false,persistedToWorkingCopy:false});
+      }else{
+       await put('dispatch.json',{operationId:req.operationId,requestId:req.requestId,action:'replace-implementation'});
+       n.state.nodes[OBJ].implementation=req.args.implementation;n.writes++;if(n.fault==='after-embedded')n.state.nodes[OBJ].embeddedObjectTypes=[ST];const after=structuredClone(n.state),actual=deps(after);
+       await put('after.json',{state:after,diskHash:req.diskHash});await put('verification.json',{equal:true,expected:actual,actual});
+       if(n.beforeSave)await n.beforeSave(req);
+       const ready=saveReady(req,after);await put('save-ready.json',ready);
+       let authorization;const deadline=Date.now()+1500;
+       while(!(authorization=await readJson(path.join(req.directory,'save-authorization.json')))){
+        if(Date.now()>deadline||await readJson(path.join(intent.directory,'stop.json')))return;
+        await new Promise(r=>setTimeout(r,5));
+       }
+       const call={requestHash:hash(req),authorizationHash:hash(authorization),projectHandle:after.projectHandle,projectPath:after.projectPath,method:'ScriptProject.save',attempt:1};await put('save-call.json',call);n.saves++;
+       if(n.fault==='save-throw'){status='unknown';Object.assign(data,{firstError:{dispatched:true,message:'native save fault'},secondaryErrors:[],recoverableRejection:false,saveOutcome:'unconfirmed',saveCalls:1});}
+       else{
+        if(n.fault!=='save-unchanged'){
+         if(n.replaceFile)await fs.rename(file,file+'.previous-'+n.saves);
+         await fs.writeFile(file,JSON.stringify(n.state));
+        }
+        const returned={requestHash:hash(req),callHash:hash(call),returned:true};if(n.fault!=='save-return-missing')await put('save-returned.json',returned);
+        const newHash=digest(await fs.readFile(file)),first={state:structuredClone(n.state),dirtyBefore:false,dirtyAfter:false,diskHash:newHash},second=structuredClone(first);
+        if(n.fault==='save-dirty')second.dirtyAfter=true;
+        if(n.fault==='save-missing-dirty')delete first.dirtyBefore;
+        if(n.fault==='save-dirty-type')first.dirtyBefore=0;
+        if(n.fault==='save-read-mismatch')second.state.nodes[OBJ].implementation='unrequested';
+        if(n.fault==='save-hash-unstable')second.diskHash='c'.repeat(64);
+        await put('save-read-first.json',first);await put('save-read-second.json',second);
+        const receipt={scheme:SAVE_POLICY,requestHash:hash(req),callHash:hash(call),returnedHash:hash(returned),firstReadHash:hash(first),secondReadHash:hash(second),beforeDiskHash:req.diskHash,afterDiskHash:newHash,projectHandle:after.projectHandle,projectPath:after.projectPath,snapshot:hash(actual),scope:'all current unsaved project contents',reopened:false};
+        if(n.fault!=='save-receipt-missing')await put('save-receipt.json',receipt);
+        Object.assign(data,{snapshot:hash(actual),residentVersion:hash({dependencies:actual,diskHash:newHash}),diskHash:newHash,memoryModified:true,memoryEditsInSession:n.writes,persistedToProject:true,persistedToWorkingCopy:false,saved:true,saveCalls:1,saveReceipt:receipt});
+        if(n.onSaved)await n.onSaved(req,data);
+       }
+      }
      }
     }
     if(req.command==='build'){
@@ -76,7 +109,7 @@ async function fixture(t,{omitApplication=false}={}){
  const channel=new ResidentChannel(config,path.resolve('.'),{spawn:spawnHook,probe:async()=>n.running?{state:'running',identity}:{state:'exited'},occupancy:async()=>{}});
  const adapter={residentOwned:()=>channel.owned(),executeResident:(...a)=>channel.execute(...a),execute:()=>{throw Error('Forbidden batch fallback');},reconcile:()=>{throw Error('Forbidden exit reconcile');}};
  const service=new EngineeringService(config,adapter);
- t.after(async()=>{n.loops.forEach(clearInterval);if(n.child&&n.running){n.running=false;n.child.emit('exit',0,null);}await channel.observe();await service.store.release();});
+ t.after(async()=>{n.loops.forEach(clearInterval);if(n.child&&n.running){n.running=false;n.child.emit('exit',0,null);}await channel.observe();if(n.retainChangedLease)await assert.rejects(service.store.release(),e=>e.code==='LOCK_CHANGED');else await service.store.release();});
  const done=r=>waitForOperation(service.call.bind(service),r);
  const call=async(name,args)=>{try{return await done(await service.call(name,args));}catch(e){if(typeof e.status!=='string'||typeof e.code!=='string')throw e;return {status:e.status,error:{code:e.code,message:e.message}};}};
  const opened=await call('project_open',{requestId:'open',projectPath:file,...(omitApplication?{}:{applicationId:APP}),sessionMode:'resident'});assert.equal(opened.status,'succeeded',JSON.stringify(opened));const target={projectId:opened.data.session.projectId,applicationId:APP,targetKind:'application'};
@@ -84,9 +117,9 @@ async function fixture(t,{omitApplication=false}={}){
  const change=(r,requestId,implementation='x := 8; // 改动')=>call('code_apply_change',{...target,objectId:OBJ,requestId,expectedHash:r.data.contentHash,expectedResidentVersion:r.data.residentVersion,declaration:r.data.declaration,implementation});
  return {root,file,n,config,channel,service,call,target,read,change,opened};
 }
-test('resident service: five independent edits, same owned process/handle, no saves and request dedup',async t=>{
- const f=await fixture(t),original=await fs.readFile(f.file);for(let i=0;i<5;i++){const r=await f.read(),text=`x := ${i+2}; // 中文`;const changed=await f.change(r,'change-'+i,text);assert.equal(changed.status,'succeeded',JSON.stringify(changed));assert.equal(changed.data.saved,false);assert.equal(changed.data.reopened,false);assert.equal((await f.change(r,'change-'+i,text)).operationId,changed.operationId);assert.equal((await f.read()).data.implementation,text);}
- assert.equal(f.n.launches,1);assert.equal(f.n.writes,5);assert.deepEqual(await fs.readFile(f.file),original);assert.equal(f.n.requests.length,16);assert.equal(f.n.error,undefined);
+test('resident service: five independent edits, same owned process/handle, one save per modification and request dedup',async t=>{
+ const f=await fixture(t),original=await fs.readFile(f.file);for(let i=0;i<5;i++){const r=await f.read(),text=`x := ${i+2}; // 中文`;const changed=await f.change(r,'change-'+i,text);assert.equal(changed.status,'succeeded',JSON.stringify(changed));assert.equal(changed.data.saved,true);assert.equal(changed.data.reopened,false);assert.equal((await f.change(r,'change-'+i,text)).operationId,changed.operationId);assert.equal((await f.read()).data.implementation,text);}
+ assert.equal(f.n.launches,1);assert.equal(f.n.writes,5);assert.notDeepEqual(await fs.readFile(f.file),original);assert.equal(f.n.requests.length,16);assert.equal(f.n.error,undefined);
 });
 test('resident dispatched path: raw TEMP spelling follows owned intent through two edits',async t=>{
  const f=await fixture(t),original=await fs.readFile(f.file),canonical=await fs.realpath(f.file);
@@ -95,7 +128,7 @@ test('resident dispatched path: raw TEMP spelling follows owned intent through t
   const changed=await f.change(r,id,text);assert.equal(changed.status,'succeeded',JSON.stringify(changed));r=await f.read();assert.equal(r.data.implementation,text);
  }
  assert.equal(f.n.writes,2);assert.equal(f.n.launches,1);assert.equal(f.n.error,undefined);assert.equal(f.n.requests.length,6);
- assert.ok(f.n.requests.every(x=>x.projectPath===canonical));assert.deepEqual(await fs.readFile(f.file),original);
+ assert.ok(f.n.requests.every(x=>x.projectPath===canonical));assert.notDeepEqual(await fs.readFile(f.file),original);
 });
 test('resident dispatched path: genuinely different file snapshot still freezes without writing',async t=>{
  const f=await fixture(t),other=path.join(f.root,'different.project');await fs.copyFile(f.file,other);
@@ -116,7 +149,7 @@ for(const parts of [[ST],[VAR_DECL,ST],[ST,VAR_DECL]])test('resident service kno
  const listed=await f.call('object_list',{...f.target,offset:0,limit:50});assert.equal(listed.status,'succeeded',JSON.stringify(listed));assert.deepEqual(listed.data.objects[0].embeddedObjectTypes,parts);
  const r=await f.read();assert.equal(r.status,'succeeded');assert.deepEqual(r.data.embeddedObjectTypes,parts);
  const changed=await f.change(r,'known-st');assert.equal(changed.status,'succeeded',JSON.stringify(changed));assert.deepEqual(changed.data.embeddedObjectTypes,parts);
- const expected=structuredClone(before);expected.nodes[OBJ].implementation=changed.data.implementation;assert.deepEqual(f.n.state,expected);assert.equal(f.n.writes,1);assert.equal(changed.data.saved,false);assert.equal(changed.data.compileCalls,0);
+ const expected=structuredClone(before);expected.nodes[OBJ].implementation=changed.data.implementation;assert.deepEqual(f.n.state,expected);assert.equal(f.n.writes,1);assert.equal(changed.data.saved,true);assert.equal(changed.data.compileCalls,0);
 });
 for(const parts of [null,[],[VAR_DECL],[ST,ST],[ST,VAR_DECL,VAR_DECL],[ST,APP],[ST,VAR_DECL,APP],[ST,null],ST,[ST,VAR_DECL.toUpperCase()]])test('resident rejects incomplete/unknown/duplicate ST parts '+JSON.stringify(parts),()=>{const s=state('x');s.nodes[OBJ].embeddedObjectTypes=parts;assert.throws(()=>residentObject(s,OBJ,APP));});
 test('supported ST metadata change still invalidates old write version',async t=>{const f=await fixture(t),r=await f.read();f.n.state.nodes[OBJ].embeddedObjectTypes=[VAR_DECL,ST];assert.equal((await f.change(r,'metadata-stale')).status,'conflict');assert.equal(f.n.writes,0);});
@@ -196,6 +229,72 @@ test('closed resident proof accepts original legal initial open with inferred un
  const p=await verifyClosedResident(f.service.store,s,'new-explicit',async()=>({state:'exited'}));
  assert.equal(p.priorSessionId,s.sessionId);assert.equal(p.operationIds.length,1);assert.equal(f.n.launches,1);assert.equal(f.n.writes,0);assert.equal(Object.hasOwn(original.args,'applicationId'),false);
 });
+
+// Production query + production closed-session proof; the IDE is a synthetic
+// producer in fixture(), never a real process or a copy of a historical ledger.
+for(const defect of ['none','missing-exit','abnormal-exit','missing-request','changed-result','changed-disk','different-session','missing-anchor','duplicate-path','old-service-active','probe-unconfirmed','registry-concurrent'])test('resident query fresh-open evidence: '+defect,async t=>{
+ const f=await fixture(t);f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();await f.service.store.release();
+ const original=await f.service.store.session(),anchor=await f.service.store.operation(original.lastStateOperationId),dir=f.n.requests[0].directory;
+ const edit=async(p,fn)=>{const v=JSON.parse(await fs.readFile(p,'utf8'));fn(v);await fs.writeFile(p,JSON.stringify(v));};
+ if(defect==='missing-exit')await fs.unlink(path.join(f.n.intent.directory,'process-exit.json'));
+ if(defect==='abnormal-exit')await edit(path.join(f.n.intent.directory,'process-exit.json'),v=>v.code=17);
+ if(defect==='missing-request')await fs.unlink(path.join(dir,'request.json'));
+ if(defect==='changed-result')await edit(path.join(dir,'result.json'),v=>v.summary='unbound changed result');
+ if(defect==='changed-disk')await fs.appendFile(f.file,'external bytes');
+ if(['different-session','missing-anchor','duplicate-path'].includes(defect)){
+  const r=await f.service.store.registry();
+  if(defect==='different-session')r.projects[0].sessionId=randomUUID();
+  if(defect==='missing-anchor')delete r.projects[0].lastStateOperationId;
+  if(defect==='duplicate-path')r.projects.push({...r.projects[0],projectId:randomUUID(),sessionId:randomUUID()});
+  await f.service.store.put('registry.json',r);
+ }
+ let calls=0;const denied=async()=>{calls++;throw Error('No native request in query');};
+ const next=new EngineeringService(f.config,{residentOwned:()=>false,execute:denied,executeResident:denied,reconcile:denied},{probe:async pid=>
+  defect==='old-service-active'&&pid===anchor.ownerPid?{state:'running',identity:anchor.ownerIdentity}:defect==='probe-unconfirmed'?{state:'unconfirmed'}:{state:'exited'}});
+ if(defect==='registry-concurrent'){
+  let reads=0;const originalRead=next.store.registry.bind(next.store);
+  next.store.registry=async()=>{const r=await originalRead();r.revision+=++reads;return r;};
+ }
+ const tree=async dir=>{const out=[];for(const e of await fs.readdir(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory())out.push(...await tree(p));else out.push([p,hash(await fs.readFile(p))]);}return out.sort();};
+ const before=await tree(f.root),status=await statusWire(next);
+ let listed;
+ try{listed=await next.projects();}catch(e){assert.ok(['registry-concurrent','duplicate-path'].includes(defect));assert.equal(e.code,defect==='duplicate-path'?'CORRUPT_REGISTRY':'STATUS_EVIDENCE_CHANGED');}
+ if(defect==='none'){
+  const wireList=await statusWire(next,'project_list');assert.deepEqual(wireList,listed);
+  assert.equal(status.data.availability,'available');assert.equal(status.data.writeFrozen,false);
+  assert.equal(status.data.session.residentObservation.memoryAvailable,false);assert.equal(status.data.session.residentObservation.explicitOpenRequired,true);
+  assert.equal(status.data.session.residentObservation.priorSessionId,original.sessionId);
+  assert.equal(listed.data.projects[0].availability,'explicit-open-required');
+  const {residentObservation,...registration}=status.data.session;
+  assert.deepEqual(registration,original,'raw registration is retained, not rewritten as an active IDE');
+ }else if(defect==='registry-concurrent'){
+  assert.equal(status.status,'conflict');assert.equal(status.error.code,'STATUS_EVIDENCE_CHANGED');
+  assert.equal(status.data,undefined,'stale snapshot exposes no usable session or availability');
+ }else{
+  assert.equal(status.data.writeFrozen,true,defect);assert.notEqual(status.data.availability,'explicit-open-required');
+  if(listed)assert.ok(listed.data.projects.every(p=>p.writeFrozen===true));
+ }
+ assert.equal(calls,0);assert.deepEqual(await tree(f.root),before);
+});
+
+test('resident owned-channel status travels through the public MCP output contract without claiming memory verification',async t=>{
+ const f=await fixture(t),raw=await f.service.store.registry(),writes=f.n.writes,saves=f.n.saves;
+ const status=await statusWire(f.service),listed=await statusWire(f.service,'project_list');
+ assert.equal(status.status,'succeeded');assert.equal(status.data.availability,'available');assert.equal(status.data.writeFrozen,false);
+ assert.equal(status.data.session.residentObservation.state,'owned-channel');assert.equal(status.data.session.residentObservation.memoryHealthVerified,false);
+ assert.equal(listed.data.projects[0].residentObservation.memoryHealthVerified,false);
+ assert.deepEqual(await f.service.store.registry(),raw);assert.equal(f.n.writes,writes);assert.equal(f.n.saves,saves);
+});
+
+test('fresh-open query is not cached authorization when current disk subsequently changes',async t=>{
+ const f=await fixture(t);f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();await f.service.store.release();
+ let launches=0;const no=async()=>{launches++;throw Error('must not launch');};
+ const next=new EngineeringService(f.config,{residentOwned:()=>false,execute:no,executeResident:no,reconcile:no},{probe:async()=>({state:'exited'})});t.after(()=>next.store.release());
+ assert.equal((await statusWire(next)).data.session.residentObservation.explicitOpenRequired,true);
+ await fs.appendFile(f.file,'changed after query');
+ const r=await waitForOperation(next.call.bind(next),await next.call('project_open',{requestId:'fresh-open-after-disk-change',projectPath:f.file,applicationId:APP,sessionMode:'resident'}));
+ assert.equal(r.status,'conflict');assert.equal(r.error.code,'RESIDENT_RECONNECT_UNSUPPORTED');assert.equal(launches,0);
+});
 test('archived legal inferred Application projection retains original absence and matches published selection',async()=>{
  const f=JSON.parse(await fs.readFile(new URL('./fixtures/resident-inferred-open-20261126.json',import.meta.url),'utf8'));
  const before=JSON.stringify(f);assert.equal(Object.hasOwn(f.request.args,'applicationId'),false);assert.equal(closedApplicationBinding(f.operation,f.request,f.result,f.session),true);assert.equal(JSON.stringify(f),before);
@@ -238,7 +337,7 @@ for(const fault of ['none','live-ide','live-service','unconfirmed','missing-exit
 test('resident write completion missing remains unknown, duplicate and reconcile do not rewrite',async t=>{const f=await fixture(t),r=await f.read();f.n.fault='missing-completion';const changed=await f.change(r,'uncertain');assert.equal(changed.status,'unknown');assert.equal(f.n.writes,1);assert.equal((await f.change(r,'uncertain')).operationId,changed.operationId);await f.call('operation_status',{operationId:changed.operationId,reconcile:true});assert.equal(f.n.writes,1);});
 test('resident request timeout creates stop evidence, no automatic retry',async t=>{const f=await fixture(t);f.n.fault='timeout';assert.equal((await f.read()).error.code,'RESIDENT_TIMEOUT');assert.ok(await readJson(path.join(f.n.intent.directory,'stop.json')));assert.equal(f.n.writes,0);});
 test('resident lifecycle observer waits for real exit and does not request it',async t=>{const f=await fixture(t);let done=false;const pending=f.channel.observe().then(()=>done=true);await new Promise(r=>setTimeout(r,30));assert.equal(done,false);assert.equal(f.n.running,true);f.n.running=false;f.n.child.emit('exit',0,null);await pending;assert.equal(done,true);});
-test('resident input contract: explicit mode, version only additive; no new tools',()=>{assert.equal(VERSION,'0.41.0');assert.equal(Object.keys(schemas).length,38);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x'}).sessionMode,undefined);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x',sessionMode:'resident'}).sessionMode,'resident');assert.equal(Object.keys(outputSchemas).length,38);});
+test('resident input contract: explicit mode, version only additive; no new tools',()=>{assert.equal(VERSION,'0.42.0');assert.equal(Object.keys(schemas).length,38);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x'}).sessionMode,undefined);assert.equal(schemas.project_open.parse({requestId:'x',projectPath:'x',sessionMode:'resident'}).sessionMode,'resident');assert.equal(Object.keys(outputSchemas).length,38);});
 for(const change of ['wrong-app','not-root','mixed-st','child','wrong-header','wrong-type'])test('independent native whitelist rejects '+change,()=>{const s=state('x');if(change==='wrong-app')s.nodes[OBJ].applicationId=OBJ;if(change==='not-root')s.nodes[OBJ].parentId=null;if(change==='mixed-st')s.nodes[OBJ].embeddedObjectTypes.push(APP);if(change==='child')s.nodes.extra={parentId:OBJ};if(change==='wrong-header')s.nodes[OBJ].declaration='PROGRAM Another';if(change==='wrong-type')s.nodes[OBJ].nativeTypeId=APP;assert.throws(()=>residentObject(s,OBJ,APP));});
 for(const event of ['spawn-error','immediate-exit','close-without-exit'])test('resident early process event is observed: '+event,async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'Resident early ')),file=path.join(root,'case.project');await fs.writeFile(file,'fixture');
@@ -261,7 +360,7 @@ test('all main 0.38 inputs remain exact after only documented optional resident 
 
 for(const mutate of [s=>s.openedProjects['0'].handle=2,s=>s.openedProjects['0'].primary='true',s=>s.thread=null,s=>s.nodes[OBJ].declaration=4,s=>s.applications.push(APP)])test('malformed ownership/source coverage never produces dependency version',()=>{const s=state('x');mutate(s);assert.throws(()=>deps(s));});
 
-test('resident service build binds unsaved memory and later change invalidates lastBuild, dedup compiles once',async t=>{
+test('resident service build binds current memory and later change invalidates lastBuild, dedup compiles once',async t=>{
  const f=await fixture(t),disk=await fs.readFile(f.file);const changed=await f.change(await f.read(),'change-before-build','x := 7; // 未保存');assert.equal(changed.status,'succeeded');
  const args={...f.target,requestId:'memory-build',expectedResidentVersion:changed.data.residentVersion};
  const built=await f.call('project_build',args);assert.equal(built.status,'succeeded',JSON.stringify(built));assert.equal(built.data.buildPassed,true);assert.equal(built.data.buildEvidenceScope,'resident-memory');
@@ -269,7 +368,7 @@ test('resident service build binds unsaved memory and later change invalidates l
  assert.equal((await f.call('project_build',args)).operationId,built.operationId);assert.equal(f.n.builds,1);
  assert.equal((await f.read()).data.implementation,changed.data.implementation);
  assert.equal((await f.change(await f.read(),'next-memory-change','x := 8;')).status,'succeeded');assert.equal((await f.service.store.session()).buildApplicable,false);
- assert.deepEqual(await fs.readFile(f.file),disk);assert.equal(f.n.launches,1);assert.equal(f.n.running,true);
+ assert.notDeepEqual(await fs.readFile(f.file),disk);assert.equal(f.n.saves,2);assert.equal(f.n.launches,1);assert.equal(f.n.running,true);
 });
 test('resident service compiler errors are succeeded with failed build, allow later authorized correction',async t=>{
  const f=await fixture(t);f.n.fault='compiler-error';const r=await f.call('project_build',{...f.target,requestId:'bad-source-build',expectedResidentVersion:(await f.read()).data.residentVersion});
@@ -293,4 +392,74 @@ for(const fault of ['foreign-project','build-input-change','source-change','diag
  const f=await fixture(t),read=await f.read();f.n.fault=fault;const args={...f.target,requestId:'build-fault',expectedResidentVersion:read.data.residentVersion},r=await f.call('project_build',args);
  assert.equal(r.status,'unknown',JSON.stringify(r));assert.equal((await f.call('project_build',args)).operationId,r.operationId);assert.equal((await f.call('operation_status',{operationId:r.operationId,reconcile:true})).status,'unknown');const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.builds,1);
  if(!['missing-completion','exit'].includes(fault))assert.ok((await readJson(path.join(f.config.dataDir,'ipc',r.operationId,'service-verification-failed.json')))?.firstError);
+});
+
+async function protectedFiles(f){
+ const s=await f.service.store.session(),op=await f.service.store.operation(f.opened.operationId);
+ return Object.fromEntries(await Promise.all([path.join(f.n.intent.directory,'intent.json'),f.service.store.file('service.lock'),f.service.store.sourceLock(s.sourcePath),f.service.store.file('operations/'+op.operationId+'.json'),path.join(op.bridge.directory,'request.json')].map(async p=>[p,digest(await fs.readFile(p))])));
+}
+for(const replaceFile of [false,true])test('autosave own file version chain permits second change and explicit fresh open: '+replaceFile,async t=>{
+ const f=await fixture(t),old=await f.service.store.session(),prior=await protectedFiles(f);f.n.replaceFile=replaceFile;
+ for(const [i,text]of ['x := 7; // 中文','x := 8; // 中文'].entries()){
+  const r=await f.read(),result=await f.change(r,'auto-'+i,text);assert.equal(result.status,'succeeded',JSON.stringify(result));
+  assert.equal(result.data.saved,true);assert.equal(result.data.saveCalls,1);assert.equal(result.data.reopened,false);
+  const op=await f.service.store.operation(result.operationId),receipt=await readJson(path.join(op.bridge.directory,'saved-registration-committed.json'));
+  assert.equal(receipt.sourceHash,old.sourceHash);assert.equal(receipt.diskHash,digest(await fs.readFile(f.file)));
+  assert.equal((await f.change(r,'auto-'+i,text)).operationId,result.operationId);assert.equal(f.n.saves,i+1);
+ }
+ assert.deepEqual(await protectedFiles(f),prior);assert.equal(f.n.launches,1);
+ f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();
+ const proof=await verifyClosedResident(f.service.store,await f.service.store.session(),'new-open',async()=>({state:'exited'}));assert.equal(proof.saveVersionChain.length,2);
+ assert.equal(proof.diskHash,digest(await fs.readFile(f.file)));
+});
+test('autosave no-op keeps unsaved user memory and disk unchanged, saves zero',async t=>{
+ const f=await fixture(t);f.n.state.nodes[OBJ].implementation='user unsaved content';const r=await f.read(),disk=await fs.readFile(f.file);
+ const no=await f.change(r,'noop',r.data.implementation);assert.equal(no.status,'succeeded',JSON.stringify(no));assert.equal(no.data.noOp,true);assert.equal(no.data.saved,false);
+ assert.equal(f.n.writes,0);assert.equal(f.n.saves,0);assert.deepEqual(await fs.readFile(f.file),disk);
+});
+for(const fault of ['save-throw','save-unchanged','save-dirty','save-missing-dirty','save-dirty-type','save-read-mismatch','save-hash-unstable','save-return-missing','save-receipt-missing','missing-completion','exit'])test('autosave incomplete evidence freezes without repeat '+fault,async t=>{
+ const f=await fixture(t),r=await f.read(),prior=await protectedFiles(f);f.n.fault=fault;
+ const result=await f.change(r,'save-failure');assert.equal(result.status,'unknown',JSON.stringify(result));assert.equal(f.n.writes,1);assert.equal(f.n.saves,1);
+ assert.deepEqual(await protectedFiles(f),prior);const count=f.n.requests.length;
+ assert.equal((await f.change(r,'save-failure')).operationId,result.operationId);await f.read();assert.equal(f.n.requests.length,count);
+ const op=await f.service.store.operation(result.operationId);await f.call('operation_status',{operationId:result.operationId,reconcile:true});assert.deepEqual(await f.service.store.operation(result.operationId),op);
+});
+for(const mutation of ['bytes','same-bytes-replacement','mtime','lease'])test('autosave pre-save external change blocks actual save '+mutation,async t=>{
+ const f=await fixture(t),r=await f.read();f.n.beforeSave=async()=>{
+  if(mutation==='bytes')await fs.appendFile(f.file,'outside');
+  if(mutation==='same-bytes-replacement'){const b=await fs.readFile(f.file);await fs.rename(f.file,f.file+'.outside');await fs.writeFile(f.file,b);}
+  if(mutation==='mtime')await fs.utimes(f.file,new Date(0),new Date(10000));
+  if(mutation==='lease'){f.n.retainChangedLease=true;await fs.appendFile(f.service.store.sourceLock((await f.service.store.session()).sourcePath),' ');}
+ };
+ const result=await f.change(r,'external');assert.equal(result.status,'unknown',JSON.stringify(result));assert.equal(f.n.writes,1);assert.equal(f.n.saves,0);
+});
+for(const stage of ['registry-change','registry-publication','file-change','lease-change'])test('autosave result commit uncertainty cannot become success '+stage,async t=>{
+ const f=await fixture(t),r=await f.read();f.n.onSaved=async req=>{
+  if(stage==='registry-change'){const s=await f.service.store.session();s.extra='outside';await f.service.store.saveSession(s);}
+  if(stage==='registry-publication')await fs.mkdir(path.join(req.directory,'saved-registration-committed.json'));
+  if(stage==='file-change')await fs.appendFile(f.file,'outside');
+  if(stage==='lease-change'){f.n.retainChangedLease=true;await fs.appendFile(f.service.store.sourceLock((await f.service.store.session()).sourcePath),' ');}
+ };
+ const result=await f.change(r,'commit');assert.equal(result.status,'unknown',JSON.stringify(result));const count=f.n.requests.length;await f.read();assert.equal(f.n.requests.length,count);assert.equal(f.n.saves,1);
+});
+for(const fault of ['missing-save-return','missing-channel-receipt','changed-receipt','changed-commit','wrong-chain','unknown','stopped','file-replaced'])test('closed own-save chain rejects '+fault,async t=>{
+ const f=await fixture(t);f.n.replaceFile=true;const result=await f.change(await f.read(),'save-before-close');assert.equal(result.status,'succeeded');
+ const op=await f.service.store.operation(result.operationId),dir=op.bridge.directory;
+ f.n.running=false;f.n.child.emit('exit',0,null);await f.channel.observe();
+ if(fault==='missing-save-return')await fs.unlink(path.join(dir,'save-returned.json'));
+ if(fault==='missing-channel-receipt')await fs.unlink(path.join(dir,'saved-channel-accepted.json'));
+ for(const [name,file]of [['changed-receipt','saved-channel-accepted'],['changed-commit','saved-registration-committed']])if(fault===name){const p=path.join(dir,file+'.json'),v=await readJson(p);v.receiptHash='f'.repeat(64);await fs.writeFile(p,JSON.stringify(v));}
+ if(fault==='wrong-chain'){const p=path.join(dir,'request.json'),v=await readJson(p);v.fileIdentity='wrong';await fs.writeFile(p,JSON.stringify(v));}
+ if(fault==='unknown'){op.status='unknown';await f.service.store.saveOp(op);}
+ if(fault==='stopped')await fs.writeFile(path.join(f.n.intent.directory,'stop.json'),'{}');
+ if(fault==='file-replaced'){const b=await fs.readFile(f.file);await fs.rename(f.file,f.file+'.external');await fs.writeFile(f.file,b);}
+ await assert.rejects(verifyClosedResident(f.service.store,await f.service.store.session(),'future',async()=>({state:'exited'})),e=>e.code==='RESIDENT_RECONNECT_UNSUPPORTED');
+});
+
+test('autosave preserves and saves other current user-unsaved source without reverting it',async t=>{
+ const f=await fixture(t),other='20000000-0000-4000-8000-000000000002';
+ f.n.state.nodes[other]={...structuredClone(f.n.state.nodes[OBJ]),objectId:other,path:['Application','Other'],declaration:'PROGRAM Other',implementation:'(* 用户未保存的中文 *)'};
+ const old=structuredClone(f.n.state.nodes[other]);const result=await f.change(await f.read(),'save-all');assert.equal(result.status,'succeeded',JSON.stringify(result));
+ assert.deepEqual(f.n.state.nodes[other],old);const saved=JSON.parse(await fs.readFile(f.file,'utf8'));assert.deepEqual(saved.nodes[other],old);assert.equal(f.n.saves,1);
+ assert.equal(result.data.saveReceipt.scope,'all current unsaved project contents');
 });

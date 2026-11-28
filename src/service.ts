@@ -18,6 +18,10 @@ import {captureReply,captureSnapshot,compareReply,type Snapshot} from './compari
 import {isolationState,assertNotIsolated,maintenanceGuard} from './isolation.js';
 import {bindDirect,guardDirect} from './direct-project.js';
 import {verifyClosedResident} from './resident-reopen.js';
+import {explicitEarlyOpen} from './resident-early-open.js';
+import {residentHash} from './resident.js';
+import {savedRegistryBinding} from './resident-saved.js';
+import {verifyRegistrationPreserved} from './resident-save.js';
 import {reserveProject,guardNewPath,createdSession} from './project-create.js';
 import {taskCallInventoryDifference,taskCreateInventoryView,taskConfigurationVersion,validateTaskPatch,buildApplies,configuredIntervalMs,isTaskAppendCall,validReplacement,TASK_CONFIGURATION_SCHEME,TASK_CREATE_ST_IMPLEMENTATION_TYPE} from './task-config.js';
 import {residentBuildApplies} from './resident-build.js';
@@ -52,16 +56,26 @@ export class EngineeringService {
   private runningOperations=new Set<string>();
   constructor(readonly config: Config, readonly adapter: Adapter,private readonly pendingOptions:{probe?:ProcessProbe}={}) { this.store=new Store(config.dataDir); }
   private pending(exclude?:string){return assessPending(this.store,{...this.pendingOptions,owned:this.ownedOperations,running:this.runningOperations,exclude});}
+  // Shared observation of the EXISTING pending gate. This does not admit a
+  // request: queue, native dispatch, file and resident proofs still run there.
+  private async pendingBlockers(state:Awaited<ReturnType<typeof assessPending>>,tool:string,args:any,project?:Session) {
+    if(state.impacts.length===0)return [];
+    const pathMatches=tool==='project_open'&&args.sessionMode==='resident'&&typeof args.projectPath==='string'?state.registry.projects.filter(s=>s.sessionMode==='resident'&&pathKey(s.workingPath)===pathKey(args.projectPath)):[];
+    const s=(pathMatches.length===1?pathMatches[0]:undefined)??project??state.registry.projects.find(s=>s.projectId===args.projectId);
+    const paths=[args.projectPath,args.sourcePath,...(s?[s.sourcePath,s.workingPath]:[])].filter((p):p is string=>typeof p==='string');
+    return related(state.impacts,args.projectId??s?.projectId,await targetFiles(paths)).filter(i=>{
+      if(!i.earlyProof)return true;
+      if(explicitEarlyOpen(tool,args,i.earlyProof)){
+        const current=i.files.find(f=>f.key===pathKey(i.earlyProof!.projectPath));
+        if(current?.sha256===i.earlyProof.diskHash&&current?.fileId===i.earlyProof.fileId)return false;
+      }
+      return !(s&&s.sessionMode==='resident'&&i.continuedBy?.projectId===s.projectId&&i.continuedBy.sessionId===s.sessionId&&(args.projectId===s.projectId||tool==='project_open'&&args.sessionMode==='resident'&&pathKey(args.projectPath??'')===pathKey(s.workingPath)));
+    });
+  }
   private async guardPending(tool:string,args:any,exclude?:string,project?:Session) {
     try {
-    let state:Awaited<ReturnType<typeof assessPending>>;
-    state=await this.pending(exclude);
-    // With no unresolved ownership to match, leave path validation to the
-    // existing command path. Queue and native dispatch repeat this assessment.
-    if(state.impacts.length===0)return state;
-    const s=project??state.registry.projects.find(s=>s.projectId===args.projectId);
-    const paths=[args.projectPath,args.sourcePath,...(s?[s.sourcePath,s.workingPath]:[])].filter((p):p is string=>typeof p==='string');
-    const blocked=related(state.impacts,args.projectId??s?.projectId,await targetFiles(paths));
+    const state=await this.pending(exclude);
+    const blocked=await this.pendingBlockers(state,tool,args,project);
     if(blocked.length)throw new DomainError('conflict','PENDING_UNKNOWN',
       '未派发：'+blocked.map(b=>`${b.operationId} (${b.scope}): ${b.reason}`).join('; '));
     return state;
@@ -98,30 +112,67 @@ export class EngineeringService {
     try {
       return await this.observedStatus(await this.pending());
     } catch(e:any) {
+      if(e.code==='STATUS_EVIDENCE_CHANGED')return {...reply('conflict','状态读取期间记录已变化；本次快照作废，请重新查询，不据此派发工程请求'),error:{code:e.code,message:e.message}};
       return {...reply('unknown','持久化记录或维护状态无法确认，工程派发已全局冻结',{session:null,pending:[],writeFrozen:true,globalFrozen:true,availability:'global-frozen'}),error:{code:e.code || 'CORRUPT_RECORD',message:e.message}};
     }
   }
-  private async observedStatus(state:Awaited<ReturnType<typeof assessPending>>):Promise<Reply> {
+  private async observedProject(state:Awaited<ReturnType<typeof assessPending>>,s:Session) {
+    if(this.persistencePoison||state.globalFrozen)return {availability:'global-frozen',writeFrozen:true};
+    if(state.isolation.own.some(e=>e.plan.projectId===s.projectId))return {availability:'isolated',writeFrozen:true};
+    const owned=s.projectId===state.registry.activeProjectId&&!!this.adapter.residentOwned?.();
+    const unownedResident=s.sessionMode==='resident'&&!owned;
+    const args=unownedResident?{projectPath:s.workingPath,sessionMode:'resident'}:{projectId:s.projectId};
+    const blocked=await this.pendingBlockers(state,unownedResident?'project_open':'object_read',args,s);
+    if(blocked.length)return {availability:'unresolved',writeFrozen:true};
+    if(!unownedResident)return {availability:'available',writeFrozen:false,...(s.sessionMode==='resident'?{residentObservation:{state:'owned-channel',channelOwnedByThisService:true,memoryHealthVerified:false,semantics:'channel ownership only; every native request rechecks memory and file'}}:{})};
+    try {
+      const samePath=state.registry.projects.filter(p=>p.sessionMode==='resident'&&pathKey(p.workingPath)===pathKey(s.workingPath));
+      if(samePath.length!==1)throw new DomainError('conflict','RESIDENT_RECONNECT_UNSUPPORTED','Registered resident path is not unique');
+      // No request, lease or receipt is created. A later explicit project_open
+      // must independently repeat this real proof against the then-current bytes.
+      const proof=await verifyClosedResident(this.store,s,'status-observation',this.pendingOptions.probe);
+      return {availability:'explicit-open-required',writeFrozen:false,residentObservation:{state:'closed-saved-session',channelOwnedByThisService:false,memoryAvailable:false,
+        explicitOpenRequired:true,nextAction:'project_open',sessionMode:'resident',projectPath:s.workingPath,
+        priorSessionId:proof.priorSessionId,priorLaunchId:proof.priorLaunchId,anchorOperationId:proof.anchorOperationId,
+        diskHash:proof.diskHash,fileIdentity:proof.fileIdentity,proofHash:residentHash(proof),
+        semantics:'read-only fresh-open assessment; no live memory connection or permission to write; open must recheck'}};
+    } catch(e:any) {
+      return {availability:'unresolved',writeFrozen:true,residentObservation:{state:'unconfirmed',channelOwnedByThisService:false,memoryHealthVerified:false,
+        error:{code:e.code??'RESIDENT_RECONNECT_UNSUPPORTED',message:e.message??String(e)}}};
+    }
+  }
+  private async observationUnchanged(state:Awaited<ReturnType<typeof assessPending>>) {
+    await maintenanceGuard();
+    if(canonical(await this.store.registry())!==canonical(state.registry)||canonical(await this.store.operations())!==canonical(state.operations)||canonical(await isolationState(this.store))!==canonical(state.isolation))
+      throw new DomainError('conflict','STATUS_EVIDENCE_CHANGED','查询期间登记、操作或隔离证据变化；请重新查询，不使用旧状态派发');
+  }
+  private async observedStatus(state:Awaited<ReturnType<typeof assessPending>>,observations?:Map<string,Awaited<ReturnType<EngineeringService['observedProject']>>>):Promise<Reply> {
       const {registry,isolation}=state;
       const pending=state.operations.filter(o=>o.status==='running'||o.status==='unknown');
       const isolatedProjects=new Set(isolation.own.map(e=>e.plan.projectId));
       const globalFrozen=!!this.persistencePoison||state.globalFrozen;
       const current=registry.projects.find(s=>s.projectId===registry.activeProjectId);
-      const activeBlocked=!!current&&related(state.impacts,current.projectId,await targetFiles([current.sourcePath,current.workingPath])).length>0;
-      await maintenanceGuard();
-      return reply('succeeded',globalFrozen?'未决记录的影响范围或进程退出无法确认，暂停工程派发':activeBlocked?'当前工程有未决操作；明确无关工程可另行指定，原操作保持unknown':'会话状态',{session:current || null,
+      const observation=current?(observations?.get(current.projectId)??await this.observedProject(state,current)):undefined;
+      const activeBlocked=observation?.writeFrozen??false;
+      await this.observationUnchanged(state);
+      // Keep the published availability enum. Resident details extend the
+      // already-open session object, not the closed top-level output shape.
+      // A scoped unresolved state is expressed by writeFrozen and summary;
+      // it is neither globally frozen nor available for engineering work.
+      const availability=globalFrozen?'global-frozen':isolatedProjects.has(registry.activeProjectId)?'active-project-isolated':!activeBlocked?'available':undefined;
+      return reply('succeeded',globalFrozen?'未决记录的影响范围或进程退出无法确认，暂停工程派发':activeBlocked?'当前工程的未决操作或打开证据不足；暂停该工程派发，原操作保持unknown':observation?.availability==='explicit-open-required'?'登记会话已正常结束；当前没有可用内存连接，需明确 project_open 原保存文件并重新核对；旧 unknown 保持':'会话状态',{session:current?{...current,...(observation?.residentObservation?{residentObservation:observation.residentObservation}:{})}:null,
         pending:pending.map(o=>({operationId:o.operationId,requestId:o.requestId,tool:o.tool,status:o.status==='running'&&(!alive(o.ownerPid)||!!this.persistencePoison)?'unknown':o.status})),
         writeFrozen:globalFrozen||activeBlocked||isolatedProjects.has(registry.activeProjectId),globalFrozen,
-        ...(activeBlocked&&!globalFrozen&&!isolatedProjects.has(registry.activeProjectId)?{}:{availability:globalFrozen?'global-frozen':isolatedProjects.has(registry.activeProjectId)?'active-project-isolated':'available'}),
+        ...(availability?{availability}:{}),
         isolatedProjects:isolation.own.map(e=>({projectId:e.plan.projectId,operationIds:e.plan.operationIds,planId:e.plan.planId,committedAt:e.committedAt,sourcePath:e.plan.bindings[0].sourcePath,workingPath:e.plan.bindings[0].workingPath}))});
   }
   async projects():Promise<Reply> {
     const state=await this.pending(),r=state.registry;
-    const status=await this.observedStatus(state);
+    const observations=new Map(await Promise.all(r.projects.map(async s=>[s.projectId,await this.observedProject(state,s)] as const)));
+    const status=await this.observedStatus(state,observations);
     if(status.status!=='succeeded')return status;
     const isolated=(status.data!.isolatedProjects as any[]);
-    return reply('succeeded','已登记工程（只读，不打开 IDE）',{projects:await Promise.all(r.projects.map(async s=>({...s,projectPath:s.workingPath,name:path.basename(s.workingPath),active:s.projectId===r.activeProjectId,
-      availability:this.persistencePoison||state.globalFrozen?'global-frozen':isolated.some(e=>e.projectId===s.projectId)?'isolated':related(state.impacts,s.projectId,await targetFiles([s.sourcePath,s.workingPath])).length?'unresolved':'available'}))),
+    return reply('succeeded','已登记工程（登记或 active 标记不代表 IDE 正在运行；只读，不打开 IDE）',{projects:r.projects.map(s=>({...s,projectPath:s.workingPath,name:path.basename(s.workingPath),active:s.projectId===r.activeProjectId,...observations.get(s.projectId)})),
       activeProjectId:r.activeProjectId,writeFrozen:status.data!.writeFrozen,globalFrozen:status.data!.globalFrozen,isolatedProjects:isolated});
   }
   private async originalProject(op:Operation):Promise<Session> {
@@ -358,6 +409,14 @@ export class EngineeringService {
       const r=await this.store.registry();const s=r.projects.find(p=>p.projectId===op.project!.projectId);
       if(!s)throw new DomainError('unknown','PROJECT_RECORD_MISSING','无法提交原工程结果');
       if(s.lastStateOperationId!==op.operationId) {
+        if(op.resident&&op.tool==='code_apply_change'){
+          await this.store.acquire(s.sourcePath);
+          await assertNotIsolated(this.store,s.projectId,[s.sourcePath,s.workingPath]);
+          await this.guardPending(op.tool,op.args,op.operationId,s);
+          const original=await readJson(path.join(op.bridge!.directory,'saved-registration-before.json'));
+          const channel=await readJson(path.join(op.bridge!.directory,'saved-channel-accepted.json'));
+          verifyRegistrationPreserved(original,await savedRegistryBinding(this.store,s),result.data?.saved===true?channel?.afterDisk:original?.image);
+        }
         if(op.tool==='project_build')s.lastBuild={operationId:op.operationId,...result.data};
         if(result.data?.snapshot)s.snapshot=result.data.snapshot as string;
         if(result.data?.diskHash)s.diskHash=result.data.diskHash as string;
@@ -365,6 +424,7 @@ export class EngineeringService {
         if(result.data?.taskConfigurationVersion)s.taskConfigurationVersion=result.data.taskConfigurationVersion as string;
         s.buildApplicable=op.resident?residentBuildApplies(s,result.data):buildApplies(s,s);
         s.lastStateOperationId=op.operationId;await this.store.saveSession(s);
+        if(op.resident&&op.tool==='code_apply_change'&&result.data?.saved===true)await fs.writeFile(path.join(op.bridge!.directory,'saved-registration-committed.json'),JSON.stringify({operationId:op.operationId,requestId:op.requestId,projectId:s.projectId,sessionId:s.sessionId,sourceHash:s.sourceHash,diskHash:s.diskHash,residentVersion:s.residentVersion,receiptHash:residentHash(result.data?.saveReceipt),buildApplicable:s.buildApplicable}),{flag:'wx'});
       }
     }
     op.status=result.status; op.finishedAt=new Date().toISOString();
@@ -406,8 +466,17 @@ export class EngineeringService {
     await this.guardPending(op.tool,op.args,op.operationId,s);
     op.resident=true;op.bridge={directory:this.store.file('ipc/'+op.operationId)};
     op.dispatchFiles=await targetFiles([s.workingPath]);await this.store.saveOp(op);
+    const binding=command==='change'?await savedRegistryBinding(this.store,s):undefined;
+    if(binding){await fs.mkdir(op.bridge.directory,{recursive:true});await fs.writeFile(path.join(op.bridge.directory,'saved-registration-before.json'),JSON.stringify(binding,null,2),{flag:'wx'});}
     const residentLeases=await Promise.all([this.store.file('service.lock'),this.store.sourceLock(s.sourcePath)].map(async p=>({path:p,sha256:digest(await fs.readFile(p))})));
     const raw=await this.adapter.executeResident({operationId:op.operationId,requestId:op.requestId,requestFingerprint:op.fingerprint,command,projectPath:s.workingPath,args:{...args,residentLeases}},op.bridge.directory,async(pid,launchId)=>{op.bridge!.pid=pid;op.bridge!.launchId=launchId;await this.store.saveOp(op);});
+    if(binding&&raw.status==='succeeded'){
+      await this.store.acquire(s.sourcePath);await assertNotIsolated(this.store,s.projectId,[s.sourcePath,s.workingPath]);
+      await this.guardPending(op.tool,op.args,op.operationId,s);
+      const after=await savedRegistryBinding(this.store,s),channel=await readJson(path.join(op.bridge.directory,'saved-channel-accepted.json'));
+      await fs.writeFile(path.join(op.bridge.directory,'saved-registration-after.json'),JSON.stringify(after,null,2),{flag:'wx'});
+      verifyRegistrationPreserved(binding,after,raw.data?.saved===true?channel?.afterDisk:binding.image);
+    }
     return replySchema.parse(raw);
   }
   private publishTaskCallEvidence(file:string,value:unknown) {return atomicJson(file,value);}
@@ -828,7 +897,7 @@ export class EngineeringService {
   private async execute(op:Operation):Promise<Reply> {
     const a=op.args;
     const residentActive=this.adapter.residentOwned?.()||(await this.store.session())?.sessionMode==='resident';
-    if(residentActive&&!['project_open','object_list','object_read','code_apply_change','project_build'].includes(op.tool))throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','当前常驻工程只支持定位、读取、限定实现区修改及内存编译；不保存、切换或回落旧路径');
+    if(residentActive&&!['project_open','object_list','object_read','code_apply_change','project_build'].includes(op.tool))throw new DomainError('unsupported','RESIDENT_TOOL_NOT_ADAPTED','当前常驻工程只支持定位、读取、限定实现区修改后保存及内存编译；不切换或回落旧路径');
     if(op.tool==='library_catalog'||op.tool==='device_catalog'){
       await maintenanceGuard();
       op.bridge={directory:this.store.file('ipc/'+op.operationId)};await this.store.saveOp(op);
@@ -886,6 +955,18 @@ export class EngineeringService {
       }else if(session.sessionMode==='resident'||this.adapter.residentOwned?.())throw new DomainError('conflict','RESIDENT_SWITCH_UNSUPPORTED','常驻工程不能通过旧打开/激活/副本路径切换');
       await assertNotIsolated(this.store,session.projectId,[session.sourcePath,session.workingPath]);
       op.project={...session};await this.store.saveOp(op);
+      if(op.tool==='project_open'&&a.sessionMode==='resident'&&!this.adapter.residentOwned?.()){
+        const pending=await this.guardPending(op.tool,a,op.operationId,session);
+        const candidates=pending.impacts.filter(i=>i.earlyProof&&!i.continuedBy&&explicitEarlyOpen(op.tool,a,i.earlyProof));
+        const prior=candidates.filter(i=>!candidates.some(other=>other.earlyProof?.predecessorOperationIds?.includes(i.earlyProof!.operationId)));
+        if(prior.length>1)throw new DomainError('conflict','PENDING_UNKNOWN','首读失败的新打开依据不唯一');
+        if(prior.length===1){
+          const proof=prior[0].earlyProof!,directory=this.store.file('ipc/'+op.operationId);
+          await fs.mkdir(directory,{recursive:true});
+          await fs.writeFile(path.join(directory,'resident-new-open-precheck.json'),JSON.stringify({operationId:op.operationId,requestId:op.requestId,proof},null,2),{flag:'wx'});
+          op.residentFreshOpen={priorOperationId:proof.operationId,proofHash:residentHash(proof)};await this.store.saveOp(op);
+        }
+      }
       await this.store.acquire(session.sourcePath);
       const diskHash=digest(await fs.readFile(session.workingPath));
       if(session.sessionMode!=='resident' && session.diskHash && session.diskHash!==diskHash)

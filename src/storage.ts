@@ -41,6 +41,7 @@ export interface Operation {
   ownerIdentity?:import('./lease-process.js').ProcessIdentity;
   dispatchFiles?:Array<{path:string;key:string;realPath?:string;fileId?:string|null;[key:string]:unknown}>;
   resident?:boolean;
+  residentFreshOpen?:{priorOperationId:string;proofHash:string};
   response?: Reply; bridge?: { directory: string; pid?: number; launchId?: string }; finishedAt?: string;
   registryVersion?: 1;
   project?: Session;

@@ -7,9 +7,10 @@ import {fileIdentity,isolationState,maintenanceGuard,ownedProject} from './isola
 import {probeProcess,sameProcess,validProcessIdentity,type ProcessProbe} from './lease-process.js';
 import {replySchema} from './contracts.js';
 import {residentPendingScope} from './resident-pending.js';
+import {earlyOpenCandidate,type EarlyOpenProof,type ContinuedOpen} from './resident-early-open.js';
 
 interface File {path:string;key:string;realPath?:string;fileId?:string|null;missing?:boolean;[key:string]:unknown;}
-export interface PendingImpact {operationId:string;requestId:string;scope:'global'|'project';reason:string;projectId?:string;files:File[];basis?:string;}
+export interface PendingImpact {operationId:string;requestId:string;scope:'global'|'project';reason:string;projectId?:string;files:File[];basis?:string;earlyProof?:EarlyOpenProof;continuedBy?:ContinuedOpen;}
 export interface PendingContext {owned?:ReadonlySet<string>;running?:ReadonlySet<string>;exclude?:string;probe?:ProcessProbe;}
 const fail=(message:string):never=>{throw Error(message);};
 const same=(a:File,b:File)=>a.key===b.key||!!a.realPath&&!!b.realPath&&pathKey(a.realPath)===pathKey(b.realPath)||!!a.fileId&&a.fileId===b.fileId;
@@ -99,7 +100,9 @@ async function scoped(store:Store,op:Operation,projects:Session[],context:Pendin
   // Require the recorded service creation identity too; never infer it from PID.
   await checkGone(op.ownerPid,op.ownerIdentity,probe);
  }
- const s=creating?undefined:ownedProject(op,projects);
+ // Only the strict early-read proof below may bridge this provisional identity
+ // to a new registered session. All other ownership checks retain their rules.
+ const s=creating?undefined:ownedProject(op,earlyOpenCandidate(op)?[]:projects);
  const paths=creating?[c!.projectPath]:[s!.sourcePath,s!.workingPath,s!.directPath].filter((p):p is string=>!!p);
  const files:File[]=creating?[]:await Promise.all([...new Set(paths)].map(fileIdentity));
  if(files.some(f=>f.missing||!f.fileId||!f.realPath))fail('original project file identity unavailable');
@@ -119,10 +122,11 @@ async function scoped(store:Store,op:Operation,projects:Session[],context:Pendin
  if(!reqFiles.length||!reqFiles.some(p=>pathKey(path.dirname(p))===pathKey(directory!)))fail('original launch request missing');
  if(creating&&(reqFiles.length!==1||pathKey(directory!)!==pathKey(root)))fail('creation requires one unambiguous original launch');
  let residentBasis:string|undefined;
+ let earlyProof:EarlyOpenProof|undefined,continuedBy:ContinuedOpen|undefined;
  let residentRecheck:(()=>Promise<void>)|undefined;
  if(op.resident===true){
   if(creating||reqFiles.length!==1||pathKey(directory!)!==pathKey(root))fail('resident requires one bound operation request');
-  const proof=await residentPendingScope(store,op,s!,projects,read,probe);residentBasis=proof.basis;residentRecheck=proof.recheck;
+  const proof=await residentPendingScope(store,op,s!,projects,read,probe);residentBasis=proof.basis;residentRecheck=proof.recheck;earlyProof=proof.earlyProof;continuedBy=proof.continuedBy;
  }
  const launches=new Set<string>();
  for(const p of op.resident===true?[]:reqFiles){
@@ -156,7 +160,7 @@ async function scoped(store:Store,op:Operation,projects:Session[],context:Pendin
  for(const [p,hash] of reads){const bytes=await fs.readFile(p).catch((e:any)=>{if(e.code==='ENOENT')return null;throw e;});if((bytes===null?null:digest(bytes))!==hash)fail('IPC changed during assessment');}
  if(canonical((await requests(root)).sort())!==canonical(reqFiles.sort()))fail('native launch set changed during assessment');
  if(creating&&canonical(await creationFiles(op,directory!,read))!==canonical(files))fail('creation footprint changed during assessment');
- return {operationId:op.operationId,requestId:op.requestId,scope:'project',reason:'original processes ended; outcome remains unknown',projectId:creating?c!.projectId:s!.projectId,files,...(creating?{basis:'creation-publication-chain-v1; current file identities; historical IDs only when recorded'}:residentBasis?{basis:residentBasis}:{})};
+ return {operationId:op.operationId,requestId:op.requestId,scope:'project',reason:'original processes ended; outcome remains unknown',projectId:creating?c!.projectId:s!.projectId,files,...(creating?{basis:'creation-publication-chain-v1; current file identities; historical IDs only when recorded'}:residentBasis?{basis:residentBasis}:{}),...(earlyProof?{earlyProof,continuedBy}:{})};
 }
 export async function assessPending(store:Store,context:PendingContext={}) {
  await maintenanceGuard();
@@ -180,6 +184,10 @@ export async function assessPending(store:Store,context:PendingContext={}) {
   if(canonical(await store.operation(old.operationId))!==canonical(old))fail('pending operation changed during assessment');
   const before=registry.projects.find(s=>s.projectId===impact.projectId),after=current.projects.find(s=>s.projectId===impact.projectId);
   if(before&&(!after||canonical(binding(before))!==canonical(binding(after))))fail('pending project binding changed during assessment');
+  if(impact.continuedBy){
+   const old=registry.projects.find(s=>s.projectId===impact.continuedBy!.projectId),now=current.projects.find(s=>s.projectId===impact.continuedBy!.projectId);
+   if(!old||!now||canonical(binding(old))!==canonical(binding(now)))fail('fresh resident binding changed during assessment');
+  }
  }
  if(canonical(await isolationState(store))!==canonical(isolation))fail('isolation changed during assessment');
  return {registry,operations,isolation,impacts,globalFrozen:impacts.some(i=>i.scope==='global')};

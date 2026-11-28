@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Resident product operations: public ST implementation reads/replace; never save/close.
+"""Resident product operations: public ST implementation reads/replace; confirmed changes save once and keep open.
 Public identity/read primitives derived from the verified native experiment.
 No fixed path, object name, comment, round count, input-code evaluation or worker dispatch.
 """
@@ -37,6 +37,8 @@ def canonical(value):
     return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')
 
 def digest(value):return hashlib.sha256(canonical(value)).hexdigest()
+
+def resident_version(deps,disk):return digest(dict(dependencies=deps,diskHash=disk))
 
 def file_hash(path):
     with open(path,'rb') as stream:return hashlib.sha256(stream.read()).hexdigest()
@@ -166,15 +168,19 @@ class NativeProjectAdapter(object):
                 if row is None:proof['readErrors'].append(dict(field='all[%d]'%index,message='Null/invalid project entry'))
                 else:proof['all'].append(row)
         self.last_ownership=copy.deepcopy(proof)
+        validation_error=None
+        if not native_errors:
+            try:validate_owned_projects(proof,self.path,self.handle)
+            except Exception as error:validation_error=error
         try:
             if self.observe_ownership:self.observe_ownership(proof)
         except Exception as error:
-            if native_errors:
+            if native_errors or validation_error is not None:
                 self.last_ownership['publicationError']=dict(type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc())
-                raise native_errors[0]
+                raise native_errors[0] if native_errors else validation_error
             raise
         if native_errors:raise native_errors[0]
-        validate_owned_projects(proof,self.path,self.handle)
+        if validation_error is not None:raise validation_error
 
     def snapshot(self):
         self.attempts['read']+=1
@@ -227,6 +233,19 @@ class NativeProjectAdapter(object):
         opened=dict((str(row['handle']),copy.deepcopy(row)) for row in self.last_ownership['all'])
         self.objects=objects
         return dict(projectPath=source_text(self.project.path),projectHandle=self.handle,openedProjects=opened,applications=apps,nodes=nodes,thread=self.thread)
+
+    def saved_snapshot(self):
+        self._owned()
+        first=self.project.dirty
+        state=self.snapshot()
+        last=self.project.dirty
+        if type(first) is not bool or type(last) is not bool:raise ValueError('Native dirty evidence missing or not boolean')
+        return dict(state=state,dirtyBefore=first,dirtyAfter=last)
+
+    def save_current(self):
+        if self.project is None:raise Conflict('Save requires the already owned project')
+        self._owned()
+        self.project.save()
 
     def replace_implementation(self,oid,value):
         self._owned()
@@ -436,15 +455,18 @@ def checked_diagnostics(value,aid):
     return dict(errorCount=errors,warningCount=warnings,buildPassed=errors==0)
 
 class ResidentSession(object):
-    def __init__(self,adapter,disk_hash,publish,admission=lambda:None):
-        self.adapter=adapter;self.disk_hash=disk_hash;self.publish=publish;self.admission=admission;self.poison=None;self.secondary=[];self.previous_disk=None;self.edits=0
+    def __init__(self,adapter,disk_hash,publish,admission=lambda:None,authorize_save=None):
+        self.adapter=adapter;self.disk_hash=disk_hash;self.publish=publish;self.admission=admission;self.poison=None;self.secondary=[];self.previous_disk=None;self.edits=0;self.authorize_save=authorize_save
     def handle(self,request):
         if self.poison is not None:raise Conflict('Resident session frozen; no further dispatch')
-        dispatched=False;before=None
+        dispatched=False;save_attempts=0;before=None;phase='admission'
         try:
             command=request['command'];args=request['args']
             if command not in ('inspect','list','read','change','build'):raise Rejection('Tool not adapted to resident mode')
-            before=self.adapter.snapshot();disk=self.disk_hash();deps=dependencies(before)
+            phase='initial-snapshot'
+            before=self.adapter.snapshot()
+            phase='snapshot-returned'
+            disk=self.disk_hash();deps=dependencies(before)
             self.publish('before.json',dict(state=before,diskHash=disk))
             if self.previous_disk is not None and disk!=self.previous_disk:raise Conflict('Disk changed; cannot prove it is a manual save of this memory; no write permitted')
             apps=[dict(applicationId=a,path=before['nodes'][a]['path']) for a in before['applications']]
@@ -474,17 +496,46 @@ class ResidentSession(object):
                 again=self.adapter.snapshot()
                 self.publish('predispatch.json',dict(state=again,diskHash=self.disk_hash()))
                 if dependencies(again)!=deps or self.disk_hash()!=disk:raise Rejection('State changed before dispatch')
-                expected=copy.deepcopy(deps);expected['nodes'][args['objectId']]['implementation']=args['implementation']
-                self.publish('dispatch.json',dict(operationId=request['operationId'],requestId=request['requestId'],action='replace-implementation'))
-                self.admission()
-                if self.disk_hash()!=disk:raise Conflict('Disk changed at final dispatch gate')
-                dispatched=True;self.adapter.replace_implementation(args['objectId'],args['implementation'])
-                after=self.adapter.snapshot();self.publish('after.json',dict(state=after,diskHash=self.disk_hash()))
-                actual=dependencies(after)
-                check=dict(equal=expected==actual,expected=expected,actual=actual)
-                self.publish('verification.json',check)
-                if not check['equal'] or self.disk_hash()!=disk:raise ValueError('Written state cannot be confirmed')
-                self.edits+=1;data.update(object_data(after,args['objectId'],aid),snapshot=digest(actual),residentVersion=digest(dict(dependencies=actual,diskHash=disk)),memoryModified=True,memoryEditsInSession=self.edits,persistedToProject=False,persistedToWorkingCopy=False,checkpoint=request['directory']+'/checkpoint.json')
+                if args['implementation']==obj['implementation']:
+                    self.publish('no-op.json',dict(requestHash=digest(request),stateHash=digest(deps),unchanged=True))
+                    data.update(noOp=True,persistedToProject=False,persistedToWorkingCopy=False)
+                else:
+                    if request.get('savePolicy')!='resident-confirmed-change-save-v1' or self.authorize_save is None:raise Rejection('Current automatic save protocol required')
+                    expected=copy.deepcopy(deps);expected['nodes'][args['objectId']]['implementation']=args['implementation']
+                    self.publish('dispatch.json',dict(operationId=request['operationId'],requestId=request['requestId'],action='replace-implementation'))
+                    self.admission()
+                    if self.disk_hash()!=disk:raise Conflict('Disk changed at final dispatch gate')
+                    dispatched=True;phase='replace-implementation';self.adapter.replace_implementation(args['objectId'],args['implementation'])
+                    after=self.adapter.snapshot();self.publish('after.json',dict(state=after,diskHash=self.disk_hash()))
+                    actual=dependencies(after)
+                    check=dict(equal=expected==actual,expected=expected,actual=actual)
+                    self.publish('verification.json',check)
+                    if not check['equal'] or self.disk_hash()!=disk:raise ValueError('Written state cannot be confirmed')
+                    ready=dict(scheme=request['savePolicy'],requestHash=digest(request),beforeDisk=request['initialDisk'],projectPath=after['projectPath'],projectHandle=after['projectHandle'],stateHash=digest(build_state_view(after)))
+                    phase='save-authorization';self.publish('save-ready.json',ready)
+                    authorization=self.authorize_save(ready)
+                    expected_authorization=dict(scheme=request['savePolicy'],requestHash=digest(request),readyHash=digest(ready),beforeDisk=request['initialDisk'])
+                    if authorization!=expected_authorization:raise ValueError('Save authorization binding differs')
+                    # Last public snapshot and lease check before invoking the synchronous save.
+                    current=self.adapter.snapshot()
+                    if build_state_view(current)!=build_state_view(after) or self.disk_hash()!=disk:raise Conflict('State changed at final save gate')
+                    self.admission()
+                    call=dict(requestHash=digest(request),authorizationHash=digest(authorization),projectHandle=after['projectHandle'],projectPath=after['projectPath'],method='ScriptProject.save',attempt=1)
+                    phase='save';self.publish('save-call.json',call)
+                    save_attempts=1;self.adapter.save_current()
+                    returned=dict(requestHash=digest(request),callHash=digest(call),returned=True)
+                    self.publish('save-returned.json',returned)
+                    phase='save-readback'
+                    first=self.adapter.saved_snapshot();first['diskHash']=self.disk_hash();self.publish('save-read-first.json',first)
+                    second=self.adapter.saved_snapshot();second['diskHash']=self.disk_hash();self.publish('save-read-second.json',second)
+                    for read in (first,second):
+                        dependencies(read['state'])
+                        if read['dirtyBefore'] is not False or read['dirtyAfter'] is not False or build_state_view(read['state'])!=build_state_view(after) or read['diskHash']==disk:raise ValueError('Save returned without confirmed current state/file change')
+                    if first['diskHash']!=second['diskHash'] or self.disk_hash()!=second['diskHash']:raise ValueError('Saved file version changed during verification')
+                    receipt=dict(scheme=request['savePolicy'],requestHash=digest(request),callHash=digest(call),returnedHash=digest(returned),firstReadHash=digest(first),secondReadHash=digest(second),beforeDiskHash=disk,afterDiskHash=second['diskHash'],projectHandle=after['projectHandle'],projectPath=after['projectPath'],snapshot=digest(actual),scope='all current unsaved project contents',reopened=False)
+                    self.publish('save-receipt.json',receipt)
+                    disk=second['diskHash'];self.edits+=1
+                    data.update(object_data(second['state'],args['objectId'],aid),snapshot=digest(actual),residentVersion=resident_version(actual,disk),diskHash=disk,memoryModified=True,memoryEditsInSession=self.edits,persistedToProject=True,persistedToWorkingCopy=False,saved=True,saveCalls=1,saveReceipt=receipt,checkpoint=request['directory']+'/checkpoint.json')
             elif command=='build':
                 if args.get('targetKind','application')!='application' or args.get('expectedResidentVersion')!=version:raise Rejection('Build requires current memory version and actual Application')
                 self.adapter.prepare_build(aid)
@@ -525,9 +576,12 @@ class ResidentSession(object):
                     persistedToProject=False,persistedToWorkingCopy=False)
             elif self.disk_hash()!=disk:raise Conflict('Disk changed during read')
             self.previous_disk=disk
-            return dict(contractVersion='1.0.0',operationId=request['operationId'],status='succeeded',summary=u'当前内存编译已完成；检查buildPassed及诊断，未保存或关闭' if command=='build' else u'同一工程内存请求完成；未保存、未编译、未关闭',data=data)
+            return dict(contractVersion='1.0.0',operationId=request['operationId'],status='succeeded',summary=u'当前工程已完成一次保存并保持打开；保存包含当前工程全部未保存内容' if data['saved'] else u'当前内存编译已完成；检查buildPassed及诊断，未保存或关闭' if command=='build' else u'只读或无修改请求完成；未保存、未编译、未关闭',data=data)
         except Exception as error:
-            detail=dict(type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc(),dispatched=dispatched)
+            detail=dict(type=type(error).__name__,message=text_type(error),traceback=traceback.format_exc(),dispatched=dispatched,phase=phase)
+            ownership=getattr(self.adapter,'last_ownership',None)
+            if isinstance(ownership,dict) and ownership.get('publicationError') is not None:
+                self.secondary.append(dict(stage='ownership-publication',error=copy.deepcopy(ownership['publicationError'])))
             recoverable=isinstance(error,Rejection) and not dispatched
             if not recoverable:self.poison=detail
             if request.get('command')=='build':
@@ -535,4 +589,4 @@ class ResidentSession(object):
                 except Exception as secondary:self.secondary.append(dict(type=type(secondary).__name__,message=text_type(secondary),traceback=traceback.format_exc()));recoverable=False;self.poison=detail
             try:self.publish('first-error.json',detail)
             except Exception as secondary:self.secondary.append(dict(type=type(secondary).__name__,message=text_type(secondary),traceback=traceback.format_exc()));recoverable=False;self.poison=detail
-            return dict(contractVersion='1.0.0',operationId=request['operationId'],status='unknown' if dispatched or not isinstance(error,Conflict) else 'conflict',summary=u'本次未派发；后续新指令可重新读取' if recoverable else u'已停止此常驻会话；保留现场，不重试或恢复性保存',error=dict(code='RESIDENT_UNCONFIRMED' if dispatched else 'RESIDENT_PRECONDITION',message=text_type(error)),data=dict(firstError=detail,secondaryErrors=self.secondary,recoverableRejection=recoverable,saved=False,reopened=False,closed=False))
+            return dict(contractVersion='1.0.0',operationId=request['operationId'],status='unknown' if dispatched or not isinstance(error,Conflict) else 'conflict',summary=u'本次未派发；后续新指令可重新读取' if recoverable else u'已停止此常驻会话；保留现场，不重试或恢复性保存',error=dict(code='RESIDENT_UNCONFIRMED' if dispatched else 'RESIDENT_PRECONDITION',message=text_type(error)),data=dict(firstError=detail,secondaryErrors=self.secondary,recoverableRejection=recoverable,saveCalls=save_attempts,saveOutcome='unconfirmed' if save_attempts else 'not-attempted',reopened=False,closed=False,**({'saved':False} if not save_attempts else {})))
